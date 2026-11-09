@@ -5256,6 +5256,78 @@ function prismaBudgetFor(profile) {
   return Math.max(0.15, Math.min(1, (1920 * 1080) / px));
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+ * RECETA DE UPSCALE "4K FALSO MARAVILLOSO" (tecnica de decos chinos)
+ *
+ * Lo que hace un deco chino para vender 4K sobre una fuente 1080p:
+ *   1. DENOISE a resolucion de ORIGEN (si no, el upscale amplifica el ruido
+ *      de compresion y se ve peor, no mejor)
+ *   2. UPSCALE a 2160p (en el VPP/GPU, no en el decoder)
+ *   3. SHARPEN a resolucion de SALIDA, con radio atado al texel de ORIGEN
+ *      (si afinas mas que un texel de origen solo amplificas interpolacion)
+ *   4. MICROCONTRASTE local (da la sensacion de "nitidez" sin halos)
+ *   5. Salida 4K por HDMI
+ *
+ * El APK ya tiene el ORDEN correcto: UltraEnhancePipeline.processFramePair hace
+ * artifactRemoval (denoise) -> superRes -> frameInterp -> glslPass. Y el shader
+ * ape_enhance_fragment.glsl hace bilateral->unsharp con el unsharp CLAMPEADO al
+ * min/max local (sin halos, a diferencia de un unsharp ingenuo).
+ *
+ * Lo que FALTABA: ApeUltraEnhanceGlEffect.configure() devolvia
+ * Size(inputWidth, inputHeight) con el comentario "no upscaling de buffer".
+ * O sea: el efecto NO escalaba. El "4K" salia del escalador del compositor,
+ * que es bilineal y suave. Aqui se calcula el factor y los parametros que el
+ * APK debe aplicar para que el upscale se vea como el de un deco.
+ *
+ * LIMITE DOCTRINAL: esto es ENHANCEMENT, no 4K real. Se declara como tal
+ * (#EXT-X-APE-ENHANCE-STATE:DECLARED). NUNCA se reescribe el RESOLUTION= publico
+ * de una fuente que no es 4K: eso es la condicion de BLOCK de la doctrina.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Superficie de presentacion del APK (PlaybackPolicy: target 3840x2160). */
+const PRISMA_SURFACE = { w: 3840, h: 2160 };
+
+/* Receta por factor de upscale. Los valores respetan los limites REALES del
+ * shader: uSharpen se clampa a [0,1] dentro del GLSL, uDenoise a [0,1]. */
+const PRISMA_UPSCALE_RECIPE = [
+  { maxRatio: 1.00, label: 'nativo',            sharpen: 0.25, denoise: 0.08, microcontrast: 0.05 },
+  { maxRatio: 1.40, label: '1440p->2160p',      sharpen: 0.45, denoise: 0.12, microcontrast: 0.10 },
+  { maxRatio: 2.10, label: '1080p->2160p',      sharpen: 0.80, denoise: 0.28, microcontrast: 0.16 },
+  { maxRatio: 3.20, label: '720p->2160p',       sharpen: 1.00, denoise: 0.45, microcontrast: 0.22 },
+  { maxRatio: 99.0, label: '480p->2160p',       sharpen: 1.00, denoise: 0.60, microcontrast: 0.28 }
+];
+
+/* Factor de upscale = superficie del APK / resolucion DECODIFICADA. */
+function prismaUpscaleFor(profile) {
+  const st = (profile && profile.settings) || {};
+  const m = String(st.resolution || '').match(/^(\d+)\s*x\s*(\d+)$/i);
+  const w = m ? Number(m[1]) : 1920;
+  const h = m ? Number(m[2]) : 1080;
+  // el APK nunca decodifica por encima de 4K
+  const decW = Math.min(w, PRISMA_APK_CEILING.maxDecodeW);
+  const decH = Math.min(h, PRISMA_APK_CEILING.maxDecodeH);
+  const ratio = Math.max(1, (PRISMA_SURFACE.w * PRISMA_SURFACE.h) / (decW * decH));
+  const r = Math.sqrt(ratio);   // factor lineal, que es lo que importa en el upscale
+  const rec = PRISMA_UPSCALE_RECIPE.find((x) => r <= x.maxRatio + 1e-9) ||
+              PRISMA_UPSCALE_RECIPE[PRISMA_UPSCALE_RECIPE.length - 1];
+  return {
+    decodedW: decW, decodedH: decH,
+    surfaceW: PRISMA_SURFACE.w, surfaceH: PRISMA_SURFACE.h,
+    ratio: Math.round(r * 1000) / 1000,
+    upscaling: r > 1.02,
+    label: rec.label,
+    sharpen: rec.sharpen,
+    denoise: rec.denoise,
+    microcontrast: rec.microcontrast,
+    // honestidad: es enhancement, no 4K real
+    declaredAs: 'ENHANCEMENT',
+    note: r > 1.02
+      ? 'la fuente NO es 4K: se presenta a ' + PRISMA_SURFACE.w + 'x' + PRISMA_SURFACE.h +
+        ' con enhancement declarado. El RESOLUTION= publico NO se toca.'
+      : 'la fuente ya es 4K: solo se afina, no se upscala'
+  };
+}
+
 function prismaPlanFor(pid, profile) {
   const decodePx = prismaDecodePx(profile);
   const st = (profile && profile.settings) || {};
@@ -5367,6 +5439,20 @@ function prismaPlanFor(pid, profile) {
   if (out.lanes.lcevc && out.lanes.lcevc.enabled) {
     out.emit.fields.prisma.lcevc_strength = String(out.lanes.lcevc.params.residualStrength);
   }
+  /* Receta de upscale 4K (tecnica de deco) y su declaracion honesta. */
+  const up = prismaUpscaleFor(profile);
+  out.upscale = up;
+  if (out.extra.glsl && out.extra.glsl.enabled) {
+    // el GL es quien materializa el aspecto del upscale
+    out.emit.fields.gl.sharpen = String(up.sharpen);
+    out.emit.fields.gl.denoise = String(up.denoise);
+    out.emit.fields.gl.microcontrast = String(up.microcontrast);
+    out.emit.fields.prisma.upscale = up.upscaling ? 'display' : 'native';
+    out.emit.fields.prisma.upscale_ratio = String(up.ratio);
+    out.emit.fields.prisma.upscale_surface = up.surfaceW + 'x' + up.surfaceH;
+    out.emit.fields.prisma.upscale_declared = up.declaredAs;
+  }
+
   out.activos = Object.values(out.lanes).filter((r) => r.enabled).map((r) => r.id)
     .concat(Object.values(out.extra).filter((r) => r.enabled).map((r) => r.id));
   return out;

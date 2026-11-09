@@ -128,11 +128,29 @@ public final class FluidBridge {
         if ("natural".equals(profile)) return Collections.emptyList();
         try {
             SharedPreferences p = FluidStore.prefs(context);
-            float sharpen = Math.max(0, Math.min(100, p.getInt("sharpen_percent", 35))) / 100f;
-            float denoise = Math.max(0, Math.min(100, p.getInt("denoise_percent", 20))) / 100f;
+            // PRISMA manda si hay plan del perfil publicado por PrismaProfile.
+            // Si no hay plan, se mantienen los prefs de siempre (passthrough).
+            boolean prismaOn = p.getInt("prisma_gl_active", 0) == 1;
+            float sharpen, denoise;
+            if (prismaOn) {
+                sharpen = Math.max(0, Math.min(100, p.getInt("prisma_gl_sharpen_pct", 35))) / 100f;
+                denoise = Math.max(0, Math.min(100, p.getInt("prisma_gl_denoise_pct", 20))) / 100f;
+            } else {
+                sharpen = Math.max(0, Math.min(100, p.getInt("sharpen_percent", 35))) / 100f;
+                denoise = Math.max(0, Math.min(100, p.getInt("denoise_percent", 20))) / 100f;
+            }
             if (!"lite".equals(profile)) {
-                float vibrance = Math.max(0, Math.min(15, p.getInt("vibrance_percent", 5))) / 100f;
-                float contrast = Math.max(0, Math.min(20, p.getInt("microcontrast_percent", 6))) / 100f;
+                float vibrance = prismaOn
+                        ? Math.max(0, Math.min(30, p.getInt("prisma_gl_vibrance_pct", 7))) / 100f
+                        : Math.max(0, Math.min(15, p.getInt("vibrance_percent", 5))) / 100f;
+                float contrast = prismaOn
+                        ? Math.max(0, Math.min(40, p.getInt("prisma_gl_microcontrast_pct", 8))) / 100f
+                        : Math.max(0, Math.min(20, p.getInt("microcontrast_percent", 6))) / 100f;
+                if (prismaOn) {
+                    FluidStore.event(context, "PRISMA_GL",
+                            "sharpen=" + sharpen + " denoise=" + denoise
+                            + " vib=" + vibrance + " mc=" + contrast);
+                }
                 int[] output = "crystal_uhd".equals(profile) ? outputLimit(context) : new int[]{0, 0};
                 return Collections.<Object>singletonList(new CrystalGlEffect(sharpen, denoise, vibrance, contrast, output[0], output[1]));
             }

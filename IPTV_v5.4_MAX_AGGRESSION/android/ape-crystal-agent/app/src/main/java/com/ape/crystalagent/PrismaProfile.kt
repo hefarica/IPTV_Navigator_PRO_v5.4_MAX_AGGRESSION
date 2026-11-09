@@ -112,6 +112,8 @@ object PrismaProfile {
                 present = true
             )
             Log.i(TAG, plan.toString())
+            // publicar tambien en las prefs que consume FluidBridge (efecto REAL)
+            runCatching { publishGlToPrefs(ctx, plan) }
             plan
         }.getOrElse {
             Log.w(TAG, "lectura PRISMA fallo: ${it.message} (passthrough)")
@@ -180,6 +182,39 @@ object PrismaProfile {
         Log.i(TAG, "PRISMA aplicado -> $out")
         return out
     }
+
+    /**
+     * Publica los parametros de GL efectivos en las prefs que lee FluidBridge.
+     *
+     * POR QUE ESTO EXISTE: `FluidBridge.effectsFor()` construye el efecto REAL
+     * de imagen (`CrystalGlEffect`, con vibranza, microcontraste y tamano de
+     * salida para el upscale) leyendo prefs FIJOS:
+     *     sharpen_percent 35 · denoise_percent 20 · vibrance_percent 5 · microcontrast_percent 6
+     * Nadie los ajustaba por perfil. Aqui el plan PRISMA deja sus valores en
+     * prefs y FluidBridge los usa si estan presentes.
+     *
+     * Si el plan no trae valor, no se escribe nada y FluidBridge sigue con sus
+     * defaults: passthrough, sin sorpresas.
+     */
+    fun publishGlToPrefs(ctx: Context, plan: Plan) {
+        if (!plan.present) return
+        runCatching {
+            val ed = ctx.getSharedPreferences("ape", Context.MODE_PRIVATE).edit()
+            plan.gl["sharpen"]?.let { ed.putInt("prisma_gl_sharpen_pct", Math.round(it * 100f)) }
+            plan.gl["denoise"]?.let { ed.putInt("prisma_gl_denoise_pct", Math.round(it * 100f)) }
+            plan.gl["microcontrast"]?.let { ed.putInt("prisma_gl_microcontrast_pct", Math.round(it * 100f)) }
+            plan.gl["vibrancia"]?.let { ed.putInt("prisma_gl_vibrance_pct", Math.round(it * 100f)) }
+            ed.putInt("prisma_gl_active", 1)
+            ed.apply()
+            Log.i(TAG, "GL publicado en prefs: sharpen=${plan.gl["sharpen"]} denoise=${plan.gl["denoise"]} micro=${plan.gl["microcontrast"]}")
+        }.onFailure { Log.w(TAG, "publishGl fallo: ${it.message}") }
+    }
+
+    /** Hay un plan PRISMA activo publicado en prefs? (lo usa PlayerActivity) */
+    fun hasActivePlan(ctx: Context): Boolean = runCatching {
+        ctx.getSharedPreferences("ape", Context.MODE_PRIVATE)
+            .getInt("prisma_gl_active", 0) == 1
+    }.getOrDefault(false)
 
     /** Ajustes de GL concretos del perfil (los que usa GlslEnhancePipeline). */
     fun glSharpness(plan: Plan): Float = plan.gl["acerado"] ?: 0.4f

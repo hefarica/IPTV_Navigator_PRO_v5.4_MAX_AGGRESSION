@@ -112,6 +112,10 @@ class ListLoader(private val cfg: Config) {
         AraStatus.labMetadataSha256 = labMetadataSha256
         val applied = LabMetadataStore.apply(cfg.appContext(), json)
         AraStatus.labMetadataFieldCount = applied
+        // PRISMA: al aplicar la metadata se resuelve el plan del perfil y se
+        // publica en prefs, para que el efecto de imagen lo use al abrir el canal.
+        runCatching { PrismaProfile.read(cfg.appContext()) }
+            .onFailure { Log.w(TAG, "PRISMA read: ${it.message}") }
         cfg.saveLabMetadata(json.toString(), labMetadataSha256)
         Log.i(TAG, "LAB metadata: profile=${json.optString("profile")} sha=${labMetadataSha256.take(16)}")
     }

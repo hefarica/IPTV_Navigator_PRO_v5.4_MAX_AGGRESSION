@@ -29,7 +29,16 @@ class PlayerActivity : Activity() {
         val url = intent.getStringExtra("url")
         if (url.isNullOrEmpty()) { finish(); return }
         val ua = intent.getStringExtra("ua")
-        ApePlayer.suppressVideoEffects = intent.getStringExtra("effects") != "on"   // default OFF (ver ApePlayer)
+        /* Efectos de imagen: lo explicito manda. Si NO hay extra "effects", se
+         * encienden SOLO cuando la lista trae un plan PRISMA activo: eso es un
+         * opt-in explicito del operador en su propia lista, no un default.
+         * Sin plan ⇒ siguen OFF (comportamiento estabilizado de siempre). */
+        val effectsExtra = intent.getStringExtra("effects")
+        ApePlayer.suppressVideoEffects = when (effectsExtra) {
+            "on" -> false
+            "off" -> true
+            else -> !PrismaProfile.hasActivePlan(this)
+        }
 
         val a = ApePlayer(this); ape = a
         val p = a.build(); player = p
