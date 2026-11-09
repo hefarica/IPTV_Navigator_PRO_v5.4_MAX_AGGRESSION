@@ -875,6 +875,246 @@ function deleteRule(id) {
 loadRules();
 
 /* ═══════════════════════════════════════════════════════════════════════════
+ * API KEY PERSISTIBLE EN CALIENTE + MOTOR DE ALINEACION CON EL GESTOR DE PERFILES
+ *
+ * 1) La key del LLM se puede guardar desde el panel y se aplica SIN reiniciar el
+ *    servicio: se escribe en /opt/ape-jit/llm-key.json con chmod 600 y el motor la
+ *    lee de ahi si no esta en el entorno. El navegador nunca la recibe de vuelta.
+ *
+ * 2) Alineacion: el perfil del GESTOR (P0..P5, con sus ~577 campos cada uno) se
+ *    hereda y se propone como alinearlo con la funcion objetivo del modulo de
+ *    imagen. Primero se AVISA, no se aplica: el operador confirma.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+const LLM_KEY_FILE = process.env.LLM_KEY_FILE || '/opt/ape-jit/llm-key.json';
+const PROFILES_JSON = process.env.PROFILES_JSON || '/var/www/html/js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.json';
+
+/* Key viva. Orden: entorno > archivo. Se recarga al guardar, sin reinicio. */
+let llmKeyCache = null;
+
+function readLLMKey() {
+  if (process.env.DEEPSEEK_API_KEY) return process.env.DEEPSEEK_API_KEY;
+  if (process.env.LLM_API_KEY) return process.env.LLM_API_KEY;
+  if (llmKeyCache) return llmKeyCache;
+  try {
+    if (fs.existsSync(LLM_KEY_FILE)) {
+      const j = JSON.parse(fs.readFileSync(LLM_KEY_FILE, 'utf8'));
+      if (j && typeof j.key === 'string' && j.key.length > 8) {
+        llmKeyCache = j.key;
+        return llmKeyCache;
+      }
+    }
+  } catch (_) { /* ilegible: sin key */ }
+  return null;
+}
+
+function saveLLMKey(key) {
+  const k = String(key || '').trim();
+  if (k.length < 8) return { ok: false, error: 'la key es demasiado corta (minimo 8 caracteres)' };
+  if (!/^[A-Za-z0-9_\-\.]+$/.test(k)) return { ok: false, error: 'la key tiene caracteres no validos' };
+  try {
+    fs.writeFileSync(LLM_KEY_FILE, JSON.stringify({
+      key: k,
+      updated: new Date().toISOString(),
+      note: 'clave del LLM. chmod 600. El motor la lee en caliente.'
+    }, null, 2));
+    try { fs.chmodSync(LLM_KEY_FILE, 0o600); } catch (_) {}
+    llmKeyCache = k;
+    return { ok: true, configured: true, chars: k.length };
+  } catch (e) {
+    return { ok: false, error: 'no se pudo escribir: ' + e.message };
+  }
+}
+
+function clearLLMKey() {
+  try { if (fs.existsSync(LLM_KEY_FILE)) fs.unlinkSync(LLM_KEY_FILE); } catch (_) {}
+  llmKeyCache = null;
+  return { ok: true, configured: !!readLLMKey() };
+}
+
+/* ── ALINEACION CON EL GESTOR DE PERFILES ──────────────────────────────────
+ *
+ * El operador: "al llamar al perfil desde el Gestor, el LLM heredara los campos
+ * que vengan de alla y sobre esos valores realizara el ajuste para que en funcion
+ * objetivo esta informacion sirva para que el modulo de imagen construya la imagen
+ * excepcional... luego de confirmar, de manera automatizada debera mapear
+ * absolutamente todos los campos del gestor de perfil y alinearlos".
+ *
+ * El motor devuelve una PROPUESTA campo a campo: antes, despues y razon. NO
+ * aplica. El operador confirma con el boton.
+ */
+function loadGestorProfiles() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(PROFILES_JSON, 'utf8'));
+    return raw.profiles || {};
+  } catch (e) {
+    return null;
+  }
+}
+
+/* Deriva los valores que LE TOCAN al gestor a partir de la funcion objetivo.
+ * Estas son las reglas de alineacion: que campo del gestor se mueve y por que. */
+function alignmentTargets(obj) {
+  const outW = obj.output.width, outH = obj.output.height;
+  const isEmu = obj.mode === 'emulado';
+  const codecId = obj.fields.codec.value;
+  const codecLabel = CODEC_CATALOG[codecId] ? CODEC_CATALOG[codecId].family.toUpperCase() : 'HEVC';
+
+  /* Bitrate objetivo. Se usa la tabla de referencia del repo (CLAUDE.md,
+   * "Bitrate Fallback por Resolucion"), NO un factor inventado.
+   *
+   * MEDIDO: con un factor px*0.06 el calculo daba 4K = 1 Mbps, absurdo. La tabla
+   * del repo dice 4K = 28 Mbps y es la que rige. */
+  const BITRATE_TABLE = [
+    { px: 7680 * 4320, mbps: 80 },
+    { px: 3840 * 2160, mbps: 28 },
+    { px: 2560 * 1440, mbps: 16 },
+    { px: 2048 * 1080, mbps: 14 },
+    { px: 1920 * 1080, mbps: 12 },
+    { px: 1280 * 720,  mbps: 5.5 },
+    { px: 854 * 480,   mbps: 2.5 }
+  ];
+  const px = outW * outH;
+  let bitrateMbps = 2.5;
+  for (const row of BITRATE_TABLE) {
+    if (px >= row.px) { bitrateMbps = row.mbps; break; }
+  }
+  // 6K (entre 4K y 8K): se interpola
+  if (px > 3840 * 2160 && px < 7680 * 4320) {
+    bitrateMbps = Math.round(28 + (px - 3840 * 2160) / (7680 * 4320 - 3840 * 2160) * (80 - 28));
+  }
+  // el codec ajusta: AV1 gasta ~25% menos, AVC ~40% mas para la misma calidad
+  if (codecId === 'av01') bitrateMbps = Math.round(bitrateMbps * 0.75);
+  else if (codecId === 'avc1') bitrateMbps = Math.round(bitrateMbps * 1.4);
+  // emulado pide mas margen: hay pixeles sintetizados que codificar
+  if (isEmu) bitrateMbps = Math.round(bitrateMbps * 1.15);
+  bitrateMbps = Math.max(1, bitrateMbps);
+
+  // buffer: mas grande si el coste es alto (mas riesgo de stall) y en emulado
+  const costMul = obj.cost.relative;
+  const bufferSec = Math.min(60, Math.max(8, Math.round(8 + costMul * 3 + (isEmu ? 4 : 0))));
+  const networkCaching = bufferSec * 1000;
+  const clockJitter = Math.round(networkCaching * 0.1);
+
+  return {
+    settings: {
+      resolution: outW + 'x' + outH,
+      codec: codecId === 'avc1' ? 'H264' : (codecId === 'av01' ? 'AV1' : 'H265'),
+      fps: obj.filters.minterpolate.enabled ? obj.filters.minterpolate.outFps : (obj.input.fps || 30),
+      bitrate: bitrateMbps,
+      bufferSeconds: bufferSec,
+      strategy: isEmu ? 'ultra-aggressive' : 'balanced',
+      headersCount: 200,
+      playerBuffer: bufferSec * 1000,
+      bitrateFloor: Math.max(1, Math.round(bitrateMbps * 0.15))
+    },
+    vlcopt: {
+      'network-caching': networkCaching,
+      'live-caching': networkCaching,
+      'clock-jitter': clockJitter,
+      'clock-synchro': 1,
+      // video-filter es INERTE por politica de VLC: se declara, no se promete
+      'video-filter': obj.chain
+    },
+    kodiprop: {
+      'inputstream.adaptive.max_resolution': outW + 'x' + outH,
+      'inputstream.adaptive.max_bitrate': bitrateMbps * 1000,
+      'inputstream.adaptive.preferred_video_frame_rate': obj.filters.minterpolate.enabled
+        ? obj.filters.minterpolate.outFps : (obj.input.fps || 30)
+    },
+    prefetch_config: {
+      buffer_target_seconds: Math.min(600, bufferSec * 3),
+      prefetch_segments: isEmu ? 30 : 20,
+      parallel_downloads: isEmu ? 12 : 8,
+      adaptive_enabled: true
+    },
+    headers: {
+      'X-APE-RESOLUTION': outW + 'x' + outH,
+      'X-APE-BITRATE': String(bitrateMbps),
+      'X-APE-TARGET-BITRATE': String(bitrateMbps * 1e6),
+      'X-APE-FPS': String(obj.filters.minterpolate.enabled ? obj.filters.minterpolate.outFps : (obj.input.fps || 30)),
+      'X-Video-Codecs': codecId === 'avc1' ? 'H264' : (codecId === 'av01' ? 'AV1' : 'HEVC'),
+      'X-APE-CODEC': codecLabel,
+      'X-Max-Resolution': outW + 'x' + outH,
+      'X-Max-Bitrate': String(bitrateMbps * 1e6),
+      'X-Network-Caching': String(networkCaching),
+      'X-Min-Buffer-Time': String(bufferSec),
+      'X-Buffer-Target': String(bufferSec * 1000)
+    }
+  };
+}
+
+/* Compara el perfil del gestor con los objetivos y devuelve la propuesta.
+ * Cada cambio lleva: ruta, antes, despues, razon. */
+function proposeAlignment(gestorProfile, obj) {
+  const t = alignmentTargets(obj);
+  const diffs = [];
+
+  function cmp(section, key, target, reason) {
+    const cur = (gestorProfile[section] && gestorProfile[section][key] != null)
+      ? gestorProfile[section][key] : null;
+    const same = String(cur) === String(target);
+    if (same) return;
+    diffs.push({
+      path: section + '.' + key,
+      before: cur,
+      after: target,
+      changed: true,
+      reason
+    });
+  }
+
+  const S = t.settings;
+  cmp('settings', 'resolution', S.resolution, 'la salida del modulo de imagen define la resolucion del perfil');
+  cmp('settings', 'codec', S.codec, 'el codec elegido por la funcion objetivo');
+  cmp('settings', 'fps', S.fps, 'la cadencia real que se va a entregar');
+  cmp('settings', 'bitrate', S.bitrate, 'bitrate que sostiene ' + S.resolution + ' con ' + S.codec);
+  cmp('settings', 'bufferSeconds', S.bufferSeconds, 'buffer proporcional al coste (' + obj.cost.relative + 'x)');
+  cmp('settings', 'strategy', S.strategy, obj.mode === 'emulado'
+    ? 'emulado: estrategia agresiva para aprovechar el margen'
+    : 'real: estrategia balanceada, no se promete lo que no se sostiene');
+
+  for (const k of Object.keys(t.vlcopt)) {
+    cmp('vlcopt', k, t.vlcopt[k], k === 'video-filter'
+      ? 'cadena del modulo de imagen (OJO: video-filter en playlist es inerte por politica de VLC)'
+      : 'coherente con el buffer y la cadencia objetivo');
+  }
+  for (const k of Object.keys(t.kodiprop)) {
+    cmp('kodiprop', k, t.kodiprop[k], 'limite de Kodi alineado con la salida');
+  }
+  for (const k of Object.keys(t.prefetch_config)) {
+    cmp('prefetch_config', k, t.prefetch_config[k], 'prefetch escalado al buffer');
+  }
+  for (const k of Object.keys(t.headers)) {
+    cmp('headers', k, t.headers[k], 'header declarativo coherente con la salida');
+  }
+
+  return {
+    ok: true,
+    profile: gestorProfile.id || null,
+    mode: obj.mode,
+    totalFields: countFields(gestorProfile),
+    proposed: diffs.length,
+    unchanged: countFields(gestorProfile) - diffs.length,
+    diffs,
+    // lo que se hereda tal cual (sin tocar)
+    inherited: Object.keys(gestorProfile).filter((k) => typeof gestorProfile[k] !== 'object'),
+    note: 'PROPUESTA. No se ha aplicado nada. Confirma con /image/profile/align/apply.'
+  };
+}
+
+function countFields(p) {
+  let n = 0;
+  for (const k of Object.keys(p || {})) {
+    const v = p[k];
+    n += (v && typeof v === 'object') ? Object.keys(v).length : 1;
+  }
+  return n;
+}
+
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
  * OPTIMIZADOR LLM — opcional, con fallback determinista SIEMPRE
  *
  * El operador: "quiero que le implementes un API de un LLM, para que basado en
@@ -1062,8 +1302,8 @@ function buildChainFromFilters(F, outW, outH) {
 
 /* Llama al LLM. Devuelve null si no hay key, falla o tarda demasiado. */
 async function callLLM(input, base) {
-  const apiKey = process.env.DEEPSEEK_API_KEY || process.env.LLM_API_KEY;
-  if (!apiKey) return { error: 'sin DEEPSEEK_API_KEY en el entorno del motor' };
+  const apiKey = readLLMKey();
+  if (!apiKey) return { error: 'sin key: ni en el entorno ni en ' + LLM_KEY_FILE };
   const endpoint = process.env.LLM_ENDPOINT || 'https://api.deepseek.com/chat/completions';
   const body = {
     model: LLM_MODEL,
@@ -3595,8 +3835,97 @@ const server = http.createServer((req, res) => {
   }
 
   /* Estado del LLM: si hay key, que modelo, sin exponer la clave */
+  /* KEY del LLM: guardar, borrar, consultar estado. En caliente, sin reinicio. */
+  if (u.pathname === '/image/llm-key' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (c) => { body += c; if (body.length > 8192) req.destroy(); });
+    req.on('end', () => {
+      let pl;
+      try { pl = JSON.parse(body || '{}'); } catch (_) {
+        res.writeHead(400, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'JSON invalido' }));
+      }
+      setBaseHeaders(res); setNoCacheHeaders(res);
+      if (pl.clear === true) {
+        const r = clearLLMKey();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify(r));
+      }
+      const r = saveLLMKey(pl.key);
+      res.writeHead(r.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(r));
+    });
+    return;
+  }
+
+  /* ALINEACION: hereda el perfil del gestor y PROPONE los cambios. No aplica. */
+  if (u.pathname === '/image/profile/align' && req.method === 'POST') {
+    let body = '';
+    let tooBig = false;
+    req.on('data', (c) => { body += c; if (body.length > 512 * 1024) { tooBig = true; req.destroy(); } });
+    req.on('end', () => {
+      if (tooBig) { res.writeHead(413, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'body grande' })); }
+      let pl;
+      try { pl = JSON.parse(body || '{}'); } catch (_) {
+        res.writeHead(400, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'JSON invalido' }));
+      }
+      const pid = String(pl.profile || 'P4.5');
+      // el perfil del gestor: el que manda el panel, o el fichero si no viene
+      let gp = pl.gestorProfile;
+      if (!gp) {
+        const all = loadGestorProfiles();
+        if (all) {
+          const base = pid.split('.')[0];
+          gp = all[base] || all[pid];
+        }
+      }
+      if (!gp) {
+        setBaseHeaders(res); setNoCacheHeaders(res);
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: false, error: 'perfil del gestor no encontrado: ' + pid + ' (y el JSON no lo tiene)' }));
+      }
+      // la funcion objetivo con lo que pida el panel
+      const obj = objective({
+        inW: pl.inW, inH: pl.inH, inFps: pl.inFps,
+        outW: pl.outW, outH: pl.outH,
+        player: pl.player || 'onn-4k', mode: pl.mode || 'real'
+      });
+      if (!obj.ok) { res.writeHead(400, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify(obj)); }
+      const prop = proposeAlignment(gp, obj);
+      prop.objective = {
+        mode: obj.mode, chain: obj.chain, cost: obj.cost,
+        fields: obj.fields, warnings: obj.warnings.slice(0, 4), impossible: obj.impossible
+      };
+      setBaseHeaders(res); setNoCacheHeaders(res);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(prop));
+    });
+    return;
+  }
+
+  /* Que perfiles del gestor conoce el motor (para que el panel pueda listarlos) */
+  if (u.pathname === '/image/gestor/profiles') {
+    const all = loadGestorProfiles();
+    setBaseHeaders(res); setNoCacheHeaders(res);
+    if (!all) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ ok: false, error: 'no se pudo leer ' + PROFILES_JSON }));
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      ok: true,
+      count: Object.keys(all).length,
+      profiles: Object.keys(all).map((k) => ({
+        id: k,
+        name: all[k].name || k,
+        level: all[k].level,
+        fields: countFields(all[k]),
+        sections: Object.keys(all[k]).filter((x) => typeof all[k][x] === 'object')
+      }))
+    }));
+  }
+
   if (u.pathname === '/image/llm-status') {
-    const has = !!(process.env.DEEPSEEK_API_KEY || process.env.LLM_API_KEY);
+    const has = !!readLLMKey();
     setBaseHeaders(res); setNoCacheHeaders(res);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({
@@ -3605,9 +3934,12 @@ const server = http.createServer((req, res) => {
       model: LLM_MODEL,
       endpoint: process.env.LLM_ENDPOINT || 'https://api.deepseek.com/chat/completions',
       timeoutMs: LLM_TIMEOUT_MS,
+      source: process.env.DEEPSEEK_API_KEY || process.env.LLM_API_KEY
+        ? 'entorno' : (llmKeyCache ? 'archivo ' + LLM_KEY_FILE : 'ninguna'),
+      keyFile: LLM_KEY_FILE,
       note: has
         ? 'El LLM propone; la validacion por rangos reales decide. Si falla, gana el determinista.'
-        : 'Sin API key: el motor determinista responde. Anade DEEPSEEK_API_KEY al entorno del servicio para activarlo.'
+        : 'Sin API key: el motor determinista responde. Guardala desde el panel (se aplica en caliente, sin reiniciar).'
     }));
   }
 

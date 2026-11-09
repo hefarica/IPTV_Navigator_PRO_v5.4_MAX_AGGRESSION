@@ -4261,3 +4261,93 @@ llamada **sale del VPS** y el navegador nunca la ve.
 
 `vps-image-panel.js` **53.077 -> 58.204 B**, boton **«⚡ Optimizar (función objetivo)»**.
 Cache-buster a `?v=20261108-llm`. md5 servido == md5 en disco. Test 27/27.
+
+---
+
+# 61 · Key del LLM en caliente + alineacion con el Gestor de Perfiles
+
+## 61.1 · Key persistible SIN reiniciar el servicio
+
+`POST /jit/image/llm-key` con `{key}` la guarda en `/opt/ape-jit/llm-key.json` con
+**`chmod 600`** (verificado: `-rw------- root root`) y el motor la aplica **en el acto**.
+`{clear:true}` la borra.
+
+**Orden de resolucion:** entorno (`DEEPSEEK_API_KEY`) > archivo. La key **nunca vuelve
+al navegador**; el panel solo recibe `configured` y `source`.
+
+Medido: guardar una key de prueba devuelve `configured: true`,
+`source: archivo /opt/ape-jit/llm-key.json`. Con una key invalida, `optimize-llm`
+devuelve **HTTP 401 del proveedor** y **gana el determinista** (`source: deterministico`).
+El sistema nunca se queda sin respuesta.
+
+## 61.2 · El Gestor de Perfiles, medido
+
+`APE_ALL_PROFILES_OPTIMIZED.json` — los 6 perfiles y su tamano real:
+
+| Perfil | Nombre | Level | Campos |
+|---|---|---|---|
+| **P0** | GOD_TIER_8K_OMEGA | 6 | **577** |
+| P1 | SUPREME_4K_HDR | 5 | 577 |
+| P2 | ELITE_4K_BALANCED | 4 | 484 |
+| P3 | ULTRA_FHD_STABLE | 3 | 577 |
+| P4 | HIGH_HD_COMPATIBLE | 2 | 576 |
+| P5 | SD_FAILSAFE_UNIVERSAL | 1 | 575 |
+
+**3.366 campos** en los 6 perfiles. Secciones por perfil: `settings` (18),
+`vlcopt` (27), `kodiprop` (6), `headerOverrides` (230), `prefetch_config` (8),
+`quality_levels` (8), `headers` (242).
+
+`GET /jit/image/gestor/profiles` los expone al panel.
+
+## 61.3 · La alineacion: propone, no aplica
+
+`POST /jit/image/profile/align` hereda el perfil del gestor y devuelve **campo a campo**:
+ruta, antes, despues y razon. **No aplica nada** hasta confirmar.
+
+**Medido, P0 alineado con 720p@30 -> 4K REAL en ONN 4K:**
+
+| Campo | Antes | Despues |
+|---|---|---|
+| `settings.resolution` | 7680x4320 | **3840x2160** |
+| `settings.codec` | AV1 | **H265** |
+| `settings.fps` | 60 | **30** |
+| `settings.bitrate` | 80 | **28** |
+| `settings.bufferSeconds` | 25 | **21** |
+| `settings.strategy` | ultra-aggressive | **balanced** |
+| `vlcopt.network-caching` | 25000 | **21000** |
+| `vlcopt.clock-jitter` | 1000 | **2100** |
+| `vlcopt.video-filter` | nlmeans=s=3.0… | **cadena del objetivo** |
+| `prefetch_config.buffer_target_seconds` | 54 | **63** |
+| `headers.X-APE-BITRATE` | 80,50,30,20 | **28** |
+
+**27 cambios de 577 campos; 550 se heredan sin tocar.**
+
+Y **el mismo P0 con 6K EMULADO** da otros numeros: `bufferSeconds` **60** (vs 21),
+`network-caching` **60000** (vs 21000), `clock-jitter` **6000**. **El modo cambia la
+alineacion del gestor, no solo la cadena ffmpeg.**
+
+## 61.4 · Un defecto que la medicion destapo
+
+El bitrate se calculaba con un factor por pixel (`px * 0.06`), que daba **4K = 1 Mbps**:
+absurdo. Se sustituyo por la **tabla de referencia del repo** (CLAUDE.md, "Bitrate
+Fallback por Resolucion"): 8K 80 · 4K 28 · 1440p 16 · 1080p 12 · 720p 5,5 · 480p 2,5.
+Con ajuste por codec (AV1 −25 %, AVC +40 %) y +15 % en emulado. Medido: **4K = 28 Mbps**.
+
+## 61.5 · Lo que FALTA de este objetivo
+
+**Declarado, no fingido:**
+
+- **`/image/profile/align/apply`**: la aplicacion del cambio al gestor. La propuesta
+  existe; el boton que la escribe no.
+- **Los 550 campos restantes**: hoy se heredan tal cual. Las 230 `headerOverrides` y
+  las 242 `headers` no se recalculan por reglas, solo las 10 que se listan.
+- **La cascada de campos** (valor unico vs multi-configuracion): no implementada.
+- **El LLM extendido al gestor**: hoy el LLM solo optimiza la cadena del modulo de
+  imagen, no los 577 campos del perfil.
+
+## 61.6 · Desplegado
+
+`vps-image-panel.js` **58.204 -> 64.173 B** con la seccion **Motor LLM** (campo de key
+tipo password, guardar/borrar, modelo y origen) y **Alinear Gestor de Perfiles**
+(selector de los 6 perfiles, boton de propuesta y tabla antes/despues).
+Cache-buster `?v=20261108-align`. md5 servido == md5 en disco. Test 27/27.

@@ -19,7 +19,7 @@
     base: (window.APE_JIT_BASE || 'https://iptv-ape.duckdns.org') + '/jit',
     config: null, effectiveFilter: '', capacity: null, live: null,
     profiles: null, matrix: null, plan: null, catalog: null,
-    declared: null, gov: null, cascade: null, fallback: null, rules: null, autoRow: null, optimized: null,
+    declared: null, gov: null, cascade: null, fallback: null, rules: null, autoRow: null, optimized: null, llm: null, align: null,
     busy: false, lastError: null, log: [],
     build: { profile: 'P4.5', w: 1280, h: 720, target: 'UHD_4K', codec: 'hvc1',
              player: 'onn-4k', recipe: 'balanced', fps: 25,
@@ -622,6 +622,129 @@
       .catch(function (e) { logLine('perfil ' + pid + ': ' + e.message); });
   }
 
+  /* ── LLM + ALINEACION CON EL GESTOR DE PERFILES ───────────────────────── */
+
+  function llmSection(root) {
+    var L = S.llm;
+    root.appendChild(sec('🤖 Motor LLM — ' + (L && L.configured ? 'ACTIVO' : 'sin key'), '#a78bfa'));
+
+    // estado y campo de key
+    root.appendChild(el('div', { class: 'grid' }, [
+      fld('API key (se guarda en el motor, no en el navegador)',
+        inp('aip-llm-key', '', 'password')),
+      fld('Modelo', el('div', { style: 'font-size:.8rem' }, [L ? L.model : '—'])),
+      fld('Origen de la key', el('div', { style: 'font-size:.8rem' }, [L ? (L.source || '—') : '—']))
+    ]));
+
+    var bSave = el('button', { class: 'pri', id: 'aip-llm-save' }, ['💾 Guardar key (en caliente)']);
+    bSave.addEventListener('click', function () {
+      var e = document.getElementById('aip-llm-key');
+      if (!e || !e.value) { logLine('escribe la key primero'); return; }
+      post('/image/llm-key', { key: e.value }).then(function (r) {
+        logLine(r && r.ok ? ('key guardada (' + r.chars + ' chars), sin reiniciar') : ('fallo: ' + (r && r.error)));
+        if (e) e.value = '';
+        load();
+      });
+    });
+    var bClear = el('button', {}, ['🗑 Borrar key']);
+    bClear.addEventListener('click', function () {
+      post('/image/llm-key', { clear: true }).then(function () { logLine('key borrada'); load(); });
+    });
+    root.appendChild(el('div', { class: 'row', style: 'margin-top:10px' }, [bSave, bClear]));
+
+    if (L && L.note) root.appendChild(warn(L.note, '#a78bfa'));
+
+    // ── ALINEACION ──
+    root.appendChild(sec('🔗 Alinear Gestor de Perfiles ↔ Módulo de imagen', '#f472b6'));
+    var profs = (S.gestor && S.gestor.profiles) ? S.gestor.profiles : [];
+    if (!profs.length) {
+      root.appendChild(el('div', { class: 'stat' }, ['gestor de perfiles no disponible']));
+      return;
+    }
+    root.appendChild(el('div', { class: 'stat', style: 'margin-bottom:8px' }, [
+      profs.length + ' perfiles del gestor · ' +
+      Number(profs.reduce(function (a, p) { return a + p.fields; }, 0)).toLocaleString('es') +
+      ' campos en total. La alineación PROPONE; no aplica hasta confirmar.'
+    ]));
+
+    root.appendChild(el('div', { class: 'grid' }, [
+      fld('Perfil del gestor', sel('aip-al-profile', profs.map(function (p) {
+        return { id: p.id, label: p.id + '  ' + p.name + '  (' + p.fields + ' campos)' };
+      }), S.build.profile ? S.build.profile.split('.')[0] : 'P0'))
+    ]));
+
+    var bAlign = el('button', { class: 'go', id: 'aip-align' }, ['🔗 Proponer alineación']);
+    bAlign.addEventListener('click', doAlign);
+    root.appendChild(el('div', { class: 'row', style: 'margin-top:10px' }, [bAlign]));
+
+    if (S.align && S.align.ok) renderAlign(root);
+    else if (S.align) root.appendChild(warn('alinear: ' + (S.align.error || 'error')));
+  }
+
+  function doAlign() {
+    var b = readBuild();
+    var pe = document.getElementById('aip-al-profile');
+    var pid = pe ? pe.value : 'P0';
+    post('/image/profile/align', {
+      profile: pid,
+      inW: b.w, inH: b.h, inFps: b.inFps,
+      outW: b.outW, outH: b.outH,
+      player: b.player, mode: b.mode
+    }).then(function (r) {
+      S.align = r;
+      logLine(r && r.ok ? ('alineacion: ' + r.proposed + ' cambios de ' + r.totalFields + ' campos (' + pid + ')')
+                        : ('fallo alinear: ' + (r && r.error)));
+      render(document.getElementById('ape-image-panel'));
+    });
+  }
+
+  function renderAlign(root) {
+    var a = S.align;
+    var box = el('div', { class: 'decl', style: 'border-color:rgba(244,114,182,.5);background:rgba(244,114,182,.08)' }, [
+      el('div', { style: 'font-weight:700;color:#f9a8d4;margin-bottom:6px' }, [
+        '🔗 ALINEACIÓN PROPUESTA — ' + a.profile + ' · ' + a.mode.toUpperCase() +
+        ' · ' + a.proposed + ' cambios de ' + Number(a.totalFields).toLocaleString('es') + ' campos'
+      ]),
+      el('div', { style: 'font-size:.72rem;color:#fbcfe8;margin-bottom:8px' }, [
+        a.unchanged.toLocaleString('es') + ' campos se heredan sin tocar. NADA se ha aplicado.'
+      ])
+    ]);
+    // tabla de cambios
+    var tb = el('tbody', {});
+    (a.diffs || []).forEach(function (d) {
+      var bef = d.before == null ? '(nuevo)' : String(d.before);
+      var aft = String(d.after);
+      if (bef.length > 26) bef = bef.slice(0, 25) + '…';
+      if (aft.length > 26) aft = aft.slice(0, 25) + '…';
+      tb.appendChild(el('tr', {}, [
+        el('td', { style: 'font-size:.7rem;font-family:ui-monospace,monospace' }, [d.path]),
+        el('td', { style: 'font-size:.7rem;color:#f87171' }, [bef]),
+        el('td', { style: 'font-size:.7rem;color:#6ee7b7' }, [aft])
+      ]));
+    });
+    box.appendChild(el('table', {}, [
+      el('thead', {}, [el('tr', {}, [
+        el('th', {}, ['Campo']), el('th', {}, ['Antes']), el('th', {}, ['Después'])
+      ])]), tb
+    ]));
+    // razones
+    var why = el('div', { style: 'margin-top:8px;font-size:.7rem;color:#94a3b8' }, []);
+    (a.diffs || []).slice(0, 5).forEach(function (d) {
+      why.appendChild(el('div', {}, ['· ' + d.path + ' — ' + d.reason]));
+    });
+    box.appendChild(why);
+    if (a.objective) {
+      box.appendChild(el('div', { style: 'font-size:.7rem;margin-top:6px;color:' +
+        (a.objective.cost.viable ? '#6ee7b7' : '#fca5a5') }, [
+        'coste del objetivo: ' + a.objective.cost.relative + 'x → ' +
+        a.objective.cost.estimatedRatio + 'x tiempo real' +
+        (a.objective.cost.viable ? '' : ' (NO VIABLE en este host)')
+      ]));
+      (a.objective.impossible || []).forEach(function (i) { box.appendChild(warn('IMPOSIBLE: ' + i)); });
+    }
+    root.appendChild(box);
+  }
+
   /* ── TABLA DE REGLAS: ENTRADA -> SALIDA (manual + auto por campo) ─────── */
 
   function rulesSection(root) {
@@ -1115,6 +1238,7 @@
     ]));
 
     buildSection(nodes);
+    llmSection(nodes);
     rulesSection(nodes);
     cascadeSection(nodes);
     matrixSection(nodes);
@@ -1145,7 +1269,9 @@
       api('/image/catalog').catch(function () { return null; }),
       api('/image/governance').catch(function () { return null; }),
       api('/image/cascade').catch(function () { return null; }),
-      api('/image/rules').catch(function () { return null; })
+      api('/image/rules').catch(function () { return null; }),
+      api('/image/llm-status').catch(function () { return null; }),
+      api('/image/gestor/profiles').catch(function () { return null; })
     ]).then(function (r) {
       S.config = r[0] ? r[0].config : null;
       S.effectiveFilter = (r[0] && r[0].effective_filter) || '';
@@ -1156,6 +1282,8 @@
       S.gov = r[5];
       S.cascade = r[6];
       S.rules = r[7];
+      S.llm = r[8];
+      S.gestor = r[9];
       if (S.config && S.config.profile) S.build.profile = S.config.profile;
       render(root);
       if (S.build.profile) loadProfile(S.build.profile);
