@@ -4973,6 +4973,50 @@ function measuredBandwidth(state) {
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * REPARACION DE MASTER — RFC 8216
+ *
+ * DEFECTO MEDIDO 2026-11-09: el motor usa `-crf N -b:v 0` (modo calidad). Con
+ * `-b:v 0` el muxer DASH **no tiene bitrate** y escribe:
+ *
+ *     #EXT-X-STREAM-INF:,RESOLUTION=854x480,CODECS="hvc1.2.4.L90.B0,mp4a.40.2",...
+ *                       ^ coma vacia: FALTA BANDWIDTH
+ *
+ * RFC 8216 §4.3.4.2: BANDWIDTH es OBLIGATORIO en EXT-X-STREAM-INF. Un master sin
+ * el es invalido y el parser lo rechaza o salta la variante — es exactamente el
+ * sintoma de "el player no arranca" con OTT/TiviMate/ExoPlayer.
+ * Lo confirma el propio ffmpeg en el log: "[dash] No bit rate set for stream 0"
+ * y "mime type is not rfc8216 compliant" (40 ocurrencias medidas).
+ *
+ * QUE HACE: si falta BANDWIDTH, se estima a partir de la resolucion y se declara
+ * como ESTIMADO. No se inventa un valor exacto: se usa el piso de la tabla de
+ * bitrate del repo por resolucion, que es lo que un encoder necesita de verdad.
+ * Si ya viene BANDWIDTH, no se toca NADA.
+ * ═════════════════════════════════════════════════════════════════════════════ */
+const BW_FLOOR = [
+  [2160, 28000000], [1440, 16000000], [1080, 9000000], [720, 5500000], [480, 2500000], [0, 1200000],
+];
+function bandwidthForHeight(h) {
+  for (const [min, bw] of BW_FLOOR) if (h >= min) return bw;
+  return 1200000;
+}
+function repairMaster(master) {
+  let reparadas = 0;
+  const out = master.replace(/^(#EXT-X-STREAM-INF:[^\n]*)$/gm, (linea) => {
+    if (/BANDWIDTH=/i.test(linea)) return linea;      // ya esta bien: no se toca
+    reparadas++;
+    // quitar la coma vacia inicial que deja el muxer
+    let resto = linea.replace(/^#EXT-X-STREAM-INF:/, '').replace(/^,+/, '');
+    const mH = resto.match(/RESOLUTION=(\d+)x(\d+)/i);
+    const h = mH ? Number(mH[2]) : 0;
+    const bw = bandwidthForHeight(h);
+    return '#EXT-X-STREAM-INF:BANDWIDTH=' + bw + ',AVERAGE-BANDWIDTH=' + Math.round(bw * 0.8) +
+      (resto ? ',' + resto : '');
+  });
+  if (reparadas) log('MASTER_REPAIRED', reparadas + ' STREAM-INF sin BANDWIDTH (RFC 8216)');
+  return out;
+}
+
 function hdrMaster(text, state = current) {
   if (!state) return text;
   const mode = state.crystalMode;
@@ -5063,6 +5107,8 @@ function hdrMaster(text, state = current) {
       out = out.replace(/CODECS="([^"]*)"/g, (all, list) =>
         'CODECS="' + list.split(',').map((c) => (c.trim().toLowerCase() === 'hvc1' ? cs : c.trim())).join(',') + '"');
     }
+  // RFC 8216: BANDWIDTH obligatorio. Se repara aqui, no en el muxer.
+  text = repairMaster(text);
     return out;
   }).join('\n');
 }
