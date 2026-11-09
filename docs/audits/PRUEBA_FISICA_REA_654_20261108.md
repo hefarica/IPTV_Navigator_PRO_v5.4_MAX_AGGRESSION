@@ -5016,3 +5016,113 @@ Cache-buster `?v=20261109-presl`. Test 27/27.
   decision del operador sobre el rol `SD_FAILSAFE`.
 - **El LLM no ha corrido con clave real.** Sin key, el motor cae al determinista.
 - **Los `.5` siguen siendo derivados**, no los del LAB v24.
+
+---
+
+# 70 · APE ENGINE — motor Python ejecutable por el LLM
+
+`tools/lab/ape-jit/ape_engine.py`. Un archivo, sin dependencias, sin red,
+determinista, **salida JSON** para que un LLM lo invoque por CLI.
+Desplegado en la VPS en `/opt/ape-jit/ape_engine.py` (Python 3.12.3).
+
+## 70.1 · Superficie
+
+```
+qoe            score QoE/QoS con las metricas que se le pasen
+codec          codec string RFC 6381 + donde va cada uno (GOLDEN RULE)
+filter-check   valida una cadena de filtros contra los rangos reales
+profile        resuelve un perfil P0..P5.5 con suelo anti-degradacion
+cascade        cascada de exactamente 4 niveles
+sufficiency    ley de suficiencia (headroom 3x y risk <= 10)
+nvidia         capacidad DECLARADA de NVENC/NVDEC por GPU
+align          propuesta de alineacion de un perfil
+profiles       los 12 perfiles
+vmaf           VMAF estimado desde metadata, sin libvmaf
+rd             curva rate-distortion y su codo
+ladder         escalera ABR optima por VMAF objetivo
+fake4k         detector de fake-4K / upscale declarado
+qoe-markov     QoE con cadena de Markov del buffer
+hdr            HDR efectivo tras tone mapping
+audit          audita un cambio contra anti-degradacion (5 ejes)
+optimize       mejor bitrate que cumple las 3 leyes a la vez
+selftest       52 vectores de prueba
+```
+
+## 70.2 · Innovacion audiovisual (los modulos nuevos)
+
+**VMAF predictivo sin libvmaf.** `VMAF = 100*(1-exp(-K·bpp·eff)) - penalty_hdr`
+con `bpp = bitrate/(w·h·fps)` y `K=26.6` calibrado para que 4K@28 Mbps HEVC de
+~93.5. **Se declara `state: estimado` siempre**: no es una medicion.
+
+**Curva rate-distortion y su codo.** El codo es donde subir bitrate deja de comprar
+VMAF perceptible. Medido: 4K HEVC dobla el codo en **28 Mbps / VMAF 93.5**.
+
+**Escalera ABR optima.** En vez de la tabla fija, invierte la curva por resolucion y
+comprueba que no haya escalones invertidos. La tabla queda como **suelo**.
+
+**Detector de fake-4K.** Compara fuente vs declarado: `real` (≤1.01x), `upscale_real`
+(≤4.1x), `upscale_sintetico_x4` (≤16.5x), `fake` (>16.5x). Exige declararlo como
+**ENHANCEMENT**, nunca como resolucion real.
+
+**QoE con cadena de Markov del buffer.** Modela el buffer como birth-death y calcula
+la probabilidad de stall en regimen estacionario. Permite **predecir el rebuffering
+antes de desplegar** el perfil.
+
+**HDR efectivo.** Cuantifica lo que se pierde: un master de 10000 nits en un panel de
+1000 pierde **3.32 stops** aunque el tone mapping sea perfecto.
+
+**Optimizador bajo 3 leyes.** Resuelve el bitrate que cumple a la vez: VMAF objetivo,
+headroom 3x del enlace, y suelo anti-degradacion. Si no se pueden las tres, **declara
+el conflicto con sus numeros** en vez de elegir una.
+
+## 70.3 · Tres bugs reales que el selftest destapo
+
+**a) `level_idc` mal calculado.** `major*30 + minor` daba **L151** para HEVC 5.1; el
+correcto es **L153** — justo el techo de la Ley Cardinal 1 (L153 = 4K@60). El minor
+**multiplica por 3**: `5*30 + 1*3 = 153`. Verificado: 4.0=120 · 4.1=123 · 5.2=156 ·
+6.1=183.
+
+**b) `CODEC_TIER` y `CODEC_EFFICIENCY` sin alias.** Tenian solo los codec strings RFC
+(`hvc1`, `av01`) y no los nombres (`hevc`, `h264`). Consecuencia grave: un perfil con
+`codec="hevc"` daba tier **0**, asi que **bajar de HEVC a H.264 NO se detectaba como
+degradacion**.
+
+**c) El factor de eficiencia estaba invertido.** La formula dividia `bpp/eff`, lo que
+hacia que **AV1 predijera MENOS VMAF que H.264** al mismo bitrate — al reves de la
+realidad. Un codec mas eficiente rinde mas con los mismos bits: `bpp_efectivo = bpp·eff`.
+Corregido en los tres sitios que invertian la curva.
+
+## 70.4 · Medido
+
+```
+selftest en el host:  52 PASS · 0 FAIL de 52
+selftest en la VPS:   52 PASS · 0 FAIL de 52
+vmaf 4K@28 HEVC:      VMAF 93.5 (muy bueno), bpp=0.11253
+optimize 100 Mbps:    elegido 28 Mbps, factible=True
+```
+
+## 70.5 · Estado REA de las fuentes
+
+| Repo | Estrellas (API 2026-11-09) | Licencia leida | Tier | Estado |
+|---|---|---|---|---|
+| `Netflix/vmaf` | 5.588 | BSD-2-Clause-Patent | 1 | **solo hechos** |
+| `FFmpeg/FFmpeg` | 66.777 | LGPL-2.1+/GPL-2.0+ | 3 | **solo hechos** |
+| `video-dev/hls.js` | 17.038 | Apache-2.0 | 3 | **solo hechos** |
+
+**`rea_adopt` devolvio BLOQUEADO en G3** para `Netflix/vmaf` incluso con la firma
+`CONFIRMED: allowlist amendment Netflix/vmaf`, porque el tool lee la allowlist de
+**ArbitrageX** (`docs/security/FUSILE_SOURCE_POLICY.md`), que no existe en este repo.
+**No se porto una sola linea de codigo de ninguna fuente.** Lo que viaja son valores
+numericos citados como hecho (FUSILE binding rule 3), y la procedencia esta declarada
+en la cabecera del motor y en `docs/security/SOURCE_ALLOWLIST_IPTV.md`.
+
+**NVIDIA**: no hay GPU en este host ni en la VPS. La matriz NVENC/NVDEC/DeepStream es
+**DECLARADA** por documentacion de arquitectura, y cada respuesta lo dice
+(`state: declarado`). No se presenta como medicion.
+
+## 70.6 · Límites honestos
+
+- **VMAF, RD, ladder, Markov y HDR son modelos**, no mediciones. Cada salida lo declara.
+- **Sin GPU**, la rama NVIDIA no se puede verificar aqui.
+- **El selftest prueba la logica interna**, no la paridad con libvmaf real.
+- **`rea_adopt` no puede aprobar la fuente** porque la allowlist objetivo es la de otro repo.
