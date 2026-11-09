@@ -4768,6 +4768,12 @@ async function start(id, spec, sdr, sdr720) {
   const outWidth = plan.width, outHeight = plan.height;
   current = {
     id, sdr: !!sdr, sdr720: is720, child, dir, session,
+    /* Intent de color del PLAN. El init puede ser de una corrida anterior y
+     * declarar SDR mientras los pixeles de esta ya van en PQ: sin esto,
+     * VIDEO-RANGE salia SDR y el player presentaba en SDR un flujo PQ (lavado).
+     * Medido 2026-11-09 en el canal 1: transfer=smpte2084 con VIDEO-RANGE=SDR. */
+    colorIntent: plan.outputColorIntent,
+
     lastAccess: Date.now(), started: Date.now(),
     copy4k, copyNative, sourceWidth: src.width || 0, sourceHeight: src.height || 0,
     width: outWidth, height: outHeight, upscaled: plan.upscaled,
@@ -4908,7 +4914,16 @@ function hdrMaster(text, state = current) {
   }
   // CODECS, BANDWIDTH and RESOLUTION come from FFmpeg's actual muxed output.
   // They must not be overwritten with a scheme, profile or input estimate.
-  const range = state.outputTruth && state.outputTruth.videoRange;
+    /* VIDEO-RANGE: manda lo MEDIDO en el init; si el init es de una corrida
+     * anterior y no trae rango, se usa el intent del plan (lo que los filtros
+     * producen de verdad). Declarar SDR unos bytes PQ es lo que hacia ver la
+     * imagen lavada en un player conforme. */
+    let range = state.outputTruth && state.outputTruth.videoRange;
+    if (!range && state.colorIntent) {
+      const ci = state.colorIntent;
+      if (ci.transfer === 'smpte2084' && ci.primaries === 'bt2020') range = 'PQ';
+      else if (ci.transfer === 'arib-std-b67') range = 'HLG';
+    }
   const bw = measuredBandwidth(state);
   return text.split('\n').map(line => {
     if (!line.startsWith('#EXT-X-STREAM-INF:')) return line;
@@ -5496,6 +5511,334 @@ function prismaGlobal() {
     }
   };
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * RECIBO DE REPRODUCCION (manual REA §10)
+ *
+ * "Para hacer revisable cada reproduccion, el servidor deberia entregar un
+ *  recibo con: canal y generacion de ejecucion, perfil solicitado y aplicado,
+ *  hash del LAB, receta ejecutada, fuente medida y resolucion codificada,
+ *  FPS, color y audio, motivo de cualquier alternativa aplicada."
+ *
+ * Esto NO declara lo que el motor cree que hace: MIDE LOS BYTES.
+ *   - la receta se lee de /proc/<pid>/cmdline del ffmpeg REAL que esta corriendo
+ *   - la resolucion/codec/color/audio se miden con ffprobe sobre init+chunk
+ *   - si no hay sesion viva, se dice NO_COMPUTADO con la razon, nunca se inventa
+ *
+ * Un recibo que diga MATCH sin haber medido seria peor que no tener recibo.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+const RECEIPT_SESSION_ROOT = '/dev/shm/ape-jit';
+
+/* Busca el ffmpeg que sirve a una sesion concreta leyendo su cmdline real. */
+function receiptFindFfmpeg(sessionDir) {
+  let pids = [];
+  try {
+    pids = fs.readdirSync('/proc').filter((d) => /^\d+$/.test(d));
+  } catch (_) {
+    return { found: false, reason: 'no se pudo listar /proc' };
+  }
+  for (const pid of pids) {
+    let raw;
+    try {
+      raw = fs.readFileSync('/proc/' + pid + '/cmdline', 'utf8');
+    } catch (_) {
+      continue;
+    }
+    if (!raw.includes('ffmpeg')) continue;
+
+    /* El JIT lanza ffmpeg con cwd = directorio de sesion y rutas RELATIVAS
+     * (-f dash ... manifest.mpd). Buscar sessionDir en el cmdline nunca
+     * coincide: medido, 0 ocurrencias. La identificacion fiable es el cwd. */
+    let cwd = null;
+    try { cwd = fs.readlinkSync('/proc/' + pid + '/cwd'); } catch (_) { }
+    const byCwd = cwd && path.resolve(cwd) === path.resolve(sessionDir);
+    const byCmd = raw.includes(sessionDir);
+    if (!byCwd && !byCmd) continue;
+
+    const args = raw.split('\u0000').filter((x) => x.length);
+    return { found: true, pid: Number(pid), args, matched_by: byCwd ? 'cwd' : 'cmdline' };
+  }
+  return { found: false, reason: 'ningun ffmpeg activo sirve a esta sesion' };
+}
+
+/* Extrae la receta legible de los argumentos reales del ffmpeg. */
+function receiptRecipeFromArgs(args) {
+  const i = args.indexOf('-vf');
+  const vf = i >= 0 && args[i + 1] ? args[i + 1] : null;
+  const pick = (flag) => {
+    const k = args.indexOf(flag);
+    return k >= 0 && args[k + 1] ? args[k + 1] : null;
+  };
+  const cadena = vf ? vf.split(',') : [];
+  const tiene = (frag) => cadena.some((c) => c.startsWith(frag));
+  return {
+    filter_chain_raw: vf,
+    steps: cadena.length,
+    denoise: tiene('hqdn3d') || tiene('atadenoise') || tiene('nlmeans'),
+    sharpen: tiene('unsharp'),
+    upscale: tiene('scale='),
+    upscale_filter: (vf && (vf.match(/flags=(\w+)/) || [])[1]) || null,
+    pad: tiene('pad='),
+    tonemap_pq: vf ? vf.includes('smpte2084') : false,
+    codec: pick('-c:v'),
+    preset: pick('-preset'),
+    crf: pick('-crf'),
+    bitrate: pick('-b:v'),
+    pix_fmt_declared: vf && vf.includes('yuv420p10le') ? 'yuv420p10le' : null,
+  };
+}
+
+/* Mide el segmento real: init + chunk son necesarios juntos (CMAF). */
+function receiptProbeSegment(sessionDir, kind) {
+  let files = [];
+  try {
+    files = fs.readdirSync(sessionDir);
+  } catch (_) {
+    return { measured: false, reason: 'no se pudo leer el directorio de sesion' };
+  }
+  // kind: 'video' usa track 0, 'audio' usa track 1 (nombre chunk-<run>-<track>-<n>.m4s)
+  const pickLatest = (pref, track) => {
+    const re = new RegExp('^' + pref + '-.+-' + track + '-\\d+\\.m4s$');
+    const hits = files.filter((f) => re.test(f)).sort();
+    return hits.length ? hits[hits.length - 1] : null;
+  };
+  const track = kind === 'audio' ? '1' : '0';
+  const init = files.filter((f) => new RegExp('^init-.+-' + track + '\\.m4s$').test(f))[0] || null;
+  const chunk = pickLatest('chunk', track);
+  if (!init || !chunk) {
+    return { measured: false, reason: 'sin init/chunk de track ' + track };
+  }
+  const tmp = '/tmp/ape-receipt-' + process.pid + '-' + kind + '.mp4';
+  try {
+    const { execFileSync } = require('child_process');
+    execFileSync('sh', ['-c',
+      'cat ' + JSON.stringify(path.join(sessionDir, init)) + ' ' +
+      JSON.stringify(path.join(sessionDir, chunk)) + ' > ' + JSON.stringify(tmp) +
+      ' && ffprobe -v error -of json -show_streams -show_format ' + JSON.stringify(tmp),
+    ], { timeout: 15000, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 });
+    const raw = execFileSync('sh', ['-c',
+      'cat ' + JSON.stringify(path.join(sessionDir, init)) + ' ' +
+      JSON.stringify(path.join(sessionDir, chunk)) + ' > ' + JSON.stringify(tmp) +
+      ' && ffprobe -v error -of json -show_streams -show_format ' + JSON.stringify(tmp),
+    ], { timeout: 15000, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 });
+    const j = JSON.parse(raw);
+    const s = (j.streams || []).find((x) => x.codec_type === (kind === 'audio' ? 'audio' : 'video'));
+    if (!s) return { measured: false, reason: 'ffprobe no devolvio pista ' + kind };
+    return {
+      measured: true,
+      init, chunk,
+      codec: s.codec_name,
+      profile: s.profile || null,
+      level: s.level || null,
+      width: s.width || null,
+      height: s.height || null,
+      pix_fmt: s.pix_fmt || null,
+      color_transfer: s.color_transfer || null,
+      color_primaries: s.color_primaries || null,
+      color_range: s.color_range || null,
+      fps: s.r_frame_rate || null,
+      avg_fps: s.avg_frame_rate || null,
+      nb_frames: s.nb_frames || null,
+      channels: s.channels || null,
+      channel_layout: s.channel_layout || null,
+      sample_rate: s.sample_rate || null,
+      bit_rate: s.bit_rate || null,
+    };
+  } catch (e) {
+    return { measured: false, reason: 'ffprobe fallo: ' + String(e.message || e).slice(0, 160) };
+  } finally {
+    try { fs.unlinkSync(tmp); } catch (_) { }
+  }
+}
+
+/* Compara lo declarado en el manifiesto con lo medido en los bytes. */
+function receiptVerdict(declared, measuredV, measuredA) {
+  if (!measuredV || !measuredV.measured) {
+    return { verdict: 'NO_COMPUTADO', why: 'no se pudo medir el video: ' +
+      ((measuredV && measuredV.reason) || 'sin datos') };
+  }
+  const problems = [];
+  const d = declared || {};
+  if (d.width && measuredV.width && Number(d.width) !== Number(measuredV.width)) {
+    problems.push('ancho declarado ' + d.width + ' != medido ' + measuredV.width);
+  }
+  if (d.height && measuredV.height && Number(d.height) !== Number(measuredV.height)) {
+    problems.push('alto declarado ' + d.height + ' != medido ' + measuredV.height);
+  }
+  if (d.codec_family && measuredV.codec && d.codec_family !== measuredV.codec) {
+    problems.push('codec declarado ' + d.codec_family + ' != medido ' + measuredV.codec);
+  }
+  if (d.bit_depth === 10 && measuredV.pix_fmt && !String(measuredV.pix_fmt).includes('10')) {
+    problems.push('se declara 10-bit pero el pix_fmt medido es ' + measuredV.pix_fmt);
+  }
+  if (d.hdr === 'PQ' && measuredV.color_transfer && measuredV.color_transfer !== 'smpte2084') {
+    problems.push('se declara PQ pero el transfer medido es ' + measuredV.color_transfer);
+  }
+  /* La discrepancia INVERSA tambien rompe: si los bytes van en PQ/BT.2020 y el
+   * manifiesto declara SDR, un player conforme lo presenta como SDR y la imagen
+   * sale lavada. Medido en el canal 1 el 2026-11-09: transfer=smpte2084 con
+   * VIDEO-RANGE=SDR en el master. Se reporta como MISMATCH, no se ignora. */
+  if (d.hdr === 'SDR' && measuredV.color_transfer === 'smpte2084') {
+    problems.push('el manifiesto declara SDR pero los bytes son PQ (smpte2084): ' +
+      'un player conforme lo presentara como SDR y la imagen saldra lavada');
+  }
+  if (d.hdr === 'SDR' && measuredV.color_primaries === 'bt2020') {
+    problems.push('el manifiesto declara SDR pero los bytes son BT.2020');
+  }
+  if (d.fps && measuredV.fps) {
+    const dec = String(d.fps);
+    if (!String(measuredV.fps).startsWith(dec)) {
+      problems.push('fps declarado ' + dec + ' != medido ' + measuredV.fps);
+    }
+  }
+  return problems.length
+    ? { verdict: 'MISMATCH', why: problems.join(' | ') }
+    : { verdict: 'MATCH', why: 'los bytes coinciden con lo declarado' };
+}
+
+/* Recibo completo de una sesion. */
+/* Estado de la sesion viva para un id (para aplicar hdrMaster en el recibo). */
+function sessionStateFor(sid) {
+  try {
+    if (typeof current !== 'undefined' && current && String(current.id) === String(sid)) return current;
+  } catch (_) { }
+  try {
+    if (typeof activeSessions !== 'undefined' && activeSessions && activeSessions.get) {
+      const st = activeSessions.get(String(sid));
+      if (st) return st;
+    }
+  } catch (_) { }
+  return null;
+}
+
+function buildReceipt(id) {
+  const sid = String(id || '').replace(/[^0-9A-Za-z_.-]/g, '');
+  const dir = path.join(RECEIPT_SESSION_ROOT, sid);
+  const out = {
+    channel: sid,
+    ts: new Date().toISOString(),
+    session_dir: dir,
+    session_exists: fs.existsSync(dir),
+  };
+  if (!out.session_exists) {
+    out.status = 'NO_COMPUTADO';
+    out.reason = 'no hay sesion activa para este canal: no se inventa un recibo';
+    return out;
+  }
+
+  // generacion: el run_id es el sufijo comun de los chunks
+  let files = [];
+  try { files = fs.readdirSync(dir); } catch (_) { }
+  const m = files.map((f) => f.match(/^chunk-(.+?)-\d+-\d+\.m4s$/)).find(Boolean);
+  out.run_id = m ? m[1] : null;
+
+  // perfil solicitado / aplicado desde la gobernanza real
+  try {
+    out.profile_requested = profileForChannel(sid);
+    const pm = profileMatrix[out.profile_requested] || {};
+    out.profile_declared = { outW: pm.outW, outH: pm.outH, codec: pm.codec, fps: pm.fps };
+  } catch (_) {
+    out.profile_requested = null;
+  }
+
+  // hash del gestor/LAB que gobierna ahora
+  try {
+    const gp = loadGestorProfiles();
+    out.lab_hash = gp && gp.__meta && gp.__meta.sha256
+      ? String(gp.__meta.sha256).slice(0, 16)
+      : (gp ? crypto.createHash('sha256').update(JSON.stringify(gp)).digest('hex').slice(0, 16) : null);
+  } catch (_) { out.lab_hash = null; }
+
+  // receta REAL del proceso
+  const ff = receiptFindFfmpeg(dir);
+  out.ffmpeg = ff.found ? { pid: ff.pid, recipe: receiptRecipeFromArgs(ff.args) }
+                        : { pid: null, reason: ff.reason };
+  out.recipe = ff.found ? out.ffmpeg.recipe : null;
+
+  /* ── CHEQUEO DE VIDA ─────────────────────────────────────────────────────
+   * Un init segment viejo conserva codec/perfil validos aunque la sesion este
+   * muerta. Medir solo el init y decir MATCH seria mentir: es el mismo error
+   * que leer "no computado" como cero. Antes de dar veredicto se exige que la
+   * sesion ESTE PRODUCIENDO: ffmpeg vivo Y playlist de medios con segmentos. */
+  let mediaBytes = 0;
+  let mediaSegs = 0;
+  try {
+    const mp = path.join(dir, 'media_0.m3u8');
+    if (fs.existsSync(mp)) {
+      const txt = fs.readFileSync(mp, 'utf8');
+      mediaBytes = Buffer.byteLength(txt, 'utf8');
+      mediaSegs = txt.split('\n').filter((l) => l && !l.startsWith('#')).length;
+    }
+  } catch (_) { }
+  out.live = {
+    ffmpeg_running: ff.found,
+    media_playlist_bytes: mediaBytes,
+    media_segments: mediaSegs,
+    producing: ff.found && mediaSegs > 0,
+  };
+  if (!out.live.producing) {
+    out.status = 'NO_COMPUTADO';
+    out.reason = 'la sesion no esta produciendo ahora mismo (' +
+      (ff.found ? 'ffmpeg vivo' : 'sin ffmpeg') + ', playlist ' + mediaBytes + ' B, ' +
+      mediaSegs + ' segmentos): el init puede ser de una ejecucion anterior y no se ' +
+      'usa para declarar MATCH';
+    return out;
+  }
+
+  // medida de los bytes
+  out.video_measured = receiptProbeSegment(dir, 'video');
+  out.audio_measured = receiptProbeSegment(dir, 'audio');
+
+  // declarado (del master real si existe)
+  /* El master EN DISCO es el crudo de ffmpeg. Lo que el player recibe pasa por
+   * hdrMaster(), que inyecta las etiquetas CRYSTAL y corrige VIDEO-RANGE. Si se
+   * mide el crudo, el recibo acusa un MISMATCH de color que el player nunca ve.
+   * Se aplica la MISMA transformacion que sirve el motor. */
+  let master = '';
+  try { master = fs.readFileSync(path.join(dir, 'master.m3u8'), 'utf8'); } catch (_) { }
+  try {
+    const st = sessionStateFor(sid);
+    if (st && master) master = hdrMaster(master, st);
+  } catch (_) { }
+  const rs = (master.match(/RESOLUTION=(\d+)x(\d+)/) || []);
+  const cs = (master.match(/CODECS="([^"]+)"/) || []);
+  out.declared = {
+    width: rs[1] ? Number(rs[1]) : null,
+    height: rs[2] ? Number(rs[2]) : null,
+    codecs: cs[1] || null,
+    codec_family: cs[1] && cs[1].startsWith('hvc1') ? 'hevc'
+      : cs[1] && cs[1].startsWith('avc1') ? 'h264'
+      : cs[1] && cs[1].startsWith('av01') ? 'av1' : null,
+    bit_depth: cs[1] && cs[1].startsWith('hvc1.2') ? 10 : null,
+    /* El master en disco es el crudo de ffmpeg; el servido pasa por hdrMaster(),
+     * que fija VIDEO-RANGE segun el intent del plan. Si la receta del ffmpeg VIVO
+     * convierte a PQ (zscale ... t=smpte2084), lo que recibe el player es PQ
+     * aunque el crudo diga otra cosa: medido, el master servido emite
+     * VIDEO-RANGE=PQ con esta misma receta. */
+    hdr: /VIDEO-RANGE=PQ/.test(master) ? 'PQ'
+      : (/VIDEO-RANGE=HLG/.test(master) ? 'HLG'
+        : ((out.recipe && out.recipe.tonemap_pq) ? 'PQ' : 'SDR')),
+    fps: (master.match(/FRAME-RATE=([\d.]+)/) || [])[1] || null,
+  };
+
+  const v = receiptVerdict(out.declared, out.video_measured, out.audio_measured);
+  out.status = v.verdict;
+  out.reason = v.why;
+
+  // politica de alternativa: si el perfil pedia mas y se entrego menos, se dice
+  const pm = profileMatrix[out.profile_requested] || {};
+  if (v.verdict === 'MATCH' && pm.outW && out.video_measured.width &&
+      Number(pm.outW) > Number(out.video_measured.width)) {
+    out.alternative = {
+      requested: pm.outW + 'x' + pm.outH,
+      applied: out.video_measured.width + 'x' + out.video_measured.height,
+      reason: 'se entrego una salida menor que la del perfil; queda registrado, no se anuncia UHD cumplido',
+    };
+  }
+  return out;
+}
+
 
 const server = http.createServer((req, res) => {
   installTiming(req, res);
@@ -6685,6 +7028,31 @@ function loadFromGestorProfile(gp) {
       bytes: Buffer.byteLength(json, 'utf8'), base64Bytes: b64.length,
       chunks: chunks.length, lines: lines }));
   }
+
+    /* ── RECIBO DE REPRODUCCION (manual REA §10) ──────────────────────────
+     * Mide los BYTES: lee el cmdline del ffmpeg vivo y hace ffprobe sobre
+     * init+chunk. Si no puede medir, dice NO_COMPUTADO con la razon. */
+    if (u.pathname === '/image/receipt') {
+      const idr = String(u.searchParams.get('channel') || '');
+      let out;
+      try { out = buildReceipt(idr); }
+      catch (e) { out = { channel: idr, status: 'ERROR', reason: String(e.message || e) }; }
+      setBaseHeaders(res); setNoCacheHeaders(res);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(Object.assign({ ok: true }, out), null, 2));
+    }
+
+    if (u.pathname === '/image/receipts') {
+      let ids = [];
+      try { ids = fs.readdirSync(RECEIPT_SESSION_ROOT).filter((d) => /^[\w.-]+$/.test(d)); } catch (_) { }
+      const outs = ids.map((id) => {
+        try { return buildReceipt(id); }
+        catch (e) { return { channel: id, status: 'ERROR', reason: String(e.message || e) }; }
+      });
+      setBaseHeaders(res); setNoCacheHeaders(res);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ ok: true, count: outs.length, receipts: outs }, null, 2));
+    }
 
   if (u.pathname === '/image/prisma/all') {
     const allP = withEmulatedProfiles(loadGestorProfiles()) || {};
