@@ -6010,9 +6010,24 @@ const server = http.createServer((req, res) => {
         .replace(/[\r\n,]/g, ' ');
       const grp = String(row.group || 'APE');
       const logo = row.logo ? ' tvg-logo="' + String(row.logo).replace(/"/g, '') + '"' : '';
-      /* publicBase() YA termina en /jit: añadir otro daba /jit/jit/live/... y el
-       * player recibia un 404. Medido en la primera prueba del resolver. */
-      const target = base + '/live/' + encodeURIComponent(id) + '/master.m3u8';
+      /* A QUE PLAYLIST APUNTAR — medido en el codigo de produccion de pulse.php:
+       *
+       *   "MEDIDO 2026-11-05: OTT Navigator añade ' ExoPlayer' a su UA y su parser
+       *    aborta con 'Loaded playlist has unexpected type.' al recibir el cartucho
+       *    (master). SOLO VLC y Kodi han demostrado aceptar el master."
+       *
+       * O sea: devolver master.m3u8 a OTT/TiviMate/ExoPlayer hace que aborten. Hay
+       * que darles la MEDIA playlist. Es el mismo polimorfismo que ya aplica
+       * pulse.php con su allowlist, aplicado aqui.
+       *
+       * publicBase() YA termina en /jit: añadir otro daba /jit/jit/live/... (404).
+       */
+      const uaR = String(req.headers['user-agent'] || '');
+      const aceptaMaster = /(^|\s|\/)(VLC|LibVLC|Kodi|LibreELEC)(\s|\/|$)/i.test(uaR);
+      const playlist = aceptaMaster
+        ? '/master.m3u8'
+        : '/media_0.m3u8';
+      const target = base + '/live/' + encodeURIComponent(id) + playlist;
 
       const out = [
         '#EXTM3U',
@@ -6029,6 +6044,7 @@ const server = http.createServer((req, res) => {
         'Cache-Control': 'no-store, max-age=0',
         'X-APE-Resolved-Channel': id,
         'X-APE-Resolved-Profile': prof,
+        'X-APE-Resolved-Playlist': aceptaMaster ? 'master' : 'media',
         'X-APE-Profile': prof
       });
       return res.end(out);
