@@ -50,6 +50,8 @@ public final class JitLinkActivity extends Activity {
             "https://iptv-ape.duckdns.org/jit/playlist-calidad.m3u8";
     private static final String FALLBACK_RAPIDO =
             "https://iptv-ape.duckdns.org/jit/playlist-resolver.m3u8";
+    private static final String FALLBACK_RAPIDA_TV =
+            "https://iptv-ape.duckdns.org/jit/playlist.m3u8";
 
     private final Handler ui = new Handler(Looper.getMainLooper());
     private TextView estado;
@@ -193,8 +195,9 @@ public final class JitLinkActivity extends Activity {
                         JSONObject j = new JSONObject(sb.toString());
                         JSONObject k = j.optJSONObject("contract");
                         if (k != null) {
-                            cat = k.optString("catalog_url", null);
-                            rap = k.optString("catalog_alt", null);
+                            // calidad = el corto bajo demanda; all_jit = todo por el JIT
+                            cat = k.optString("catalog_quality", k.optString("catalog_url", null));
+                            rap = k.optString("catalog_all_jit", k.optString("catalog_url", null));
                             conf = k.optString("version", null) + " · " + k.optString("mode", null);
                         }
                         JSONObject cfg = j.optJSONObject("config");

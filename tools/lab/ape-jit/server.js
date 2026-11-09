@@ -4122,6 +4122,55 @@ function pick(v, allowed, fallback) {
 }
 
 /* Valida y normaliza una config recibida. Devuelve {ok, config, errors[]}. */
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * ALINEACION PERFIL <-> TARGET
+ *
+ * DEFECTO MEDIDO 2026-11-09 (lo senalo el operador mirando la APK en el TV):
+ * la pantalla mostraba "perfil=P1 target=FHD_1080". P1 en la MATRIZ es 4K UHD
+ * (3840x2160), asi que el target CONTRADECIA al perfil. El motor ya resolvia bien
+ * (matrixTarget manda sobre IMAGE_TARGETS), pero la UI y /jit/api/config mostraban
+ * un valor que ya no era el efectivo. Un dato que miente en el panel es un defecto
+ * aunque el video salga bien.
+ *
+ * QUE HACE: al fijar un perfil cuyo target declarado existe en IMAGE_TARGETS, el
+ * target se DERIVA del perfil. Si el perfil no tiene target declarado equivalente
+ * (p.ej. P4.5 = 5760x3240, que IMAGE_TARGETS no conoce), se marca 'source' y NO se
+ * inventa un id: la matriz sigue mandando la resolucion real.
+ * ═════════════════════════════════════════════════════════════════════════════ */
+function profileTargetId(profileId) {
+  if (!profileId) return null;
+  const row = profileMatrix[profileId];
+  if (!row) return null;
+  // se busca un target cuyo ancho declarado coincida con el de la matriz
+  const entradas = Object.keys(IMAGE_TARGETS || {});
+  for (const k of entradas) {
+    const t = IMAGE_TARGETS[k];
+    if (t && Number(t.w) === Number(row.outW) && Number(t.h) === Number(row.outH)) return k;
+  }
+  return null;   // sin equivalente: no se inventa
+}
+
+/* Reajusta el target para que no contradiga al perfil. Se llama al aplicar config. */
+function alignTargetToProfile(cfg) {
+  const out = Object.assign({}, cfg);
+  const id = profileTargetId(out.profile);
+  if (id) {
+    if (out.target !== id) {
+      log('TARGET_ALIGNED', out.profile, String(out.target) + ' -> ' + id,
+        '(el perfil y el target se contradecian)');
+      out.target = id;
+    }
+  } else if (out.profile) {
+    // el perfil existe pero no hay target equivalente: se declara, no se inventa
+    if (out.target !== 'source') {
+      log('TARGET_SOURCE', out.profile, 'sin target equivalente en IMAGE_TARGETS -> source',
+        '(la matriz manda la resolucion real)');
+      out.target = 'source';
+    }
+  }
+  return out;
+}
+
 function normalizeImageConfig(patch) {
   const errors = [];
   const c = Object.assign({}, imageConfig);
@@ -8188,6 +8237,13 @@ function playlistBufferLines(buffer) {
       mode: 'idempotente+polimorfico+isomorfico',
       catalog_url: catalogo,
       catalog_alt: base + '/playlist-idempotente.m3u8',
+      /* TRES rutas con proposito distinto, para que la APK no confunda cual es cual:
+       *   quality  = el corto bajo demanda (JIT solo al abrir uno de estos)
+       *   all_jit  = todo el catalogo por el JIT (un canal a la vez)
+       *   fast     = proveedor directo, zapping instantaneo, sin JIT */
+      catalog_quality: base + '/playlist-calidad.m3u8',
+      catalog_all_jit: catalogo,
+      catalog_fast: base + '/playlist.m3u8',
       note: 'El alta del proveedor en OTT la hace el operador; no hay Intent publico.',
     };
 
@@ -8242,6 +8298,11 @@ function playlistBufferLines(buffer) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           return res.end(JSON.stringify({ ok: false, errors: norm.errors, config: imageConfig }));
         }
+        // alinear perfil <-> target: el panel no debe poder mostrar una pareja imposible
+        norm.config = alignTargetToProfile(norm.config);
+        /* ALINEAR perfil <-> target ANTES de comparar: si el perfil cambia, el
+         * target se deriva de el. Sin esto la UI puede mostrar "P1 + FHD_1080". */
+        norm.config = alignTargetToProfile(norm.config);
         /* IDEMPOTENCIA: comparar el normalizado con el vigente. */
         const a = JSON.stringify(norm.config);
         const b = JSON.stringify(imageConfig);
