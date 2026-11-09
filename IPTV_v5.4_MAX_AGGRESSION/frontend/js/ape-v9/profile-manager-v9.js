@@ -1069,8 +1069,16 @@
                                     <span id="pm9_stall_preview" style="color: #64748b; font-size: 10px;">&lt;1.67%</span>
                                 </div>
                                 <div id="pm9_health_details" style="font-size: 9px; color: #64748b; margin-top: 4px;">
-                                    Risk: <span id="pm9_risk_preview">--</span>/100 | Headroom: <span id="pm9_headroom_preview">--</span>%
+                                    Risk: <span id="pm9_risk_preview">--</span>/100 | Headroom: <span id="pm9_headroom_preview">--</span>
                                 </div>
+                            </div>
+                            <!-- GATE DE SUFICIENCIA EXCEPCIONAL (sufficiency-law-v1.js):
+                                 headroom >= 3.00x (200%) Y risk <= 10. Se declara si se
+                                 cumple y, si no, cuanto falta. -->
+                            <div id="pm9_sufficiency_gate" style="margin-top:6px;padding:5px 8px;border-radius:6px;
+                                 background:rgba(255,255,255,.03);border:1px solid rgba(148,163,184,.28);
+                                 font-size:9px;color:#94a3b8;line-height:1.35;">
+                                Gate: headroom &ge; 200 % y risk &le; 10
                             </div>
                         </div>
                         
@@ -1374,25 +1382,72 @@
             }
 
             if (headroomPreview) {
-                // Muestra el COLCHÓN (headroom del propietario): negativo = margen
-                // disponible, y más negativo = mejor. Positivo = el enlace no
-                // alcanza el bitrate (sobresuscripción) → rojo.
-                if (performance.evidence === false) {
+                // LEY DE SUFICIENCIA EXCEPCIONAL (sufficiency-law-v1.js).
+                //
+                // MEDIDO 2026-11-08: el panel mostraba "Headroom: 199900%" con
+                // "Risk 90/100". Los dos numeros son incompatibles. La causa:
+                // headroomSparePct = (bitrate/bwSafe−1)×100, con bwSafe=0.1 Mbps
+                // (no habia medicion y actuaba el piso) y bitrate=200 → 199900.
+                // Ese 199900 POSITIVO es un DEFICIT del 99,95 %, no un sobrante.
+                //
+                // Ahora: sin medicion NO se publica cifra; con ratio fuera de
+                // rango fisico se declara IMPLAUSIBLE; y el estado se evalua
+                // contra el gate (headroom >= 3.00x = 200 % Y risk <= 10).
+                const ratio = (typeof performance.headroomRatio === 'number')
+                    ? performance.headroomRatio : null;
+                const plausible = (ratio !== null && ratio >= 0.01 && ratio <= 100);
+                const hasMeasurement = (performance.evidence !== false) && plausible;
+                if (typeof window.evaluateSufficiency === 'function') {
+                    const ev = window.evaluateSufficiency(ratio, performance.risk_score, hasMeasurement);
+                    headroomPreview.textContent = window.sufficiencyLabel
+                        ? window.sufficiencyLabel(ev) : (ev.headroomPct + '%');
+                    headroomPreview.style.color = ev.color || '#64748b';
+                    headroomPreview.title = ev.reason +
+                        (ev.target ? (' — gate: headroom >= ' + Math.round((ev.target.headroomRatio - 1) * 100) +
+                          ' % y risk <= ' + ev.target.riskMax) : '');
+                } else if (performance.evidence === false) {
                     headroomPreview.textContent = '--';
                     headroomPreview.style.color = '#64748b';
                 } else {
                     const spare = (typeof performance.headroomSparePct === 'number')
-                        ? performance.headroomSparePct
-                        : performance.headroom_percent;
+                        ? performance.headroomSparePct : performance.headroom_percent;
                     headroomPreview.textContent = spare;
                     headroomPreview.style.color =
-                        spare <= -100 ? '#10b981' :   // colchón enorme
-                        spare <= -50 ? '#22c55e' :    // holgado
-                        spare <= -15 ? '#eab308' :    // justo
-                        spare < 0 ? '#f97316' :       // al límite
-                        '#ef4444';                    // sobre-suscrito
+                        spare <= -100 ? '#10b981' : spare <= -50 ? '#22c55e' :
+                        spare <= -15 ? '#eab308' : spare < 0 ? '#f97316' : '#ef4444';
                 }
             }
+
+            // GATE DE SUFICIENCIA: declarar explicitamente si el perfil alcanza
+            // el estado excepcional, y si no, cuanto le falta.
+            (function renderSufficiencyGate() {
+                const el = document.getElementById('pm9_sufficiency_gate');
+                if (!el) return;
+                if (typeof window.evaluateSufficiency !== 'function') { el.textContent = ''; return; }
+                const ratio = (typeof performance.headroomRatio === 'number')
+                    ? performance.headroomRatio : null;
+                const plausible = (ratio !== null && ratio >= 0.01 && ratio <= 100);
+                const hasM = (performance.evidence !== false) && plausible;
+                const ev = window.evaluateSufficiency(ratio, performance.risk_score, hasM);
+                if (ev.satisfiesExceptional) {
+                    el.textContent = 'SUFICIENCIA EXCEPCIONAL: headroom ' + ev.headroomPct +
+                        ' % (>= 200 %) y risk ' + ev.risk + ' (<= 10)';
+                    el.style.color = '#10b981';
+                    el.style.borderColor = 'rgba(16,185,129,.5)';
+                } else {
+                    const g = ev.gap || {};
+                    let msg = 'NO EXCEPCIONAL (' + ev.state + '): ';
+                    if (ev.state === 'NO_MEASUREMENT') msg += 'sin medicion de red, el headroom no es computable';
+                    else if (ev.state === 'IMPLAUSIBLE') msg += 'el ratio esta fuera de rango fisico: revisar bandwidthSafe';
+                    else {
+                        msg += 'headroom ' + ev.headroomPct + ' % (faltan ' + (g.headroomMissing || 0) +
+                            'x para 3.0x)' + (g.riskExcess ? (' · risk ' + ev.risk + ' excede en ' + g.riskExcess) : '');
+                    }
+                    el.textContent = msg;
+                    el.style.color = '#eab308';
+                    el.style.borderColor = 'rgba(234,179,8,.5)';
+                }
+            })();
 
             // Actualizar panel de resumen (mostrar si hay warnings)
             const summaryPanel = document.getElementById('pm9_streaming_summary');

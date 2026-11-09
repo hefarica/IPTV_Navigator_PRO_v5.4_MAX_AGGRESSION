@@ -41,7 +41,7 @@
         PREFETCH_MIN: 4, PREFETCH_MAX: 50,
         PARALLEL_MIN: 1, PARALLEL_MAX: 32,
         SEG_DUR_S: 6,
-        W_HEAD: 0.30, W_MEM: 0.20, W_FILL: 0.15, W_FUSE: 0.05,
+        W_HEAD: 0.30, W_EXC: 0.60, W_MEM: 0.20, W_FILL: 0.15, W_FUSE: 0.05,
         FILL_REF_S: 20,
         // ids reales del panel (verificados en profile-manager-v9.js)
         IDS: {
@@ -231,8 +231,18 @@
         // Antes `-W_HEAD * (-spare/100)` premiaba el déficit y anulaba la
         // condición de colchón del objetivo.
         var headPenalty = Math.max(0, -spare) / 100;
+        // bonus por alcanzar el gate excepcional: se resta (mejora) o no
+        var excMissing = 0;
+        if (typeof score.sparePct === 'number') {
+            var needSpare = (1 / 3.00 - 1) * 100;           // -66.67
+            // cuanto le FALTA para llegar a -66.67 (0 si ya esta)
+            excMissing = Math.max(0, Number(score.sparePct) - needSpare) / 100;
+        }
+        var riskMissing = Math.max(0, risk - 10) / 100;
         var j = (risk / 100)
             + CFG.W_HEAD * headPenalty
+            // llegar al gate excepcional (headroom 3x + risk 10) pesa
+            + (CFG.W_EXC || 0.60) * (excMissing + riskMissing)
             + CFG.W_MEM * (mem / CFG.MEM_CAP_MB)
             + CFG.W_FILL * (fill / CFG.FILL_REF_S)
             // fusible cerca del diseño = sin margen de rescate
@@ -517,10 +527,33 @@
         r.overheadOk = _bufferSeg > 0
             ? Number(r.after.fillTimeSec) <= _bufferSeg * 0.8
             : true;
+        // `feasible` = el minimo operativo que ya existia (risk<=30, spare>=-15%,
+        // stall<=1.67, overhead). NO se toca: es el piso que el solver ya usaba.
         r.feasible = (r.after.risk <= 30) &&
             (Number(r.after.sparePct) >= 15) &&
             (r.after.stallPct === null || r.after.stallPct === undefined || r.after.stallPct <= 1.67) &&
             r.overheadOk;
+
+        // `exceptional` = GATE DE SUFICIENCIA EXCEPCIONAL (sufficiency-law-v1.js).
+        //
+        // El operador (2026-11-08) pidio risk lo mas bajo posible y headroom por
+        // encima de un valor de referencia. El valor que se exige aqui:
+        //   headroom = bwSafe/bitrate >= 3.00x  (200 %)
+        //   risk <= 10
+        //
+        // En la escala `sparePct` (bitrate/bwSafe - 1)*100, un ratio de 3.00x
+        // equivale a sparePct = -66.67 (el colchon es negativo cuanto MEJOR).
+        // Por eso el gate se expresa como sparePct <= -66.67 y NO como >=.
+        var SPARE_AT_3X = (1 / 3.00 - 1) * 100;   // = -66.666...
+        r.exceptional = (r.after.risk <= 10) &&
+            (Number(r.after.sparePct) <= SPARE_AT_3X + 0.01) &&
+            (r.after.stallPct === null || r.after.stallPct === undefined || r.after.stallPct <= 1.67) &&
+            r.overheadOk;
+        r.exceptionalGate = {
+            riskMax: 10,
+            headroomRatioMin: 3.00,
+            sparePctMax: Math.round(SPARE_AT_3X * 100) / 100
+        };
         return r;
     }
 

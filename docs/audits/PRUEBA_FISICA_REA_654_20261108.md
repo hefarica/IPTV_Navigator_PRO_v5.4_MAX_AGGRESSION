@@ -4619,3 +4619,114 @@ P5 debe excluirse de la alineacion o alinearse contra una salida menor.
   unicos, no CSV; no hay cascada que preservar ahi. Solo los headers la tienen.
 - **`enabledCategories`**: verificado que **las 32 categorias estan completas en los
   seis perfiles**. No hay nada que alinear.
+
+---
+
+# 65 · Ley de Suficiencia Excepcional — Streaming Health
+
+## 65.1 · El defecto que el operador fotografio
+
+El panel mostraba, en la misma fila:
+
+```
+Risk: 90/100 | Headroom: 199900%
+```
+
+**Los dos numeros son incompatibles.** Un headroom de 199.900 % implicaria un risk
+de 0, no de 90. Diagnostico cerrado en el codigo:
+
+```
+headroomSparePct = (bitrate/bwSafe − 1) × 100          [valor de COLCHON]
+bwSafe  = 0.1 Mbps   ← no habia medicion; actuaba el piso MIN_BANDWIDTH_MBPS
+bitrate = 200 Mbps
+→ (200/0.1 − 1) × 100 = 199900
+```
+
+**Dos errores encadenados:**
+
+1. **El signo se leia al reves.** 199900 **positivo** significa un **deficit del
+   99,95 %**, no un sobrante. La propia formula lo documenta
+   (`spare > 0` = sobre-suscrito), pero el panel lo rotulaba "Headroom".
+2. **Se publicaba un numero sin medicion.** `hasMeasurement = false` y aun asi el
+   panel mostraba una cifra. Sin medicion, el headroom **no es computable**.
+
+## 65.2 · El valor de referencia (la X que pidio el operador)
+
+`X = 3.00x` → **200 % de headroom**, mas **risk <= 10**.
+
+Justificacion, escalon por escalon (`sufficiency-law-v1.js`):
+
+| ratio | % | lectura |
+|---|---|---|
+| 1.00x | 0 % | sin margen: un pico de jitter vacia el buffer |
+| **1.30x** | **30 %** | **minimo de la industria** (safety factor de dash.js/Shaka) |
+| 1.50x | 50 % | suficiente para CBR |
+| 2.00x | 100 % | el ABR puede **subir un escalon** sin quedarse sin margen |
+| **3.00x** | **200 %** | **EXCEPCIONAL — el gate** |
+| > 100x | — | **IMPLAUSIBLE**: no es un enlace, es un calculo roto |
+
+**Por que 3.00x y no 2.00x**: a 3x el margen cubre **a la vez** el jitter (10 %),
+la rafaga de un I-frame (hasta 1.6x del bitrate medio), la precarga de N segmentos
+en paralelo y la variacion del proveedor. A 2x cada uno de esos factores por
+separado ya consume el margen.
+
+## 65.3 · Los cinco estados
+
+| Estado | Condicion | Excepcional |
+|---|---|---|
+| `NO_MEASUREMENT` | no hay medicion de red | no |
+| `IMPLAUSIBLE` | ratio fuera de [0,01, 100] | no |
+| `INSUFFICIENT` | ratio < 1.00 | no |
+| `TIGHT` | 1.00 <= ratio < 1.30 | no |
+| `MINIMUM` | 1.30 <= ratio < 1.50 | no |
+| `SUFFICIENT` | 1.50 <= ratio < 2.00 | no |
+| `OPTIMAL` | 2.00 <= ratio < 3.00 | no |
+| **`EXCEPTIONAL`** | **ratio >= 3.00 Y risk <= 10** | **si** |
+
+**El risk manda.** Medido: ratio 3.5 con risk 60 da `EXCEPTIONAL` de headroom pero
+**NO** excepcional global. Ambas condiciones tienen que cumplirse.
+
+## 65.4 · Verificado en el VPS
+
+```
+EL CASO DE LA IMAGEN (risk 90, headroom 199900%)
+  estado      : NO_MEASUREMENT
+  etiqueta    : SIN MEDICION          ← ya no se muestra el numero absurdos
+  excepcional : false
+
+CON MEDICION REAL 3.2x + risk 8
+  estado      : EXCEPTIONAL
+  etiqueta    : 220%
+  excepcional : true
+```
+
+## 65.5 · Donde se aplica
+
+- **`sufficiency-law-v1.js`** (7.965 B): la ley, con `evaluateSufficiency()` y
+  `sufficiencyLabel()`. Se carga **antes** del Gestor (linea 4689 vs 4690).
+- **`profile-manager-v9.js`**: el headroom usa la ley; el `%` duplicado se elimino
+  porque la etiqueta ya trae su unidad o `SIN MEDICION`.
+- **Nuevo div `pm9_sufficiency_gate`**: declara `SUFICIENCIA EXCEPCIONAL` o, si no,
+  **cuanto falta** (`faltan Nx para 3.0x` / `risk excede en N`).
+- **`profile-solver-v9.js`**: se anadio `r.exceptional` **sin tocar `r.feasible`**.
+  En la escala `sparePct` el gate es `sparePct <= -66.67` (el colchon es negativo
+  cuanto mejor), y el objetivo ahora pesa `W_EXC = 0.60` por acercarse.
+
+## 65.6 · Mapeo de escalas (para no equivocarse otra vez)
+
+```
+ratio = bwSafe / bitrate            (headroom; 3.00 = excepcional)
+sparePct = (bitrate/bwSafe − 1)×100 (colchon; -66.67 equivale a ratio 3.00)
+```
+
+`sparePct` **mas negativo = mejor**. Es la fuente del error de lectura original.
+
+## 65.7 · Lo que sigue faltando
+
+- **El headroom exige una medicion real.** Mientras `bw-estimator-v9.js` no tenga
+  una muestra de Resource Timing, el estado sera `NO_MEASUREMENT` y **no se
+  publicara cifra**. Eso es lo honesto, pero significa que el gate **no puede
+  aprobarse sin medir**.
+- El solver **premia** acercarse al gate; **no puede alcanzarlo** si el enlace
+  medido no da para 3x el bitrate. Ahi la palanca es el bitrate del perfil, y
+  bajarlo choca con la Ley Anti-Degradacion — decision del operador.
