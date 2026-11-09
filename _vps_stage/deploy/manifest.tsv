@@ -38,3 +38,13 @@ _vps_stage/skills/corpus/sources.txt	/etc/ara/skills/corpus/sources.txt	644	root
 _vps_stage/canary/ara-skill	/usr/local/bin/ara-skill	755	root:root	gate check/list/show/corpus
 _vps_stage/canary/ape-visual-emulate.sh	/usr/local/bin/ape-visual-emulate.sh	755	root:root	canary 4K (25M/32M/64M keyint 48)
 _vps_stage/canary/ape-canary@.service	/etc/systemd/system/ape-canary@.service	644	root:root	CPU 40% MEM 1G IO 10 NICE 10
+
+# [2026-11-09] EL MOTOR JIT Y PULSE.PHP ESTABAN FUERA DEL PIPELINE.
+# Medido: el manifiesto cubria 30 ficheros y NINGUNA fila apuntaba a /opt/ape-jit;
+# server.js y pulse.php daban 0 filas. Eso dejaba esos dos ficheros SIN camino
+# CI/CD: la unica forma de aplicarlos era a mano, que es lo que NO se debe hacer.
+# Se declaran aqui para que deploy-vps.yml los gestione (backup, install, verify
+# y rollback incluidos).
+tools/lab/ape-jit/server.js	/opt/ape-jit/server.js	644	root:root	motor JIT: resolver, playlist, guard de capacidad
+IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/pulse.php	/var/www/html/prisma/api/pulse.php	644	www-data:www-data	pulse polimorfico
+vps/bin/ape-pulse-canary-worker.sh	/opt/ape-pulse/ape-pulse-canary-worker.sh	755	root:root	worker del canary con guarda jit_busy
