@@ -1866,6 +1866,315 @@ function proposeAlignmentFull(gestorProfile, objIn) {
   };
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+ * LOOP DE PERFECCION — itera hasta que TODAS las leyes pasen
+ *
+ * El operador (2026-11-08): "el LLM iterara en loop encontrando la perfeccion
+ * hasta que todo pase, solo lo aplicara al perfil modificado o habra una opcion
+ * que podre pedirle que lo haga a todos, recuerda que cada perfil es
+ * independiente del otro, es un agregado si le pido que lo haga a todos, cuando
+ * solamente he modificado uno o dos".
+ *
+ * Tres decisiones de diseno que salen de esa frase:
+ *   1. DOBLE DE PERFIL: cada iteracion trabaja sobre UNA copia. El estado de P0
+ *      jamas toca P1: son independientes.
+ *   2. ALCANCE EXPLICITO: por defecto `single` (solo el perfil pedido). `all` y
+ *      `modified` son AGREGADOS que el cliente pide a proposito.
+ *   3. CRITERIO DE PARADA: se para cuando las 7 condiciones pasan, no cuando se
+ *      agota el presupuesto. Si se agota, devuelve que falta con su numero.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+const LOOP_DEFAULTS = {
+  maxIterations: 6,
+  vmafTarget: 90
+};
+
+/* Factor de eficiencia por codec. Espejo del que usa ape_engine.py. */
+function codecEfficiency(codec) {
+  const c = String(codec || '').toLowerCase();
+  if (/av1|av01/.test(c)) return 1.15;
+  if (/vvc|h266/.test(c)) return 1.35;
+  if (/hevc|h265|h\.265|hvc1|hev1|dvh1|dvhe|dolby/.test(c)) return 1.00;
+  if (/vp9|vp09/.test(c)) return 0.95;
+  if (/h264|h\.264|avc/.test(c)) return 0.62;
+  return 1.00;
+}
+
+function codecTierOf(codec) {
+  const c = String(codec || '').toLowerCase();
+  if (/vvc|h266/.test(c)) return 10;
+  if (/dvh1|dvhe|dolby/.test(c)) return 9;
+  if (/hevc|h265|h\.265|hvc1|hev1/.test(c)) return 7;
+  if (/av1|av01/.test(c)) return 6;
+  if (/vp9|vp09/.test(c)) return 4;
+  if (/h264|h\.264|avc|avc1/.test(c)) return 3;
+  if (/mpeg2|mp2v/.test(c)) return 1;
+  return 0;
+}
+
+/* Busca el hdr_mode del perfil donde el Gestor lo guarda de verdad.
+ * MEDIDO: `settings` NO tiene hdr_mode; el HDR vive en quality/color. Buscar
+ * solo en settings hacia creer al modelo que el perfil es SDR. */
+function profileHdrMode(profile) {
+  if (!profile || typeof profile !== 'object') return null;
+  const secs = [
+    ['settings', ['hdr_mode', 'hdrMode', 'videoRange']],
+    ['quality', ['hdrMode', 'hdr_mode', 'video_range']],
+    ['color', ['hdr_mode', 'hdrMode', 'video_range']]
+  ];
+  for (const [sec, keys] of secs) {
+    const o = profile[sec];
+    if (!o || typeof o !== 'object') continue;
+    for (const k of keys) {
+      if (o[k]) return o[k];
+    }
+  }
+  return null;
+}
+
+/* Normaliza el hdr_mode a las claves de penalizacion. */
+function hdrKeyOf(h) {
+  const s = String(h || 'sdr').toLowerCase().replace(/_/g, '-');
+  if (s.indexOf('dolby') >= 0 || s.indexOf('dvh') >= 0 || s.indexOf('dovi') >= 0) return 'dolby-vision';
+  if (s.indexOf('hdr10plus') >= 0 || s.indexOf('hdr10+') >= 0) return 'hdr10plus';
+  if (s.indexOf('hdr10') >= 0) return 'hdr10';
+  if (s.indexOf('hlg') >= 0) return 'hlg';
+  return 'sdr';
+}
+
+/* Penalizacion HDR. Si el perfil NO declara hdr_mode no se aplica castigo:
+ * no saber no es ser SDR, y aplicarlo dejaba el loop clavado en 88.5. */
+const HDR_PENALTY = { 'hdr10': 0.0, 'hlg': 0.5, 'hdr10plus': 0.0,
+                      'dolby-vision': 0.0, 'sdr': 1.5 };
+
+/* Las 7 condiciones de "perfeccion". Cada una devuelve {ok, ...} con su numero. */
+function checkPerfection(profile, diffs, obj, opts) {
+  const o = opts || {};
+  const checks = {};
+
+  // 1. ningun campo perdido
+  checks.noFieldLost = verifyNoFieldLost(obj && obj.gestorProfile, profile);
+
+  // 2. ninguna cascada cambia de niveles
+  checks.cascadesIntact = verifyCascadesIntact(obj && obj.gestorProfile, profile);
+
+  // 3. ningun valor que no estaba en blanco queda en blanco
+  checks.noBlanks = verifyNoBlanks(obj && obj.gestorProfile, profile);
+
+  // 4. ninguna lista aplanada a un valor unico
+  let flattened = 0;
+  for (const d of diffs || []) {
+    const b = d.before, a = d.after;
+    if (b !== null && b !== undefined && String(b).indexOf(',') >= 0 &&
+        String(a).indexOf(',') < 0) flattened++;
+  }
+  checks.csvIntact = { ok: flattened === 0, flattened };
+
+  // 5. gate 3x: el min_bandwidth hace alcanzable el excepcional
+  const set = profile.settings || {};
+  const pfc = profile.prefetch_config || {};
+  const br = Number(set.bitrate) || 0;
+  const mb = Number(pfc.min_bandwidth_mbps) || 0;
+  const ratio = br > 0 ? mb / br : 0;
+  checks.gate3x = {
+    ok: br > 0 && ratio >= 2.99,
+    bitrate: br, min_bandwidth: mb, ratio: Number(ratio.toFixed(3)),
+    need: Math.ceil(br * 3)
+  };
+
+  // 6. VMAF estimado >= objetivo (sin libvmaf: es estimacion, se declara)
+  let vmaf = null;
+  if (set.resolution && br > 0) {
+    const r = String(set.resolution).split('x');
+    const w = Number(r[0]) || 0, h = Number(r[1]) || 0;
+    const fps = Number(set.fps) || 30;
+    if (w > 0 && h > 0) {
+      const bpp = (br * 1e6) / (w * h * fps);
+      const hdrM = profileHdrMode(profile);
+      const pen = hdrM ? (HDR_PENALTY[hdrKeyOf(hdrM)] || 0) : 0;
+      vmaf = Math.max(0, Math.min(100,
+        100 * (1 - Math.exp(-26.6 * bpp * codecEfficiency(set.codec))) - pen));
+    }
+  }
+  const vmafT = Number(o.vmafTarget) || LOOP_DEFAULTS.vmafTarget;
+  checks.vmafOk = {
+    ok: vmaf !== null && vmaf >= vmafT,
+    vmaf: vmaf === null ? null : Number(vmaf.toFixed(1)),
+    target: vmafT,
+    state: 'estimado',
+    no_computado: vmaf === null ? 'sin resolucion o bitrate en el perfil' : null
+  };
+
+  // 7. ningun eje degradado respecto del original
+  const before = obj && obj.gestorProfile;
+  checks.noDegradation = { ok: true, violations: [] };
+  if (before) {
+    const bset = before.settings || {};
+    const pa = String(bset.resolution || '').split('x');
+    const pb = String(set.resolution || '').split('x');
+    if (pa.length === 2 && pb.length === 2) {
+      const areaB = (Number(pa[0]) || 0) * (Number(pa[1]) || 0);
+      const areaA = (Number(pb[0]) || 0) * (Number(pb[1]) || 0);
+      if (areaA < areaB) checks.noDegradation.violations.push('resolution ' + bset.resolution + ' -> ' + set.resolution);
+    }
+    const tb = codecTierOf(bset.codec), ta = codecTierOf(set.codec);
+    if (ta < tb) checks.noDegradation.violations.push('codec tier ' + tb + ' -> ' + ta);
+    if (Number(set.bitrate) < Number(bset.bitrate)) {
+      checks.noDegradation.violations.push('bitrate ' + bset.bitrate + ' -> ' + set.bitrate);
+    }
+    if (Number(set.fps) < Number(bset.fps)) {
+      checks.noDegradation.violations.push('fps ' + bset.fps + ' -> ' + set.fps);
+    }
+    checks.noDegradation.ok = checks.noDegradation.violations.length === 0;
+  }
+
+  const failed = Object.keys(checks).filter((k) => checks[k].ok === false);
+  return { all_pass: failed.length === 0, failed, checks };
+}
+
+/* Un paso completo del loop para UN perfil. Nunca lee ni escribe otro perfil. */
+function alignLoopOnce(gestorProfile, obj, opts) {
+  const o = opts || {};
+  const maxIter = Math.max(1, Math.min(12, Number(o.maxIterations) || LOOP_DEFAULTS.maxIterations));
+  // BUG MEDIDO: `vmafT` se usaba en el bloque de correccion pero solo existia
+  // dentro de checkPerfection -> "vmafT is not defined" y el loop devolvia
+  // {ok:false}. Se define aqui, en el ambito del loop.
+  const vmafT = Number(o.vmafTarget) || LOOP_DEFAULTS.vmafTarget;
+  // copia profunda doble: `original` es la referencia de la ley, `current` avanza
+  let current = JSON.parse(JSON.stringify(gestorProfile));
+  const original = JSON.parse(JSON.stringify(gestorProfile));
+  const history = [];
+  let lastProp = null;
+
+  for (let i = 1; i <= maxIter; i++) {
+    // el objetivo lleva SIEMPRE el perfil ORIGINAL como referencia de la ley
+    const objIter = Object.assign({}, obj, { gestorProfile: original });
+    const prop = proposeAlignmentFull(current, objIter);
+    if (!prop.ok) {
+      history.push({ iter: i, error: prop.error || 'propuesta fallo' });
+      break;
+    }
+    const applied = applyAlignment(current, prop.diffs);
+    const chk = checkPerfection(applied.profile, prop.diffs, objIter, o);
+
+    history.push({
+      iter: i,
+      proposed: prop.proposed,
+      rejected: prop.rejected || 0,
+      applied: applied.applied,
+      all_pass: chk.all_pass,
+      failed: chk.failed,
+      gate3x: chk.checks.gate3x,
+      vmaf: chk.checks.vmafOk
+    });
+
+    lastProp = prop;
+    current = applied.profile;
+
+    if (chk.all_pass) {
+      return {
+        ok: true, converged: true, iterations: i,
+        profile: current, diffs: prop.diffs, checks: chk.checks,
+        history,
+        profileId: prop.profile,
+        mode: prop.appliedMode,
+        rejectedByRule: prop.rejectedByRule || {}
+      };
+    }
+    // si una iteracion no propone NADA nuevo, seguir no cambia nada
+    /* CORRECCION: si el VMAF no llega, el loop SUBE el bitrate al minimo que lo
+     * alcanza. Subir nunca es degradacion. Si el gate 3x no pasa, sube el
+     * min_bandwidth. Ambas correcciones se aplican al perfil y se re-verifican
+     * en la siguiente iteracion; no se declaran como exito. */
+    const patched = JSON.parse(JSON.stringify(current));
+    let patchedAny = false;
+
+    if (!chk.checks.vmafOk.ok) {
+      const need = bitrateForVmaf(vmafT, patched.settings && patched.settings.resolution,
+                                  patched.settings && patched.settings.fps,
+                                  patched.settings && patched.settings.codec);
+      if (need !== null) {
+        // +1%: sin el margen el redondeo dejaba el VMAF en 89.9
+        const want = Math.ceil(need * 1.01 * 10) / 10;
+        const have = Number(patched.settings.bitrate) || 0;
+        if (want > have) {
+          patched.settings = patched.settings || {};
+          patched.settings.bitrate = want;
+          patchedAny = true;
+          history[history.length - 1].correction = 'bitrate ' + have + ' -> ' + want +
+            ' para VMAF ' + vmafT + ' (subir no es degradar)';
+        }
+      }
+    }
+    if (!chk.checks.gate3x.ok) {
+      const br2 = Number(patched.settings && patched.settings.bitrate) || 0;
+      if (br2 > 0) {
+        patched.prefetch_config = patched.prefetch_config || {};
+        const wantMb = Math.ceil(br2 * 3);
+        if (wantMb > (Number(patched.prefetch_config.min_bandwidth_mbps) || 0)) {
+          patched.prefetch_config.min_bandwidth_mbps = wantMb;
+          patchedAny = true;
+          history[history.length - 1].correction2 = 'min_bandwidth -> ' + wantMb;
+        }
+      }
+    }
+    if (patchedAny) {
+      current = patched;
+      continue;   // re-verificar en la siguiente iteracion
+    }
+    if (prop.proposed === 0) break;
+    // si no hubo correccion y no paso, seguir iterando no cambia nada
+    break;
+  }
+
+  const objFinal = Object.assign({}, obj, { gestorProfile: original });
+  const finalChk = checkPerfection(current, (lastProp && lastProp.diffs) || [], objFinal, o);
+  return {
+    ok: true, converged: false, iterations: history.length,
+    profile: current, diffs: (lastProp && lastProp.diffs) || [],
+    checks: finalChk.checks, failed: finalChk.failed,
+    history,
+    left: finalChk.failed.map((k) => ({ check: k, detail: finalChk.checks[k] })),
+    note: 'no convergio en ' + history.length + ' iteraciones: queda declarado que falta'
+  };
+}
+
+/* Resuelve el ALCANCE. `single` es el default; `all` y `modified` son agregados.
+ *
+ * BUG MEDIDO: la primera version recibia `[requested]` como universo, asi que
+ * `scope:"all"` solo procesaba 1 perfil. El universo (`knownIds`) tiene que
+ * venir aparte del perfil pedido. */
+function resolveScope(requestedScope, requestedId, knownIds, modifiedIds) {
+  const sc = String(requestedScope || 'single').toLowerCase();
+  const known = (knownIds || []).slice();
+  if (sc === 'all') {
+    return { scope: 'all', ids: known, additive: true,
+             note: 'agregado explicito: los ' + known.length + ' perfiles' };
+  }
+  if (sc === 'modified') {
+    const mod = (modifiedIds || []).filter((x) => known.indexOf(x) >= 0);
+    return { scope: 'modified', ids: mod, additive: true,
+             note: 'agregado: solo los ' + mod.length + ' perfiles modificados' };
+  }
+  return { scope: 'single', ids: requestedId ? [requestedId] : known.slice(0, 1),
+           additive: false,
+           note: 'solo el perfil pedido; los demas no se tocan' };
+}
+
+/* Bitrate minimo que alcanza un VMAF objetivo. Invierte la misma curva que
+ * usa checkPerfection: VMAF = 100*(1-exp(-K*bpp*eff)) -> bpp = -ln(1-v)/(K*eff).
+ * Sirve para que el loop pueda SUBIR el bitrate cuando el VMAF no llega; subir
+ * nunca viola la Ley Anti-Degradacion. */
+function bitrateForVmaf(target, resolution, fps, codec) {
+  const t = Math.min(99.5, Math.max(1, Number(target) || 90)) / 100;
+  const bpp = -Math.log(1 - t) / (26.6 * codecEfficiency(codec));
+  const r = String(resolution || '').split('x');
+  const w = Number(r[0]) || 0, h = Number(r[1]) || 0;
+  const f = Number(fps) || 30;
+  if (w <= 0 || h <= 0) return null;
+  return bpp * w * h * f / 1e6;
+}
+
 /* Aplica la propuesta al perfil y devuelve el JSON nuevo. NO escribe en disco
  * del frontend: el panel lo guarda en APE_PROFILES_CONFIG (localStorage). */
 function applyAlignment(gestorProfile, diffs) {
@@ -5050,6 +5359,106 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
+
+  /* ═══ LOOP DE PERFECCION ══════════════════════════════════════════════════
+   * Itera hasta que las 7 leyes pasen. Por defecto SOLO el perfil pedido:
+   * cada perfil es independiente y los demas no se tocan. `scope` es el
+   * agregado explicito que pide el operador ("es un agregado si le pido que lo
+   * haga a todos, cuando solamente he modificado uno o dos").
+   *   scope: "single"   -> solo `profile`            (DEFAULT)
+   *   scope: "modified" -> solo los `modifiedIds`
+   *   scope: "all"      -> los 12
+   * ═══════════════════════════════════════════════════════════════════════ */
+  if (u.pathname === '/image/profile/align-loop' && req.method === 'POST') {
+    let lbody = '';
+    let ltooBig = false;
+    req.on('data', (c) => { lbody += c; if (lbody.length > 4 * 1024 * 1024) { ltooBig = true; req.destroy(); } });
+    req.on('end', () => {
+      if (ltooBig) {
+        setBaseHeaders(res); res.writeHead(413, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: false, error: 'body grande' }));
+      }
+      let pl;
+      try { pl = JSON.parse(lbody || '{}'); } catch (_) {
+        setBaseHeaders(res); res.writeHead(400, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: false, error: 'JSON invalido' }));
+      }
+
+      const allL = withEmulatedProfiles(loadGestorProfiles());
+      if (!allL) {
+        setBaseHeaders(res); setNoCacheHeaders(res);
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: false, error: 'Gestor no disponible' }));
+      }
+      const known = Object.keys(allL);
+      const requested = String(pl.profile || 'P0').toUpperCase();
+      if (known.indexOf(requested) < 0) {
+        setBaseHeaders(res); setNoCacheHeaders(res);
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: false, error: 'perfil no encontrado: ' + requested, validos: known }));
+      }
+
+      const sc = resolveScope(pl.scope, requested, known, pl.modifiedIds);
+      const objIn = {
+        inW: pl.inW, inH: pl.inH, inFps: pl.inFps,
+        outW: pl.outW, outH: pl.outH,
+        player: pl.player || 'onn-4k', mode: pl.mode || 'real'
+      };
+      const opts = { maxIterations: pl.maxIterations, vmafTarget: pl.vmafTarget };
+
+      const out = {
+        ok: true,
+        version: 'align-loop-1.0',
+        requested: requested,
+        scope: sc.scope,
+        additive: sc.additive,
+        scopeNote: sc.note,
+        maxIterations: Math.max(1, Math.min(12, Number(pl.maxIterations) || LOOP_DEFAULTS.maxIterations)),
+        profiles: {},
+        untouched: known.filter((k) => sc.ids.indexOf(k) < 0)
+      };
+
+      let converged = 0, totalIter = 0, notConv = 0;
+      for (const pid of sc.ids) {
+        const gp = allL[pid];
+        if (!gp || typeof gp !== 'object') { out.profiles[pid] = { ok: false, error: 'perfil invalido' }; notConv++; continue; }
+        let objUse = objective(objIn);
+        if (!objUse.ok) { out.profiles[pid] = { ok: false, error: objUse.error }; notConv++; continue; }
+        // el perfil manda en su modo: los .5 son emulados
+        if (gp._mode && gp._mode !== objIn.mode) {
+          try {
+            const alt = objective(Object.assign({}, objIn, { mode: gp._mode }));
+            if (alt && alt.ok) objUse = alt;
+          } catch (_) { /* se queda el global */ }
+        }
+        // referencia de la ley: el perfil ORIGINAL de ESE perfil, copia propia
+        objUse = Object.assign({}, objUse, { gestorProfile: JSON.parse(JSON.stringify(gp)) });
+        try {
+          const r = alignLoopOnce(gp, objUse, opts);
+          out.profiles[pid] = r;
+          if (r.converged) converged++; else notConv++;
+          totalIter += r.iterations || 0;
+        } catch (e) {
+          out.profiles[pid] = { ok: false, error: String((e && e.message) || e) };
+          notConv++;
+        }
+      }
+
+      out.totals = {
+        profiles: sc.ids.length,
+        converged: converged,
+        not_converged: notConv,
+        iterations: totalIter,
+        untouched: out.untouched.length
+      };
+      out.law = 'cada perfil es independiente: los de `untouched` no se leyeron ni modificaron';
+      setBaseHeaders(res); setNoCacheHeaders(res);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(out));
+    });
+    return;
+  }
+
 
   if (u.pathname === '/image/profile/align-llm' && req.method === 'POST') {
     let body = '';

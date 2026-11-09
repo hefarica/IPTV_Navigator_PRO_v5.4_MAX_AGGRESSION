@@ -5213,3 +5213,126 @@ defensa en profundidad sobre una alineacion que ya no los incluye.
 - **P5 sube a 4K** al alinearlo contra 4K: la ley no opina sobre el rol `SD_FAILSAFE`.
 - **El LLM sigue sin correr con clave real.**
 - **Los `.5` son derivados**, no los del LAB v24.
+
+---
+
+# 72 · Loop de perfeccion: itera, converge, y cada perfil es independiente
+
+Instruccion del operador (2026-11-08): *"el LLM iterara en loop encontrando la
+perfeccion hasta que todo pase, solo lo aplicara al perfil modificado o habra una
+opcion que podre pedirle que lo haga a todos, recuerda que cada perfil es
+independiente del otro, es un agregado si le pido que lo haga a todos, cuando
+solamente he modificado uno o dos"*.
+
+## 72.1 · Las tres decisiones de diseno
+
+**1. Doble de perfil.** Cada iteracion trabaja sobre una **copia profunda** del
+perfil. El estado de P0 jamas toca P1. Al terminar, `untouched` lista
+explicitamente los perfiles que **no se leyeron ni modificaron**.
+
+**2. Alcance explicito.** `scope` por defecto es **`single`**:
+
+| scope | ids procesados | agregado |
+|---|---|---|
+| `single` (default) | solo `profile` | **no** |
+| `modified` | los `modifiedIds` | si |
+| `all` | los 12 | si |
+
+`resolveScope` devuelve `additive: false` en `single`, para que el panel pueda
+mostrar que **no** se toco el resto.
+
+**3. Criterio de parada.** Se para cuando **las 7 condiciones pasan**. Si agota el
+presupuesto, devuelve `converged: false` con la lista de lo que falta y su numero
+— no dice "ok".
+
+## 72.2 · Las 7 condiciones
+
+| # | Condicion | Que comprueba |
+|---|---|---|
+| 1 | `noFieldLost` | ningun campo del original desaparece |
+| 2 | `cascadesIntact` | ninguna cascada cambia de numero de niveles |
+| 3 | `noBlanks` | ningun valor que no estaba en blanco queda vacio |
+| 4 | `csvIntact` | ninguna lista se aplana a un valor unico |
+| 5 | `gate3x` | `min_bandwidth >= bitrate x 3` |
+| 6 | `vmafOk` | VMAF estimado >= objetivo (declarado `estimado`) |
+| 7 | `noDegradation` | ningun eje baja: resolucion, tier de codec, bitrate, fps |
+
+## 72.3 · La correccion que hace que converja
+
+Si `vmafOk` falla, el loop **sube el bitrate** al minimo que alcanza el objetivo.
+Subir nunca viola la Anti-Degradacion (degradar es bajar). Si `gate3x` falla, sube
+`min_bandwidth`. Ambas correcciones se **re-verifican** en la siguiente iteracion:
+no se declaran como exito.
+
+## 72.4 · Cinco bugs reales que el loop destapo
+
+**a) `scope:"all"` procesaba 1 perfil.** `resolveScope` recibia `[requested]` como
+universo, asi que `all` no tenia mas ids. Fix: el universo (`knownIds`) va aparte
+del perfil pedido.
+
+**b) `vmafT is not defined`.** Se usaba en el bloque de correccion pero solo existia
+dentro de `checkPerfection`. El loop devolvia `{ok:false}` y el panel no mostraba
+nada.
+
+**c) `wrap is not defined` en el panel.** Use un contenedor que no existia; el
+`node --check` pasa porque es sintacticamente valido, pero **reventaria en
+runtime**. El boton se monta ahora con `root.appendChild(...)` como sus vecinos.
+Verificado: `wrap.appendChild` residual = 0 en el JS servido.
+
+**d) El HDR castigaba como si fuera SDR.** `settings` **no tiene** `hdr_mode`
+(medido: las claves son `resolution`, `bitrate`, `fps`, `codec`). El valor `None`
+caia en `sdr` y aplicaba **-1.5 de penalizacion**, dejando el loop clavado en
+**88.5** sin llegar nunca a 90. Fix doble: `profileHdrMode()` busca en
+`settings`/`quality`/`color`, y **si no hay dato no se aplica castigo** — no saber
+no es ser SDR.
+
+**e) El redondeo dejaba P1 en 89.9.** `Math.ceil(need*10)/10` no daba margen.
+Fix: **+1 %** antes del ceil.
+
+## 72.5 · Medido
+
+**Host** (selftest): 63 PASS · 0 FAIL. **VPS**: 63 PASS · 0 FAIL.
+
+**Loop en Python sobre los 6 perfiles reales**: **6/6 convergidos**
+
+```
+P0  conv=True iter=2 · 151.4 Mbps · min_bw 455 · ratio 3.005 · VMAF 90.2
+P1  conv=True iter=1 ·  40.0 Mbps · min_bw 120 · ratio 3.000 · VMAF 91.4
+P2  conv=True iter=2 ·  43.6 Mbps · min_bw 131 · ratio 3.005 · VMAF 90.3
+P3  conv=True iter=2 ·  43.6 Mbps · min_bw 131 · ratio 3.005 · VMAF 90.3
+P4  conv=True iter=2 ·  35.1 Mbps · min_bw 106 · ratio 3.020 · VMAF 90.2
+P5  conv=True iter=2 ·  35.1 Mbps · min_bw 106 · ratio 3.020 · VMAF 90.2
+```
+
+**Loop en la VPS, los tres alcances**:
+
+| scope | procesados | convergidos | NO TOCADOS | agregado |
+|---|---|---|---|---|
+| `single` | 1 (P0) | 1 | **11** | **no** |
+| `modified` | 2 (P0, P2) | 2 | **10** | si |
+| `all` | 12 | **12** | 0 | si |
+
+Los 12 con VMAF entre **90.2 y 95.0**.
+
+## 72.6 · API y panel
+
+```
+POST /image/profile/align-loop
+  { profile, scope: single|modified|all, modifiedIds, maxIterations, vmafTarget,
+    inW, inH, inFps, outW, outH, player, mode }
+```
+
+Panel: boton **"🔁 Iterar hasta perfeccion"** + selector de alcance
+(`solo este perfil` / `solo los modificados` / `los 12 (agregado)`) y una tabla
+con CONV / ITER / VMAF / GATE 3x por perfil, mas la linea de **perfiles NO
+TOCADOS**. `vps-image-panel.js` **83.496 B**. Cache-buster `?v=20261109-loop1`.
+
+Motor Python: subcomando **`loop --file perfil.json`**, mismo criterio, para que
+el LLM lo invoque por CLI.
+
+## 72.7 · Limite honesto
+
+**P0 converge a 151.4 Mbps y el gate exige min_bandwidth 455 Mbps.** Eso es lo que
+piden 8K@60 con VMAF 90 — **no es un bug**. En un enlace de 100 Mbps, P0 no lo
+sostiene: el `optimize` del motor Python lo declara como conflicto en vez de
+elegir un numero imposible.

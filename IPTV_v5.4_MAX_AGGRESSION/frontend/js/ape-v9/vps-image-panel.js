@@ -700,6 +700,31 @@
       ['🗂 Alinear los 12 perfiles']);
     bAll.title = 'Recorre los 12 perfiles del Gestor (6.750 campos: 6 reales + 6 emulados .5) y devuelve la propuesta de cada uno.';
     bAll.addEventListener('click', doAlignAll);
+    /* LOOP DE PERFECCION. El alcance es EXPLICITO y por defecto es `single`:
+     * cada perfil es independiente y los demas no se tocan. `modified` y `all`
+     * son agregados que el operador pide a proposito. */
+    var bLoop = el('button', { class: 'go', id: 'aip-loop',
+      title: 'Itera hasta que TODAS las leyes pasen. Por defecto solo el perfil elegido; ' +
+             'los demas quedan intactos.',
+      style: 'background:#a855f722;border-color:#a855f755;color:#c4b5fd' },
+      ['\uD83D\uDD01 Iterar hasta perfeccion']);
+    bLoop.addEventListener('click', doLoop);
+
+    var scopeSel = el('select', { id: 'aip-loop-scope',
+      title: 'Alcance del loop. Por defecto SOLO el perfil elegido.',
+      style: 'background:#0b1220;color:#7dd3fc;border:1px solid rgba(14,165,233,.45);' +
+             'border-radius:6px;padding:5px 8px;font-size:.72rem' });
+    [['single', 'solo este perfil'],
+     ['modified', 'solo los modificados'],
+     ['all', 'los 12 (agregado)']].forEach(function (o) {
+      var op = el('option', { value: o[0] }, [o[1]]);
+      if (o[0] === 'single') op.selected = true;
+      scopeSel.appendChild(op);
+    });
+
+    root.appendChild(el('div', { class: 'row', style: 'margin-top:8px' },
+      [bLoop, scopeSel]));
+
     var bAllApply = el('button', { class: 'pri', id: 'aip-align-all-apply',
       style: (S.alignAll && S.alignAll.ok) ? 'background:#0ea5e9;color:#001' : 'opacity:.4;cursor:not-allowed' },
       ['💾 Guardar los 12 (' + ((S.alignAll && S.alignAll.totals && S.alignAll.totals.proposed) || 0) + ')']);
@@ -734,6 +759,55 @@
    * el SSOT del Gestor (APE_PROFILES_CONFIG en localStorage). Es el unico punto
    * donde el cambio SALE de la propuesta y se vuelve real. */
   /* LOS SEIS PERFILES DE GOLPE: 6 x 577 = 3.366 campos */
+  /* Marca un perfil como MODIFICADO. Se llama al guardar, al cambiar un
+   * ajuste y al aplicar una alineacion. Es lo que alimenta scope=modified. */
+  function markModified(pid) {
+    if (!S.modified) S.modified = {};
+    if (pid) S.modified[pid] = true;
+  }
+  function modifiedList() {
+    var a = Object.keys(S.modified || {});
+    // si nunca se marco nada y hay una propuesta aplicada, esos son los modificados
+    if (!a.length && S.alignAllApplied) {
+      try { a = Object.keys((S.alignAllApplied.profiles) || {}); } catch (e) { a = []; }
+    }
+    return a;
+  }
+
+  /* LOOP DE PERFECCION: itera hasta que las 7 leyes pasen. */
+  function doLoop() {
+    var b = readBuild();
+    var pe = document.getElementById('aip-al-profile');
+    var pid = pe ? pe.value : 'P0';
+    var sc = document.getElementById('aip-loop-scope');
+    var scope = sc ? sc.value : 'single';
+    var mods = modifiedList();
+    if (scope === 'modified' && !mods.length) {
+      logLine('no hay perfiles modificados marcados: usa "solo este perfil" o "los 12"');
+      return;
+    }
+    S.busy = true;
+    S.loop = null;
+    post('/image/profile/align-loop', {
+      profile: pid, scope: scope, modifiedIds: mods,
+      maxIterations: 6, vmafTarget: 90,
+      inW: b.w, inH: b.h, inFps: b.inFps,
+      outW: b.outW, outH: b.outH,
+      player: b.player, mode: b.mode
+    }, 300000).then(function (r) {
+      S.busy = false;
+      if (!r || !r.ok) { logLine('loop fallo: ' + ((r && r.error) || '?')); render(document.getElementById('ape-image-panel')); return; }
+      S.loop = r;
+      var t = r.totals || {};
+      logLine('LOOP [' + r.scope + ']: ' + t.profiles + ' perfiles · ' +
+              t.converged + ' convergidos · ' + t.iterations + ' iteraciones · ' +
+              t.untouched + ' NO TOCADOS');
+      // los que convergieron quedan marcados como modificados
+      Object.keys(r.profiles || {}).forEach(function (k) { markModified(k); });
+      render(document.getElementById('ape-image-panel'));
+    });
+  }
+
   function doAlignAll() {
     var b = readBuild();
     S.busy = true;
@@ -966,6 +1040,55 @@
         ab.appendChild(lb);
       }
       box.appendChild(ab);
+    }
+    // resultado del LOOP DE PERFECCION
+    if (S.loop && S.loop.ok) {
+      var LO = S.loop, LT = LO.totals || {};
+      var done = LT.converged === LT.profiles;
+      var lbox = el('div', { style: 'margin-top:10px;padding:8px 10px;border-radius:8px;font-size:.74rem;' +
+        'background:' + (done ? 'rgba(16,185,129,.12)' : 'rgba(251,191,36,.12)') + ';' +
+        'border:1px solid ' + (done ? 'rgba(16,185,129,.45)' : 'rgba(251,191,36,.45)') + ';' +
+        'color:' + (done ? '#6ee7b7' : '#fcd34d') }, [
+        (done ? 'PERFECCION ALCANZADA' : 'LOOP SIN CONVERGER') + ' · alcance ' + LO.scope +
+        (LO.additive ? ' (agregado)' : ' (solo el perfil)') +
+        ' · ' + LT.profiles + ' perfiles · ' + LT.converged + ' convergidos · ' +
+        LT.iterations + ' iteraciones'
+      ]);
+      lbox.appendChild(el('div', { style: 'margin-top:3px;color:#94a3b8;font-size:.7rem' }, [LO.scopeNote]));
+      if (LT.untouched) {
+        lbox.appendChild(el('div', { style: 'margin-top:3px;color:#64748b;font-size:.7rem' },
+          [LT.untouched + ' perfiles NO TOCADOS: cada perfil es independiente']));
+      }
+      var lt = el('table', { style: 'width:100%;margin-top:6px;font-size:.7rem;border-collapse:collapse' });
+      var lh = el('tr', {});
+      ['PERFIL', 'CONV', 'ITER', 'VMAF', 'GATE 3x'].forEach(function (h) {
+        lh.appendChild(el('th', { style: 'text-align:left;padding:2px 6px;color:#64748b;font-weight:600' }, [h]));
+      });
+      lt.appendChild(lh);
+      Object.keys(LO.profiles || {}).sort().forEach(function (pid) {
+        var p = LO.profiles[pid];
+        var tr = el('tr', {});
+        if (!p || !p.ok) {
+          [pid, 'ERROR', '-', String((p && p.error) || '?').slice(0, 22), '-'].forEach(function (v) {
+            tr.appendChild(el('td', { style: 'padding:2px 6px;color:#f87171' }, [String(v)]));
+          });
+        } else {
+          var ck = p.checks || {};
+          var vo = (ck.vmafOk || {}).vmaf;
+          var go = (ck.gate3x || {});
+          [pid, p.converged ? 'SI' : 'NO', p.iterations,
+           (vo === null || vo === undefined) ? '-' : vo,
+           go.ok ? (go.ratio + 'x') : ('falta ' + (go.need || '?'))
+          ].forEach(function (v, i) {
+            var col = i === 1 ? (p.converged ? '#6ee7b7' : '#f87171')
+                    : i === 3 ? '#38bdf8' : '#94a3b8';
+            tr.appendChild(el('td', { style: 'padding:2px 6px;color:' + col }, [String(v)]));
+          });
+        }
+        lt.appendChild(tr);
+      });
+      lbox.appendChild(lt);
+      box.appendChild(lbox);
     }
     // resultado del guardado de los 6
     if (S.alignAllApplied) {
