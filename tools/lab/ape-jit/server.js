@@ -5888,6 +5888,21 @@ const server = http.createServer((req, res) => {
      * fichero generado aparte (APE_JIT_LIST_EXTATTR.m3u8): el catalogo de
      * produccion NO se toca. Si no se genero, 404 con la razon en vez de servir
      * una lista sin la directiva y fingir que la tiene. */
+    /* Catalogo IDEMPOTENTE + POLIMORFICO + ISOMORFICO (jit_catalog_build.js).
+     * Cada entrada apunta al resolver con el perfil derivado de la fuente y un
+     * sello de contrato; el resolver decide master vs media por UA en el zap. */
+    if (u.pathname === '/playlist-idempotente.m3u8' || u.pathname === '/APE_JIT_LIST_IDEMPOTENTE.m3u8') {
+      const f = path.join(path.dirname(MAP_FILE), 'APE_JIT_LIST_IDEMPOTENTE.m3u8');
+      if (!fs.existsSync(f)) {
+        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+        return res.end('catalogo no construido: node jit_catalog_build.js');
+      }
+      setNoCacheHeaders(res);
+      res.setHeader('X-APE-Contract', 'ape-jit-catalog/1.0.0');
+      res.setHeader('X-APE-Contract-Mode', 'idempotente+polimorfico+isomorfico');
+      res.writeHead(200, { 'Content-Type': MIME['.m3u8'] });
+      return fs.createReadStream(f).pipe(res);
+    }
     if (u.pathname === '/playlist-resolver.m3u8') {
       const f = path.join(path.dirname(MAP_FILE), 'APE_JIT_LIST_EXTATTR.m3u8');
       if (!fs.existsSync(f)) {
