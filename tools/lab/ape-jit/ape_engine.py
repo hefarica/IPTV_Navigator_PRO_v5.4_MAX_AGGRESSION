@@ -942,6 +942,8 @@ def sufficiency(bitrate=None, bw=None, risk=None):
 PRESERVATION_RULES = {
     "NO_BLANK_VALUES": "ningun valor queda vacio/null",
     "BLANK_PRESERVED": "si el original estaba en blanco, se deja igual",
+    "PLACEHOLDER_PRESERVED": "un placeholder [NOMBRE] no se toca: se resuelve en runtime",
+    "NON_TEXT_PRESERVED": "un valor sin letras ni digitos (comodines, comillas vacias) no se toca",
     "CSV_PRESERVED": "una lista con comas no se aplana a un valor unico",
     "CASCADE_LENGTH": "cascada = exactamente 4 niveles, o intacta",
     "KEEP_IF_BETTER": "si el valor actual ya es mejor, no se toca",
@@ -962,10 +964,49 @@ def is_blank(v):
     return s == "" or s.lower() in ("null", "undefined", "nan", "none")
 
 
+def is_placeholder(v):
+    """¿Es un marcador que se resuelve en runtime?
+
+    MEDIDO en los 12 perfiles del Gestor (2026-11-08): 64 campos en 11 rutas son
+    placeholders —
+        [ENCODED_HEADERS]  [HTTP_DATE]  [CONFIG_SESSION_ID]
+        [GENERATE_UUID]    [TIMESTAMP]  [DEVICE_ID]
+    Tocarlos rompe el generador, que los sustituye al emitir la lista. El
+    operador lo dijo asi: "los que tengan simbolos u otros valores que no sean
+    letras, o los deja igual".
+    """
+    if v is None:
+        return False
+    s = str(v).strip()
+    if not s:
+        return False
+    import re as _re
+    return bool(_re.fullmatch(r"\[[A-Za-z0-9_]+\]", s))
+
+
+def is_non_text(v):
+    """¿Es un valor sin ninguna letra ni digito?
+
+    MEDIDO: 24 campos en 4 rutas — `If-None-Match: *,*,*,*` y
+    `Sec-CH-UA-Model: "","","",""`. No son texto ni numero: son comodines y
+    comillas vacias. Modificarlos no mejora nada y puede romper el header.
+
+    OJO: esto NO marca texto con acentos o guiones (una `description` con
+    em-dash sigue siendo texto). Solo el valor que no tiene ni una letra ni un
+    digito.
+    """
+    if v is None:
+        return False
+    s = str(v).strip()
+    if not s:
+        return False
+    import re as _re
+    return _re.sub(r"[^A-Za-z0-9]", "", s) == ""
+
+
 def preserve_guard(path, before, after):
     """Valida UN cambio contra la Ley de Preservacion."""
     key = str(path).split(".")[-1]
-    base = str(path).split(".")[0]
 
     if is_blank(after):
         return {"ok": False, "rule": "NO_BLANK_VALUES",
@@ -973,6 +1014,16 @@ def preserve_guard(path, before, after):
     if before is not None and is_blank(before):
         return {"ok": False, "rule": "BLANK_PRESERVED",
                 "why": "%s: el original estaba en blanco, se deja igual" % path}
+    # placeholder de runtime: intocable
+    if is_placeholder(before):
+        return {"ok": False, "rule": "PLACEHOLDER_PRESERVED",
+                "why": "%s: es un placeholder que se resuelve en runtime (%s)" %
+                       (path, str(before)[:32])}
+    # valor sin letras ni digitos: intocable
+    if is_non_text(before):
+        return {"ok": False, "rule": "NON_TEXT_PRESERVED",
+                "why": "%s: el original no tiene letras ni digitos (%s)" %
+                       (path, str(before)[:24])}
     if before is not None and "," in str(before) and "," not in str(after):
         return {"ok": False, "rule": "CSV_PRESERVED",
                 "why": "%s: la lista de %d valores se aplana a uno" %
@@ -995,6 +1046,31 @@ def preserve_guard(path, before, after):
             return {"ok": False, "rule": "KEEP_IF_BETTER",
                     "why": "%s: %s es peor que el actual %s" % (path, after, before)}
     return {"ok": True, "rule": None, "why": None}
+
+
+def preserve_audit(fields):
+    """Clasifica {path: value} contra la Ley de Preservacion.
+
+    Devuelve cuantas rutas caen en cada categoria INTOCABLE. Sirve para medir
+    antes de proponer: si un campo es placeholder o no-texto, el motor ni
+    siquiera debe generar una propuesta para el.
+    """
+    out = {"ok": True, "version": ENGINE_VERSION, "total": 0,
+           "intocables": {"blanco": [], "placeholder": [], "no_texto": []},
+           "procesables": 0}
+    for path, v in (fields or {}).items():
+        out["total"] += 1
+        if is_blank(v):
+            out["intocables"]["blanco"].append(path)
+        elif is_placeholder(v):
+            out["intocables"]["placeholder"].append(path)
+        elif is_non_text(v):
+            out["intocables"]["no_texto"].append(path)
+        else:
+            out["procesables"] += 1
+    out["intocables_count"] = sum(len(x) for x in out["intocables"].values())
+    out["law"] = "un campo intocable se deja IGUAL: no se borra ni se vacia"
+    return out
 
 
 def _first_num(v):
@@ -1656,6 +1732,43 @@ def selftest():
     check("optimize declara conflicto con enlace de 30 Mbps",
           len(op2["conflicts"]) > 0, str(op2.get("conflicts"))[:60])
 
+    # ── LEY DE PRESERVACION: los intocables ───────────────────────────────
+    check("placeholder [GENERATE_UUID] es intocable",
+          is_placeholder("[GENERATE_UUID]") is True, "")
+    check("placeholder [CONFIG_SESSION_ID] es intocable",
+          is_placeholder("[CONFIG_SESSION_ID]") is True, "")
+    check("un valor normal NO es placeholder",
+          is_placeholder("hvc1.2.4.L153.B0") is False, "")
+    check("'*,*,*,*' es no-texto (sin letras ni digitos)",
+          is_non_text("*,*,*,*") is True, "")
+    check('"","","","" es no-texto', is_non_text('"","","",""') is True, "")
+    check("una description con em-dash SI es texto",
+          is_non_text("GOD TIER 8K OMEGA — Máxima calidad") is False, "")
+    check("un numero es texto procesable", is_non_text("3840x2160") is False, "")
+
+    g_ph = preserve_guard("headers.X-Device-Id", "[GENERATE_UUID]", "abc-123")
+    check("el guard rechaza tocar un placeholder",
+          g_ph["ok"] is False and g_ph["rule"] == "PLACEHOLDER_PRESERVED",
+          str(g_ph.get("rule")))
+    g_nt = preserve_guard("headers.If-None-Match", "*,*,*,*", "abc")
+    check("el guard rechaza tocar un no-texto",
+          g_nt["ok"] is False and g_nt["rule"] == "NON_TEXT_PRESERVED",
+          str(g_nt.get("rule")))
+
+    aud = preserve_audit({
+        "headers.X-Device-Id": "[GENERATE_UUID]",
+        "headers.If-None-Match": "*,*,*,*",
+        "quality_levels.L6.video_filter": "",
+        "settings.bitrate": 28,
+        "headers.X-APE-RESOLUTION": "3840x2160,2560x1440,2048x1080,1920x1080",
+    })
+    check("preserve_audit clasifica 3 intocables y 2 procesables",
+          aud["intocables_count"] == 3 and aud["procesables"] == 2,
+          "intocables=%d procesables=%d" % (aud["intocables_count"], aud["procesables"]))
+    check("preserve_audit separa placeholder de no_texto",
+          len(aud["intocables"]["placeholder"]) == 1 and
+          len(aud["intocables"]["no_texto"]) == 1, "")
+
     return {
         "ok": fail == 0,
         "version": ENGINE_VERSION,
@@ -1777,6 +1890,13 @@ def main(argv=None):
     op.add_argument("--link-mbps", dest="link_mbps", type=float)
     op.add_argument("--vmaf-target", dest="vmaf_target", type=float, default=90.0)
 
+    pa = sub.add_parser("preserve-audit",
+                        help="clasifica los campos de un perfil: cuales son intocables")
+    pa.add_argument("--file", help="JSON del perfil (se aplana y clasifica)")
+    pa.add_argument("--fields", help='JSON plano {"path": value}')
+    pa.add_argument("--check", nargs=3, metavar=("PATH", "BEFORE", "AFTER"),
+                    help="valida UN cambio contra la ley")
+
     sub.add_parser("profiles", help="lista los 12 perfiles")
     sub.add_parser("selftest", help="corre los vectores de prueba")
 
@@ -1858,6 +1978,51 @@ def main(argv=None):
     elif args.cmd == "optimize":
         _emit(optimize(args.codec, args.resolution, args.fps,
                        args.link_mbps, args.vmaf_target), pretty)
+
+    elif args.cmd == "preserve-audit":
+        if args.check:
+            pth, bef, aft = args.check
+            _emit({"ok": True, "version": ENGINE_VERSION,
+                   "path": pth, "before": bef, "after": aft,
+                   "guard": preserve_guard(pth, bef, aft)}, pretty)
+            return 0
+        flats = {}
+        if args.file:
+            try:
+                import io as _io
+                with _io.open(args.file, encoding="utf-8") as fh:
+                    obj = json.load(fh)
+            except (IOError, OSError) as e:
+                _emit({"ok": False, "error": "no se pudo leer: %s" % e})
+                return 1
+            except ValueError as e:
+                _emit({"ok": False, "error": "JSON invalido: %s" % e})
+                return 1
+
+            def _walk(o, prefix=""):
+                if isinstance(o, dict):
+                    for k, v in o.items():
+                        for x in _walk(v, prefix + "." + k if prefix else k):
+                            yield x
+                elif isinstance(o, list):
+                    for i, v in enumerate(o):
+                        for x in _walk(v, "%s[%d]" % (prefix, i)):
+                            yield x
+                else:
+                    yield prefix, o
+
+            for k, v in _walk(obj):
+                flats[k] = v
+        elif args.fields:
+            try:
+                flats = json.loads(args.fields)
+            except ValueError as e:
+                _emit({"ok": False, "error": "JSON invalido: %s" % e})
+                return 1
+        else:
+            _emit({"ok": False, "error": "faltan --file, --fields o --check"})
+            return 1
+        _emit(preserve_audit(flats), pretty)
 
     elif args.cmd == "profiles":
         _emit({"ok": True, "version": ENGINE_VERSION, "count": len(PROFILES),

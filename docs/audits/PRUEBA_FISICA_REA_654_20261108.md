@@ -5126,3 +5126,90 @@ en la cabecera del motor y en `docs/security/SOURCE_ALLOWLIST_IPTV.md`.
 - **Sin GPU**, la rama NVIDIA no se puede verificar aqui.
 - **El selftest prueba la logica interna**, no la paridad con libvmaf real.
 - **`rea_adopt` no puede aprobar la fuente** porque la allowlist objetivo es la de otro repo.
+
+---
+
+# 71 · La Ley de Preservacion completa: 7 reglas, 117 campos intocables
+
+Instruccion del operador, literal: *"que solo omita los que encuentre en blanco,
+los que tengan simbolos u otros valores que no sean letras, o los deja igual"*.
+
+**Esa mitad de la regla no estaba implementada.** La seccion 69 tenia cinco
+reglas; faltaban exactamente las dos que el operador nombro en esa frase.
+
+## 71.1 · Medido: cuantos campos son intocables
+
+Clasificacion de los 12 perfiles del Gestor (6.750 valores, por ruta unica):
+
+| Categoria | Campos | Rutas unicas | Ejemplo |
+|---|---|---|---|
+| procesables | 3.445 | 604 | `hvc1.2.4.L153.B0`, `7680x4320` |
+| **blanco** | **29** | 12 | `quality_levels.L6.video_filter` = `''` |
+| **placeholder** | **64** | 11 | `X-Device-Id` = `[GENERATE_UUID]` |
+| **simbólico** | **24** | 4 | `If-None-Match` = `*,*,*,*` |
+| **TOTAL INTOCABLE** | **117** | 27 | |
+
+Por perfil (P0): **614 campos → 598 procesables + 16 intocables** (2 blancos,
+11 placeholders, 3 no-texto).
+
+## 71.2 · Las dos reglas nuevas
+
+**`PLACEHOLDER_PRESERVED`** — un valor `[NOMBRE]` lo sustituye el generador al
+emitir la lista. Tocarlo rompe el canal. Los medidos:
+`[ENCODED_HEADERS]`, `[HTTP_DATE]`, `[CONFIG_SESSION_ID]`, `[GENERATE_UUID]`,
+`[TIMESTAMP]`, `[DEVICE_ID]`.
+
+**`NON_TEXT_PRESERVED`** — un valor **sin ninguna letra ni digito**. Los medidos:
+`If-None-Match: *,*,*,*` (comodin) y `Sec-CH-UA-Model: "","","",""` (comillas
+vacias). Modificarlos no mejora nada y puede romper el header.
+
+**Distincion critica que costo definirla bien**: `isNonTextValue` **NO** marca
+texto con acentos ni guiones. Una `description` con em-dash
+(`GOD TIER 8K OMEGA — Máxima calidad`) **sigue siendo texto** y no se preserva.
+Solo entra el valor que no tiene ni una letra ni un digito.
+
+## 71.3 · Donde vive
+
+| Capa | Archivo | Estado |
+|---|---|---|
+| Motor real (JS) | `tools/lab/ape-jit/server.js` | `isPlaceholderValue` + `isNonTextValue` + 2 reglas en `guardDiff` |
+| Motor de calculo (Python) | `tools/lab/ape-jit/ape_engine.py` | `is_placeholder` + `is_non_text` + `preserve_guard` + `preserve_audit` |
+
+El motor Python gano ademas el subcomando **`preserve-audit`**:
+
+```
+python3 ape_engine.py preserve-audit --file perfil.json
+python3 ape_engine.py preserve-audit --check "headers.If-None-Match" "*,*,*,*" "abc"
+```
+
+## 71.4 · Medido despues de aplicar
+
+```
+12 perfiles | 6.750 campos | 710 propuestos | 199 en cascada
+RECHAZOS: BLANK_PRESERVED 2 · KEEP_IF_BETTER 78
+placeholders propuestos: 0
+no-texto propuestos:     0
+motor Python en la VPS: 63 PASS · 0 FAIL de 63
+```
+
+**Cero placeholders y cero no-texto llegan siquiera a proponerse**: el guard es
+defensa en profundidad sobre una alineacion que ya no los incluye.
+
+## 71.5 · Las siete reglas, juntas
+
+| Regla | Significado |
+|---|---|
+| `NO_DELETE_FIELDS` | ningun campo del perfil desaparece |
+| `NO_BLANK_VALUES` | ningun valor queda vacio/null |
+| `BLANK_PRESERVED` | si el original estaba en blanco, se deja igual |
+| **`PLACEHOLDER_PRESERVED`** | un `[NOMBRE]` no se toca: se resuelve en runtime |
+| **`NON_TEXT_PRESERVED`** | un valor sin letras ni digitos no se toca |
+| `CSV_PRESERVED` | una lista con comas no se aplana |
+| `CASCADE_LENGTH` | cascada de 4 o intacta, nunca 3 |
+| `KEEP_IF_BETTER` | si el actual ya es mejor, se deja quieto |
+
+## 71.6 · Lo que sigue sin cambiar
+
+- **P5 sube a 4K** al alinearlo contra 4K: la ley no opina sobre el rol `SD_FAILSAFE`.
+- **El LLM sigue sin correr con clave real.**
+- **Los `.5` son derivados**, no los del LAB v24.

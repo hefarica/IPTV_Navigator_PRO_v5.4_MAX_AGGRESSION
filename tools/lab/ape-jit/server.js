@@ -1379,7 +1379,11 @@ var PRESERVATION_LAW = {
   // 4. Una cascada tiene EXACTAMENTE 4 niveles. Si el valor actual tiene 4 y el
   //    nuevo no, se deja INTACTA. Nunca 3, nunca 5.
   CASCADE_LENGTH: 4,
-  // 5. Si el valor actual ya es el mejor segun la metrica del campo, no se toca.
+  // 5. Un placeholder [NOMBRE] se resuelve en runtime: no se toca.
+  PLACEHOLDER_PRESERVED: true,
+  // 6. Un valor sin letras ni digitos (comodines, comillas vacias) no se toca.
+  NON_TEXT_PRESERVED: true,
+  // 7. Si el valor actual ya es el mejor segun la metrica del campo, no se toca.
   KEEP_IF_BETTER: true,
   // 6. Se pueden AGREGAR campos; nunca es obligatorio.
   ALLOW_ADD: true,
@@ -1415,6 +1419,35 @@ function isBlankValue(v) {
   // "null"/"undefined"/"NaN" como texto tambien son un valor borrado disfrazado
   if (/^(null|undefined|nan|none)$/i.test(s.trim())) return true;
   return false;
+}
+
+/* ¿Es un marcador que se resuelve en runtime?
+ *
+ * MEDIDO en los 12 perfiles del Gestor (2026-11-08): 64 campos en 11 rutas son
+ * placeholders — [ENCODED_HEADERS], [HTTP_DATE], [CONFIG_SESSION_ID],
+ * [GENERATE_UUID], [TIMESTAMP], [DEVICE_ID]. Tocarlos rompe el generador, que
+ * los sustituye al emitir la lista. Instruccion del operador: "los que tengan
+ * simbolos u otros valores que no sean letras, o los deja igual". */
+function isPlaceholderValue(v) {
+  if (v === null || v === undefined) return false;
+  var s = String(v).trim();
+  if (!s) return false;
+  return /^\[[A-Za-z0-9_]+\]$/.test(s);
+}
+
+/* ¿El valor no tiene NI UNA letra NI UN digito?
+ *
+ * MEDIDO: 24 campos en 4 rutas — `If-None-Match: *,*,*,*` y
+ * `Sec-CH-UA-Model: "","","",""`. No son texto ni numero: son comodines y
+ * comillas vacias. Modificarlos no mejora nada y puede romper el header.
+ *
+ * OJO: NO marca texto con acentos ni guiones (una `description` con em-dash
+ * sigue siendo texto). Solo el valor sin ninguna letra ni digito. */
+function isNonTextValue(v) {
+  if (v === null || v === undefined) return false;
+  var s = String(v).trim();
+  if (!s) return false;
+  return s.replace(/[^A-Za-z0-9]/g, '') === '';
 }
 
 /* ¿El valor tiene forma de cascada? CSV de numeros o de WxH. */
@@ -1463,6 +1496,28 @@ function guardDiff(d, gestorProfile) {
   // del operador: "solo omita los que encuentre en blanco... o los deja igual").
   if (L.NO_BLANK_VALUES && before !== null && before !== undefined && isBlankValue(before)) {
     return { ok: false, regla: 'BLANK_PRESERVED', motivo: path + ': el original estaba en blanco, se deja igual' };
+  }
+
+  // ── 3bis. PLACEHOLDER DE RUNTIME: intocable ───────────────────────────
+  // [GENERATE_UUID], [TIMESTAMP], [ENCODED_HEADERS]... los sustituye el
+  // generador al emitir la lista. Tocarlos rompe el canal.
+  if (L.PLACEHOLDER_PRESERVED && isPlaceholderValue(before)) {
+    return {
+      ok: false, regla: 'PLACEHOLDER_PRESERVED',
+      motivo: path + ': es un placeholder que se resuelve en runtime (' +
+              String(before).slice(0, 32) + ')'
+    };
+  }
+
+  // ── 3ter. SIN LETRAS NI DIGITOS: intocable ─────────────────────────────
+  // `If-None-Match: *,*,*,*` y `Sec-CH-UA-Model: "","","",""`. Modificarlos no
+  // mejora nada y puede romper el header.
+  if (L.NON_TEXT_PRESERVED && isNonTextValue(before)) {
+    return {
+      ok: false, regla: 'NON_TEXT_PRESERVED',
+      motivo: path + ': el original no tiene letras ni digitos (' +
+              String(before).slice(0, 24) + ')'
+    };
   }
 
   // ── 4. CASCADAS DE 4 ───────────────────────────────────────────────────
