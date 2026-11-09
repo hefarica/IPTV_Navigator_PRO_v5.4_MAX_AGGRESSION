@@ -8439,6 +8439,31 @@ function playlistBufferLines(buffer) {
       res.writeHead(200, { 'Content-Type': type });
       return res.end(name === 'master.m3u8' ? hdrMaster(txt, state) : hdrMpdSanitized(txt, state));
     }
+    /* ULTIMO TRAMO: el score ya se calcula, pero el player solo obedece lo que
+     * LEE. Aqui se inyectan las directivas de buffer en la playlist de media, que
+     * es lo unico que OTT/TiviMate/VLC miran. Sin esto el score se queda en el
+     * log y el buffer del player no cambia: el bucle no cerraria.
+     * Si no hay senal medida para el canal, NO se inyecta nada (cero cambio). */
+    if (/^media_[0-9]+\.m3u8$/.test(name)) {
+      try {
+        const sig = loadChannelSignals()[id];
+        const lines = sig && Array.isArray(sig.playlist_buffer_lines) ? sig.playlist_buffer_lines : null;
+        if (lines && lines.length) {
+          const raw = fs.readFileSync(file, 'utf8');
+          const nl = raw.indexOf('\n');
+          const inj = (nl > 0 ? raw.slice(0, nl + 1) : raw + '\n') +
+                      lines.join('\n') + '\n' +
+                      (nl > 0 ? raw.slice(nl + 1) : '');
+          res.setHeader('X-APE-Quality-Score', String(sig.score));
+          res.setHeader('X-APE-Buffer-Mode', sig.buffer && sig.buffer.mode ? sig.buffer.mode : '');
+          res.setHeader('X-APE-Never-Relax', '1');
+          res.locals.cache = 'media';
+          setObjectCacheHeaders(res, 'media');
+          res.writeHead(200, { 'Content-Type': type });
+          return res.end(inj);
+        }
+      } catch (e) { log('BUFFER_INJECT_FAILED', id, e.message); }
+    }
     sendStatic(req, res, file, type, kind);
   };
   const serveError = () => {

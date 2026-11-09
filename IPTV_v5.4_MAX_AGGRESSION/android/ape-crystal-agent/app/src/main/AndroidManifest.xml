@@ -60,6 +60,22 @@
              la reenvia a .PlayerActivity (mismo paquete, sin salto de app).
              Sin este <intent-filter> la app NO aparece en ese selector y la
              ruta B del manual es inalcanzable. -->
+        <!-- REA · Catalogo JIT: muestra las URLs confirmadas por el VPS y abre
+             OTT. NO registra el proveedor en OTT (eso es alta de UI: Ajustes ->
+             Proveedor -> Anadir proveedor). Llamarlo "importar automaticamente"
+             seria mentir; por eso se llama "Abrir OTT". -->
+        <activity
+            android:name="com.ape.crystalagent.JitLinkActivity"
+            android:exported="true"
+            android:label="REA · Catalogo JIT"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name="com.ape.rea.ReaExternalPlayerActivity"
             android:exported="true"
