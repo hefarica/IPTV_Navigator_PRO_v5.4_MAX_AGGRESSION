@@ -1186,6 +1186,21 @@ function alignmentTargetsFull(obj, gestorProfile) {
   if (isEmu) mbps = Math.round(mbps * 1.15);
   mbps = Math.max(1, mbps);
 
+  /* LEY ANTI-DEGRADACION: el bitrate del perfil es un SUELO.
+   * Si el perfil ya declara MAS Mbps que la tabla (p. ej. P1 con 40 para 4K
+   * cuando la tabla dice 28), NO se baja: se respeta el del operador. Solo se
+   * sube si esta por debajo de la tabla. */
+  const declaredMbps = Number((gestorProfile && gestorProfile.settings && gestorProfile.settings.bitrate) || 0);
+  if (declaredMbps > mbps) mbps = declaredMbps;
+
+  /* GATE DE SUFICIENCIA: min_bandwidth debe ser 3x el bitrate para que el
+   * headroom alcance el estado EXCEPCIONAL (sufficiency-law-v1.js).
+   * Es un SUELO: nunca se reduce un min_bandwidth mas alto que ya exista. */
+  const declaredMinBw = Number((gestorProfile && gestorProfile.prefetch_config &&
+    gestorProfile.prefetch_config.min_bandwidth_mbps) || 0);
+  const minBwFor3x = Math.ceil(mbps * 3);
+  const minBwTarget = Math.max(declaredMinBw, minBwFor3x);
+
   const bufferSec = Math.min(60, Math.max(8, Math.round(8 + obj.cost.relative * 3 + (isEmu ? 4 : 0))));
   const netCache = bufferSec * 1000;
   const jitter = Math.round(netCache * 0.1);
@@ -1200,7 +1215,9 @@ function alignmentTargetsFull(obj, gestorProfile) {
       bitrate: String(mbps), bufferSeconds: String(bufferSec),
       buffer: String(netCache), playerBuffer: String(playerBuf),
       // t1/t2: throughput que la cadena necesita. Se derivan del bitrate.
-      t1: String(Math.round(mbps * 3)), t2: String(Math.round(mbps * 4)),
+      // t1 = 3x (gate de suficiencia), t2 = 4x. Suelo: no bajan lo ya declarado.
+      t1: String(Math.max(Number((gestorProfile.settings||{}).t1)||0, Math.ceil(mbps * 3))),
+      t2: String(Math.max(Number((gestorProfile.settings||{}).t2)||0, Math.ceil(mbps * 4))),
       strategy: strategy, headersCount: '200',
       focus: isEmu ? 'MAXIMA_CALIDAD_EMULADA_UPSCALE_SINTETICO' : 'MAXIMA_CALIDAD_REAL_SOSTENIDA',
       // AUDIO: la doctrina prohibe degradar 5.1 a estereo
@@ -1240,7 +1257,8 @@ function alignmentTargetsFull(obj, gestorProfile) {
       prefetch_segments: String(prefetchSeg),
       parallel_downloads: String(parallel),
       buffer_target_seconds: String(Math.min(600, bufferSec * 3)),
-      min_bandwidth_mbps: String(Math.round(mbps * 2.5)),
+      // gate 3x: es lo que hace posible el estado EXCEPCIONAL del Streaming Health
+      min_bandwidth_mbps: String(minBwTarget),
       adaptive_enabled: 'True',
       ai_prediction_enabled: 'True',
       continuous_prefetch: 'True'

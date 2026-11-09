@@ -4730,3 +4730,65 @@ sparePct = (bitrate/bwSafe − 1)×100 (colchon; -66.67 equivale a ratio 3.00)
 - El solver **premia** acercarse al gate; **no puede alcanzarlo** si el enlace
   medido no da para 3x el bitrate. Ahi la palanca es el bitrate del perfil, y
   bajarlo choca con la Ley Anti-Degradacion — decision del operador.
+
+---
+
+# 66 · El gate de 3x aplicado al perfil: el headroom ya es alcanzable
+
+## 66.1 · El gate era inalcanzable con los valores del perfil
+
+`sufficiency-law-v1.js` exige `headroom = bwSafe/bitrate >= 3.00`. Medido con los
+valores del Gestor: **solo P2 lo cumplia**.
+
+| Perfil | Resolucion | Bitrate | Tabla repo | Min BW | Ratio | Gate |
+|---|---|---|---|---|---|---|
+| P0 | 8K | 80 | 80 | 194 | **2,42** | no |
+| P1 | 4K | 40 | 28 | 81 | **2,02** | no |
+| **P2** | 4K | 20 | 28 | 65 | **3,25** | **si** |
+| P3 | 1080p | 10 | 12 | 20 | 2,00 | no |
+| P4 | 720p | 5 | 5,5 | 9 | 1,80 | no |
+| P5 | 480p | 2 | 2,5 | 5 | 2,50 | no |
+
+**El `min_bandwidth_mbps` de cada perfil no derivaba de su bitrate.** Cada uno tenia
+un valor sin regla comun, y ninguno daba 3x.
+
+## 66.2 · La regla, con suelo anti-degradacion
+
+```
+min_bandwidth_mbps = max(declarado, ceil(bitrate × 3))
+t1                  = max(declarado, ceil(bitrate × 3))
+t2                  = max(declarado, ceil(bitrate × 4))
+bitrate             = max(tabla_repo, declarado)
+```
+
+**Todo es un SUELO, nada baja.** Es el punto delicado: el motor calcula el bitrate
+con la tabla del repo, y P1 declara **40 Mbps** cuando la tabla dice **28**. Sin el
+suelo, alinear P1 lo habria **degradado a 28** — violacion de la Ley
+Anti-Degradacion. Con el suelo, P1 **conserva sus 40**.
+
+## 66.3 · Medido despues
+
+| Perfil | Bitrate | Min BW | T1 | Ratio | Gate 3x |
+|---|---|---|---|---|---|
+| **P0** | 80 | **240** | 240 | **3,0** | **si** |
+| **P1** | **40** (conservado) | 120 | 120 | **3,0** | **si** |
+| P2 | 28 | 84 | 84 | **3,0** | **si** |
+| P3 | 28 | 84 | 84 | **3,0** | **si** |
+| P4 | 28 | 84 | 84 | **3,0** | **si** |
+| P5 | 28 | 84 | 84 | **3,0** | **si** |
+
+**Los seis cumplen.** Y el gate ahora es **fisicamente alcanzable**: 240 Mbps para
+8K y 84 para 4K son valores que una fibra domestica sostiene.
+
+## 66.4 · Lo que esto implica y hay que decir
+
+- **P3, P4 y P5 suben a 28 Mbps / 84 de min BW** porque su **resolucion efectiva es
+  4K** (la salida del modulo manda, con su resolucion nativa como suelo). Para que
+  P5 conserve su rol de failsafe SD hay que **excluirlo de la alineacion** o
+  alinearlo contra una salida menor. **Es decision del operador, no del motor.**
+- **El gate exige 3x el bitrate de ancho de banda real.** En un enlace de 100 Mbps,
+  P0 (240) y P1 (120) **no podran** llegar a EXCEPCIONAL. El estado sera `MINIMUM`
+  o `TIGHT` y el panel lo dira. **Eso es honesto**: no se puede simular un enlace
+  que no existe.
+- **Sigue haciendo falta una medicion real.** El ratio solo se computa con una
+  muestra de Resource Timing; sin ella el estado es `NO_MEASUREMENT`.
