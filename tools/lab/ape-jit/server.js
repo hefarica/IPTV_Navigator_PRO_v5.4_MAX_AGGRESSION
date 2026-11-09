@@ -9,6 +9,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { spawn, execFile, execFileSync } = require('child_process');
 
 const PORT = Number(process.env.PORT || 3099);
@@ -2302,7 +2303,263 @@ function withEmulatedProfiles(all) {
   return all;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+ * PERSISTENCIA DEL GESTOR DE PERFILES
+ *
+ * REQUISITO DEL OPERADOR (2026-11-08): todo lo que se modifique del Gestor
+ * debe quedar guardado, para que la informacion del LLM no se pierda.
+ *
+ * MEDIDO ANTES DE ESTO: /image/profile/align/apply, /align-all/apply y
+ * /align-loop llamaban a applyAlignment() y DEVOLVIAN el perfil nuevo, pero
+ * NUNCA escribian nada. loadGestorProfiles() solo leia PROFILES_JSON y no
+ * existia ninguna ruta de escritura. El panel guardaba el resultado en memoria
+ * y al recargar se perdia TODO, incluido lo que habia propuesto el LLM.
+ *
+ * Ahora hay un STORE propio con escritura atomica (.tmp + rename), un backup
+ * con timestamp por cada guardado, un journal append-only con la procedencia
+ * (manual / align / align-llm / loop) y un espejo al JSON que sirve el
+ * frontend para que el clasificador vea los perfiles ya alineados.
+ *
+ * Orden de lectura: STORE > PROFILES_JSON. Si el store no existe todavia se
+ * usa el JSON original y no se toca nada.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+const GESTOR_STORE = process.env.GESTOR_STORE || '/opt/ape-jit/gestor-profiles.json';
+const GESTOR_BACKUP_DIR = process.env.GESTOR_BACKUP_DIR || '/opt/ape-jit/backups/gestor';
+const GESTOR_JOURNAL = process.env.GESTOR_JOURNAL || '/opt/ape-jit/gestor-journal.jsonl';
+const GESTOR_PENDING_DIR = process.env.GESTOR_PENDING_DIR || '/opt/ape-jit/llm-pending';
+const GESTOR_KEEP_BACKUPS = Number(process.env.GESTOR_KEEP_BACKUPS || 60);
+const GESTOR_MIRROR = process.env.GESTOR_MIRROR !== '0';
+
+function _ensureDir(d) { try { fs.mkdirSync(d, { recursive: true }); } catch (_) {} }
+
+function _stamp() {
+  return new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, 'Z');
+}
+
+function _countFieldsOf(o) {
+  let n = 0;
+  (function walk(x) {
+    if (x === null || x === undefined) return;
+    if (Array.isArray(x)) { n += x.length; return; }
+    if (typeof x === 'object') { for (const k of Object.keys(x)) { n++; walk(x[k]); } return; }
+    n++;
+  })(o);
+  return n;
+}
+
+/* Journal append-only: una linea JSON por evento. Nunca se reescribe. */
+function appendGestorJournal(entry) {
+  try {
+    _ensureDir(path.dirname(GESTOR_JOURNAL));
+    const line = JSON.stringify(Object.assign({ at: new Date().toISOString() }, entry)) + '\n';
+    fs.appendFileSync(GESTOR_JOURNAL, line, { encoding: 'utf8' });
+    return true;
+  } catch (_) { return false; }
+}
+
+function readGestorJournal(limit) {
+  try {
+    const raw = fs.readFileSync(GESTOR_JOURNAL, 'utf8').trim().split('\n').filter(Boolean);
+    const last = raw.slice(-(limit || 40))
+      .map((l) => { try { return JSON.parse(l); } catch (_) { return null; } })
+      .filter(Boolean);
+    return { events: last, total: raw.length };
+  } catch (_) { return { events: [], total: 0 }; }
+}
+
+/* Estado de persistencia: se puede demostrar, no hay que creerlo. */
+function gestorPersistState() {
+  const st = { store: GESTOR_STORE, mirror: GESTOR_MIRROR, source: null,
+               savedAt: null, profiles: 0, fields: 0, bytes: 0, sha256: null,
+               backups: 0, journalEvents: 0, lastSave: null };
+  try {
+    const buf = fs.readFileSync(GESTOR_STORE);
+    const j = JSON.parse(buf.toString('utf8'));
+    st.source = 'store';
+    st.savedAt = j._saved_at || null;
+    st.savedBy = j._saved_by || null;
+    st.profiles = Object.keys(j.profiles || {}).length;
+    st.fields = _countFieldsOf(j.profiles || {});
+    st.bytes = buf.length;
+    st.sha256 = crypto.createHash('sha256').update(buf).digest('hex');
+  } catch (_) {
+    try {
+      const buf = fs.readFileSync(PROFILES_JSON);
+      const j = JSON.parse(buf.toString('utf8'));
+      st.source = 'json-original';
+      st.profiles = Object.keys(j.profiles || {}).length;
+      st.fields = _countFieldsOf(j.profiles || {});
+      st.bytes = buf.length;
+    } catch (_) { st.source = 'ninguno'; }
+  }
+  try { st.backups = fs.readdirSync(GESTOR_BACKUP_DIR).filter((x) => x.endsWith('.json')).length; } catch (_) {}
+  const jr = readGestorJournal(0);
+  st.journalEvents = jr.total;
+  const recent = readGestorJournal(1);
+  st.lastSave = recent.events[0] || null;
+  return st;
+}
+
+/* GUARDADO. Atomico, con backup previo y journal. Devuelve lo que hizo. */
+function saveGestorProfiles(profiles, meta) {
+  const m = meta || {};
+  if (!profiles || typeof profiles !== 'object' || !Object.keys(profiles).length) {
+    return { ok: false, error: 'perfiles vacios: no se guarda para no destruir el Gestor' };
+  }
+  const out = {
+    _schema: 'ape.gestor.profiles/1',
+    _saved_at: new Date().toISOString(),
+    _saved_by: m.by || 'desconocido',
+    _note: m.note || null,
+    _stats: { profiles: Object.keys(profiles).length, fields: _countFieldsOf(profiles) },
+    profiles: profiles
+  };
+  const json = JSON.stringify(out, null, 2);
+
+  try { JSON.parse(json); } catch (e) {
+    return { ok: false, error: 'serializacion invalida: ' + e.message };
+  }
+
+  _ensureDir(path.dirname(GESTOR_STORE));
+  let backupPath = null;
+
+  try {
+    if (fs.existsSync(GESTOR_STORE)) {
+      _ensureDir(GESTOR_BACKUP_DIR);
+      backupPath = path.join(GESTOR_BACKUP_DIR, 'gestor-' + _stamp() + '.json');
+      fs.copyFileSync(GESTOR_STORE, backupPath);
+      try {
+        const all = fs.readdirSync(GESTOR_BACKUP_DIR).filter((x) => x.endsWith('.json')).sort();
+        while (all.length > GESTOR_KEEP_BACKUPS) {
+          const viejo = all.shift();
+          try { fs.unlinkSync(path.join(GESTOR_BACKUP_DIR, viejo)); } catch (_) {}
+        }
+      } catch (_) {}
+    } else {
+      try {
+        _ensureDir(GESTOR_BACKUP_DIR);
+        backupPath = path.join(GESTOR_BACKUP_DIR, 'json-original-' + _stamp() + '.json');
+        fs.copyFileSync(PROFILES_JSON, backupPath);
+      } catch (_) {}
+    }
+  } catch (_) {}
+
+  const tmp = GESTOR_STORE + '.tmp';
+  try {
+    fs.writeFileSync(tmp, json, { encoding: 'utf8', mode: 0o644 });
+    fs.renameSync(tmp, GESTOR_STORE);
+  } catch (e) {
+    try { fs.unlinkSync(tmp); } catch (_) {}
+    return { ok: false, error: 'no se pudo escribir el store: ' + e.message };
+  }
+
+  let verify = { ok: false };
+  try {
+    const back = JSON.parse(fs.readFileSync(GESTOR_STORE, 'utf8'));
+    const n = Object.keys(back.profiles || {}).length;
+    verify = { ok: n === Object.keys(profiles).length && n > 0, profiles: n,
+               bytes: fs.statSync(GESTOR_STORE).size };
+  } catch (e) { verify = { ok: false, error: e.message }; }
+
+  let mirrored = null;
+  if (GESTOR_MIRROR && verify.ok) {
+    try {
+      const tmp2 = PROFILES_JSON + '.tmp';
+      const plain = JSON.stringify({ _saved_at: out._saved_at, profiles: profiles }, null, 2);
+      fs.writeFileSync(tmp2, plain, { encoding: 'utf8', mode: 0o644 });
+      fs.renameSync(tmp2, PROFILES_JSON);
+      mirrored = PROFILES_JSON;
+    } catch (e) { mirrored = 'error: ' + e.message; }
+  }
+
+  const ev = {
+    event: 'save', by: m.by || 'desconocido', note: m.note || null,
+    profiles: Object.keys(profiles).length, fields: out._stats.fields,
+    backup: backupPath ? path.basename(backupPath) : null,
+    mirrored: !!mirrored && !String(mirrored).startsWith('error'),
+    verify: verify.ok, diffSummary: m.diffSummary || null,
+    llm: m.llm || null
+  };
+  appendGestorJournal(ev);
+
+  return { ok: verify.ok, savedAt: out._saved_at, store: GESTOR_STORE,
+           bytes: verify.bytes, profiles: verify.profiles, backup: backupPath,
+           mirrored: mirrored, journal: ev };
+}
+
+function listGestorBackups() {
+  try {
+    return fs.readdirSync(GESTOR_BACKUP_DIR)
+      .filter((x) => x.endsWith('.json')).sort().reverse()
+      .map((name) => {
+        const p = path.join(GESTOR_BACKUP_DIR, name);
+        let st = null;
+        try { st = fs.statSync(p); } catch (_) {}
+        return { name: name, bytes: st ? st.size : null,
+                 at: st ? st.mtime.toISOString() : null };
+      });
+  } catch (_) { return []; }
+}
+
+function restoreGestorBackup(name) {
+  const nm = String(name || '');
+  if (!nm || nm.indexOf('/') >= 0 || nm.indexOf('..') >= 0 || !nm.endsWith('.json')) {
+    return { ok: false, error: 'nombre invalido' };
+  }
+  const src = path.join(GESTOR_BACKUP_DIR, nm);
+  let j;
+  try { j = JSON.parse(fs.readFileSync(src, 'utf8')); } catch (e) {
+    return { ok: false, error: 'backup ilegible: ' + e.message };
+  }
+  const profiles = j.profiles || j;
+  const r = saveGestorProfiles(profiles, { by: 'restore', note: 'restaurado de ' + nm,
+                                           diffSummary: { restoredFrom: nm } });
+  appendGestorJournal({ event: 'restore', from: nm, ok: r.ok });
+  return Object.assign({ restoredFrom: nm }, r);
+}
+
+/* Guarda una propuesta del LLM SIN aplicarla, para que no se pierda si el
+ * operador cierra el navegador o recarga antes de confirmar. */
+function saveLLMPending(pid, proposal, meta) {
+  try {
+    _ensureDir(GESTOR_PENDING_DIR);
+    const rec = { profile: pid, at: new Date().toISOString(),
+                  meta: meta || null, proposal: proposal };
+    const p = path.join(GESTOR_PENDING_DIR, String(pid).replace(/[^A-Za-z0-9._-]/g, '_') + '.json');
+    fs.writeFileSync(p, JSON.stringify(rec, null, 2), { encoding: 'utf8', mode: 0o644 });
+    appendGestorJournal({ event: 'llm-pending', profile: pid, bytes: fs.statSync(p).size,
+                          source: (meta && meta.source) || 'llm' });
+    return { ok: true, path: p, bytes: fs.statSync(p).size };
+  } catch (e) { return { ok: false, error: e.message }; }
+}
+
+function readLLMPending(pid) {
+  try {
+    const p = path.join(GESTOR_PENDING_DIR, String(pid).replace(/[^A-Za-z0-9._-]/g, '_') + '.json');
+    return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch (_) { return null; }
+}
+
+function listLLMPending() {
+  try {
+    return fs.readdirSync(GESTOR_PENDING_DIR).filter((x) => x.endsWith('.json')).map((x) => {
+      const p = path.join(GESTOR_PENDING_DIR, x);
+      let st = null;
+      try { st = fs.statSync(p); } catch (_) {}
+      return { file: x, profile: x.replace(/\.json$/, ''), bytes: st ? st.size : null,
+               at: st ? st.mtime.toISOString() : null };
+    });
+  } catch (_) { return []; }
+}
+
 function loadGestorProfiles() {
+  // 1. STORE: lo ultimo guardado (operador o LLM). Es la verdad vigente.
+  try {
+    const st = JSON.parse(fs.readFileSync(GESTOR_STORE, 'utf8'));
+    if (st && st.profiles && Object.keys(st.profiles).length) return st.profiles;
+  } catch (_) { /* aun no hay store: se usa el original */ }
+  // 2. JSON original del repo
   try {
     const raw = JSON.parse(fs.readFileSync(PROFILES_JSON, 'utf8'));
     return raw.profiles || {};
@@ -5540,6 +5797,22 @@ function loadFromGestorProfile(gp) {
         out.totals.failed += r.failed.length;
         if (!r.invariants.ok) out.totals.violations = (out.totals.violations || 0) + 1;
       }
+      /* PERSISTIR: sin esto la alineacion vivia solo en memoria del navegador
+       * y al recargar se perdia (requisito explicito del operador). */
+      const _curAll = loadGestorProfiles() || {};
+      const _merged = Object.assign({}, _curAll);
+      const _changed = Object.keys(out.profiles).filter((pid) => out.profiles[pid].invariants.ok);
+      if (_changed.length) {
+        _changed.forEach((pid) => { _merged[pid] = out.profiles[pid].profile; });
+        out.persisted = saveGestorProfiles(_merged, {
+          by: 'align-all',
+          note: 'alineacion masiva de ' + _changed.length + ' perfiles',
+          diffSummary: { profiles: _changed, applied: out.totals.applied,
+                         failed: out.totals.failed, violations: out.totals.violations || 0 }
+        });
+      } else {
+        out.persisted = { ok: false, error: 'ningun perfil paso los invariantes: no se guarda' };
+      }
       setBaseHeaders(res); setNoCacheHeaders(res);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify(out));
@@ -5689,6 +5962,24 @@ function loadFromGestorProfile(gp) {
         untouched: out.untouched.length
       };
       out.law = 'cada perfil es independiente: los de `untouched` no se leyeron ni modificaron';
+      /* PERSISTIR los perfiles que convergieron. El loop ajusta valores; si no
+       * se guardan aqui, al recargar el panel vuelve al estado anterior y se
+       * pierde lo que el LLM trabajo. */
+      const _curLoop = loadGestorProfiles() || {};
+      const _mergedLoop = Object.assign({}, _curLoop);
+      const _convLoop = Object.keys(out.profiles).filter((pid) =>
+        out.profiles[pid] && out.profiles[pid].converged && out.profiles[pid].profile);
+      if (_convLoop.length) {
+        _convLoop.forEach((pid) => { _mergedLoop[pid] = out.profiles[pid].profile; });
+        out.persisted = saveGestorProfiles(_mergedLoop, {
+          by: 'align-loop',
+          note: 'loop de perfeccion: ' + _convLoop.length + ' perfiles convergidos',
+          diffSummary: { profiles: _convLoop, converged: converged,
+                         not_converged: notConv, iterations: totalIter }
+        });
+      } else {
+        out.persisted = { ok: false, error: 'ningun perfil convergio: no se guarda' };
+      }
       setBaseHeaders(res); setNoCacheHeaders(res);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify(out));
@@ -5756,6 +6047,17 @@ function loadFromGestorProfile(gp) {
         razon: String((llm.proposal && llm.proposal.razon) || '').slice(0, 400),
         riesgo: String((llm.proposal && llm.proposal.riesgo) || '').slice(0, 400)
       };
+      /* PERSISTIR la propuesta del LLM ANTES de aplicarla. Si el operador
+       * recarga o cierra el navegador, la propuesta y su razonamiento siguen en
+       * disco (/opt/ape-jit/llm-pending/<pid>.json) y en el journal. Ese era el
+       * hueco: el LLM respondia y todo se perdia si no se confirmaba. */
+      base.persisted = {
+        pending: saveLLMPending(pid, base, {
+          source: 'llm+validacion', model: (llm && llm.model) || null, ms: ms,
+          proposed: base.proposed, applied: v.applied.length,
+          rejected: (v.rejected && v.rejected.length) || 0
+        })
+      };
       setBaseHeaders(res); setNoCacheHeaders(res);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify(base));
@@ -5791,6 +6093,20 @@ function loadFromGestorProfile(gp) {
       r.invariants.ok = r.invariants.noFieldLost.ok &&
                         r.invariants.cascadesIntact.ok &&
                         r.invariants.noBlanks.ok;
+      /* PERSISTIR el perfil alineado, solo si pasa los invariantes. */
+      const _pidA = pl.gestorId || pl.profile || (pl.gestorProfile && pl.gestorProfile.id) || null;
+      if (_pidA && r.invariants.ok) {
+        const _curOne = loadGestorProfiles() || {};
+        _curOne[_pidA] = r.profile;
+        r.profileId = _pidA;
+        r.persisted = saveGestorProfiles(_curOne, {
+          by: 'align',
+          note: 'alineacion de ' + _pidA,
+          diffSummary: { profile: _pidA, applied: r.applied, failed: r.failed }
+        });
+      } else {
+        r.persisted = { ok: false, error: _pidA ? 'invariantes fallaron: no se guarda' : 'falta el id del perfil' };
+      }
       setBaseHeaders(res); setNoCacheHeaders(res);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify(r));
@@ -5841,6 +6157,99 @@ function loadFromGestorProfile(gp) {
         sections: Object.keys(all[k]).filter((x) => typeof all[k][x] === 'object')
       }))
     }));
+  }
+
+  /* ── PERSISTENCIA: estado, backups, journal, pendientes del LLM ─────────── */
+
+  if (u.pathname === '/image/gestor/state') {
+    setBaseHeaders(res); setNoCacheHeaders(res);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ ok: true, state: gestorPersistState() }));
+  }
+
+  if (u.pathname === '/image/gestor/backups') {
+    setBaseHeaders(res); setNoCacheHeaders(res);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    const b = listGestorBackups();
+    return res.end(JSON.stringify({ ok: true, count: b.length, dir: GESTOR_BACKUP_DIR, backups: b }));
+  }
+
+  if (u.pathname === '/image/gestor/restore' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (c) => { body += c; if (body.length > 65536) req.destroy(); });
+    req.on('end', () => {
+      let pl;
+      try { pl = JSON.parse(body || '{}'); } catch (_) {
+        setBaseHeaders(res); setNoCacheHeaders(res);
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: false, error: 'JSON invalido' }));
+      }
+      const r = restoreGestorBackup(pl.name);
+      setBaseHeaders(res); setNoCacheHeaders(res);
+      res.writeHead(r.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(r));
+    });
+    return;
+  }
+
+  if (u.pathname === '/image/gestor/journal') {
+    const lim = Math.max(1, Math.min(500, Number(u.searchParams.get('limit')) || 40));
+    setBaseHeaders(res); setNoCacheHeaders(res);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    const j = readGestorJournal(lim);
+    return res.end(JSON.stringify({ ok: true, total: j.total, events: j.events }));
+  }
+
+  if (u.pathname === '/image/gestor/pending') {
+    setBaseHeaders(res); setNoCacheHeaders(res);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    const pend = listLLMPending();
+    return res.end(JSON.stringify({ ok: true, count: pend.length, dir: GESTOR_PENDING_DIR, pending: pend }));
+  }
+
+  if (u.pathname.match(/^\/image\/gestor\/pending\/[^/]+$/)) {
+    const pidp = decodeURIComponent(u.pathname.split('/')[4] || '');
+    const rec = readLLMPending(pidp);
+    setBaseHeaders(res); setNoCacheHeaders(res);
+    if (!rec) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ ok: false, error: 'sin propuesta pendiente para ' + pidp }));
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ ok: true, pending: rec }));
+  }
+
+  /* Guardado explicito del Gestor: lo que el panel tenga en memoria se escribe
+   * en disco. Es la ruta que garantiza que nada se pierda. */
+  if (u.pathname === '/image/gestor/save' && req.method === 'POST') {
+    let body = '';
+    let tooBig = false;
+    req.on('data', (c) => { body += c; if (body.length > 16 * 1024 * 1024) { tooBig = true; req.destroy(); } });
+    req.on('end', () => {
+      if (tooBig) { res.writeHead(413, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'body grande' })); }
+      let pl;
+      try { pl = JSON.parse(body || '{}'); } catch (_) {
+        setBaseHeaders(res); setNoCacheHeaders(res);
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: false, error: 'JSON invalido' }));
+      }
+      /* Si no vienen perfiles, se consolida el estado VIGENTE (store u
+       * original). Asi el boton del panel sirve de checkpoint sin que el
+       * navegador tenga que reenviar 200 KB de JSON. */
+      const profsSave = (pl.profiles && typeof pl.profiles === 'object' && Object.keys(pl.profiles).length)
+        ? pl.profiles : loadGestorProfiles();
+      const r = saveGestorProfiles(profsSave, {
+        by: pl.by || 'manual',
+        note: pl.note || 'guardado explicito desde el panel',
+        diffSummary: pl.diffSummary || null,
+        llm: pl.llm || null
+      });
+      appendGestorJournal({ event: 'manual-save', ok: r.ok, by: pl.by || 'manual' });
+      setBaseHeaders(res); setNoCacheHeaders(res);
+      res.writeHead(r.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(r));
+    });
+    return;
   }
 
   if (u.pathname === '/image/llm-status') {

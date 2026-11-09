@@ -19,7 +19,7 @@
     base: (window.APE_JIT_BASE || 'https://iptv-ape.duckdns.org') + '/jit',
     config: null, effectiveFilter: '', capacity: null, live: null,
     profiles: null, matrix: null, plan: null, catalog: null,
-    declared: null, gov: null, cascade: null, fallback: null, rules: null, autoRow: null, optimized: null, llm: null, align: null, alignApplied: null, alignAll: null, alignAllApplied: null,
+    declared: null, gov: null, cascade: null, fallback: null, rules: null, autoRow: null, optimized: null, llm: null, align: null, alignApplied: null, alignAll: null, alignAllApplied: null, persist: null,
     busy: false, lastError: null, log: [],
     build: { profile: 'P4.5', w: 1280, h: 720, target: 'UHD_4K', codec: 'hvc1',
              player: 'onn-4k', recipe: 'balanced', fps: 25,
@@ -1603,6 +1603,108 @@
 
   /* ── RENDER ───────────────────────────────────────────────────────────── */
 
+  /* ── PERSISTENCIA DEL GESTOR ──────────────────────────────────────────────
+   * El operador exige que TODO lo que se modifique del Gestor quede guardado,
+   * para que la informacion del LLM no se pierda. Esta seccion DEMUESTRA el
+   * estado real (fuente, sha256, backups, journal) y permite consolidar o
+   * restaurar. No afirma nada: pinta lo que el motor devuelve. */
+  function persistSection(root) {
+    var P = S.persist || {};
+    var st = P.state || {};
+    var etiqueta = st.source === 'store' ? 'GUARDADO'
+      : (st.source === 'json-original' ? 'sin cambios guardados' : 'sin datos');
+    root.appendChild(sec('💾 Persistencia del Gestor — ' + etiqueta, '#22d3ee'));
+
+    root.appendChild(el('div', { class: 'grid' }, [
+      fld('Fuente vigente', el('div', { style: 'font-size:.8rem' }, [String(st.source || '—')])),
+      fld('Último guardado', el('div', { style: 'font-size:.8rem' }, [String(st.savedAt || '—')])),
+      fld('Guardado por', el('div', { style: 'font-size:.8rem' }, [String(st.savedBy || '—')])),
+      fld('sha256', el('div', { style: 'font-size:.72rem;word-break:break-all' },
+        [st.sha256 ? String(st.sha256).slice(0, 32) + '…' : '—'])),
+      fld('Backups', el('div', { style: 'font-size:.8rem' }, [String(st.backups || 0)])),
+      fld('Eventos en journal', el('div', { style: 'font-size:.8rem' }, [String(st.journalEvents || 0)]))
+    ]));
+
+    root.appendChild(el('div', { class: 'stat', style: 'margin-top:8px' }, [
+      'Perfiles ' + (st.profiles || 0) + ' · ' +
+      Number(st.fields || 0).toLocaleString('es') + ' campos · ' +
+      (st.bytes ? Math.round(st.bytes / 1024) + ' KB' : '—') +
+      '. Cada alineación, loop y propuesta del LLM se escribe en disco al confirmarse.'
+    ]));
+
+    var bSave = el('button', { class: 'pri', id: 'aip-persist-save' }, ['💾 Consolidar ahora']);
+    bSave.title = 'Escribe el estado vigente del Gestor en disco, con backup e historial.';
+    bSave.addEventListener('click', function () {
+      bSave.disabled = true;
+      post('/image/gestor/save', { by: 'panel', note: 'consolidacion manual desde el panel' })
+        .then(function (r) {
+          logLine(r && r.ok
+            ? ('Gestor consolidado: ' + r.profiles + ' perfiles, ' + r.bytes + ' B, backup ' +
+               (String(r.backup || '').split('/').pop() || 'nuevo'))
+            : ('no se pudo consolidar: ' + ((r && r.error) || '?')));
+          return loadPersist();
+        })
+        .then(function () { render(document.getElementById('ape-image-panel')); })
+        .catch(function (e) { logLine('persistencia: ' + e.message); });
+    });
+
+    var bRestore = el('button', { class: 'go', id: 'aip-persist-restore' }, ['↩ Restaurar backup']);
+    bRestore.addEventListener('click', function () {
+      var lista = (P.backups || []);
+      if (!lista.length) { logLine('no hay backups todavía'); return; }
+      var nom = window.prompt('Backup a restaurar (nombre exacto):\n\n' +
+        lista.slice(0, 8).map(function (b) { return b.name + '   ' + b.bytes + ' B'; }).join('\n'),
+        lista[0] && lista[0].name);
+      if (!nom) return;
+      post('/image/gestor/restore', { name: nom })
+        .then(function (r) {
+          logLine(r && r.ok ? ('restaurado de ' + nom) : ('fallo: ' + ((r && r.error) || '?')));
+          return loadPersist();
+        })
+        .then(function () { render(document.getElementById('ape-image-panel')); })
+        .catch(function (e) { logLine('restore: ' + e.message); });
+    });
+
+    root.appendChild(el('div', { class: 'row', style: 'margin-top:10px' }, [bSave, bRestore]));
+
+    var pend = P.pending || [];
+    if (pend.length) {
+      root.appendChild(el('div', { class: 'decl', style: 'margin-top:10px' },
+        ['🧠 ' + pend.length + ' propuesta(s) del LLM guardadas sin aplicar en ' +
+         String(P.pendingDir || '') + '. No se pierden al recargar ni al reiniciar.']));
+    }
+
+    var evs = P.journal || [];
+    if (evs.length) {
+      root.appendChild(el('div', { class: 'out' }, [
+        evs.slice(0, 10).map(function (e) {
+          return (String(e.at || '')).slice(11, 19) + '  ' + String(e.event) + '  ' +
+                 String(e.by || e.profile || '') +
+                 (e.profiles ? '  (' + e.profiles + ' perfiles)' : '') +
+                 (e.note ? '  — ' + String(e.note).slice(0, 46) : '');
+        }).join('\n')
+      ]));
+    }
+  }
+
+  function loadPersist() {
+    return Promise.all([
+      api('/image/gestor/state').catch(function () { return null; }),
+      api('/image/gestor/backups').catch(function () { return null; }),
+      api('/image/gestor/journal?limit=10').catch(function () { return null; }),
+      api('/image/gestor/pending').catch(function () { return null; })
+    ]).then(function (r) {
+      S.persist = {
+        state: (r[0] && r[0].state) || {},
+        backups: (r[1] && r[1].backups) || [],
+        journal: (r[2] && r[2].events) || [],
+        pending: (r[3] && r[3].pending) || [],
+        pendingDir: (r[3] && r[3].dir) || ''
+      };
+      return S.persist;
+    });
+  }
+
   function render(root) {
     if (!root) return;
     /* Las secciones reciben un NODO contenedor, no un array: antes se les pasaba
@@ -1623,6 +1725,7 @@
 
     buildSection(nodes);
     llmSection(nodes);
+    persistSection(nodes);
     rulesSection(nodes);
     cascadeSection(nodes);
     matrixSection(nodes);
@@ -1655,7 +1758,13 @@
       api('/image/cascade').catch(function () { return null; }),
       api('/image/rules').catch(function () { return null; }),
       api('/image/llm-status').catch(function () { return null; }),
-      api('/image/gestor/profiles').catch(function () { return null; })
+      api('/image/gestor/profiles').catch(function () { return null; }),
+      /* persistencia en el MISMO Promise.all: si se pide aparte, render() corre
+       * antes de que resuelva y la seccion sale en "sin datos". */
+      api('/image/gestor/state').catch(function () { return null; }),
+      api('/image/gestor/backups').catch(function () { return null; }),
+      api('/image/gestor/journal?limit=10').catch(function () { return null; }),
+      api('/image/gestor/pending').catch(function () { return null; })
     ]).then(function (r) {
       S.config = r[0] ? r[0].config : null;
       S.effectiveFilter = (r[0] && r[0].effective_filter) || '';
@@ -1668,6 +1777,13 @@
       S.rules = r[7];
       S.llm = r[8];
       S.gestor = r[9];
+      S.persist = {
+        state: (r[10] && r[10].state) || {},
+        backups: (r[11] && r[11].backups) || [],
+        journal: (r[12] && r[12].events) || [],
+        pending: (r[13] && r[13].pending) || [],
+        pendingDir: (r[13] && r[13].dir) || ''
+      };
       if (S.config && S.config.profile) S.build.profile = S.config.profile;
       render(root);
       if (S.build.profile) loadProfile(S.build.profile);
