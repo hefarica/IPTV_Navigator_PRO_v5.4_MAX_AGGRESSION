@@ -192,3 +192,37 @@ estado) — **no reproduce canales**, así que arrancarlo **no dispara** el bucl
 `deploy.sh` **no arranca servicios parados** (respeta el estado a propósito). Por
 tanto **el deploy tampoco levantará el JIT**. La decisión de encenderlo es
 explícita, de una persona, no del pipeline ni del agente.
+
+---
+
+## 5. Comprobación de regresión: ¿se perdió algo?
+
+Recorrido el historial completo de \ps-image-panel.js\ version por version,
+extrayendo los nombres de función de cada commit y comparándolos con los actuales.
+
+**Secciones (\*Section\): 0 perdidas.** Las 12 actuales son:
+\uildSection capacitySection cascadeSection governSection liveSection llmSection
+matrixSection packSection persistSection prismaSection rulesSection serviceSection\
+
+**9 nombres aparecen en versiones antiguas y no hoy. Ninguno es una feature:**
+
+| Nombre | Qué era | Dónde está hoy |
+|---|---|---|
+| \select\ | helper de dropdown | \sel\ (L82) |
+| \ield\ | helper de campo | \ld\ (L76) |
+| \pct\ | formateo de porcentaje | inline |
+| \collect\ | función ANIDADA | dentro de su sección |
+| \push\ | función ANIDADA | dentro de su sección |
+| \eload\ | \S.plan = null; load();\ | \load()\ (L1968) |
+| \erdict\ | veredicto de viabilidad | **ampliado a 4 sitios** (L358, L981, L1242, L1529) |
+| \unPlan\ | ejecutar plan de la matriz | \saveMatrixRow\ (L1449) |
+| \iability\ | ANIDADA | dentro de su sección |
+
+**La viabilidad no se perdió: se multiplicó.** Hoy se muestra en el constructor
+(L358/L360), en el objetivo del optimizador (L981), en la tabla de reglas (L1242)
+y en la capacidad medida (L1529), con umbrales explícitos: **≥1.2x VIABLE ·
+≥1.0x AL LÍMITE · <1.0x NO VIABLE** y chips \HOST VIABLE\/\HOST NO VIABLE\ con su
+ratio.
+
+**Conclusión: no hay pérdida de funcionalidad en la pestaña. Lo único que la
+deja vacía es el motor JIT parado (§0).**
