@@ -3231,7 +3231,7 @@
 
         if (options.bulletproof_loaded && options.bulletproof_profiles) {
             const coreHeader = [
-                `#EXTM3U x-tvg-url="" x-tvg-url-epg="" x-tvg-logo="" x-tvg-shift=0 catchup="flussonic" catchup-days="7" catchup-source="{MediaUrl}?utc={utc}&lutc={lutc}" url-tvg="" refresh="1800"`,
+                `#EXTM3U x-tvg-url="" x-tvg-url-epg="" x-tvg-logo="" x-tvg-shift=0 url-tvg="" refresh="1800"`,
                 `#EXT-X-VERSION:9`,
                 `#EXT-X-INDEPENDENT-SEGMENTS`,
                 `#EXT-X-APE-CHANNELS:${totalChannels}`,
@@ -3601,7 +3601,7 @@
         // Reduce compatibilidad ~35% a cambio de forzar DV/Atmos/LL-HLS/8K en header.
         if (options && options.maxQualityMode) {
             const _mqTs = timestamp;
-            return `#EXTM3U x-tvg-url="" x-tvg-url-epg="" x-tvg-logo="" x-tvg-shift=0 catchup="flussonic" catchup-days="7" catchup-source="{MediaUrl}?utc={utc}&lutc={lutc}" url-tvg="" refresh="1800"
+            return `#EXTM3U x-tvg-url="" x-tvg-url-epg="" x-tvg-logo="" x-tvg-shift=0 url-tvg="" refresh="1800"
 #EXT-X-VERSION:9
 #EXT-X-INDEPENDENT-SEGMENTS
 ${__apeContinuityTags().join('\n')}
@@ -3657,7 +3657,7 @@ ${generateLabMetadataTag() || ''}
 ${_disneyBlockFb}`;
         }
 
-        return `#EXTM3U x-tvg-url="" x-tvg-url-epg="" x-tvg-logo="" x-tvg-shift=0 catchup="flussonic" catchup-days="7" catchup-source="{MediaUrl}?utc={utc}&lutc={lutc}" url-tvg="" refresh="1800"
+        return `#EXTM3U x-tvg-url="" x-tvg-url-epg="" x-tvg-logo="" x-tvg-shift=0 url-tvg="" refresh="1800"
 #EXT-X-VERSION:9
 #EXT-X-INDEPENDENT-SEGMENTS
 #EXT-X-APE-QMAX-VERSION:2.0-ADAPTIVE
