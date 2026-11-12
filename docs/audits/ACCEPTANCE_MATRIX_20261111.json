@@ -35,7 +35,7 @@
       "NOT_COMPUTED": 7
     },
     "verified_con_artefacto_reproducible": 0,
-    "lectura": "2 VERIFIED (P09, P16). 6 NOT_COMPUTED, 4 PARCIAL, 7 MEDIDO. CORRECCION 2026-11-12: la lectura anterior decia \"0 VERIFIED\" y era cierta cuando se escribio. P09 y P16 pasan a VERIFIED con medicion de ese dia: gate 25/25 sobre las 5 listas vivas y estado del VPS medido. P01 NO sube: su criterio pide que JIT reciba la revision y el hash, y solo la mitad esta verificada (el hash del fichero coincide con el pin; la politica de Canary NO se hereda en runtime). Siguen sin medicion de extremo a extremo las filas que dependen de dispositivo: 10, 11, 12, 6, 8, 4, 2.",
+    "lectura": "2 VERIFIED (P09, P16). 6 NOT_COMPUTED, 3 PARCIAL, 8 MEDIDO. ACTUALIZADO 2026-11-12: P14 conserva PARTIALLY_FUNCTIONAL con sus dos clausulas separadas — la repeticion sin cambios queda VERIFICADA por medicion, \"ninguna lectura muta\" sigue PARCIAL.",
     "las_pruebas_medidas_lo_estan_porque_fallan": "Tiempo real (P03) y Seguridad (P17) estan MEDIDAS y su resultado es negativo; Registro (P13) pasa a MEDIDO tras corregir su criterio: se midio que el enrol autentica y que el registro vivo NO. Un fallo medido es un dato; un exito sin artefacto no lo es.",
     "cuentas": [
       {
@@ -464,26 +464,26 @@
       "prueba": "Idempotencia",
       "criterio": "Repetir la operacion no duplica ni corrompe estado, y ninguna lectura (GET) provoca mutaciones.",
       "estado": "PARTIALLY_FUNCTIONAL",
-      "medicion": "PARCIAL",
+      "medicion": "MEDIDO",
       "evidencia": [
         {
-          "ref": "scratch/canary_jit_20261111/unzipped/APE_CANARY_JIT_INTEGRACION_20261111/canary/canary-render.js:16",
-          "nota": "OUTPUT_MUST_NOT_EXIST (prevent overwrite): guarda anti-sobreescritura, idempotencia por rechazo"
+          "ref": "docs/audits/IDEMPOTENCY_20261112.md",
+          "nota": "segunda instalacion identica (43173128335): \"Sin cambios de ficheros (33/33 filas)\"; paridad 33/33; smoke 11/11; /jit/meta/1.json 817 B antes y despues; sha del motor identico"
         },
         {
-          "ref": "tools/lab/ape-jit/server.js:4749,9044-9049",
-          "nota": "chKey(id,sdr,sdr720) + conjunto 'booting' evitan arranques duplicados del mismo canal/variante"
-        },
-        {
-          "ref": "tools/lab/ape-jit/server.js:6316-6335",
-          "nota": "H-5 LEIDO Y NO EJECUTADO: un GET /go/<id>?p=<perfil> escribe IMAGE_CONFIG_FILE y para el job vivo -> efecto de estado en una lectura"
-        },
-        {
-          "ref": "contracts/canary_jit_contract_v1.json",
-          "nota": "fixtures [48] y [49] E_STATE_COLLAPSED: el triple estado requested/applied/output no se puede colapsar"
+          "ref": "docs/audits/DEPLOY_GREEN_20261112.md",
+          "nota": "primera instalacion (43170688357), contra la que se compara"
         }
       ],
-      "falta": "Prueba de doble peticion concurrente y de repeticion con ?p= para confirmar o refutar la mutacion en GET. Las guardas existen; su comportamiento bajo concurrencia no esta medido."
+      "falta": "Prueba de doble peticion concurrente y de repeticion con ?p= para confirmar o refutar la mutacion en GET. Las guardas existen; su comportamiento bajo concurrencia no esta medido.",
+      "dos_clausulas": {
+        "repeticion_sin_cambios": "VERIFICADA — seis huellas identicas antes/despues; sin ficheros, servicios ni procesos duplicados",
+        "ninguna_lectura_muta": "PARCIAL — probado que el GET que mataba el proceso ya no lo mata (era ECONNRESET, hoy 200 y proceso vivo); NO se han barrido el resto de rutas GET, asi que \"ninguna lectura\" no es universal"
+      },
+      "correccion": {
+        "anterior": "PARTIALLY_FUNCTIONAL/PARCIAL",
+        "motivo": "la idempotencia de la repeticion pasa de afirmacion a medicion; la segunda clausula sigue parcial"
+      }
     },
     {
       "id": "P15",
