@@ -1,0 +1,674 @@
+{
+  "schema": "ape.canary_jit.acceptance_matrix/1",
+  "fecha": "2026-11-11",
+  "autor": "gate-runner (t16)",
+  "workdir": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION",
+  "alcance": "Solo lectura. Sin red, sin VPS, sin push, sin deploy. Los dos unicos ficheros escritos son este JSON y docs/audits/14_CANARY_FINAL_REPORT.md.",
+  "nota_de_metodo": {
+    "origen_de_las_17_pruebas": "Los 17 identificadores y sus nombres provienen de la enumeracion de la seccion 14 que el encargo transcribe (Canary SSOT, Paridad visual, Tiempo real, Audio, HDR, GPU, Termica, Zapping, Listas, OTT, TiviMate, ExoPlayer, Registro, Idempotencia, Recuperacion, VPS, Seguridad). El texto literal del prompt no esta en mi contexto: el campo `criterio` es el criterio de aceptacion medible que se deriva de cada nombre y de la doctrina del repo, NO una cita textual.",
+    "regla_de_evidencia": "Cada fila cita al menos un artefacto concreto: fichero:linea, o comando con su salida/exit code. Ninguna fila queda sin artefacto.",
+    "regla_de_estado": "`estado` usa SOLO los 8 permitidos. `medicion` es un eje separado y explicito (MEDIDO / PARCIAL / NOT_COMPUTED) porque NOT_COMPUTED no es uno de los 8 estados: asi lo no medido queda nombrado sin inventar un estado fuera de enum.",
+    "prohibicion_vmaf": "No existe medicion perceptual (VMAF/SSIM) en ningun artefacto. Cualquier cifra VMAF de este documento seria estimada y queda prohibida: la paridad visual va como NOT_COMPUTED."
+  },
+  "estados_permitidos": [
+    "VERIFIED",
+    "IMPLEMENTED_NOT_DEPLOYED",
+    "DEPLOYED_NOT_DEVICE_TESTED",
+    "TESTED_IN_DEVICE",
+    "PARTIALLY_FUNCTIONAL",
+    "BLOCKED",
+    "FAILED",
+    "ROLLED_BACK"
+  ],
+  "resumen": {
+    "total_pruebas": 17,
+    "por_estado": {
+      "PARTIALLY_FUNCTIONAL": 4,
+      "BLOCKED": 4,
+      "FAILED": 2,
+      "IMPLEMENTED_NOT_DEPLOYED": 5,
+      "VERIFIED": 2
+    },
+    "por_medicion": {
+      "MEDIDO": 4,
+      "PARCIAL": 6,
+      "NOT_COMPUTED": 7
+    },
+    "verified_con_artefacto_reproducible": 0,
+    "lectura": "2 VERIFIED (P09, P16). 6 NOT_COMPUTED, 4 PARCIAL, 7 MEDIDO. CORRECCION 2026-11-12: la lectura anterior decia \"0 VERIFIED\" y era cierta cuando se escribio. P09 y P16 pasan a VERIFIED con medicion de ese dia: gate 25/25 sobre las 5 listas vivas y estado del VPS medido. P01 NO sube: su criterio pide que JIT reciba la revision y el hash, y solo la mitad esta verificada (el hash del fichero coincide con el pin; la politica de Canary NO se hereda en runtime). Siguen sin medicion de extremo a extremo las filas que dependen de dispositivo: 10, 11, 12, 6, 8, 4, 2.",
+    "las_pruebas_medidas_lo_estan_porque_fallan": "Tiempo real (P03) y Seguridad (P17) estan MEDIDAS y su resultado es negativo; Registro (P13) pasa a MEDIDO tras corregir su criterio: se midio que el enrol autentica y que el registro vivo NO. Un fallo medido es un dato; un exito sin artefacto no lo es.",
+    "cuentas": [
+      {
+        "estado": "PARTIALLY_FUNCTIONAL",
+        "n": 4
+      },
+      {
+        "estado": "BLOCKED",
+        "n": 4
+      },
+      {
+        "estado": "FAILED",
+        "n": 2
+      },
+      {
+        "estado": "IMPLEMENTED_NOT_DEPLOYED",
+        "n": 5
+      },
+      {
+        "estado": "VERIFIED",
+        "n": 2
+      }
+    ],
+    "filas": 17,
+    "cuadra": true,
+    "actualizado": "2026-11-12",
+    "nota": "P09 y P16 pasan a VERIFIED con medicion de hoy. P01 se queda en PARTIALLY_FUNCTIONAL: el hash se hereda, la politica no.",
+    "lectura_anterior": "0 VERIFIED. 7 NOT_COMPUTED, 6 PARCIAL, 4 MEDIDO. (vigente hasta 2026-11-11; superada por la de hoy, no borrada)"
+  },
+  "capas_200_206_302": {
+    "aviso": "Son TRES capas distintas y no se suman ni se mezclan. La medicion de produccion es de listas estaticas servidas por nginx (2026-11-02); la del motor JIT es de un servidor Node en loopback (2026-11-11); la del banco CI es de nginx en un runner de GitHub Actions.",
+    "capa_1_produccion_nginx": {
+      "objeto": "listas estaticas en https://iptv-ape.duckdns.org/lists/ (4 listas x 5 celdas = 20)",
+      "fecha": "2026-11-02",
+      "herramienta": "tools/ape-http-conformance/gate_matrix.js (10.492 B, sha256 7639eb706ab16a54d5dab03347fb87cb04be49a701ecd53fc3db56c9031105ff; exit 0 = toda celda cumple, 1 = huecos, segun su linea 24)",
+      "celdas_que_cumplen": "12/20",
+      "por_pata": {
+        "200": "8/8",
+        "206": "4/8",
+        "302": "0/4"
+      },
+      "fuente": [
+        "docs/ops/GATE_MATRIX_MEASURED.md:32 (12/20 celdas cumplen)",
+        "docs/ops/GATE_MATRIX_MEASURED.md:39 (200 = 8/8)",
+        "docs/ops/GATE_MATRIX_MEASURED.md:40 (206 = 4/8)",
+        "docs/ops/GATE_MATRIX_MEASURED.md:41 (302 = 0/4, las cuatro devuelven 301)"
+      ],
+      "huecos_nombrados": [
+        "…1793589060441 + identity -> 200 chunked (GATE_MATRIX_MEASURED.md:51)",
+        "…1793558303852_CDN + identity -> 200 chunked (GATE_MATRIX_MEASURED.md:52)",
+        "APE_PRUEBA_ORDER_OK + gzip -> 200 gzip dinamico (GATE_MATRIX_MEASURED.md:53)",
+        "APE_PRUEBA_PERFILES + gzip -> 200 gzip dinamico (GATE_MATRIX_MEASURED.md:54)",
+        "las 4 listas devuelven 301 con Location correcto al equivalente https (GATE_MATRIX_MEASURED.md:56)"
+      ],
+      "causa_206": {
+        "mecanismo": "compresion al vuelo => cuerpo sin longitud conocida => sin Content-Range. Es EXCLUSION MUTUA, no incapacidad: las 4 listas dan 206 al perfil correcto y 0/4 dan 206 a AMBOS perfiles.",
+        "fuente": [
+          "docs/ops/GATE_206_MUTUAL_EXCLUSION.md:13-18 (tabla por perfil de cliente)",
+          "docs/ops/GATE_206_MUTUAL_EXCLUSION.md:23-27 (cabeceras crudas: CE/TE/CL/CR/AR)",
+          "docs/ops/GATE_206_MUTUAL_EXCLUSION.md:38 (misma causa en las dos clases)",
+          "docs/ops/GATE_206_MUTUAL_EXCLUSION.md:47 (una sola directiva no arregla las cuatro)"
+        ],
+        "correccion_de_un_numero_previo": "El '206 0/4' que circulaba es impreciso y el propio autor lo corrige en GATE_206_MUTUAL_EXCLUSION.md:8-11. En celdas, la cifra valida es 4/8 (GATE_MATRIX_MEASURED.md:40)."
+      }
+    },
+    "capa_2_banco_ci": {
+      "objeto": "nginx real en runner Ubuntu; location copiada literalmente del baseline de produccion",
+      "workflow": ".github/workflows/ape-206-local-proof.yml (11.787 B, sha256 3d71f15d4d85fce5c07f730993a9119debf4ded93daba9b60777411c496433e8)",
+      "run": "41485054319",
+      "resultado": "el banco primero REPRODUCE el fallo de produccion y despues da 4/4 en 206 con la pata 200 intacta",
+      "fuente": [
+        "docs/ops/GATE_MATRIX_MEASURED.md:112-157",
+        "docs/ops/GATE_MATRIX_MEASURED.md:122-125 (reproduce los dos fallos del baseline)",
+        "docs/ops/GATE_MATRIX_MEASURED.md:130-141 (4/4 en 206 y 200 intacto; PREDICCION CONFIRMADA)"
+      ],
+      "cambios_y_peso": "gunzip off + gzip_static on = +2; gzip off en la location = +2; 301->302 = +4. Los tres son INDEPENDIENTES y NINGUNO esta autorizado (docs/ops/GATE_MATRIX_MEASURED.md:62-65, :72).",
+      "limite_del_banco": "el runner trae la version de nginx de Ubuntu, no necesariamente 1.24.0; no se afirma byte-identidad de version (docs/ops/GATE_MATRIX_MEASURED.md:154-156)"
+    },
+    "capa_3_motor_jit_loopback": {
+      "objeto": "servidor Node del motor JIT, 127.0.0.1, 2026-11-11 (NO son listas nginx)",
+      "cifras": {
+        "A_desplegable": "6/9",
+        "B_espejo_no_desplegable": "9/9"
+      },
+      "fuente": [
+        "docs/audits/JIT_HTTP_PROBES_20261111.md:205-219 (recuento honesto por familia y artefacto)"
+      ],
+      "identidad": "A = tools/lab/ape-jit/server.js (447.943 B, 9.212 lineas, sha256 28352c508285b1eedfc889e5df40855e6e2c71207d7c806288ac8457de36ff67, manifest.tsv:59). B = IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js (45.535 B, 959 lineas, sha256 8405f78412dc2a984f690b7270e891d050740d88358f10ca5818f905151fbae0, 0 filas en el manifiesto)."
+    },
+    "los_tres_302_son_distintos": {
+      "produccion": "301 real (upgrade permanente http->https). Documentado como respuesta correcta y recomendada en docs/ops/GATE_200_206_302.md:29-36; lo que queda a decision es si el monitor exige 302 exacto o acepta 3xx (:38-40). Un 301 queda cacheado por clientes y proxies (:34-36).",
+      "motor_jit": "/go/<id> emite 302 a /jit/live/... que en loopback da 404 y solo es servible detras de location ^~ /jit/ con proxy_pass de barra final (vps/nginx/snippets/ape-jit.conf:40-41). Medido 5/5 variantes en docs/audits/JIT_HTTP_PROBES_20261111.md:80-88.",
+      "banco_ci": "301->302 es el tercero de los tres cambios, vale +4 celdas y esta validado en CI, no aplicado (docs/ops/GATE_MATRIX_MEASURED.md:65, :112-157)."
+    }
+  },
+  "pruebas": [
+    {
+      "id": "P01",
+      "prueba": "Canary SSOT",
+      "criterio": "Existe una unica fuente de verdad de la receta (politica Canary) fijada por sha256 y el consumidor la obedece; declarar no es aplicar.",
+      "estado": "PARTIALLY_FUNCTIONAL",
+      "medicion": "MEDIDO",
+      "evidencia": [
+        {
+          "ref": "contracts/canary_jit_contract_v1.json",
+          "nota": "engine.deployable_engine_sha256 = 290b1103... y el sha de /opt/ape-jit/server.js medido en el VPS es el mismo: herencia de HASH verificada"
+        },
+        {
+          "ref": "docs/audits/DEPLOY_ENGINE_RECEIPT_20261112.md",
+          "nota": "corrida 43168903918: sha comprobado en origen y destino antes de reiniciar"
+        }
+      ],
+      "falta": "El pin SSOT esta IMPLEMENTADO y verificado. Lo que falta es (a) un recibo real de ejecucion y (b) la decision del operador sobre la direccion: mantener 'Canary autoridad' (contradicho por A:7913) o reencuadrar Canary como medidor. Las dos cosas se declaran sin elegir la comoda.",
+      "por_que_no_verified": "El criterio dice \"JIT recibe la revision y hash correctos\". La herencia de HASH esta verificada. La herencia de CONFIGURACION no: el motor no lee la politica de Canary en runtime (grep quality-policy en el motor = 0 coincidencias) y mantiene su propia receta. Un pin de fichero no es una herencia de politica.",
+      "correccion": {
+        "anterior": "IMPLEMENTED_NOT_DEPLOYED",
+        "motivo": "el motor paso a estar desplegado y su hash coincide; la configuracion sigue sin heredarse"
+      }
+    },
+    {
+      "id": "P02",
+      "prueba": "Paridad visual",
+      "criterio": "La cadena Canary ejecutada a cadencia real produce una imagen mediblemente equivalente a la de referencia (VMAF/SSIM medidos, no etiquetas).",
+      "estado": "BLOCKED",
+      "medicion": "NOT_COMPUTED",
+      "evidencia": [
+        {
+          "ref": "_vps_stage/canary/FASE01_REPORT.md:59",
+          "nota": "unico dato de ejecucion: 30 frames / 164,1 s = 0,1828 fps, a 5 fps y sin audio"
+        },
+        {
+          "ref": "scratch/canary_jit_20261111/unzipped/APE_CANARY_JIT_INTEGRACION_20261111/canary/canary_quality.js:45",
+          "nota": "canary_fidelity = 'FILTERGRAPH_IDENTICAL' es un LITERAL hardcodeado, no una medida (CANARY_TRUTH A2 NO_SOPORTADO)"
+        },
+        {
+          "ref": "contracts/canary_jit_contract_v1.json",
+          "nota": "gate de capacidad del contrato: fixture [20] E_CAPACITY_INSUFFICIENT (transcode 4K declarado aplicado a 0,1828 fps medidos contra 25 fps de fuente) y [21] E_CAPACITY_UNKNOWN"
+        },
+        {
+          "ref": "node tools/quality/test_canary_jit_contract.js",
+          "nota": "EXIT 0; 'PASS [20] ... -> REJECT/E_CAPACITY_INSUFFICIENT' y 'PASS [21] ... -> REJECT/E_CAPACITY_UNKNOWN'"
+        }
+      ],
+      "falta": "Corrida >=60 s a la cadencia de la fuente CON audio y un A/B perceptual real (VMAF/SSIM) sobre el mismo clip. NO hay VMAF medido en ningun artefacto: cualquier VMAF que se escriba aqui seria estimado y por eso NO se escribe."
+    },
+    {
+      "id": "P03",
+      "prueba": "Tiempo real",
+      "criterio": "La receta Canary a 4K sostiene >=1,0x tiempo real en el hardware objetivo.",
+      "estado": "FAILED",
+      "medicion": "MEDIDO",
+      "evidencia": [
+        {
+          "ref": "_vps_stage/canary/FASE01_REPORT.md:59",
+          "nota": "0,1828 fps medidos contra 25 fps de fuente"
+        },
+        {
+          "ref": "docs/manifestos/INCIDENTE_DEPLOY_MANUAL_2026-11-09.md:66-68",
+          "nota": "3,37 fps contra 25 fps de fuente; EXIT 183; auto-reintento cada 9 s; 'el operador se quedo sin TV'"
+        },
+        {
+          "ref": "tools/lab/ape-jit/server.js:40-44",
+          "nota": "3840x2160 con hqdn3d+unsharp = 80,95 s para 20 s = 0,25x tiempo real, con MENOS cadena que la de Canary"
+        },
+        {
+          "ref": "vps/bin/ape-pulse-canary-worker.sh:36-37",
+          "nota": "76 s CPU / 194 s de pared por 6 s de clip"
+        }
+      ],
+      "falta": "Nada para sostener el veredicto negativo: esta medido en tres artefactos independientes. Para revertirlo hace falta una medicion de capacidad 4K sostenida >=1,0x con la cadena COMPLETA (la prueba D5 del informe adversarial)."
+    },
+    {
+      "id": "P04",
+      "prueba": "Audio",
+      "criterio": "El audio de la fuente se preserva (passthrough o paridad declarada con recibo), sin reduccion no autorizada.",
+      "estado": "BLOCKED",
+      "medicion": "NOT_COMPUTED",
+      "evidencia": [
+        {
+          "ref": "scratch/canary_jit_20261111/unzipped/APE_CANARY_JIT_INTEGRACION_20261111/canary/canary-render.js:19",
+          "nota": "'-t','6','-r','5','-an' -> el experimento Canary DESACTIVA el audio"
+        },
+        {
+          "ref": "scratch/canary_jit_20261111/unzipped/APE_CANARY_JIT_INTEGRACION_20261111/canary/quality-policy.json:17",
+          "nota": "reference_experiment_only {fps:5, seconds:6, audio:'disabled'}"
+        },
+        {
+          "ref": "_vps_stage/canary/ape-visual-emulate.sh:57 y vps/bin/ape-visual-emulate.sh:109",
+          "nota": "-an en los dos scripts"
+        },
+        {
+          "ref": "tools/lab/ape-jit/server.js:4611-4613",
+          "nota": "audioArgs: cfg.audio==='drop' -> -an; 'aac' -> -c:a aac -b:a; resto -> -c:a copy. La degradacion a estereo es una rama, no el unico camino"
+        },
+        {
+          "ref": "contracts/canary_jit_contract_v1.json",
+          "nota": "fixture [11] E_AUDIO_LOST_AS_PARITY: audio 5.1 -> 0 canales declarado como paridad se RECHAZA"
+        }
+      ],
+      "falta": "Una corrida CON audio y medicion de canales/codec en el bitstream de salida. Lo unico medido es que el Canary no emite audio: la paridad de audio no esta medida."
+    },
+    {
+      "id": "P05",
+      "prueba": "HDR",
+      "criterio": "El rango dinamico de la fuente se preserva; un mapeo HDR->SDR exige autorizacion y prueba (RPU/tonemap), y no se declara HDR sin evidencia en el bitstream.",
+      "estado": "IMPLEMENTED_NOT_DEPLOYED",
+      "medicion": "PARCIAL",
+      "evidencia": [
+        {
+          "ref": "node tools/quality/test_canary_jit_contract.js",
+          "nota": "EXIT 0; fixtures [04] y [05] -> REJECT/E_HDR_SOURCE_TO_SDR_CHAIN; [06] -> REJECT/E_DV_RPU_UNPROVEN. La guarda existe y esta ejercitada"
+        },
+        {
+          "ref": "tools/lab/ape-jit/server.js:8649-8679",
+          "nota": "cadena del motor con zscale a smpte2084; :8668-8670 usa force_original_aspect_ratio=decrease + pad"
+        },
+        {
+          "ref": "scratch/canary_jit_20261111/unzipped/APE_CANARY_JIT_INTEGRACION_20261111/canary/quality-policy.json:18",
+          "nota": "'SDR only for unvalidated adaptation' y 'original scale 3840:2160 can stretch non-16:9 inputs'"
+        },
+        {
+          "ref": "docs/audits/CANARY_TRUTH_20261111.md (A7)",
+          "nota": "medido: 1920x800 con scale=3840:2160 sale 3840x2160 [SAR 27:20 DAR 12:5] -> deforma"
+        }
+      ],
+      "falta": "Corrida HDR real y verificacion de la metadata en el bitstream de salida (hdrVerified). La guarda esta implementada; nunca se aplico a un stream real ni se desplego."
+    },
+    {
+      "id": "P06",
+      "prueba": "GPU",
+      "criterio": "Se conoce y se usa la capacidad GPU del host para la cadena de mejora; si no hay GPU, se declara y el plan se ajusta.",
+      "estado": "BLOCKED",
+      "medicion": "NOT_COMPUTED",
+      "evidencia": [
+        {
+          "ref": "tools/lab/ape-jit/server.js:40-44",
+          "nota": "el propio motor concluye que 'QHD y UHD NO son viables en directo con filtros en CPU'; su medicion es de CPU"
+        },
+        {
+          "ref": "docs/manifestos/INCIDENTE_DEPLOY_MANUAL_2026-11-09.md:66-68",
+          "nota": "3 vCPU; 3,37 fps contra 25 fps"
+        },
+        {
+          "ref": "docs/audits/ADVERSARIAL_CANARY_JIT_20261111.md:111",
+          "nota": "cita la skill ape-image-pipeline-truth §9: cadena P1 4K/60 'corregida' a 29,6 fps en host SIN GPU (referencia INDIRECTA: se cita a traves del informe, no del fichero)"
+        }
+      ],
+      "falta": "Inventario de GPU del VPS y medicion con GPU. El VPS no esta auditado (sin SSH): no puedo afirmar si tiene GPU ni cual. Todo lo anterior es evidencia de CPU."
+    },
+    {
+      "id": "P07",
+      "prueba": "Termica",
+      "criterio": "El gating termico impide arrancar trabajo cuando el host o el device esta fuera de rango, y falla cerrado.",
+      "estado": "IMPLEMENTED_NOT_DEPLOYED",
+      "medicion": "PARCIAL",
+      "evidencia": [
+        {
+          "ref": "node --test tests/canary-quality.test.js (cwd=scratch/canary_jit_20261111/unzipped/APE_CANARY_JIT_INTEGRACION_20261111)",
+          "nota": "ejecutado por gate-runner en t6: 'tests 5 / pass 5 / fail 0', EXIT 0; uno de los 5 bloques se llama 'thermal gating fails closed'"
+        },
+        {
+          "ref": "scratch/canary_jit_20261111/unzipped/APE_CANARY_JIT_INTEGRACION_20261111/canary/canary_quality.js",
+          "nota": "3.083 B; contiene el gating que el test ejercita"
+        }
+      ],
+      "falta": "Medicion termica en device real. El test es unitario sobre un condicional: prueba la logica, no el comportamiento termico de un equipo."
+    },
+    {
+      "id": "P08",
+      "prueba": "Zapping",
+      "criterio": "El zapeo sigue funcionando con la integracion activa, sin perder el canal ni interrumpir el televisor.",
+      "estado": "BLOCKED",
+      "medicion": "NOT_COMPUTED",
+      "evidencia": [
+        {
+          "ref": "docs/manifestos/INCIDENTE_DEPLOY_MANUAL_2026-11-09.md:34-36,66-68,147",
+          "nota": "unico intento real medido: 57 s CPU / 146 s de pared por un clip de 6 s, EXIT 183, auto-reintento cada 9 s; resultado: 'el operador se quedo sin TV'"
+        },
+        {
+          "ref": "vps/bin/ape-pulse-canary-worker.sh:45-60",
+          "nota": "jit_busy() existe precisamente porque canary y JIT compiten por el mismo ffmpeg y la misma conexion al proveedor"
+        },
+        {
+          "ref": "docs/audits/CANARY_TRUTH_20261111.md (A29)",
+          "nota": "el flag canary.enabled se creo el 2026-11-09 06:30 y se elimino el mismo dia: el intento se revirtio"
+        }
+      ],
+      "falta": "Prueba de zapeo con la integracion activa en una ventana controlada. Bloqueada por DECISION, no por tecnologia: el unico precedente es un incidente con el televisor del operador como victima. Cualquier re-test exige autorizacion explicita."
+    },
+    {
+      "id": "P09",
+      "prueba": "Listas",
+      "criterio": "Toda lista, en todas sus configuraciones de cliente (identity/gzip, con y sin Range, http y https), entrega 200, 206 y 302.",
+      "estado": "VERIFIED",
+      "medicion": "MEDIDO",
+      "capa": "produccion_nginx (listas estaticas) + banco_ci; NO es la capa del motor JIT",
+      "evidencia": [
+        {
+          "ref": "tools/ape-http-conformance/gate_matrix.js",
+          "nota": "fixture a las 5 listas vivas; las ausentes se clasifican FIXTURE_AUSENTE y salen del denominador"
+        },
+        {
+          "ref": "docs/audits/GATE_MATRIX_20261112.md",
+          "nota": "medicion 2026-11-12: gate 25/25 CUMPLE (docs/audits/GATE_MATRIX_20261112.md); 5 listas vivas x 5 configuraciones; 206 identity y gzip OK; 302 medido sobre http plano"
+        },
+        {
+          "ref": "https://iptv-ape.duckdns.org/lists/APE_LISTA_1794100720046.m3u8",
+          "nota": "control externo 2026-11-12: HTTP 200"
+        }
+      ],
+      "falta": "AUTORIZACION para aplicar. Los tres cambios son independientes y ninguno esta autorizado (GATE_MATRIX_MEASURED.md:72). Aviso medido que no se puede omitir: con el stub de 8 bytes actual, 'gunzip off' dejaria a los clientes sin gzip con 8 bytes, por eso ese parche esta RETIRADO y exige antes descomprimir los 2 .gz (~604 MB) (docs/ops/GATE_200_206_302.md:59-61). Es decir: el CI valida el mecanismo con .gz reales; en produccion el mismo cambio es regresivo hasta descomprimir. Tras el parche, el 206 en produccion real sigue sin medirse.",
+      "alcance": "las 5 listas vivas del VPS (inventario 2026-11-12); no incluye listas que se publiquen despues",
+      "correccion": {
+        "anterior": "IMPLEMENTED_NOT_DEPLOYED/PARCIAL",
+        "motivo": "el 12/20 previo medía dos ficheros retirados: era fixture caducado, no entrega"
+      }
+    },
+    {
+      "id": "P10",
+      "prueba": "OTT",
+      "criterio": "Un reproductor OTT Navigator real reproduce el canal con la calidad declarada y sin degradar.",
+      "estado": "IMPLEMENTED_NOT_DEPLOYED",
+      "medicion": "NOT_COMPUTED",
+      "evidencia": [
+        {
+          "ref": "docs/audits/ADVERSARIAL_CANARY_JIT_20261111.md:83-88",
+          "nota": "ape_directive_reality sobre #EXTVLCOPT:video-filter -> DECLARED_ONLY; 'El APK lee de la lista SOLO #EXT-X-APE-LAB-METADATA, los atributos de #EXTINF y la URL'; OTT parsea #EXTVLCOPT solo para UA y referrer (skill §11, citada a traves del informe)"
+        },
+        {
+          "ref": "docs/audits/CANARY_TRUTH_20261111.md:63",
+          "nota": "422 entradas descomprimidas de la APK: 0 ocurrencias de 'ape-jit', '/jit/signal', 'chain_4k_test' -> la APK no consume la receta"
+        },
+        {
+          "ref": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/generation-output-panel.js:96,342",
+          "nota": "el generador emite URLs /jit/live/<id>/master.m3u8 y manifest.mpd (la lista existe; el reproductor no se probo)"
+        }
+      ],
+      "falta": "Prueba en OTT Navigator real. Cero mediciones en dispositivo: como maximo se puede afirmar que lo declarado esta implementado, no que se reproduzca."
+    },
+    {
+      "id": "P11",
+      "prueba": "TiviMate",
+      "criterio": "Un TiviMate real reproduce el canal con la calidad declarada, con cabeceras de un solo valor y sin rechazos.",
+      "estado": "IMPLEMENTED_NOT_DEPLOYED",
+      "medicion": "NOT_COMPUTED",
+      "evidencia": [
+        {
+          "ref": "docs/audits/ADVERSARIAL_CANARY_JIT_20261111.md:86",
+          "nota": "misma frontera que OTT: la lista no transporta ejecucion; cabeceras y UA son lo unico que el player mira"
+        },
+        {
+          "ref": "docs/audits/CANARY_TRUTH_20261111.md:63",
+          "nota": "la APK no contiene referencia alguna a ape-jit ni /jit/signal (0 de 422 entradas)"
+        },
+        {
+          "ref": "docs/audits/JIT_HTTP_PROBES_20261111.md:80-88",
+          "nota": "lo unico medido en esta familia es a nivel HTTP: /go/<id> decide master vs media por User-Agent. No hay ninguna peticion de TiviMate real"
+        }
+      ],
+      "falta": "Prueba en TiviMate real. Cero mediciones en dispositivo."
+    },
+    {
+      "id": "P12",
+      "prueba": "ExoPlayer",
+      "criterio": "Un ExoPlayer real reproduce la variante asignada sin errores de contenedor ni de cabeceras.",
+      "estado": "IMPLEMENTED_NOT_DEPLOYED",
+      "medicion": "PARCIAL",
+      "evidencia": [
+        {
+          "ref": "docs/audits/JIT_HTTP_PROBES_20261111.md:84-86",
+          "nota": "MEDIDO a nivel HTTP en loopback: /go/1 con UA 'VLC/3.0.19' -> 302 master.m3u8 (master-capable); con 'ExoPlayerLib/2.19.1' -> 302 media_0.m3u8 (media-only); cabecera X-APE-Player-Class"
+        },
+        {
+          "ref": "docs/audits/JIT_HTTP_PROBES_20261111.md:209-213",
+          "nota": "el recuento por artefacto (A 6/9) incluye estos 302; no hay ninguna prueba con el reproductor real"
+        }
+      ],
+      "falta": "Prueba en ExoPlayer real. La asignacion master/media esta medida como respuesta HTTP; que ExoPlayer lo reproduzca no esta medido en ningun artefacto."
+    },
+    {
+      "id": "P13",
+      "prueba": "Registro",
+      "criterio": "Dispositivo autenticado y asociado a politica.",
+      "estado": "PARTIALLY_FUNCTIONAL",
+      "medicion": "MEDIDO",
+      "evidencia": [
+        {
+          "ref": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ara-enroll.php:30",
+          "nota": "el enrol SI valida: if (!is_string($secret) || strlen($secret) < 16) ee_fail(503, 'ENROLL_DISABLED')"
+        },
+        {
+          "ref": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ara-enroll.php:38",
+          "nota": "comparacion en tiempo constante: if (!hash_equals($secret, $given)) ee_fail(401, 'BAD_SECRET')"
+        },
+        {
+          "ref": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/conviva-event.php (9.962 B)",
+          "nota": "la pieza que mantiene el registro VIVO: cabecera L6 'Conviva QoE Event Endpoint v1.0 - Phase 1 Stub'. NO autentica"
+        },
+        {
+          "ref": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/conviva-event.php:15",
+          "nota": "barrido HTTP_AUTHORIZATION|Authorization|Bearer|hash_equals|401|403|token|secret -> 1 SOLA coincidencia, y es un COMENTARIO: 'Authorization: Basic <prisma_conviva:token>  (Phase 2)'. La app manda Bearer y el servidor lo ignora"
+        },
+        {
+          "ref": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php:342-351 y :392-398",
+          "nota": "ara_heartbeats (device_id TEXT PRIMARY KEY, last_seen, channel_id, player, ara_version, state, caps_json, last_error) + upsert ON CONFLICT(device_id): sin autenticacion, un anonimo crea o sobrescribe la fila y falsea el estado"
+        },
+        {
+          "ref": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php:342-351",
+          "nota": "DESACOPLE: la tabla NO tiene model ni assigned_ip ni FK hacia el peer WireGuard; el enrol y el heartbeat no estan enlazados"
+        },
+        {
+          "ref": "busqueda de /api/v1/devices/register en el stack ARA",
+          "nota": "0 coincidencias en los 560 ficheros: el endpoint que el prompt supone es PROPUESTO, NO IMPLEMENTADO"
+        }
+      ],
+      "falta": "El enrol autenticado existe (hash_equals) pero no esta desplegado; el heartbeat que mantiene el registro vivo NO autentica y no esta enlazado con el enrol. Falta (a) autenticar conviva-event, (b) enlazar enrol->heartbeat (FK o columna), (c) desplegar y probar en device. Mientras el heartbeat acepte escrituras anonimas, 'dispositivo autenticado y asociado a politica' NO se cumple: por eso PARTIALLY_FUNCTIONAL y no VERIFIED.",
+      "correccion": {
+        "motivo": "La fila media RECIBOS con el nombre de Registro. El criterio anterior era: \"Cada ejecucion deja un recibo verificable (status.json) que permita distinguir 'declarado' de 'aplicado'.\" — eso es el criterio de la prueba Registro de ejecuciones, no el de registro de dispositivo. Se sustituye por el criterio de la seccion 14.",
+        "criterio_anterior": "Cada ejecucion deja un recibo verificable (status.json) que permita distinguir 'declarado' de 'aplicado'.",
+        "estado_anterior": "BLOCKED",
+        "medicion_anterior": "NOT_COMPUTED"
+      }
+    },
+    {
+      "id": "P14",
+      "prueba": "Idempotencia",
+      "criterio": "Repetir la operacion no duplica ni corrompe estado, y ninguna lectura (GET) provoca mutaciones.",
+      "estado": "PARTIALLY_FUNCTIONAL",
+      "medicion": "PARCIAL",
+      "evidencia": [
+        {
+          "ref": "scratch/canary_jit_20261111/unzipped/APE_CANARY_JIT_INTEGRACION_20261111/canary/canary-render.js:16",
+          "nota": "OUTPUT_MUST_NOT_EXIST (prevent overwrite): guarda anti-sobreescritura, idempotencia por rechazo"
+        },
+        {
+          "ref": "tools/lab/ape-jit/server.js:4749,9044-9049",
+          "nota": "chKey(id,sdr,sdr720) + conjunto 'booting' evitan arranques duplicados del mismo canal/variante"
+        },
+        {
+          "ref": "tools/lab/ape-jit/server.js:6316-6335",
+          "nota": "H-5 LEIDO Y NO EJECUTADO: un GET /go/<id>?p=<perfil> escribe IMAGE_CONFIG_FILE y para el job vivo -> efecto de estado en una lectura"
+        },
+        {
+          "ref": "contracts/canary_jit_contract_v1.json",
+          "nota": "fixtures [48] y [49] E_STATE_COLLAPSED: el triple estado requested/applied/output no se puede colapsar"
+        }
+      ],
+      "falta": "Prueba de doble peticion concurrente y de repeticion con ?p= para confirmar o refutar la mutacion en GET. Las guardas existen; su comportamiento bajo concurrencia no esta medido."
+    },
+    {
+      "id": "P15",
+      "prueba": "Recuperacion",
+      "criterio": "Ante fallo del motor, el sistema se recupera sin degradar la senal y sin bloquear al cliente.",
+      "estado": "PARTIALLY_FUNCTIONAL",
+      "medicion": "MEDIDO",
+      "evidencia": [
+        {
+          "ref": "docs/audits/JIT_HTTP_PROBES_20261111.md:103-107",
+          "nota": "/live/1/master.m3u8 -> 503 con TTFB 135.941,1 ms; /live/1/media_0.m3u8 -> 503 con 67.043,5 ms"
+        },
+        {
+          "ref": "docs/audits/JIT_HTTP_PROBES_20261111.md:147",
+          "nota": "503 'startup timeout' con cabecera X-APE-Auto-Retry: failed-once"
+        },
+        {
+          "ref": "docs/manifestos/INCIDENTE_DEPLOY_MANUAL_2026-11-09.md:66-68",
+          "nota": "el auto-reintento cada 9 s agravo el incidente en vez de recuperarlo"
+        },
+        {
+          "ref": "tools/lab/ape-jit/server.js:4865",
+          "nota": "spawn('nice',...) sin fallback (H2): el fallo tarda ~2 minutos en decirse en vez de fallar rapido"
+        }
+      ],
+      "falta": "Politica de reintento acotada y medida. El intento actual recupera tarde (135,9 s) y el reintento historico fue contraproducente; 206/304/416 tras recuperacion siguen en 0/2 en A."
+    },
+    {
+      "id": "P16",
+      "prueba": "VPS",
+      "criterio": "El estado del VPS esta medido y el gate 200/206/302 de las listas servidas en produccion se cumple y se verifica.",
+      "estado": "VERIFIED",
+      "medicion": "MEDIDO",
+      "evidencia": [
+        {
+          "ref": "docs/audits/VPS_AUDIT_20261112.md",
+          "nota": "inventario de solo lectura via CI: nginx 1.24.0, PHP 8.3, servicios, listeners, systemd"
+        },
+        {
+          "ref": "tools/nginx/live-baseline-2026-11-02/sites-enabled-default.conf",
+          "nota": "corrida 43165746863 job 1: IDENTICO, el baseline del repo ES la config viva"
+        },
+        {
+          "ref": "docs/audits/DEPLOY_ENGINE_RECEIPT_20261112.md",
+          "nota": "corrida 43168903918: motor desplegado, sha en el VPS == pin, active, :3099, /health 200"
+        },
+        {
+          "ref": "docs/audits/GATE_MATRIX_20261112.md",
+          "nota": "medicion 2026-11-12: gate 25/25 CUMPLE (docs/audits/GATE_MATRIX_20261112.md); 5 listas vivas x 5 configuraciones; 206 identity y gzip OK; 302 medido sobre http plano"
+        }
+      ],
+      "falta": "AUTORIZACION, no tecnologia. El CI ya demostro 4/4 en 206 con el 200 intacto; falta permiso para los tres cambios, ventana de aplicacion, y gate_matrix.js antes/despues. Aparte, el estado vivo del VPS (206 del motor en Linux, version desplegada, status.json) sigue NO_COMPUTADO por falta de acceso autenticado.",
+      "alcance": "estado del VPS y gate 200/206/302; NO cubre CPU/RAM/GPU ni el inventario de dispositivos, que siguen NO_COMPUTADO"
+    },
+    {
+      "id": "P17",
+      "prueba": "Seguridad",
+      "criterio": "Ninguna peticion anonima provoca denegacion de servicio, redireccion a un host ajeno ni mutacion de estado, incluido el estado por dispositivo que el VPS usa para el gate.",
+      "estado": "FAILED",
+      "medicion": "MEDIDO",
+      "evidencia": [
+        {
+          "ref": "docs/audits/VEREDICTO_CANARY_JIT_20261111.md (§5; reproduccion propia de t6)",
+          "nota": "H1: GET /meta/1.json mata el proceso. curl exit 56, cero bytes/cabeceras, /health despues 000, sin listener. Traza: ReferenceError: Cannot access 'CAPACITY_FPS' before initialization at capacityForHeight (server.js:8000:31) <- capacityVerdict (:8009:15) <- Server.<anonymous> (:6183:17)"
+        },
+        {
+          "ref": "tools/lab/ape-jit/server.js:5282-5285",
+          "nota": "publicBase toma req.headers.host y x-forwarded-proto SIN allowlist; medido: Host: evil.example -> Location https://evil.example/jit/live/1/media_0.m3u8"
+        },
+        {
+          "ref": "tools/lab/ape-jit/server.js:6059-6062",
+          "nota": "solo se intercepta OPTIONS: no hay filtro de metodo. Medido: POST /health -> 200, DELETE /catalog.json -> 200"
+        },
+        {
+          "ref": "docs/ops/GATE_206_MUTUAL_EXCLUSION.md:70-76",
+          "nota": "Accept-Ranges: bytes se anuncia siempre, incluso en el 200 chunked donde no se honra: cualquier verificacion que se fie de esa cabecera da falso positivo"
+        },
+        {
+          "ref": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/conviva-event.php (9.962 B) — cabecera :6 y comentario :15",
+          "nota": "HALLAZGO S-1 (registro vivo SIN AUTENTICAR): 'Phase 1 Stub' en L6 y una sola traza de auth en L15, que es un comentario '(Phase 2)'. Cualquiera que alcance el endpoint crea o sobrescribe la fila de un device_id en ara_heartbeats (ape_mesh.php:342-351, device_id PK) y falsea state/player/ara_version/caps_json/last_seen — el estado que el VPS usa para el gate por dispositivo. NO exige credencial."
+        },
+        {
+          "ref": "docs/canary/deliverables/10_CANARY_ANDROID_APK.md y docs/audits/APK_SECRET_SCAN_20261111.md:54",
+          "nota": "HALLAZGO S-2 (exposicion del secreto de enrolamiento): ape.enroll.secret EN CLARO en classes5.dex (511.876 B) offset 423.327, 48 chars, sha256 3a82184647badd50194cd074a7ef0cc67123bea106a0ac67d65882d5d0341ec1. Presente en 29 de 34 binarios distintos (31 de 36 ficheros). Sin rotar entre 2026-10-30 y 2026-11-11. Politica: docs/policies/SECRETS_IN_BINARIES.md"
+        },
+        {
+          "ref": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php:342-351",
+          "nota": "HALLAZGO S-3 (desacople): ara_heartbeats no tiene model ni assigned_ip ni FK al peer WireGuard, asi que el registro vivo no permite saber a que peer corresponde ni que politica se le asigno"
+        }
+      ],
+      "falta": "Corregir H1 (TDZ de CAPACITY_FPS), H4 (allowlist de Host) y H7 (filtro de metodo). Fuera del alcance de este informe y de la tarea: aqui solo se registra con severidad, fichero y linea.",
+      "severidad_relativa": {
+        "orden": [
+          "S-1 registro vivo sin autenticar",
+          "S-2 secreto de enrolamiento en claro",
+          "DoS /meta (H1)",
+          "Host injection"
+        ],
+        "razon": "S-1 es el hallazgo MAYOR para este contrato: no exige credencial alguna y permite INYECTAR el estado que el VPS usa para el gate por dispositivo, de modo que un anonimo puede hacer que un device aparezca con otro state/player/ara_version/caps. S-2 es grave pero exige poseer el APK (o extraerlo) para leer el secreto. H1 tumba el motor y el Host injection redirige, pero ninguno de los dos falsifica la decision por dispositivo: por eso quedan por debajo de S-1.",
+        "nota": "La jerarquia es de ESTE contrato (Canary->JIT + gate por dispositivo), no una escala absoluta de seguridad."
+      }
+    }
+  ],
+  "cifras_y_su_fuente": [
+    {
+      "cifra": "12/20",
+      "significado": "celdas del gate 200/206/302 que cumplen en produccion",
+      "fuente": "docs/ops/GATE_MATRIX_MEASURED.md:32"
+    },
+    {
+      "cifra": "8/8",
+      "significado": "pata 200 en produccion",
+      "fuente": "docs/ops/GATE_MATRIX_MEASURED.md:39"
+    },
+    {
+      "cifra": "4/8",
+      "significado": "pata 206 en produccion",
+      "fuente": "docs/ops/GATE_MATRIX_MEASURED.md:40"
+    },
+    {
+      "cifra": "0/4",
+      "significado": "pata 302 en produccion (real: 301)",
+      "fuente": "docs/ops/GATE_MATRIX_MEASURED.md:41"
+    },
+    {
+      "cifra": "14/20",
+      "significado": "con gunzip off + gzip_static on: las 2 listas grandes pasan a dar 206 a cliente identity",
+      "fuente": "docs/ops/GATE_MATRIX_MEASURED.md:62-65"
+    },
+    {
+      "cifra": "16/20",
+      "significado": "mas gzip off en la location: las 2 listas pequenas pasan a dar 206 a cliente gzip",
+      "fuente": "docs/ops/GATE_MATRIX_MEASURED.md:62-65"
+    },
+    {
+      "cifra": "20/20",
+      "significado": "mas 301->302 en las 4 celdas de redirect; los tres cambios son independientes y NINGUNO esta autorizado",
+      "fuente": "docs/ops/GATE_MATRIX_MEASURED.md:62-65,72"
+    },
+    {
+      "cifra": "41485054319",
+      "significado": "validacion del parche en CI: 4/4 en 206 con 200 intacto",
+      "fuente": "docs/ops/GATE_MATRIX_MEASURED.md:112-157"
+    },
+    {
+      "cifra": "0,1828 fps",
+      "significado": "unica medicion de rendimiento de la cadena Canary (30 frames / 164,1 s)",
+      "fuente": "_vps_stage/canary/FASE01_REPORT.md:59"
+    },
+    {
+      "cifra": "0,25×",
+      "significado": "rendimiento del motor a 3840x2160 con hqdn3d+unsharp (80,95 s para 20 s)",
+      "fuente": "tools/lab/ape-jit/server.js:40-44"
+    },
+    {
+      "cifra": "3,37 fps",
+      "significado": "rendimiento del bucle 4K del JIT en el incidente, contra 25 fps de fuente",
+      "fuente": "docs/manifestos/INCIDENTE_DEPLOY_MANUAL_2026-11-09.md:66-68"
+    },
+    {
+      "cifra": "135,9 s",
+      "significado": "TTFB del 503 'startup timeout' del motor desplegable",
+      "fuente": "docs/audits/JIT_HTTP_PROBES_20261111.md:103"
+    },
+    {
+      "cifra": "A 6/9 · B 9/9",
+      "significado": "nucleo 200+206+302 del motor JIT en loopback, por artefacto",
+      "fuente": "docs/audits/JIT_HTTP_PROBES_20261111.md:205-219"
+    },
+    {
+      "cifra": "92/92",
+      "significado": "comprobaciones del validador del contrato, exit 0",
+      "fuente": "node tools/quality/test_canary_jit_contract.js"
+    },
+    {
+      "cifra": "0 VMAF",
+      "significado": "no existe ninguna cifra perceptual medida en el corpus: la paridad visual va como NOT_COMPUTED",
+      "fuente": "ausencia declarada; ver nota_de_metodo.prohibicion_vmaf"
+    }
+  ],
+  "veredicto_de_la_matriz": {
+    "verified": 0,
+    "razon": "Ninguna de las 17 pruebas tiene hoy un artefacto reproducible de extremo a extremo. Lo que hay es: el contrato y su gate verificados (92/92), cuatro fallos medidos (tiempo real, seguridad, recuperacion, y el gate de listas 12/20), y el resto implementado sin desplegar o bloqueado.",
+    "lo_que_si_se_puede_firmar": "El contrato fail-closed (pin SSOT por sha256, 23 codigos, 92/92) y la identificacion por sha256 de los tres motores. Nada mas.",
+    "lo_que_no_se_puede_firmar": "Que la receta de Canary se aplique en produccion, que haya paridad visual medida, que el 4K sea tiempo real, que exista un recibo de ejecucion, ni que el gate 200/206/302 este verde en produccion.",
+    "correccion_20261111_t30": "P13 (Registro) medía recibos con el nombre de Registro y P17 (Seguridad) no incorporaba lo medido en t25. Corregidas ambas filas y recalculado el resumen. VERIFIED sigue en 0."
+  }
+}
