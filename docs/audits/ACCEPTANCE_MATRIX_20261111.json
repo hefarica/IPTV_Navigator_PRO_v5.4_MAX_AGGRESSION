@@ -35,7 +35,7 @@
       "NOT_COMPUTED": 7
     },
     "verified_con_artefacto_reproducible": 0,
-    "lectura": "2 VERIFIED (P09, P16). 6 NOT_COMPUTED, 3 PARCIAL, 8 MEDIDO. ACTUALIZADO 2026-11-12: P14 conserva PARTIALLY_FUNCTIONAL con sus dos clausulas separadas — la repeticion sin cambios queda VERIFICADA por medicion, \"ninguna lectura muta\" sigue PARCIAL.",
+    "lectura": "2 VERIFIED (P09, P16). 6 NOT_COMPUTED, 3 PARCIAL, 8 MEDIDO. ACTUALIZADO 2026-11-12 (2): P14 con ambas clausulas medidas y denominador declarado; P01 con evidencia precisa — la politica existe, la consume el generador, y el motor declara rea_executed=false.",
     "las_pruebas_medidas_lo_estan_porque_fallan": "Tiempo real (P03) y Seguridad (P17) estan MEDIDAS y su resultado es negativo; Registro (P13) pasa a MEDIDO tras corregir su criterio: se midio que el enrol autentica y que el registro vivo NO. Un fallo medido es un dato; un exito sin artefacto no lo es.",
     "cuentas": [
       {
@@ -146,10 +146,22 @@
         {
           "ref": "docs/audits/DEPLOY_ENGINE_RECEIPT_20261112.md",
           "nota": "corrida 43168903918: sha comprobado en origen y destino antes de reiniciar"
+        },
+        {
+          "ref": "contracts/rea/rea-processing-v1.json",
+          "nota": "la politica EXISTE (3261 B) con policy_id, revision, authority, tiers, capacity, hdr, runtime_result_fields, runtime_verification"
+        },
+        {
+          "ref": "tools/lab/ape-jit/server.js:4329,5107",
+          "nota": "el motor la cita como CONSTANTE y emite REA_EXECUTED=0; sus readFileSync NO abren la politica"
+        },
+        {
+          "ref": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/rea-processing-policy.js",
+          "nota": "la capa de LISTA si la consume: freezeDeep, validatePolicy, matchesRequired"
         }
       ],
       "falta": "El pin SSOT esta IMPLEMENTADO y verificado. Lo que falta es (a) un recibo real de ejecucion y (b) la decision del operador sobre la direccion: mantener 'Canary autoridad' (contradicho por A:7913) o reencuadrar Canary como medidor. Las dos cosas se declaran sin elegir la comoda.",
-      "por_que_no_verified": "El criterio dice \"JIT recibe la revision y hash correctos\". La herencia de HASH esta verificada. La herencia de CONFIGURACION no: el motor no lee la politica de Canary en runtime (grep quality-policy en el motor = 0 coincidencias) y mantiene su propia receta. Un pin de fichero no es una herencia de politica.",
+      "por_que_no_verified": "El motor hereda la REFERENCIA a la politica (constante + tag + campo JSON) y declara rea_executed=false. NO la lee ni la ejecuta: ninguno de sus readFileSync abre contracts/rea/rea-processing-v1.json. La consume el generador de listas, no el motor. Herencia de referencia verificada; herencia de ejecucion ausente y declarada por el propio motor.",
       "correccion": {
         "anterior": "IMPLEMENTED_NOT_DEPLOYED",
         "motivo": "el motor paso a estar desplegado y su hash coincide; la configuracion sigue sin heredarse"
@@ -473,12 +485,16 @@
         {
           "ref": "docs/audits/DEPLOY_GREEN_20261112.md",
           "nota": "primera instalacion (43170688357), contra la que se compara"
+        },
+        {
+          "ref": "docs/audits/ENGINE_READ_SURFACE_20261112.md",
+          "nota": "41 URLs de lectura sondeadas: 38 validas, 0 excepciones; huella antes/despues identica salvo /jit/meta/1.json, cuya diferencia se demostro que es el campo volatil generated_at (dos GET consecutivos tambien difieren). 3 rutas mutadoras excluidas por codigo y 15 POST no probadas por diseno."
         }
       ],
       "falta": "Prueba de doble peticion concurrente y de repeticion con ?p= para confirmar o refutar la mutacion en GET. Las guardas existen; su comportamiento bajo concurrencia no esta medido.",
       "dos_clausulas": {
         "repeticion_sin_cambios": "VERIFICADA — seis huellas identicas antes/despues; sin ficheros, servicios ni procesos duplicados",
-        "ninguna_lectura_muta": "PARCIAL — probado que el GET que mataba el proceso ya no lo mata (era ECONNRESET, hoy 200 y proceso vivo); NO se han barrido el resto de rutas GET, asi que \"ninguna lectura\" no es universal"
+        "ninguna_lectura_muta": "MEDIDA_CON_DENOMINADOR — 41 URLs de lectura, 38 validas, huella estable salvo un timestamp demostrado como volatil; NO es universal: 3 rutas mutadoras excluidas y declaradas, 15 POST no probadas"
       },
       "correccion": {
         "anterior": "PARTIALLY_FUNCTIONAL/PARCIAL",
