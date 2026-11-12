@@ -52,7 +52,7 @@ El `sha256` del motor **coincide con el pin del contrato y con el fichero instal
 | Contrato Canary→JIT | **92/92 PASS, exit 0** | `tools/quality/test_canary_jit_contract.js` |
 | Bucle REA §13 | **HEALTHY, exit 0** (6 gates) | `tools/canary/rea_loop.js` |
 | Gate 200/206/302 | **25/25 CUMPLE** sobre 5 listas vivas | `docs/audits/GATE_MATRIX_20261112.md` |
-| Deploy completo | **success** · paridad 33/33 · smoke 11/11 | corrida `43170688357` |
+| Deploy completo | **success** · paridad 33/33 · smoke **11/11 en el job de verify pero solo 5/5 en el de deploy** hasta el 2026-11-12; **hoy ambos 11/11** tras cablear `ARA_SYNC_VERIFY_KEY` | corridas `43170688357` y `43176002787` · ver `SYNC_SMOKE_CLOSED_20261112.md` |
 | DoS `/meta` cerrado | loopback **y** producción (200 externo) | `docs/audits/ENGINE_REPIN_20261112.md` |
 | §4 recibos con 18 campos | **ACCEPT** por el juez real | `docs/audits/JIT_RECEIPT_20261112.md` |
 
