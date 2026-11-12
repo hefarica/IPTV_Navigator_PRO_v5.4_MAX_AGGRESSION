@@ -43,11 +43,26 @@ El motor desplegado es **el pineado por el contrato** (449.392 B · `290b1103…
 
 ## Lo que el manifiesto NO toca (y sigue intacto)
 
-15 lua presentes en el VPS que el manifiesto no cubre; el dry-run las **lista** para que nada se pierda de vista y **no las toca**:
+**18** lua presentes en el VPS que el manifiesto no cubre. El dry-run las **lista** para que nada se pierda de vista y **no las toca**, lo que cumple el principio NO DESTRUCTIVO de §12:
 
-`ape_attr` · `ape_gateway` · `ape_header` · `ape_lab_api` · `ape_lab_bridge` · `ape_lab_upload` · `ape_lastgood` · `ape_luatest` · `ape_obs` · `ape_profile_resolver` · `ape_rebase_lib` · `ape_uhd` · `ape_uri_rebase` · `ape_wake_on_manifest` · `ara_x_sync`
+`ape_attr` · `ape_gateway` · `ape_header` · `ape_lab_api` · `ape_lab_bridge` · `ape_lab_upload` · `ape_lastgood` · `ape_luatest` · `ape_obs` · `ape_profile_resolver` · `ape_rebase_lib` · `ape_uhd` · `ape_uri_rebase` · `ape_wake_on_manifest` · `ara_x_sync` · **`bw_adaptive_floor`** · **`floor_lock_filter`** · **`sentinel_auth_guard`**
 
-Eso cumple el principio NO DESTRUCTIVO de §12: el instalador no borra lo que no conoce.
+> **Corrección:** una versión anterior de este recibo decía 15. El error fue mío: al imprimir la sección del log usé un límite de 15 líneas y leí el truncamiento como el total. Las tres que faltaban son justamente las tres últimas de la lista.
+
+### Las tres últimas no aparecen en la lista por casualidad
+
+Ninguna de las tres tiene fila en `manifest.tsv` (**0 filas cada una**), pero **sí tienen fuente en el repositorio**:
+
+| lua | Tamaño en el VPS | Qué es | Filas en el manifiesto |
+|---|---|---|---|
+| `sentinel_auth_guard.lua` | 7.207 B | *«APE SENTINEL v1.0 — Auth Guard + UA Rotation + Provider Fingerprint»*, `header_filter_by_lua_file`, passthrough que detecta 401/403 del upstream y rota UA | **0** |
+| `bw_adaptive_floor.lua` | 9.075 B | cierra el lazo bitrate-reactor → manifest | **0** |
+| `floor_lock_filter.lua` | — | filtro de floor de bitrate | **0** |
+
+**Consecuencia:** producción ejecuta lógica —incluido un guard de autenticación— que **el pipeline no puede reproducir**. Un VPS reconstruido desde el manifiesto saldría sin esas tres.
+
+**No se añaden filas.** El repositorio tiene **versiones divergentes** de las mismas: `floor_lock_filter.lua` aparece en 2.169 / 9.269 / 9.601 / 17.982 B y `sentinel_auth_guard.lua` en 7.207 / 12.992 B. Añadir una fila elegiría una versión a ciegas y **sobrescribiría la viva** en el siguiente deploy. Decidir cuál es la canónica es del operador, no del pipeline.
+
 
 ## Lo que esta auditoría NO dice
 
