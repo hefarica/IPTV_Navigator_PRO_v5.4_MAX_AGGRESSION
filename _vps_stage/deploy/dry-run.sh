@@ -99,6 +99,8 @@ done < <(manifest_rows)
 printf '\n--- lua en /etc/nginx/lua: gestionadas por el manifiesto vs NO gestionadas ---\n'
 printf '%-9s %-8s %-16s %-14s %s\n' "BYTES" "SHA256" "MODO:DUEÑO" "ESTADO" "FICHERO"
 lua_fallo=0
+vivo_fallo=0
+vivo_aviso=0
 if ! lua_remoto="$(rsh "for f in /etc/nginx/lua/*.lua; do [ -f \"\$f\" ] || continue; printf '%s\t%s\t%s\t%s\t%s\n' \"\$(stat -c %s \"\$f\")\" \"\$(sha256sum \"\$f\" | cut -d' ' -f1)\" \"\$(stat -c %a \"\$f\")\" \"\$(stat -c %U:%G \"\$f\")\" \"\$f\"; done")"; then
   printf '   (no se pudo leer: el VPS no respondio a esta lectura)\n'
   lua_fallo=1
@@ -123,6 +125,39 @@ else
   printf '   total: %s lua · no gestionadas: %s\n' \
     "$(printf '%s\n' "$lua_remoto" | wc -l)" \
     "$(printf '%s\n' "$lua_remoto" | while IFS=$'\t' read -r b h m o f; do case " $dests " in *" $f "*) ;; *) echo x ;; esac; done | wc -l)"
+fi
+
+# SERVICIO VIVO (§12: "que el proceso vivo ejecute el codigo del sha instalado")
+#
+# 2026-11-12. Este item figuraba como not_computed en el contrato del
+# reconciliador, y hay una razon concreta: deploy.sh instala
+# /opt/ape-jit/server.js pero NO reinicia ape-jit (lo hace el job 4b aparte).
+# En la ventana entre instalar y reiniciar, el fichero en disco es nuevo y el
+# proceso en memoria ejecuta el codigo VIEJO. Un audit que solo mira el disco
+# dice IGUAL y no lo ve.
+#
+# Se compara el mtime del fichero con la fecha de arranque del proceso (mtime de
+# /proc/<pid>, que en procfs es la hora de creacion). Solo lectura.
+c_hdr "SERVICIO VIVO · el proceso ejecuta el fichero del disco?"
+if ! vivo="$(rsh "f=/opt/ape-jit/server.js; pid=\$(systemctl show -p MainPID --value ape-jit 2>/dev/null); srv=0; proc=0; [ -f \"\$f\" ] && srv=\$(stat -c %Y \"\$f\" 2>/dev/null || echo 0); [ -n \"\$pid\" ] && [ \"\$pid\" != 0 ] && [ -d /proc/\$pid ] && proc=\$(stat -c %Y /proc/\$pid 2>/dev/null || echo 0); printf '%s\t%s\t%s\n' \"\$pid\" \"\$srv\" \"\$proc\"")"; then
+  printf '   (no se pudo leer: el VPS no respondio a esta lectura)\n'
+  vivo_fallo=1
+else
+  v_pid="$(printf '%s' "$vivo" | cut -f1)"
+  v_srv="$(printf '%s' "$vivo" | cut -f2)"
+  v_proc="$(printf '%s' "$vivo" | cut -f3)"
+  printf '   ape-jit · MainPID=%s · mtime del fichero=%s · arranque del proceso=%s\n' "${v_pid:-?}" "${v_srv:-?}" "${v_proc:-?}"
+  if [ -z "$v_pid" ] || [ "$v_pid" = "0" ]; then
+    printf '   AVISO · ape-jit no tiene MainPID: el servicio no esta corriendo\n'
+    vivo_aviso=1
+  elif [ "${v_srv:-0}" -gt "${v_proc:-0}" ] && [ "${v_proc:-0}" -gt 0 ]; then
+    printf '   AVISO · PROCESO-VIEJO: el fichero en disco es MAS NUEVO que el proceso\n'
+    printf '   el proceso ejecuta codigo anterior al instalado; hace falta restart de ape-jit\n'
+    printf '   (deploy.sh no lo hace: lo hace el job 4b del pipeline)\n'
+    vivo_aviso=1
+  else
+    printf '   OK · el proceso arranco despues del ultimo cambio del fichero\n'
+  fi
 fi
 
 c_hdr "RESUMEN DRY-RUN"
