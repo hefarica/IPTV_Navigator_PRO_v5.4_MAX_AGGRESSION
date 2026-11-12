@@ -25,6 +25,7 @@ Requisito de §16: «Incluye también un diagrama de extremo a extremo y una mat
 | 12 | **`P01` Canary SSOT** | Resumido como *«grep quality-policy = 0»* — cierto y pobre | La política **existe** (`contracts/rea/rea-processing-v1.json`, 3.261 B con `policy_id`, `revision`, `tiers`, `runtime_verification`); el motor la cita como **constante** (`:4329`) y emite **`REA_EXECUTED=0`** (`:5107`); sus `readFileSync` **no la abren**; la consume el **generador de listas** | `ENGINE_READ_SURFACE_20261112.md` §6 | **PARTIALLY_FUNCTIONAL** |
 | 13 | **APK — recibo de build (§15)** | Solo manifiesto (`10_…md`) | `BUILD_RECEIPT` con **los 9 campos**: 28.010.884 B · `9872483a…` · `com.ape.crystalagent` · 657 · `3.9.9-host-plus-rea-657` · cert `9e32dc4d…` · commit `00aa8332` · **DEVICE_TEST_RECEIPT no obtenido** | `docs/audits/APK_BUILD_RECEIPT_20261112.md` | **IMPLEMENTED_NOT_DEPLOYED** |
 | 14 | **Estado de verdad único (§17)** | Disperso en 9 documentos fechados | `docs/audits/STATE_OF_TRUTH_20261112.md` con las 14 secciones de §17 y §14 en los 8 estados | `STATE_OF_TRUTH_20261112.md` | **VERIFIED** |
+| 15 | **Juez del contrato `artifactBytes()`** | Llamaba a `path.isAbsolute()` sin comprobar tipo. Medido: lanza `TypeError ERR_INVALID_ARG_TYPE` con objeto, `null` y `undefined`. Sin try/catch envolvente en `validateReceipt`, el `throw` **salía del juez**: un recibo con la forma que el contrato documenta (path+sha256+bytes, L61) reventaba el verificador. Un juez que excepciona se puede sortear | Acepta la forma string **y** la objeto, midiendo siempre del disco: un objeto que miente en sha/bytes se sigue aceptando **porque no se le cree**. **A/B medido:** juez anterior `LANZO ERR_INVALID_ARG_TYPE` → juez nuevo `ACCEPT/OK_APPLIED_MEASURED`. Regresión `test_judge_never_throws.js` **25/25**; batería **92/92** intacta | `tools/quality/test_canary_jit_contract.js:218` · `tools/quality/test_judge_never_throws.js` | **VERIFIED** |
 
 ---
 
@@ -85,10 +86,11 @@ Requisito de §16: «Incluye también un diagrama de extremo a extremo y una mat
 
 | Categoría | Filas |
 |---|---|
-| Cambiado y medido | **14** |
+| Cambiado y medido | **15** |
 | Sin cambiar (declarado) | **10** |
-| De lo cambiado: VERIFIED | 12 |
+| De lo cambiado: VERIFIED | 13 |
 | De lo cambiado: PARTIALLY_FUNCTIONAL | 2 (P01, P14 cláusula 2) |
 | De lo cambiado: IMPLEMENTED_NOT_DEPLOYED | 1 (APK) |
 
 **La diferencia más importante no es ninguna de las 14 mejoras: es que ahora está escrito qué no se midió.** El sistema anterior tampoco tenía dispositivo; la diferencia es que ahora hay 10 filas que lo dicen con nombre y fecha en vez de un informe que solo enumera logros.
+

@@ -216,7 +216,31 @@ function num(value) {
 }
 
 function artifactBytes(relOrAbs) {
-  const abs = path.isAbsolute(relOrAbs) ? relOrAbs : path.resolve(ROOT, relOrAbs);
+  /* DEFECTO ARREGLADO 2026-11-12: `path.isAbsolute` LANZA TypeError
+   * (ERR_INVALID_ARG_TYPE) con cualquier cosa que no sea string — medido con
+   * objeto, null y undefined. `validateReceipt` no tiene try/catch envolvente,
+   * asi que el throw de L459 (applied.evidence.artifact) o el de L1132
+   * (manifestFile) SALIA del juez: en vez de rechazar con un codigo, el
+   * verificador reventaba. Un juez que excepciona se puede sortear.
+   *
+   * El contrato documenta `artifact` como objeto (path + sha256 + bytes, L61),
+   * asi que aqui se acepta esa forma leyendo SOLO su ruta: los sha256/bytes
+   * declarados en el objeto NO se usan como medida; se miden del disco. La
+   * forma string que usan los llamadores internos no cambia. */
+  let rel;
+  try {
+    rel = (relOrAbs && typeof relOrAbs === 'object')
+      ? (relOrAbs.path || relOrAbs.file || relOrAbs.rel || '')
+      : relOrAbs;
+  } catch (e) {
+    /* Un getter hostil en `path` tambien lanzaria. JSON.parse no puede crear
+     * getters, asi que esto no es alcanzable desde un recibo en disco, pero la
+     * invariante de esta funcion es NO LANZAR nunca: si algo lanza, el juez
+     * revienta y deja de juzgar. */
+    return null;
+  }
+  if (typeof rel !== 'string' || rel.length === 0) return null;
+  const abs = path.isAbsolute(rel) ? rel : path.resolve(ROOT, rel);
   try {
     const st = fs.statSync(abs);
     if (!st.isFile()) return null;
