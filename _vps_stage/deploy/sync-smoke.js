@@ -204,21 +204,29 @@ function signed(seq, nonce) {
 
   // 7 · /lists/ 200
   //
-  // CORREGIDO 2026-11-03: aquí se comprobaba /lists/APE_LISTA_4K.m3u8, que fue retirada y devuelve 404.
-  // El smoke marcaba 4/5 y hacía fallar el deploy ENTERO por una lista que ya no existe, mientras las
-  // cuatro listas vivas servían 200. `verify.sh` ya lo tenía documentado en su cabecera («las dos que
-  // estaban fijadas fueron retiradas y su 404 hacía fallar este job SIEMPRE, bloqueando cualquier
-  // deploy») pero `sync-smoke.js` no se había corregido.
+  // CORREGIDO DOS VECES. El 2026-11-03 se cambio APE_LISTA_4K.m3u8 por otro nombre
+  // fijo; el 2026-11-12 ese segundo nombre tambien estaba retirado y el smoke volvio
+  // a fallar por 404 de FIXTURE, no por entrega, llevandose el deploy entero.
   //
-  // No se fija otro nombre a mano: cualquier fichero concreto puede retirarse mañana y repetir el bug.
-  // Se descubre la lista viva desde el índice del servidor y, si no hay índice, se usa la principal
-  // declarada en APE_SMOKE_LIST para que un operador pueda apuntar a otra sin tocar el código.
-  const LISTA_OBJETIVO = process.env.APE_SMOKE_LIST || '/lists/APE_LISTA_1793589060441.m3u8';
-  try {
-    // HEAD: la lista viva pesa ~604 MB; un GET completo agota el timeout.
-    const r = await request('HEAD', LISTA_OBJETIVO);
-    record(LISTA_OBJETIVO, r.status, 200);
-  } catch (e) { record(LISTA_OBJETIVO, 0, 200, e.message); }
+  // Ademas, el comentario anterior afirmaba "se descubre la lista viva desde el indice
+  // del servidor" y ese descubrimiento NO EXISTIA en el codigo: era `env || nombre
+  // fijo`. Un comentario que describe una salvaguarda inexistente es peor que no
+  // tenerla, porque impide que alguien la eche de menos.
+  //
+  // Ahora el nombre viene de `verify.sh:61`, que SI descubre la lista viva en disco
+  // del VPS, y lo pasa por SYNC_LIVE_LIST. Si no llega ninguno, es SKIP con su razon:
+  // fallar por un nombre que nadie ha comprobado que exista es el bug que se repite.
+  const NOMBRE_VIVO = (process.env.SYNC_LIVE_LIST || process.env.APE_SMOKE_LIST || '').trim();
+  if (!NOMBRE_VIVO) {
+    console.log('SKIP /lists/: sin SYNC_LIVE_LIST (verify.sh no pudo descubrir la lista viva en disco)');
+  } else {
+    const LISTA_OBJETIVO = '/lists/' + NOMBRE_VIVO.replace(/^.*\//, '');
+    try {
+      // HEAD: la lista viva pesa ~604 MB; un GET completo agota el timeout.
+      const r = await request('HEAD', LISTA_OBJETIVO);
+      record(LISTA_OBJETIVO, r.status, 200);
+    } catch (e) { record(LISTA_OBJETIVO, 0, 200, e.message); }
+  }
 
   const failed = results.filter((r) => !r.ok);
   console.log(`\nRESUMEN SYNC SMOKE: ${results.length - failed.length}/${results.length} OK · ${failed.length} FAIL`);

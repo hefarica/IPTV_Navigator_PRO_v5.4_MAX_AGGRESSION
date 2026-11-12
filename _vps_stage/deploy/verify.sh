@@ -121,7 +121,8 @@ if [ "$DRY" != "1" ] && [ -f "$DEPLOY_DIR/sync-smoke.js" ]; then
   if ! SYNC_BASE="$BASE" SYNC_IP="$HOST_IP" SYNC_DEVICE_ID="${ARA_SYNC_DEVICE_ID:-onn4k-001}" \
        SYNC_KEY="${ARA_SYNC_VERIFY_KEY:-}" SYNC_KEY_ID="${ARA_SYNC_KEY_ID:-k1}" \
        SYNC_ARTIFACT_SHA="${ARA_SYNC_ARTIFACT_SHA256:-$(printf '0%.0s' $(seq 1 64))}" \
-       SYNC_TOKEN="${ARA_VERIFY_TOKEN:-}" node "$DEPLOY_DIR/sync-smoke.js"; then
+       SYNC_TOKEN="${ARA_VERIFY_TOKEN:-}" SYNC_LIVE_LIST="${LIVE_LIST_NAME:-}" \
+       node "$DEPLOY_DIR/sync-smoke.js"; then
     c_bad "   sync-smoke falló (401/413/429/200/listas) → VERIFY FALLA"
     exit 4
   fi
