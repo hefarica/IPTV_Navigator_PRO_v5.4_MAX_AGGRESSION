@@ -626,6 +626,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - uses: actions/checkout@v4
       - name: Preparar SSH (llave efímera desde secretos)
         run: |
           set -euo pipefail
