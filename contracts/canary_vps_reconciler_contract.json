@@ -354,7 +354,14 @@
   "not_computed": [
     {
       "item": "Que el proceso vivo ejecute el codigo del sha instalado",
-      "reason": "deploy.sh:153 reinicia solo si ya estaba activo y :158 comprueba is-active; no lee /health ni el sha del proceso. Requiere medir en el VPS (no se ha contactado)."
+      "reason": "deploy.sh:153 reinicia solo si ya estaba activo y :158 comprueba is-active; no lee /health ni el sha del proceso. Requiere medir en el VPS (no se ha contactado).",
+      "resuelto_2026_11_12": {
+        "como": "dry-run.sh compara el mtime de /opt/ape-jit/server.js con el mtime de /proc/<MainPID> (que en procfs es la hora de creacion del proceso). Solo lectura.",
+        "por_que_faltaba": "deploy.sh instala el motor pero NO reinicia ape-jit (lo hace el job 4b aparte). Entre instalar y reiniciar, el fichero en disco es nuevo y el proceso ejecuta codigo viejo; un audit que solo mira el disco dice IGUAL y no lo ve.",
+        "medido": "corrida 43233620454, job 2: MainPID=2220731, mtime fichero=1794468917, arranque proceso=1794468918 -> OK, el proceso arranco DESPUES del ultimo cambio del fichero",
+        "estados": "OK · PROCESO-VIEJO (el fichero es mas nuevo que el proceso) · sin MainPID (el servicio no corre)",
+        "sigue_siendo_no_computado": false
+      }
     },
     {
       "item": "Estado real del VPS hoy",
@@ -388,6 +395,7 @@
   "correcciones_2026_11_12": [
     "el modo --audit ya distingue VPS inalcanzable de VPS vacio: deja de ser un hueco declarado",
     "el modo --plan ya no es \"el diff\": añade riesgos por destino y rollback (sigue siendo solo lectura)",
-    "el modo --audit es fail-closed (exit 3/4) y compara modo/dueno ademas del contenido"
+    "el modo --audit es fail-closed (exit 3/4) y compara modo/dueno ademas del contenido",
+    "el item \"que el proceso vivo ejecute el codigo del sha instalado\" deja de ser no computado: se mide por mtime del fichero vs arranque del proceso"
   ]
 }
