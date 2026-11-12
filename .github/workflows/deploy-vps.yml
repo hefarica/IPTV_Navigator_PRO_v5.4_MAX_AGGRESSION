@@ -611,26 +611,41 @@ jobs:
           chmod +x "$DEPLOY_DIR"/*.sh
           bash "$DEPLOY_DIR/verify.sh"
 
-      # [2026-11-12] El manifiesto decia: deploy.sh hace nginx -t + reload pero NO
-      # reinicia ape-jit. Consecuencia medida: instalar server.js deja el proceso con
-      # el codigo anterior en memoria. Este paso cierra ese hueco y trae su recibo.
-      # Solo en mode=deploy: en dry-run/staging no hay nada que reiniciar.
-      - name: Reiniciar ape-jit y probar el motor (solo deploy)
-        if: ${{ inputs.mode == 'deploy' }}
+
+  # ── 4b · MOTOR (reinicio del JIT, corre aunque el deploy falle) ─────────────
+  # El manifiesto lo advertia (L50-52): deploy.sh hace nginx -t + reload pero NO
+  # reinicia ape-jit. Consecuencia: instalar server.js deja el proceso con el
+  # codigo anterior en memoria. Este job existe porque `deploy.sh` puede salir
+  # con codigo != 0 DESPUES de haber copiado los ficheros (p.ej. sync-smoke sin
+  # los secretos SYNC_KEY/SYNC_TOKEN del Environment), y aun asi el motor debe
+  # arrancar sobre el binario nuevo.
+  motor:
+    name: 4b · reiniciar ape-jit y probar el motor
+    needs: deploy
+    if: always() && inputs.mode == 'deploy'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Preparar SSH (llave efímera desde secretos)
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+      - name: Guardia del timer, reinicio y recibo del motor
         run: |
           set -euo pipefail
           ssh "${{ secrets.VPS_USER }}@$VPS_HOST" "bash -s" <<'APE_EOF'
           set -uo pipefail
           SHA_PIN=290b11030f3b6bf944c14298f3fe8401c0f9bd773789e26afeca8bb9f8aeb492
-          # GUARDIA DEL INCIDENTE 2026-11-09: ape-pulse-canary.timer dispara cada 20 s y
-          # su worker hace POST a /jit/signal. Con el motor muerto no hace nada; en cuanto
-          # el motor suba, puede empezar a pedir trabajo y comerse la CPU (3,37 fps del
-          # bucle 4K contra 25 fps de fuente; el operador se quedo sin TV). Se detiene
-          # ANTES de arrancar el motor y se deja detenido, declarandolo.
           TIMER_PREV=$(systemctl is-active ape-pulse-canary.timer 2>/dev/null || echo unknown)
           echo "--- timer ape-pulse-canary antes: $TIMER_PREV"
           if [ "$TIMER_PREV" = "active" ]; then
-            sudo -n systemctl stop ape-pulse-canary.timer && echo "--- timer DETENIDO (reversible: systemctl start ape-pulse-canary.timer)"
+            sudo -n systemctl stop ape-pulse-canary.timer && echo "--- timer DETENIDO (reversion: sudo systemctl start ape-pulse-canary.timer)"
           fi
           echo "--- estado antes: $(systemctl is-active ape-jit.service 2>/dev/null || echo inactive)"
           echo "--- sha en disco:  $(sha256sum /opt/ape-jit/server.js | cut -d' ' -f1)"
@@ -643,20 +658,18 @@ jobs:
           ST=$(systemctl is-active ape-jit.service 2>/dev/null || echo unknown)
           echo "--- estado despues: $ST"
           if [ "$ST" != "active" ]; then
-            echo "::error::ape-jit no quedo activo tras el reinicio"
+            echo "::error::ape-jit no quedo activo"
             journalctl -u ape-jit.service --no-pager -n 60 2>/dev/null | tail -60
             exit 1
           fi
           N=$(ss -tln 2>/dev/null | grep -c ':3099' || true)
-          echo "--- listeners en 3099: ${N:-0}"
           CODE=$(curl -s -o /dev/null -m 8 -w '%{http_code}' http://127.0.0.1:3099/health || echo ERR)
-          echo "--- /health: $CODE"
           GOT=$(sha256sum /opt/ape-jit/server.js | cut -d' ' -f1)
+          echo "--- listeners 3099: ${N:-0} | /health: $CODE"
           if [ "$GOT" != "$SHA_PIN" ]; then
-            echo "::error::el motor en disco ($GOT) no es el pineado ($SHA_PIN)"
-            exit 1
+            echo "::error::el motor en disco ($GOT) no es el pineado ($SHA_PIN)"; exit 1
           fi
-          echo "MOTOR_ARRIBA estado=$ST listeners=$N health=$CODE sha=$GOT"
+          echo "MOTOR_ARRIBA estado=$ST listeners=${N:-0} health=$CODE sha=$GOT timer=$TIMER_PREV"
           APE_EOF
 
   # ── 6 · ROLLBACK (solo si deploy o verify fallan, en mode=deploy) ────────
