@@ -35,7 +35,7 @@
       "NOT_COMPUTED": 7
     },
     "verified_con_artefacto_reproducible": 0,
-    "lectura": "2 VERIFIED (P09, P16). 6 NOT_COMPUTED, 3 PARCIAL, 8 MEDIDO. ACTUALIZADO 2026-11-12 (3): P15 con el rollback REAL documentado (33 ficheros, stamp 20261112T061908Z) pero la continuidad de reproduccion sigue sin medir.",
+    "lectura": "2 VERIFIED (P09, P16). 5 NOT_COMPUTED, 3 PARCIAL, 9 MEDIDO. ACTUALIZADO 2026-11-12 (4): P02 deja de estar bloqueada — la cadena Canary se reprodujo y se midio. Realza de verdad (nitidez 4,39x la fuente) pero NO recupera detalle ausente: baja la fidelidad (SSIM 0,917 vs 0,960 del control). Falta referencia del Canary original y VMAF para hablar de paridad y de calidad.",
     "las_pruebas_medidas_lo_estan_porque_fallan": "Tiempo real (P03) y Seguridad (P17) estan MEDIDAS y su resultado es negativo; Registro (P13) pasa a MEDIDO tras corregir su criterio: se midio que el enrol autentica y que el registro vivo NO. Un fallo medido es un dato; un exito sin artefacto no lo es.",
     "cuentas": [
       {
@@ -171,8 +171,8 @@
       "id": "P02",
       "prueba": "Paridad visual",
       "criterio": "La cadena Canary ejecutada a cadencia real produce una imagen mediblemente equivalente a la de referencia (VMAF/SSIM medidos, no etiquetas).",
-      "estado": "BLOCKED",
-      "medicion": "NOT_COMPUTED",
+      "estado": "PARTIALLY_FUNCTIONAL",
+      "medicion": "MEDIDO",
       "evidencia": [
         {
           "ref": "_vps_stage/canary/FASE01_REPORT.md:59",
@@ -189,9 +189,23 @@
         {
           "ref": "node tools/quality/test_canary_jit_contract.js",
           "nota": "EXIT 0; 'PASS [20] ... -> REJECT/E_CAPACITY_INSUFFICIENT' y 'PASS [21] ... -> REJECT/E_CAPACITY_UNKNOWN'"
+        },
+        {
+          "ref": "docs/audits/CANARY_AB_IMAGE_20261112.md",
+          "nota": "Cadena Canary EXACTA reproducida en entorno controlado (1080p->4K, 3 s, ffmpeg 8.0.1) y A/B contra un control neutro (solo lanczos, mismo encoder). A vs B: SSIM 0,868066 / PSNR 31,296 dB. Fidelidad ida y vuelta: A SSIM 0,916876, B SSIM 0,959806. Nitidez (YAVG laplaciano): A 6,978 vs fuente 1,588 (realce 4,39x) y control 1,175 (pierde 26%). Coste: 131 s para 3 s = 0,687 fps = 43,7x mas lento que la fuente de 30 fps."
         }
       ],
-      "falta": "Corrida >=60 s a la cadencia de la fuente CON audio y un A/B perceptual real (VMAF/SSIM) sobre el mismo clip. NO hay VMAF medido en ningun artefacto: cualquier VMAF que se escriba aqui seria estimado y por eso NO se escribe."
+      "falta": "Corrida >=60 s a la cadencia de la fuente CON audio y un A/B perceptual real (VMAF/SSIM) sobre el mismo clip. NO hay VMAF medido en ningun artefacto: cualquier VMAF que se escriba aqui seria estimado y por eso NO se escribe.",
+      "dos_clausulas": {
+        "cadena_reproducida": "VERIFICADA — la receta documentada se ejecuto exactamente y produjo salida medible: el realce es real (SSIM A-vs-B 0,868, nitidez 4,39x la fuente), no un remux ni metadata",
+        "paridad_con_el_canary_original": "NO COMPUTADA — se reprodujo la RECETA, pero no existe una salida del Canary historico contra la que comparar. Sin ese par de referencia, \"paridad visual\" no se puede afirmar",
+        "calidad_perceptual": "NO COMPUTADA — no hay VMAF ni criterio humano. SSIM/PSNR miden similitud, no calidad percibida, y una cadena que realza baja SSIM por construccion: la metrica no puede declarar ganador"
+      },
+      "por_que_no_verified": "El criterio de §14 es \"cadena Canary reproducida Y comparacion A/B documentada\". La cadena esta reproducida y el A/B existe con numeros, pero falta (a) una salida del Canary original como referencia para hablar de PARIDAD y (b) VMAF para hablar de CALIDAD. Lo medido dice que la cadena realza y que no recupera detalle ausente: es un hecho, no una paridad.",
+      "correccion": {
+        "anterior": "BLOCKED/NOT_COMPUTED",
+        "motivo": "P02 pasa de bloqueada a medida en su primera clausula: la cadena se reprodujo y se midio con A/B"
+      }
     },
     {
       "id": "P03",
