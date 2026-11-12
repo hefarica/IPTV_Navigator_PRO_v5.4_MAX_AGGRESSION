@@ -41,15 +41,31 @@ Write-Host "== muestreando $n veces cada ${Interval}s (ventana ${Seconds}s) sobr
 for ($i = 1; $i -le $n; $i++) {
   $ts = (Get-Date).ToUniversalTime().ToString('HH:mm:ss')
   $fw  = Q 'dumpsys activity activities | grep -m1 topResumedActivity'
-  $ms  = Q 'dumpsys media_session | grep -E "package=|active=|state=" | head -n 6'
-  $mc  = Q 'dumpsys media.metrics | grep -iE "video|codec|dropped|rendered" | tail -n 6'
+  $ms  = Q 'dumpsys media_session | grep -E "package=|active=" | head -n 6'
+  # [2026-11-12] OTT Navigator NO registra media_session: mirar solo ahi da un
+  # FALSO NEGATIVO. Medido: con PlayerActivity en primer plano y
+  # c2.amlogic.avc.decoder decodificando 1920x1080, media_session seguia
+  # active=false. Por eso la reproduccion se detecta por actividad en primer
+  # plano + codec reportado en media.metrics, no por sesion de media.
+  $mc  = Q 'dumpsys media.metrics | grep -iE "mediametrics_codec_reported.*mode:video" | tail -n 3'
   $th  = Q 'dumpsys thermalservice | grep -m2 Temperature'
-  $sc  = Q 'dumpsys SurfaceFlinger --latency 2>/dev/null | head -n 1'
 
   # resumen por muestra
   $pkg = ''
-  if ($ms -match 'package=(\S+)') { $pkg = $matches[1] }
-  $act = if ($ms -match 'active=(true|false)') { $matches[1] } else { '?' }
+  if ($fw -match '([a-z0-9_.]+)/\.?([A-Za-z0-9_.]+)Activity') { $pkg = $matches[1] }
+  elseif ($ms -match 'package=(\S+)') { $pkg = $matches[1] }
+  # activo = hay una Activity de player en primer plano O un codec de video reportando
+  $esPlayer = ($fw -match '(?i)PlayerActivity|VideoActivity|PlaybackActivity')
+  $hayCodec = ($mc -match '(?i)mode:video')
+  $act = if ($esPlayer -and $hayCodec) { 'true(codec+activity)' }
+         elseif ($hayCodec) { 'true(codec)' }
+         elseif ($esPlayer) { 'parcial(activity)' }
+         else { 'false' }
+  # codec y resolucion decodificando, si los hay
+  $vcodec = if ($mc -match 'codec:(\S+)') { $matches[1] } else { $null }
+  $vmime  = if ($mc -match 'mime:(\S+)') { $matches[1] } else { $null }
+  $vw     = if ($mc -match '\bwidth:(\d+)') { [int]$matches[1] } else { $null }
+  $vh     = if ($mc -match '\bheight:(\d+)') { [int]$matches[1] } else { $null }
   $temp = if ($th -match 'mValue=([0-9.]+)') { [double]$matches[1] } else { $null }
 
   $muestras += [ordered]@{
@@ -57,17 +73,27 @@ for ($i = 1; $i -le $n; $i++) {
     foreground = if ($fw) { ($fw -replace '.*topResumedActivity=', '').Trim() } else { 'NO_DISPONIBLE' }
     paquete    = if ($pkg) { $pkg } else { 'NO_DISPONIBLE' }
     activo     = $act
+    codec      = $vcodec
+    mime       = $vmime
+    ancho      = $vw
+    alto       = $vh
     soc_c      = $temp
-    codec_dump = if ($mc) { @($mc -split "`n" | Select-Object -First 6) } else { @('NO_DISPONIBLE') }
   }
-  Write-Host ("   [{0}/{1}] {2} pkg={3} active={4} soc={5}C" -f $i, $n, $ts, $pkg, $act, $temp)
+  Write-Host ("   [{0}/{1}] {2} pkg={3} {4} codec={5} {6}x{7} soc={8}C" -f $i, $n, $ts, $pkg, $act, $vcodec, $vw, $vh, $temp)
   Start-Sleep -Seconds $Interval
 }
 
 # resumen: cuantas muestras con reproduccion activa y rango termico
-$activas = @($muestras | Where-Object { $_.activo -eq 'true' }).Count
+# [2026-11-12] BUG corregido: se contaba -eq 'true' pero los valores reales son
+# 'true(codec+activity)' / 'true(codec)' / 'parcial(activity)' / 'false'. El
+# resumen decia "0 con reproduccion activa" mientras las 6 muestras de la misma
+# corrida imprimian true(codec+activity). Un resumen que contradice sus propios
+# datos es peor que no tenerlo: se usa -like 'true*'.
+$activas = @($muestras | Where-Object { "$($_.activo)" -like 'true*' }).Count
 $temps = @($muestras | Where-Object { $null -ne $_.soc_c } | ForEach-Object { $_.soc_c })
 $pkgs = @($muestras | Where-Object { $_.paquete -ne 'NO_DISPONIBLE' } | ForEach-Object { $_.paquete } | Sort-Object -Unique)
+$codecs = @($muestras | Where-Object { $_.codec } | ForEach-Object { $_.codec } | Sort-Object -Unique)
+$resols = @($muestras | Where-Object { $_.ancho -and $_.alto } | ForEach-Object { "$($_.ancho)x$($_.alto)" } | Sort-Object -Unique)
 
 $resumen = [ordered]@{
   ventana_s       = $Seconds
@@ -75,6 +101,8 @@ $resumen = [ordered]@{
   muestras        = $muestras.Count
   con_reproduccion_activa = $activas
   paquetes_vistos = $pkgs
+  codecs_vistos   = $codecs
+  resoluciones_vistas = $resols
   soc_min_c       = if ($temps.Count) { ($temps | Measure-Object -Minimum).Minimum } else { $null }
   soc_max_c       = if ($temps.Count) { ($temps | Measure-Object -Maximum).Maximum } else { $null }
   umbral_throttle_c = 65.0

@@ -1,0 +1,75 @@
+{
+  "schema": "ape.playback_sample.v1",
+  "fecha_utc": "20261112T210123Z",
+  "dispositivo": "192.168.1.3:34813",
+  "serial": [
+    "192.168.1.3:34813"
+  ],
+  "solo_lectura": true,
+  "resumen": {
+    "ventana_s": 12,
+    "intervalo_s": 3,
+    "muestras": 4,
+    "con_reproduccion_activa": 4,
+    "paquetes_vistos": [
+      "studio.scillarium.ottnavigator"
+    ],
+    "codecs_vistos": [
+      "c2.amlogic.avc.decoder"
+    ],
+    "resoluciones_vistas": [
+      "1920x1080"
+    ],
+    "soc_min_c": 63.700005,
+    "soc_max_c": 63.700005,
+    "umbral_throttle_c": 65.0,
+    "margen_min_c": 1.3,
+    "nota": "soc_min/max son lecturas del sensor soc_thermal. margen_min_c negativo significa que se cruzo el primer umbral de throttling (65 C) DURANTE la ventana."
+  },
+  "series": [
+    {
+      "t": "21:01:23",
+      "foreground": "ActivityRecord{e58afe0 u0 studio.scillarium.ottnavigator/.PlayerActivity t1096}\r\nFailed to write while dumping service activity: Broken pipe",
+      "paquete": "studio.scillarium.ottnavigator",
+      "activo": "true(codec+activity)",
+      "codec": "c2.amlogic.avc.decoder",
+      "mime": "video/avc",
+      "ancho": 1920,
+      "alto": 1080,
+      "soc_c": 63.700005
+    },
+    {
+      "t": "21:01:28",
+      "foreground": "ActivityRecord{e58afe0 u0 studio.scillarium.ottnavigator/.PlayerActivity t1096}\r\nFailed to write while dumping service activity: Broken pipe",
+      "paquete": "studio.scillarium.ottnavigator",
+      "activo": "true(codec+activity)",
+      "codec": "c2.amlogic.avc.decoder",
+      "mime": "video/avc",
+      "ancho": 1920,
+      "alto": 1080,
+      "soc_c": 63.700005
+    },
+    {
+      "t": "21:01:32",
+      "foreground": "ActivityRecord{e58afe0 u0 studio.scillarium.ottnavigator/.PlayerActivity t1096}\r\nFailed to write while dumping service activity: Broken pipe",
+      "paquete": "studio.scillarium.ottnavigator",
+      "activo": "true(codec+activity)",
+      "codec": "c2.amlogic.avc.decoder",
+      "mime": "video/avc",
+      "ancho": 1920,
+      "alto": 1080,
+      "soc_c": 63.700005
+    },
+    {
+      "t": "21:01:37",
+      "foreground": "ActivityRecord{e58afe0 u0 studio.scillarium.ottnavigator/.PlayerActivity t1096}\r\nFailed to write while dumping service activity: Broken pipe",
+      "paquete": "studio.scillarium.ottnavigator",
+      "activo": "true(codec+activity)",
+      "codec": "c2.amlogic.avc.decoder",
+      "mime": "video/avc",
+      "ancho": 1920,
+      "alto": 1080,
+      "soc_c": 63.700005
+    }
+  ]
+}
