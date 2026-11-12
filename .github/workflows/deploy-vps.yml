@@ -636,6 +636,31 @@ jobs:
           chmod 644 ~/.ssh/known_hosts
           printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
           chmod 600 ~/.ssh/config
+      # deploy.sh es atomico: copia, verifica y RESTAURA al fallar el smoke. Medido en
+      # la corrida 43167678786: el motor en disco volvio a 242c0cda (415.037 B, la
+      # version que el informe del incidente senala como causa del corte). Por eso el
+      # motor se instala aqui, en su propio paso, con su sha comprobado en origen y en
+      # destino. Un solo fichero, verificado en los dos extremos.
+      - name: Instalar el motor pineado (un fichero, sha en origen y destino)
+        run: |
+          set -euo pipefail
+          SHA_PIN=290b11030f3b6bf944c14298f3fe8401c0f9bd773789e26afeca8bb9f8aeb492
+          GOT_LOCAL=$(sha256sum tools/lab/ape-jit/server.js | cut -d' ' -f1)
+          echo "sha del repo:  $GOT_LOCAL"
+          if [ "$GOT_LOCAL" != "$SHA_PIN" ]; then
+            echo "::error::el fichero del repo ($GOT_LOCAL) no es el pineado"
+            exit 1
+          fi
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          scp -q tools/lab/ape-jit/server.js "$TARGET:/tmp/ape-jit-server.js.new"
+          ssh "$TARGET" "set -euo pipefail; sudo -n install -m 644 /tmp/ape-jit-server.js.new /opt/ape-jit/server.js; rm -f /tmp/ape-jit-server.js.new; echo instalado"
+          GOT_REMOTE=$(ssh "$TARGET" "sha256sum /opt/ape-jit/server.js | cut -d' ' -f1")
+          echo "sha en el VPS: $GOT_REMOTE"
+          if [ "$GOT_REMOTE" != "$SHA_PIN" ]; then
+            echo "::error::el sha instalado ($GOT_REMOTE) no es el pineado"
+            exit 1
+          fi
+          echo "MOTOR_INSTALADO sha=$GOT_REMOTE"
       - name: Guardia del timer, reinicio y recibo del motor
         run: |
           set -euo pipefail
