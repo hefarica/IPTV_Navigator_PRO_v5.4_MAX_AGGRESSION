@@ -1,0 +1,13 @@
+diff --git a/_vps_stage/deploy/manifest.tsv b/_vps_stage/deploy/manifest.tsv
+index 6e395e36..69e8fa8f 100644
+--- a/_vps_stage/deploy/manifest.tsv
++++ b/_vps_stage/deploy/manifest.tsv
+@@ -59,3 +59,8 @@ _vps_stage/canary/ape-canary@.service	/etc/systemd/system/ape-canary@.service	64
+ tools/lab/ape-jit/server.js	/opt/ape-jit/server.js	644	root:root	motor JIT: resolver, playlist, guard de capacidad [OJO: necesita systemctl restart ape-jit, deploy.sh NO lo hace]
+ IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/pulse.php	/var/www/html/prisma/api/pulse.php	644	www-data:www-data	pulse polimorfico (php-fpm recarga solo, sin reinicio)
+ vps/bin/ape-pulse-canary-worker.sh	/opt/ape-pulse/ape-pulse-canary-worker.sh	755	root:root	worker del canary con guarda jit_busy [OJO: lo invoca el timer, toma el fichero nuevo en el proximo ciclo]
++_vps_stage/lua/ape_attr.lua	/etc/nginx/lua/ape_attr.lua	644	www-data:www-data	referenciada en ape-attr-public.conf:29 y meta-plane.conf:244 — [2026-11-12] estaba viva y fuera del manifiesto
++_vps_stage/lua/ape_lab_upload.lua	/etc/nginx/lua/ape_lab_upload.lua	644	www-data:www-data	referenciada en ape-meta-public.conf:38 — [2026-11-12] estaba viva y fuera del manifiesto
++_vps_stage/lua/ape_lab_bridge.lua	/etc/nginx/lua/ape_lab_bridge.lua	644	www-data:www-data	require() desde ape_gateway.lua:35 y ape_lab_api.lua:5 — [2026-11-12] sin ella el gateway falla al arrancar
++_vps_stage/lua/ape_lastgood.lua	/etc/nginx/lua/ape_lastgood.lua	644	www-data:www-data	require() desde ape_gateway.lua:33 — [2026-11-12] sin ella el gateway falla al arrancar
++ara-x/vps/lua/floor_lock_filter.lua	/etc/nginx/lua/floor_lock_filter.lua	644	www-data:www-data	referenciada en prisma-floor-lock.conf:48; la copia viva es esta (2169 B, sha 09661e91f565) y no las de 9269/9601/17982 B — [2026-11-12]

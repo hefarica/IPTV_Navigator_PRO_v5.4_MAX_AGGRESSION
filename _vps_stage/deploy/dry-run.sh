@@ -61,8 +61,8 @@ done < <(manifest_rows)
 # distintas de floor_lock_filter.lua (2169/9269/9601/17982 B). Ahora se lee
 # tamano + sha256 + fecha, igual que para los destinos del manifiesto. Sigue
 # siendo solo lectura: sha256sum y stat, cero escrituras.
-printf '\n--- lua presentes en el VPS que el manifiesto NO toca (se quedan como están) ---\n'
-printf '%-9s %-8s %s\n' "BYTES" "SHA256" "FICHERO"
+printf '\n--- lua en /etc/nginx/lua: gestionadas por el manifiesto vs NO gestionadas ---\n'
+printf '%-9s %-8s %-14s %s\n' "BYTES" "SHA256" "ESTADO" "FICHERO"
 lua_fallo=0
 if ! lua_remoto="$(rsh "for f in /etc/nginx/lua/*.lua; do [ -f \"\$f\" ] || continue; printf '%s\t%s\t%s\n' \"\$(stat -c %s \"\$f\")\" \"\$(sha256sum \"\$f\" | cut -d' ' -f1)\" \"\$f\"; done")"; then
   printf '   (no se pudo leer: el VPS no respondio a esta lectura)\n'
@@ -71,10 +71,21 @@ elif [ -z "$lua_remoto" ]; then
   printf '   (el VPS no devolvio ninguna lua: no hay /etc/nginx/lua o no se pudo listar)\n'
   lua_fallo=1
 else
+  # 2026-11-12: antes esta seccion imprimia TODAS las lua del directorio bajo el
+  # titulo "las que el manifiesto NO toca", y eran 18 cuando las no gestionadas
+  # son 8. Un listado que dice "no gestionadas" y mete las gestionadas dentro es
+  # una etiqueta falsa; ahora cada fila dice cual es cual, contrastando con los
+  # destinos del manifiesto que ya se leyeron arriba.
   printf '%s\n' "$lua_remoto" | sort -k3 | while IFS=$'\t' read -r b h f; do
-    printf '%-9s %-8s %s\n' "$b" "${h:0:12}…" "$f"
+    case " $dests " in
+      *" $f "*) estado="gestionada" ;;
+      *)        estado="NO-GESTIONADA" ;;
+    esac
+    printf '%-9s %-8s %-14s %s\n' "$b" "${h:0:12}…" "$estado" "$f"
   done
-  printf '   total: %s lua\n' "$(printf '%s\n' "$lua_remoto" | wc -l)"
+  printf '   total: %s lua · no gestionadas: %s\n' \
+    "$(printf '%s\n' "$lua_remoto" | wc -l)" \
+    "$(printf '%s\n' "$lua_remoto" | while IFS=$'\t' read -r b h f; do case " $dests " in *" $f "*) ;; *) echo x ;; esac; done | wc -l)"
 fi
 
 c_hdr "RESUMEN DRY-RUN"
