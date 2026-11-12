@@ -1,6 +1,6 @@
 # Estado de verdad — 2026-11-12
 
-**Rama:** `deploy/engine-restart-20261112` @ `72ca122f` · **13 commits** sobre `472f7cc3`
+**Rama:** `deploy/engine-restart-20261112` @ `72ca122f` · **13 commits** sobre `472f7cc3` **antes de este documento** (14 con él, 20 ficheros con él)
 **`master`:** `d2c27293` — **sin tocar** desde `472f7cc3`. Nada de esto está en master.
 **Este documento sustituye a los parciales de hoy** para la pregunta «¿qué es verdad ahora?». Cada afirmación cita su artefacto.
 
