@@ -54,12 +54,27 @@ while IFS=$'\t' read -r src dst mode owner note; do
   [ "$st" = "CAMBIA" ] && printf '          remoto: %s B  %s…  (%s)\n' "${rsz%% *}" "${rh:0:12}" "${rsz#* }"
 done < <(manifest_rows)
 
-# Ficheros remotos que el manifiesto NO cubre: se listan para que nada se pierda de vista.
+# Ficheros remotos que el manifiesto NO cubre.
+#
+# 2026-11-12: antes solo se listaba el NOMBRE. Eso no permite decidir nada: con
+# el nombre no se sabe QUE version corre, y el repo tiene hasta 4 versiones
+# distintas de floor_lock_filter.lua (2169/9269/9601/17982 B). Ahora se lee
+# tamano + sha256 + fecha, igual que para los destinos del manifiesto. Sigue
+# siendo solo lectura: sha256sum y stat, cero escrituras.
 printf '\n--- lua presentes en el VPS que el manifiesto NO toca (se quedan como están) ---\n'
-if ! lua_remoto="$(rsh "ls -1 /etc/nginx/lua/*.lua 2>/dev/null | sed 's|^|   |'" | sort)"; then
-  printf '   (no se pudo listar: el VPS no respondio a esta lectura)\n'
+printf '%-9s %-8s %s\n' "BYTES" "SHA256" "FICHERO"
+lua_fallo=0
+if ! lua_remoto="$(rsh "for f in /etc/nginx/lua/*.lua; do [ -f \"\$f\" ] || continue; printf '%s\t%s\t%s\n' \"\$(stat -c %s \"\$f\")\" \"\$(sha256sum \"\$f\" | cut -d' ' -f1)\" \"\$f\"; done")"; then
+  printf '   (no se pudo leer: el VPS no respondio a esta lectura)\n'
+  lua_fallo=1
+elif [ -z "$lua_remoto" ]; then
+  printf '   (el VPS no devolvio ninguna lua: no hay /etc/nginx/lua o no se pudo listar)\n'
+  lua_fallo=1
 else
-  printf '%s\n' "$lua_remoto"
+  printf '%s\n' "$lua_remoto" | sort -k3 | while IFS=$'\t' read -r b h f; do
+    printf '%-9s %-8s %s\n' "$b" "${h:0:12}…" "$f"
+  done
+  printf '   total: %s lua\n' "$(printf '%s\n' "$lua_remoto" | wc -l)"
 fi
 
 c_hdr "RESUMEN DRY-RUN"
@@ -70,6 +85,10 @@ if [ "$desconocidos" -gt 0 ]; then
 fi
 printf '   hashes remotos guardados: %s\n' "snapshots/dryrun_remote_hashes_${STAMP}.txt"
 printf '   CAMBIOS REALES EN EL VPS: 0 (dry-run: solo lecturas)\n'
+if [ "${lua_fallo:-0}" -eq 1 ]; then
+  c_bad "   AUDITORIA INCOMPLETA: no se pudo leer el inventario de /etc/nginx/lua — esto NO es exit 0"
+  exit 4
+fi
 if [ "$desconocidos" -gt 0 ]; then
   c_bad "   DRY-RUN INCOMPLETO: $desconocidos destino(s) sin estado — esto NO es exit 0"
   exit 4

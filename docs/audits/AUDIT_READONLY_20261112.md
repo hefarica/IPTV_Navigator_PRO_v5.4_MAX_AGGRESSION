@@ -53,11 +53,15 @@ El motor desplegado es **el pineado por el contrato** (449.392 B · `290b1103…
 
 Ninguna de las tres tiene fila en `manifest.tsv` (**0 filas cada una**), pero **sí tienen fuente en el repositorio**:
 
-| lua | Tamaño en el VPS | Qué es | Filas en el manifiesto |
+| lua | Tamaño en el **repositorio** | Qué es | Filas en el manifiesto |
 |---|---|---|---|
-| `sentinel_auth_guard.lua` | 7.207 B | *«APE SENTINEL v1.0 — Auth Guard + UA Rotation + Provider Fingerprint»*, `header_filter_by_lua_file`, passthrough que detecta 401/403 del upstream y rota UA | **0** |
+| `sentinel_auth_guard.lua` | 7.207 B (versión `_vps_stage/lua/`) · 12.992 B (versión `vps/vps-live-snapshot-20260428/`) | *«APE SENTINEL v1.0 — Auth Guard + UA Rotation + Provider Fingerprint»*, `header_filter_by_lua_file`, passthrough que detecta 401/403 del upstream y rota UA | **0** |
 | `bw_adaptive_floor.lua` | 9.075 B | cierra el lazo bitrate-reactor → manifest | **0** |
-| `floor_lock_filter.lua` | — | filtro de floor de bitrate | **0** |
+| `floor_lock_filter.lua` | 2.169 / 9.269 / 9.601 / 17.982 B (cuatro versiones) | filtro de floor de bitrate | **0** |
+
+> **Corrección de etiqueta:** una versión anterior de esta tabla titulaba esa columna «Tamaño en el VPS». **Era falso:** los tamaños salieron del repositorio, no del VPS. El `--audit` de esta corrida solo listaba los nombres de los 18 lua sin leer su tamaño ni su hash, así que no tenía ningún dato del VPS para esas tres.
+>
+> Arreglado en el script: el `--audit` ahora lee `stat -c %s` + `sha256sum` de cada lua no gestionada (sigue siendo solo lectura) y **falla con exit 4** si no puede leer ese inventario. La próxima corrida en modo `dry-run` dará los hashes reales, y entonces decidir qué versión del repositorio es la canónica deja de ser una pregunta y pasa a ser una comparación de hashes.
 
 **Consecuencia:** producción ejecuta lógica —incluido un guard de autenticación— que **el pipeline no puede reproducir**. Un VPS reconstruido desde el manifiesto saldría sin esas tres.
 
