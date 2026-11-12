@@ -522,6 +522,14 @@ jobs:
       url: https://iptv-ape.duckdns.org
     env:
       ARA_SYNC_KEY: ${{ secrets.ARA_SYNC_KEY }}
+      # [2026-11-12] verify.sh lee ARA_SYNC_VERIFY_KEY, no ARA_SYNC_KEY. El job
+      # de verify ya la tenia; el de deploy no, asi que el sync-smoke corria SIN
+      # clave -> los 5 controles de /sync 200 (HMAC, firma de respuesta, buffer,
+      # never_drop_resolution, retry_policy, degrade.order) se saltaban en
+      # SILENCIO y el resumen decia "11/11 OK" como si todo estuviera probado.
+      # Es la misma clave que sync-provision acaba de instalar (key_id=k1), asi
+      # que el smoke ahora comprueba de verdad el endpoint que se despliega.
+      ARA_SYNC_VERIFY_KEY: ${{ secrets.ARA_SYNC_KEY }}
       ARA_SYNC_KEY_ID: ${{ vars.ARA_SYNC_KEY_ID }}
       ARA_SYNC_DEVICE_IDS: ${{ vars.ARA_SYNC_DEVICE_IDS }}
       ARA_SYNC_ARTIFACT_SHA256: ${{ vars.ARA_SYNC_ARTIFACT_SHA256 }}
