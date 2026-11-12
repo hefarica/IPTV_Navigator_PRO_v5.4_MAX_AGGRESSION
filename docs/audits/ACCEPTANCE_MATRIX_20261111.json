@@ -35,7 +35,7 @@
       "NOT_COMPUTED": 7
     },
     "verified_con_artefacto_reproducible": 0,
-    "lectura": "2 VERIFIED (P09, P16). 6 NOT_COMPUTED, 3 PARCIAL, 8 MEDIDO. ACTUALIZADO 2026-11-12 (2): P14 con ambas clausulas medidas y denominador declarado; P01 con evidencia precisa — la politica existe, la consume el generador, y el motor declara rea_executed=false.",
+    "lectura": "2 VERIFIED (P09, P16). 6 NOT_COMPUTED, 3 PARCIAL, 8 MEDIDO. ACTUALIZADO 2026-11-12 (3): P15 con el rollback REAL documentado (33 ficheros, stamp 20261112T061908Z) pero la continuidad de reproduccion sigue sin medir.",
     "las_pruebas_medidas_lo_estan_porque_fallan": "Tiempo real (P03) y Seguridad (P17) estan MEDIDAS y su resultado es negativo; Registro (P13) pasa a MEDIDO tras corregir su criterio: se midio que el enrol autentica y que el registro vivo NO. Un fallo medido es un dato; un exito sin artefacto no lo es.",
     "cuentas": [
       {
@@ -523,9 +523,22 @@
         {
           "ref": "tools/lab/ape-jit/server.js:4865",
           "nota": "spawn('nice',...) sin fallback (H2): el fallo tarda ~2 minutos en decirse en vez de fallar rapido"
+        },
+        {
+          "ref": "log de la corrida 43167678786 (job 4 deploy)",
+          "nota": "ROLLBACK REAL ejecutado: \"== ROLLBACK · 20261112T061908Z\" con 33 lineas RESTAURADO, incluidos /opt/ape-jit/server.js y las 10 lua de /etc/nginx/lua. Lo disparo un fallo real de verify (sync-smoke 404 de fixture), no un simulacro."
+        },
+        {
+          "ref": "corrida 43170688357 job 6",
+          "nota": "rollback de CI = skipped tras el arreglo; el mecanismo no se dispara en verde (fail-closed funcionando)"
         }
       ],
-      "falta": "Politica de reintento acotada y medida. El intento actual recupera tarde (135,9 s) y el reintento historico fue contraproducente; 206/304/416 tras recuperacion siguen en 0/2 en A."
+      "falta": "Politica de reintento acotada y medida. El intento actual recupera tarde (135,9 s) y el reintento historico fue contraproducente; 206/304/416 tras recuperacion siguen en 0/2 en A.",
+      "dos_clausulas": {
+        "fallo_y_rollback": "VERIFICADA — fallo real -> rollback automatico con stamp -> 33 ficheros restaurados, medido en el log de 43167678786",
+        "continuidad_de_reproduccion": "PARCIAL — tras el rollback el sistema seguia sirviendo (/jit/health 200, listas 200), pero la continuidad de REPRODUCCION no se ha medido: sin dispositivo no hay sesion que continuar. Y el rollback restaura ficheros, no comprueba que el video siga saliendo"
+      },
+      "por_que_no_verified": "El criterio pide tambien \"continuidad\", y lo medido es continuidad del SERVICIO (health y listas), no de la reproduccion. Declararla VERIFIED seria cambiar el criterio para que quepa la evidencia."
     },
     {
       "id": "P16",
