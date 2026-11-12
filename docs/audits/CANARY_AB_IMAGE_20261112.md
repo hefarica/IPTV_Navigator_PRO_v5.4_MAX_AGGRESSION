@@ -79,6 +79,8 @@ Solo cambia la cadena de filtros. Todo lo demás es igual: es un A/B de la caden
 | **A — cadena completa** | 131 s | **6,978** | 0,9169 | — |
 | **sin `noise=alls=8:allf=t`** | **93 s** (−29%) | 2,740 | **0,9405** | 0,8906 |
 | **sin `smartblur=lr=1.5:ls=-0.5`** | 151 s (+15%) | 5,951 | **0,9354** | 0,8564 |
+| **sin `format=yuv444p`** | 130 s (−1%) | 6,978 | 0,9207 | 0,8677 |
+| **encoder `veryfast`** | **462 s (3,5×)** | 7,215 | 0,9332 | 0,8743 |
 | B — solo lanczos | — | 1,175 | 0,9598 | 0,8681 |
 | *fuente 1080p* | — | *1,588* | — | — |
 
@@ -99,7 +101,8 @@ Solo cambia la cadena de filtros. Todo lo demás es igual: es un A/B de la caden
 | `noise=alls=8:allf=t` | **Candidata fuerte a reducir o quitar** — 29% del coste y la mayor pérdida de fidelidad | Pero **cambia el look** y puede enmascarar artefactos en fuentes reales: eso esta muestra no lo prueba |
 | `smartblur` | **No concluyente** | No gana en ninguna dimensión *aquí*, pero su dering no es evaluable sin fuente con anillos |
 | `unsharp` | **Aporta el realce real** | Sin grano, la nitidez sigue 2,3× la fuente |
-| `format=yuv444p` | **No medida** | Es el 4:4:4 intermedio; queda pendiente ablacionarla |
+| `format=yuv444p` | **Se queda — no cuesta nada** | Medido: **130 s frente a 131 s** de la cadena completa. El escalado a 4K domina; el 4:4:4 intermedio es despreciable aquí. SSIM vs fuente 0,9207 (vs 0,9169) |
+| **encoder `ultrafast` vs `veryfast`** | **`ultrafast` justificado por medición** | `veryfast`: **462 s frente a 131 s = 3,5× más caro** (0,195 fps) para +0,016 de SSIM (0,9332 vs 0,9169). A esa velocidad no compra nada |
 
 **Ninguna etapa se ha tocado.** El prompt lo prohíbe expresamente sin una prueba A/B comparable, y este A/B es de **una muestra sintética de 3 s**. Reducir el grano de la receta sobre esta base sería exactamente el error que el prompt advierte: cambiar la referencia por una simplificación.
 
