@@ -254,10 +254,14 @@ jobs:
           set -euo pipefail
           chmod +x "$DEPLOY_DIR"/*.sh
           bash "$DEPLOY_DIR/preflight.sh"
-      - name: Diff exacto repo ↔ VPS
+      - name: Diff exacto repo ↔ VPS + plan de riesgos y rollback
         run: |
           set -euo pipefail
-          bash "$DEPLOY_DIR/dry-run.sh"
+          # [2026-11-12] --plan: este job existe para informar la decision de
+          # aprobar o no. El diff solo dice QUE cambia; --plan añade, por cada
+          # destino, si necesita restart/reload/daemon-reload y el comando de
+          # rollback. Sigue siendo solo lectura (cero escrituras en el VPS).
+          bash "$DEPLOY_DIR/dry-run.sh" --plan
       - name: Publicar el diff para revisión
         uses: actions/upload-artifact@v4
         with:

@@ -1,7 +1,23 @@
 #!/usr/bin/env bash
 # dry-run.sh — DIFF EXACTO entre repo y VPS. CERO escrituras (solo sha256sum remoto + diff local).
+#
+# Modos (§12):
+#   (sin flag)  = --audit : solo lectura, reporta el estado. Falla si no pudo leer.
+#   --plan                : lo mismo MAS el manifiesto de riesgos y el comando de
+#                           rollback. Sigue siendo solo lectura: el plan no aplica nada.
+#
+# 2026-11-12: el contrato decia "el diff ES el plan". El diff solo dice QUE
+# cambia; un plan util tiene que decir ademas QUE RIESGO tiene cada cambio y
+# COMO se revierte. Eso es lo que anade --plan.
+MODO_PLAN=0
+for a in "$@"; do [ "$a" = "--plan" ] && MODO_PLAN=1; done
+
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
-c_hdr "DRY-RUN · $VPS_HOST · $(date -u +%FT%TZ) · (no se escribe nada)"
+if [ "$MODO_PLAN" -eq 1 ]; then
+  c_hdr "PLAN · $VPS_HOST · $(date -u +%FT%TZ) · (no se escribe nada)"
+else
+  c_hdr "DRY-RUN · $VPS_HOST · $(date -u +%FT%TZ) · (no se escribe nada)"
+fi
 
 dests="$(manifest_rows | cut -f2 | tr '\n' ' ')"
 # FAIL-CLOSED 2026-11-12. Antes NO se comprobaba el estado de rsh: si el VPS no
@@ -31,6 +47,7 @@ printf '%s\n' "-----------------------------------------------------------------
 cambios=0
 desconocidos=0
 permisos=0
+plan_rows=""
 while IFS=$'\t' read -r src dst mode owner note; do
   lf="$REPO_ROOT/$src"
   # el remoto ahora trae sha, bytes, modo, dueno, ruta -> la ruta es el campo 5
@@ -66,6 +83,8 @@ while IFS=$'\t' read -r src dst mode owner note; do
     st="CAMBIA"; cambios=$((cambios+1))
   fi
   printf '%-9s %-10s %-9s %-16s %s ← %s\n' "$st" "$ls" "${lh:0:12}…" "$perm" "$dst" "$src"
+  [ "$st" != "IGUAL" ] && plan_rows="$plan_rows$st|$dst
+"
   [ "$st" = "CAMBIA" ] && printf '          remoto: %s B  %s…  (manifiesto pide %s:%s)\n' "$rsz" "${rh:0:12}" "$mode" "$owner"
   [ "$st" = "PERMISO" ] && printf '          contenido identico; el manifiesto pide %s:%s y el VPS tiene %s:%s\n' "$mode" "$owner" "$rm_mode" "$rm_own"
 done < <(manifest_rows)
@@ -140,3 +159,48 @@ if [ "$desconocidos" -gt 0 ]; then
   exit 4
 fi
 c_ok "   DRY-RUN COMPLETO"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MODO --plan (§12): el diff dice QUE cambia; el plan dice QUE RIESGO tiene y
+# COMO se revierte. Sigue siendo solo lectura: no aplica nada.
+# ─────────────────────────────────────────────────────────────────────────────
+if [ "$MODO_PLAN" -eq 1 ]; then
+  c_hdr "PLAN · MANIFIESTO DE CAMBIOS"
+  if [ -z "$plan_rows" ]; then
+    printf '   (nada que cambiar: los 33 destinos ya coinciden con el repo)\n'
+  else
+    printf '%s' "$plan_rows" | while IFS='|' read -r st dst; do
+      [ -z "$dst" ] && continue
+      case "$dst" in
+        /opt/ape-jit/*)          riesgo="ALTO  · necesita systemctl restart ape-jit (deploy.sh NO lo hace; lo hace el job 4b)" ;;
+        /etc/nginx/lua/*)        riesgo="MEDIO · necesita nginx -t + reload" ;;
+        /etc/nginx/*)            riesgo="MEDIO · necesita nginx -t + reload" ;;
+        /usr/local/bin/*)        riesgo="MEDIO · lo invoca el timer del canary; tomara el fichero en el proximo ciclo" ;;
+        /etc/systemd/system/*)   riesgo="MEDIO · requiere daemon-reload para surtir efecto" ;;
+        /var/www/*)              riesgo="BAJO  · php-fpm recarga solo (opcache lo puede retener)" ;;
+        /etc/ara/*|/etc/ara-x/*) riesgo="BAJO  · datos de configuracion, sin reinicio" ;;
+        *)                       riesgo="BAJO  · sin servicio asociado conocido" ;;
+      esac
+      printf '   %-9s %-46s %s\n' "$st" "$dst" "$riesgo"
+    done
+  fi
+
+  c_hdr "PLAN · RIESGO GLOBAL"
+  if [ "${permisos:-0}" -gt 0 ]; then
+    printf '   · %d destino(s) con modo/dueno distinto del declarado (contenido identico)\n' "$permisos"
+    printf '     aplicar los corrige; no aplicarlos los deja como estan. Sin impacto funcional medido.\n'
+  fi
+  if [ "${lua_fallo:-0}" -eq 1 ]; then
+    printf '   · el inventario de /etc/nginx/lua NO se pudo leer: el plan esta incompleto\n'
+  fi
+  printf '   · el instalador es atomico: valida en staging, backup antes de instalar y\n'
+  printf '     restaura si falla cualquier paso posterior al backup\n'
+
+  c_hdr "PLAN · ROLLBACK"
+  printf '   el plan NO crea backup (no aplica nada). Al aplicar se crea un stamp propio:\n\n'
+  printf '     bash _vps_stage/deploy/rollback.sh <stamp> --yes\n\n'
+  printf '   el stamp se imprime al inicio del deploy y queda en deploy-stamp.txt.\n'
+  printf '   Si el deploy falla ANTES del backup, el rollback se niega a actuar a ciegas\n'
+  printf '   y no modifica nada: eso es correcto, no un fallo.\n'
+  c_ok "   PLAN COMPLETO (sin escribir nada)"
+fi
