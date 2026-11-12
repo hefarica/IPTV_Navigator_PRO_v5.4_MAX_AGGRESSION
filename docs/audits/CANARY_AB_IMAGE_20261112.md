@@ -70,7 +70,40 @@ Solo cambia la cadena de filtros. Todo lo demás es igual: es un A/B de la caden
 - **No dice nada de un televisor.** Cero píxeles vistos por un panel, cero decodificación por hardware, cero HDR real.
 - **Una sola fuente, 3 segundos, contenido sintético de test.** No representa deporte, cine ni nada con movimiento complejo.
 
-## Qué haría falta para cerrar P02 de verdad
+## Ablación: qué etapa se puede optimizar (§3, segunda mitad)
+
+§3 pide, después del A/B, *«identifica qué etapas pueden optimizarse sin perder calidad perceptual»*. Se probaron las dos sospechosas, mismo montaje y mismo encoder:
+
+| Variante | Coste (3 s) | Nitidez | SSIM vs fuente | SSIM vs A |
+|---|---|---|---|---|
+| **A — cadena completa** | 131 s | **6,978** | 0,9169 | — |
+| **sin `noise=alls=8:allf=t`** | **93 s** (−29%) | 2,740 | **0,9405** | 0,8906 |
+| **sin `smartblur=lr=1.5:ls=-0.5`** | 151 s (+15%) | 5,951 | **0,9354** | 0,8564 |
+| B — solo lanczos | — | 1,175 | 0,9598 | 0,8681 |
+| *fuente 1080p* | — | *1,588* | — | — |
+
+### Lo que sale de aquí
+
+1. **El grano es la etapa más cara y la que más castiga la fidelidad.** Quitarlo ahorra **29% de tiempo** y **sube** el SSIM (0,9169 → 0,9405). Pero hunde la nitidez medida de **6,978 a 2,740** (−61%).
+
+2. **Y eso invalida en parte mi propia métrica.** Si quitar el grano —que no aporta un solo detalle real— desploma la «nitidez» un 61%, entonces esa métrica **mide grano además de detalle**. Los **6,978 del Canary son, en buena parte, grano**. Sin él quedan **2,740**, que siguen siendo **2,3× la fuente** y **2,3× el control**: ahí sí hay realce de bordes.
+   - Consecuencia: **no se puede usar la nitidez del laplaciano para decir «el Canary conserva más detalle».** Mide una mezcla.
+
+3. **`smartblur` no gana en ninguna dimensión en esta muestra**: quitarlo hace el encode **15% más caro** (151 s), deja la nitidez casi igual (5,951) y **mejora** la fidelidad (0,9354).
+   - **Pero no se puede concluir que sobre.** Su función declarada es **dering** — quitar artefactos de anillo — y esta muestra es un clip de *selftest*, sin los anillos que deja la compresión de un proveedor real. En una fuente con artefactos, smartblur antes de unsharp es precisamente lo que evita **amplificar** el anillo junto con el borde. **La muestra no permite evaluarlo.**
+
+### Qué se puede optimizar, con lo medido
+
+| Etapa | Veredicto | Por qué |
+|---|---|---|
+| `noise=alls=8:allf=t` | **Candidata fuerte a reducir o quitar** — 29% del coste y la mayor pérdida de fidelidad | Pero **cambia el look** y puede enmascarar artefactos en fuentes reales: eso esta muestra no lo prueba |
+| `smartblur` | **No concluyente** | No gana en ninguna dimensión *aquí*, pero su dering no es evaluable sin fuente con anillos |
+| `unsharp` | **Aporta el realce real** | Sin grano, la nitidez sigue 2,3× la fuente |
+| `format=yuv444p` | **No medida** | Es el 4:4:4 intermedio; queda pendiente ablacionarla |
+
+**Ninguna etapa se ha tocado.** El prompt lo prohíbe expresamente sin una prueba A/B comparable, y este A/B es de **una muestra sintética de 3 s**. Reducir el grano de la receta sobre esta base sería exactamente el error que el prompt advierte: cambiar la referencia por una simplificación.
+
+
 
 1. **Una salida de referencia del Canary original** (un clip y su transformación) para comparar contra la reproducción de la receta.
 2. **VMAF** sobre ese par — la única métrica perceptual admitida aquí.
