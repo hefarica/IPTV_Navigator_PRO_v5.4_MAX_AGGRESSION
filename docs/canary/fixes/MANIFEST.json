@@ -1,0 +1,276 @@
+{
+  "schema": "ape.canary.fix_package_manifest/1",
+  "titulo": "Paquete de arreglos del contrato Canary->JIT: indice de parches",
+  "fecha": "2026-11-12",
+  "autor": "gate-runner (t37)",
+  "snapshot_ts": "2026-11-12T00:50:17-05:00",
+  "workdir": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION",
+  "base_git": "472f7cc330e52dc2f7e3d16f6a451fd0b461949e",
+  "proposito": "Que el operador pueda aplicar cualquiera de los arreglos en un comando, sabiendo su hash, su objetivo, su riesgo y como volver atras.",
+  "ninguno_aplicado": true,
+  "advertencia": "NINGUN parche esta aplicado. Ninguno se ha aplicado nunca al repo real. Todos se verificaron con git apply --check (no escribe) y se probaron en copias temporales.",
+  "verificacion_global": {
+    "parches_indexados": 8,
+    "todos_existen": true,
+    "todos_sha256_medidos": true,
+    "todos_apply_check_ok": true,
+    "metodo": "bytes y sha256 leidos del fichero real en esta corrida; git apply --check ejecutado contra el repo real (no escribe)."
+  },
+  "parches": [
+    {
+      "decision": "D-3",
+      "ruta": "docs/canary/fixes/01_manifest_row/0001-manifest-row.patch",
+      "bytes": 1185,
+      "sha256": "32649bb00e0922275e951aa50d4094e462abc5e323a009fd8ba6c89e667cc73e",
+      "existe": true,
+      "fichero_objetivo": "_vps_stage/deploy/manifest.tsv",
+      "stat": "_vps_stage/deploy/manifest.tsv | 2 +-",
+      "apply_check_exit": 0,
+      "riesgo": "Activa el bucle Canary-JIT en produccion: reemplaza la fila L39, de modo que /usr/local/bin/ape-visual-emulate.sh pasa a ser el script de 6.714 B con bucle. Anade carga de CPU (incidente 2026-11-09) y el destino NO se duplica.",
+      "reversibilidad": "ALTA: git apply -R devuelve el manifest.tsv a 6.501 B / sha256 5f5adcf1…; despues hay que redesplegar para que el cambio tenga efecto.",
+      "aplicado": false
+    },
+    {
+      "decision": "D-2",
+      "ruta": "docs/canary/fixes/02_conviva_auth/0002-conviva-auth.patch",
+      "bytes": 3186,
+      "sha256": "4fc0c1e8895bb1730214af39b395a66f695a5b742c50b7950a8433afd85f7b20",
+      "existe": true,
+      "fichero_objetivo": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/conviva-event.php",
+      "stat": ".../vps/prisma/api/conviva-event.php | 51 ++++++++++++++++++++",
+      "apply_check_exit": 0,
+      "riesgo": "Cierra el registro vivo sin autenticar (51 lineas, 0 borradas). Si se aplica SIN configurar CONVIVA_EVENT_TOKEN, el endpoint entra en fail-closed 503 y los devices dejan de registrar heartbeat.",
+      "reversibilidad": "ALTA: git apply -R; el endpoint vuelve al comportamiento actual. Requiere ademas el cambio de nginx (ver faltantes).",
+      "aplicado": false
+    },
+    {
+      "decision": "D-5",
+      "ruta": "docs/canary/fixes/03_deploy_headers/0003a-preflight-fails.patch",
+      "bytes": 3425,
+      "sha256": "c4c1643aed64497954a5bac19eefddc051ecc1d2b404ae7cae8502b8b725015d",
+      "existe": true,
+      "fichero_objetivo": "_vps_stage/deploy/preflight.sh",
+      "stat": "_vps_stage/deploy/preflight.sh | 39 +++++++++++++++++++++++++++++++++++++--",
+      "apply_check_exit": 0,
+      "riesgo": "preflight pasa a contar de verdad las 4 condiciones que hoy se traga; con APE_PREFLIGHT_STRICT=1 puede bloquear un despliegue que hoy pasaria.",
+      "reversibilidad": "ALTA: git apply -R (1 hunk, 37+/2-). No toca produccion: solo el script de deploy.",
+      "aplicado": false
+    },
+    {
+      "decision": "D-5",
+      "ruta": "docs/canary/fixes/03_deploy_headers/0003b-dryrun-rsh-exit.patch",
+      "bytes": 1435,
+      "sha256": "dc972df216a1b632f1e225224801b112bb458f67971438ff24f0c2aad0318e5e",
+      "existe": true,
+      "fichero_objetivo": "_vps_stage/deploy/dry-run.sh",
+      "stat": "_vps_stage/deploy/dry-run.sh | 14 ++++++++++++++",
+      "apply_check_exit": 0,
+      "riesgo": "dry-run deja de decir COMPLETO cuando el rsh fallo: sale con 4 o 5. Puede detener un pipeline que hoy continuaba en silencio.",
+      "reversibilidad": "ALTA: git apply -R (1 hunk, 14+).",
+      "aplicado": false
+    },
+    {
+      "decision": "D-5",
+      "ruta": "docs/canary/fixes/03_deploy_headers/0003c-validate-network.patch",
+      "bytes": 1238,
+      "sha256": "352b9bf95811458cd433aef134e6e3aacd79328537cd3f0a154838153e7dec4b",
+      "existe": true,
+      "fichero_objetivo": "_vps_stage/deploy/validate.sh",
+      "stat": "_vps_stage/deploy/validate.sh | 16 ++++++++++++++++",
+      "apply_check_exit": 0,
+      "riesgo": "validate distingue fallo de red (exit 6/7) de fallo de sintaxis; deploy.sh:16 abortaria con exit 3 donde antes contaba errores de red como fallos de sintaxis.",
+      "reversibilidad": "ALTA: git apply -R (1 hunk, 16+). Las ramas por extension no se tocan.",
+      "aplicado": false
+    },
+    {
+      "decision": "H1",
+      "ruta": "docs/canary/fixes/04_engine_dos/0004-engine-tdz-dos.patch",
+      "bytes": 2264,
+      "sha256": "b4dcebe5803cfa8bece5387d45f5a2a24b773caccd66a176acc9f5be481ce09e",
+      "existe": true,
+      "fichero_objetivo": "tools/lab/ape-jit/server.js",
+      "stat": "tools/lab/ape-jit/server.js | 22 ++++++++++++++++++----",
+      "apply_check_exit": 0,
+      "riesgo": "Saca CAPACITY_FPS del TDZ: cierra el DoS de una sola peticion GET /meta/<id>. MUEVE EL sha256 DEL MOTOR que el contrato pina (28352c50… -> 290b1103…), lo que obliga a re-pinear el contrato y re-congelar el 92/92.",
+      "reversibilidad": "MEDIA: git apply -R devuelve los bytes, pero si el contrato ya se re-pineo hay que volver a pinearlo y re-ejecutar el validador.",
+      "aplicado": false
+    },
+    {
+      "decision": "H1",
+      "ruta": "docs/canary/fixes/04_engine_dos/0004b-engine-nice-fallback.patch",
+      "bytes": 1648,
+      "sha256": "754cd9a5222391ffa3d81e638833777e1eb588b3f24e649f17b1608b6cbf664e",
+      "existe": true,
+      "fichero_objetivo": "tools/lab/ape-jit/server.js",
+      "stat": "tools/lab/ape-jit/server.js | 10 +++++++++-",
+      "apply_check_exit": 0,
+      "riesgo": "spawn con binario absoluto y fallback (nice/ffmpeg): evita el ENOENT de PATH. Mismo fichero que 0004; medido que aplican en CUALQUIER orden y node -c pasa tras la secuencia.",
+      "reversibilidad": "MEDIA: git apply -R. Comparte objetivo con 0004, asi que revertir solo uno deja el otro aplicado.",
+      "aplicado": false
+    },
+    {
+      "decision": "D-4",
+      "ruta": "docs/canary/fixes/00_gitignore/0005-gitignore-deliverables.patch",
+      "bytes": 290,
+      "sha256": "e31cf2219e943a2d69c925de7571ea7f860e98a9ad35a276beb7bbc6410d18d2",
+      "existe": true,
+      "fichero_objetivo": ".gitignore",
+      "stat": ".gitignore | 1 +",
+      "apply_check_exit": 0,
+      "riesgo": "Hace viajar los entregables: git status pasaria a mostrar 4.223.008 B (4,03 MiB) de PDF/patch/binarios. Si se commitean, entran en la historia y cada regeneracion de PDF es un blob nuevo. No cambia produccion.",
+      "reversibilidad": "ALTA: git apply -R o borrar la linea. Si no se commitea, no cambia nada mas que la visibilidad.",
+      "aplicado": false
+    }
+  ],
+  "decisiones_sin_parche": [
+    {
+      "decision": "D-1",
+      "titulo": "Rotacion del secreto de enrolamiento",
+      "razon": "NO es un cambio de fichero: es una accion de servidor (generar un secreto nuevo, configurarlo en el VPS y reinstalar/regenerar los binarios que lo llevan embebido). Ningun parche puede expresar eso sin tocar el VPS, que esta fuera de alcance. El hallazgo S-2 (29 de 34 binarios con el secreto en claro) queda documentado, pero su arreglo es operativo, no un diff."
+    },
+    {
+      "decision": "D-7",
+      "titulo": "Commit / versionado",
+      "razon": "NO es un cambio de fichero: es la decision de QUE entra en git y cuando. El paquete incluye 4,03 MiB de binarios y el .gitignore los oculta hoy (D-4). Commitear es del operador; un parche no puede decidir por el."
+    }
+  ],
+  "faltantes_o_incompletos": [
+    {
+      "id": "D-6",
+      "estado": "IDENTIFICADO_SIN_PARCHE_NUEVO_NECESARIO",
+      "razon": "CORREGIDO el 2026-11-12: SI existe parche y SI se aplico. Detalle en docs/audits/D6_206_302_STATE_20261112.md. El parche 206 vive en vps/nginx/live-baseline-2026-11-02/sites-enabled-default.PATCHED-206-dual.conf (gzip_static always->on, gunzip on->off, y gzip off; el 302 va aparte en .PATCHED-302.conf). La corrida ape-nginx-206-302 del 2026-11-02 (run 41536525879, job apply SUCCESS) reporto los tres cambios YA APLICADOS en el fichero vivo. No hace falta parche nuevo: hace falta VERIFICAR hoy, y el modo verify-only exige aprobacion del Environment production.",
+      "medido": {
+        "ultimo_estado_verificado": "18/20 = 200 8/8, 206 6/8, 302 4/4, segun el plan de la corrida 41536525879",
+        "cifra_previa_citada_por_error": "12/20 = 200 8/8, 206 4/8, 302 0/4 — foto ANTERIOR al apply de las 22:21 del mismo dia; la cite como estado actual durante toda la sesion",
+        "no_medido_hoy": "el estado del 2026-11-12: verify-only quedo en waiting por el Environment production y se cancelo para no dejar otra corrida colgada",
+        "residual": "2 celdas 206g=200 en las listas APE_PRUEBA_*, compromiso documentado por el propio parche"
+      }
+    },
+    {
+      "id": "0002-requisito-nginx",
+      "estado": "INCOMPLETO_SIN_EL_CAMBIO_DE_NGINX",
+      "razon": "El parche 0002 autentica el endpoint en PHP, pero prisma-conviva-event.conf:46-50 incluye fastcgi.conf SIN pasar HTTP_AUTHORIZATION. Sin anadir \"fastcgi_param HTTP_AUTHORIZATION $http_authorization;\" en el location, la cabecera NUNCA llega a PHP y todo devolveria 401. Ese cambio de nginx NO esta en el paquete (t34 lo declara en su README §4 como requisito BLOQUEANTE)."
+    },
+    {
+      "id": "02_conviva_auth/_proof/repo/",
+      "estado": "DUPLICADO_DENTRO_DEL_PAQUETE",
+      "razon": "Dentro de 02_conviva_auth/_proof/repo/ hay una copia completa de conviva-event.php (9.962 B). Es el andamio de la prueba de t34, no un parche; se declara para que nadie lo confunda con el objetivo real ni lo cuente dos veces."
+    }
+  ],
+  "orden_recomendado": {
+    "criterio": "Primero lo que no cambia comportamiento de produccion; ultimo el motor, porque mueve el sha256 que el contrato pina y obliga a re-pinear.",
+    "pasos": [
+      {
+        "orden": 1,
+        "parche": "0003a-preflight-fails.patch",
+        "por_que": "Solo afecta al script de preflight: hace que cuente lo que hoy se traga. No toca produccion."
+      },
+      {
+        "orden": 2,
+        "parche": "0003b-dryrun-rsh-exit.patch",
+        "por_que": "Solo afecta a dry-run: deja de decir COMPLETO cuando no leyo nada del VPS."
+      },
+      {
+        "orden": 3,
+        "parche": "0003c-validate-network.patch",
+        "por_que": "Solo afecta a validate: separa fallo de red de fallo de sintaxis."
+      },
+      {
+        "orden": 4,
+        "parche": "0005-gitignore-deliverables.patch",
+        "por_que": "No cambia ni produccion ni comportamiento: solo hace visible lo invisible. Va antes de commitear nada, y conviene resolverlo pronto para que los demas parches viajen."
+      },
+      {
+        "orden": 5,
+        "parche": "0002-conviva-auth.patch",
+        "por_que": "Endurece el endpoint vivo. ANTES hay que crear CONVIVA_EVENT_TOKEN y anadir la cabecera en nginx, o el heartbeat se cae con 503/401."
+      },
+      {
+        "orden": 6,
+        "parche": "0001-manifest-row.patch",
+        "por_que": "Cambia QUE script se despliega y activa CPU en el bucle. Requiere ventana y aceptacion del riesgo de incidente."
+      },
+      {
+        "orden": 7,
+        "parche": "0004-engine-tdz-dos.patch",
+        "por_que": "ULTIMO: cierra el DoS pero mueve el sha256 del motor que el contrato pina. Obliga a re-pinear el contrato y re-congelar el 92/92 en la misma sesion."
+      },
+      {
+        "orden": 8,
+        "parche": "0004b-engine-nice-fallback.patch",
+        "por_que": "Mismo fichero que 0004; medido que aplican en cualquier orden y que node -c pasa tras la secuencia. Aplicarlo junto al 0004 evita dos re-pineos."
+      }
+    ],
+    "nota_de_orden": "0004 y 0004b comparten objetivo (tools/lab/ape-jit/server.js). Comprobado: ambos ordenes aplican (0004->0004b y 0004b->0004), exit 0 y node -c exit 0 tras la secuencia. 0003a/0003b/0003c van a ficheros distintos: son independientes entre si."
+  },
+  "coste_de_aplicar_el_0005": {
+    "ficheros_que_pasarian_a_verse": 7,
+    "bytes": 4223008,
+    "MiB": 4.03,
+    "desglose_por_fichero": [
+      {
+        "fichero": "docs/canary/deliverables/01_CANARY_JIT_ARCHITECTURE.pdf",
+        "bytes": 1685154
+      },
+      {
+        "fichero": "docs/canary/deliverables/02_CANARY_APK_OTT_TIVIMATE_MANUAL.pdf",
+        "bytes": 1593602
+      },
+      {
+        "fichero": "docs/canary/deliverables/03_CANARY_JIT_INTEGRATION.patch",
+        "bytes": 865408
+      },
+      {
+        "fichero": "docs/canary/deliverables/07_CANARY_DEVICE_REGISTRATION.md",
+        "bytes": 25619
+      },
+      {
+        "fichero": "docs/canary/deliverables/10_CANARY_ANDROID_APK.md",
+        "bytes": 16793
+      },
+      {
+        "fichero": "docs/canary/deliverables/12_CANARY_DEPLOYMENT_RECEIPT.json",
+        "bytes": 25760
+      },
+      {
+        "fichero": "docs/canary/deliverables/TRANSPORT_MANIFEST_20261111.json",
+        "bytes": 10672
+      }
+    ],
+    "nota": "El 0005 no commitea nada: solo hace que git status los muestre. Commitearlos o no es decision del operador."
+  },
+  "efecto_en_el_contrato": {
+    "mueve_el_sha256_pinneado": true,
+    "sha256_actual_del_motor": "28352c508285b1eedfc889e5df40855e6e2c71207d7c806288ac8457de36ff67",
+    "sha256_tras_0004_y_0004b": "290b11030f3b6bf944c14298f3fe8401c0f9bd773789e26afeca8bb9f8aeb492",
+    "consecuencia": "El contrato contracts/canary_jit_contract_v1.json pina el sha256 del motor desplegable. Tras aplicar 0004+0004b hay que re-pinear y VOLVER A EJECUTAR node tools/quality/test_canary_jit_contract.js, y re-congelar las cifras del documento del contrato.",
+    "nota": "Los sha256 de motor de este bloque vienen de t36 (medidos en copia). El real no se ha tocado: tools/lab/ape-jit/server.js sigue con su sha actual."
+  },
+  "gates_tras_aplicar_cualquiera": {
+    "obligatorio": true,
+    "comandos": [
+      {
+        "cmd": "node tools/canary/rea_loop.js",
+        "existe": true,
+        "bytes": 12642,
+        "nota": "bucle REA: re-ejecutar tras cualquier cambio del paquete"
+      },
+      {
+        "cmd": "node tools/check_anti_degradation_policy.js",
+        "nota": "gate anti-degradacion (hoy en ROJO y PREEXISTENTE)"
+      },
+      {
+        "cmd": "node tools/check_crystal_4k_law.js",
+        "nota": "gate Crystal 4K"
+      },
+      {
+        "cmd": "node tools/check_crystal_6k_law.js",
+        "nota": "gate Crystal 6K"
+      },
+      {
+        "cmd": "node tools/quality/test_canary_jit_contract.js",
+        "nota": "validador fail-closed del contrato (92/92)"
+      }
+    ]
+  }
+}
