@@ -4,8 +4,15 @@
   "authority": "canary",
   "revision": 1,
   "effective": "2026-11-11",
-  "status": "CANDIDATE_NOT_DEPLOYED",
-  "status_evidence": "Contrato versionado en el repo, sin merge, sin deploy y sin push. No hay recibo de motor que lo acredite en produccion: ver deployability.state.",
+  "status": "ENGINE_DEPLOYED_VERIFIED__LOOP_NOT_DEPLOYED",
+  "status_evidence": "CORREGIDO 2026-11-12. El MOTOR si esta desplegado y verificado: corrida 43168903918, job 4b success; /opt/ape-jit/server.js = 449.392 B sha256 290b1103... identico al pineado, comprobado en origen y destino; ape-jit.service active; listener :3099; /health 200; y desde internet /jit/health 200 y /jit/meta/1.json 200. El BUCLE Canary<->JIT SIGUE SIN DESPLEGAR: ver deployability.loop_artifact.manifest_rows = 0. La cabecera anterior decia 'sin merge, sin deploy y sin push', y eso ya era falso.",
+  "status_correction": {
+    "fecha": "2026-11-12",
+    "anterior": "CANDIDATE_NOT_DEPLOYED",
+    "motivo": "el motor paso a estar desplegado y en ejecucion; el bucle no",
+    "recibo": "docs/audits/DEPLOY_ENGINE_RECEIPT_20261112.md",
+    "run": 43168903918
+  },
   "supersedes": null,
   "produced_by": "canary-jit-20261111 / contract-architect (t5)",
   "inputs": [
