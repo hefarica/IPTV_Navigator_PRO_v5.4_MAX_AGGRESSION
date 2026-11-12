@@ -1,12 +1,12 @@
 # Estado de verdad — 2026-11-12
 
-**Rama:** `deploy/engine-restart-20261112` @ `72ca122f` · **13 commits** sobre `472f7cc3` **antes de este documento** (14 con él, 20 ficheros con él)
+**Rama:** `deploy/engine-restart-20261112` · base `472f7cc3` · **el conteo exacto de commits y de ficheros lo da `git`, no este documento** (`git rev-list --count 472f7cc3..HEAD` · `git diff --name-only 472f7cc3..HEAD`). Se cita la base y no la cifra porque cualquier número fijo aquí se autodata en el commit siguiente.
 **`master`:** `d2c27293` — **sin tocar** desde `472f7cc3`. Nada de esto está en master.
 **Este documento sustituye a los parciales de hoy** para la pregunta «¿qué es verdad ahora?». Cada afirmación cita su artefacto.
 
 ---
 
-## 1 · Archivos modificados (19 en 13 commits)
+## 1 · Archivos modificados
 
 | Grupo | Ficheros |
 |---|---|
