@@ -138,3 +138,4 @@ sudo systemctl start ape-pulse-canary.timer
 ## 14 · Lo que este documento NO dice
 
 No dice que la imagen del Canary se haya reproducido. No dice que OTT o TiviMate reproduzcan. No dice que el sistema esté completo. Dice **exactamente** qué está medido hoy y qué no, y por qué.
+
