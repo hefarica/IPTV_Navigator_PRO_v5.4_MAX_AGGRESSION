@@ -269,6 +269,42 @@ jobs:
           path: _vps_stage/deploy/out/
           if-no-files-found: warn
           retention-days: 14
+      # ───────────────────────────────────────────────────────────────────────
+      # [2026-11-12] DIAGNOSTICO DE SOLO LECTURA · quien pide que al VPS
+      #
+      # Motivo: el ONN 4K esta en la LAN del operador y responde a ping, pero
+      # tiene ADB cerrado (5555 y mDNS vacios), asi que no se puede leer lo que
+      # decodifica el aparato. Esto mide el otro lado: que UA manda el player,
+      # que manifiestos/segmentos pide y con que codigo responde el VPS.
+      #
+      # NO escribe nada: solo grep + tail sobre el log de acceso.
+      #
+      # FAIL-HONEST: 0 lineas NO significa "el aparato no existe"; significa que
+      # no ha hecho peticiones en la ventana. El paso lo dice con esas palabras.
+      # ───────────────────────────────────────────────────────────────────────
+      - name: Quién pide al VPS (logs de acceso, solo lectura)
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          cd "$DEPLOY_DIR"
+          # shellcheck disable=SC1091
+          source ./lib.sh
+          echo "   ventana: ultimas 500 lineas del access log"
+          out="$(rsh "for f in /var/log/nginx/access.log /var/log/nginx/apt.log; do [ -r \"\$f\" ] && tail -n 500 \"\$f\"; done 2>/dev/null | grep -aiE 'OTT Navigator|TiviMate|VLC|Kodi|Smarters|ExoPlayer|Android' | tail -n 40" 2>/dev/null || true)"
+          if [ -z "$out" ]; then
+            echo "   0 lineas con UA de player en la ventana."
+            echo "   Esto NO significa que el aparato no exista: significa que no"
+            echo "   ha pedido nada al VPS en las ultimas 500 lineas del log."
+            echo "   Para medirlo hay que reproducir un canal de una lista del VPS"
+            echo "   y volver a lanzar este paso."
+          else
+            echo "   === peticiones de player detectadas ==="
+            printf '%s\n' "$out" | sed 's/^/   /'
+            echo ""
+            echo "   resumen por codigo de estado:"
+            printf '%s\n' "$out" | grep -oE '" [0-9]{3} ' | sort | uniq -c | sed 's/^/   /' || true
+          fi
+
 
   # ── 3 · VALIDACIÓN SINTÁCTICA (read-only) ────────────────────────────────
   validate:
