@@ -611,6 +611,54 @@ jobs:
           chmod +x "$DEPLOY_DIR"/*.sh
           bash "$DEPLOY_DIR/verify.sh"
 
+      # [2026-11-12] El manifiesto decia: deploy.sh hace nginx -t + reload pero NO
+      # reinicia ape-jit. Consecuencia medida: instalar server.js deja el proceso con
+      # el codigo anterior en memoria. Este paso cierra ese hueco y trae su recibo.
+      # Solo en mode=deploy: en dry-run/staging no hay nada que reiniciar.
+      - name: Reiniciar ape-jit y probar el motor (solo deploy)
+        if: ${{ inputs.mode == 'deploy' }}
+        run: |
+          set -euo pipefail
+          ssh "${{ secrets.VPS_USER }}@$VPS_HOST" "bash -s" <<'APE_EOF'
+          set -uo pipefail
+          SHA_PIN=290b11030f3b6bf944c14298f3fe8401c0f9bd773789e26afeca8bb9f8aeb492
+          # GUARDIA DEL INCIDENTE 2026-11-09: ape-pulse-canary.timer dispara cada 20 s y
+          # su worker hace POST a /jit/signal. Con el motor muerto no hace nada; en cuanto
+          # el motor suba, puede empezar a pedir trabajo y comerse la CPU (3,37 fps del
+          # bucle 4K contra 25 fps de fuente; el operador se quedo sin TV). Se detiene
+          # ANTES de arrancar el motor y se deja detenido, declarandolo.
+          TIMER_PREV=$(systemctl is-active ape-pulse-canary.timer 2>/dev/null || echo unknown)
+          echo "--- timer ape-pulse-canary antes: $TIMER_PREV"
+          if [ "$TIMER_PREV" = "active" ]; then
+            sudo -n systemctl stop ape-pulse-canary.timer && echo "--- timer DETENIDO (reversible: systemctl start ape-pulse-canary.timer)"
+          fi
+          echo "--- estado antes: $(systemctl is-active ape-jit.service 2>/dev/null || echo inactive)"
+          echo "--- sha en disco:  $(sha256sum /opt/ape-jit/server.js | cut -d' ' -f1)"
+          if ! sudo -n systemctl restart ape-jit.service; then
+            echo "::error::no se pudo reiniciar ape-jit.service"
+            journalctl -u ape-jit.service --no-pager -n 40 2>/dev/null | tail -40
+            exit 1
+          fi
+          sleep 5
+          ST=$(systemctl is-active ape-jit.service 2>/dev/null || echo unknown)
+          echo "--- estado despues: $ST"
+          if [ "$ST" != "active" ]; then
+            echo "::error::ape-jit no quedo activo tras el reinicio"
+            journalctl -u ape-jit.service --no-pager -n 60 2>/dev/null | tail -60
+            exit 1
+          fi
+          N=$(ss -tln 2>/dev/null | grep -c ':3099' || true)
+          echo "--- listeners en 3099: ${N:-0}"
+          CODE=$(curl -s -o /dev/null -m 8 -w '%{http_code}' http://127.0.0.1:3099/health || echo ERR)
+          echo "--- /health: $CODE"
+          GOT=$(sha256sum /opt/ape-jit/server.js | cut -d' ' -f1)
+          if [ "$GOT" != "$SHA_PIN" ]; then
+            echo "::error::el motor en disco ($GOT) no es el pineado ($SHA_PIN)"
+            exit 1
+          fi
+          echo "MOTOR_ARRIBA estado=$ST listeners=$N health=$CODE sha=$GOT"
+          APE_EOF
+
   # ── 6 · ROLLBACK (solo si deploy o verify fallan, en mode=deploy) ────────
   # t91: este job había perdido su id al eliminar el antiguo job de publicación
   # de lista (quedaba una cabecera `name:` huérfana en el nivel de `jobs`).
