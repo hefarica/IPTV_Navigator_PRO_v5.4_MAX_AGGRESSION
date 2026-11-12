@@ -30,15 +30,23 @@
         "dry-run.sh:8 (snapshot de hashes remotos en snapshots/)"
       ],
       "exit_codes": "0 si completa. Si el VPS no responde, el rsh falla pero el script NO aborta (no hay set -e): imprime el diff como si todo fuese NUEVO/AUSENTE y termina 0. LIMITE DECLARADO: exit 0 no distingue 'VPS inalcanzable' de 'todo nuevo'.",
-      "read_only_evidence": "dry-run.sh:7 y :35 son los dos unicos comandos remotos; ambos usan sha256sum/stat/ls. Verificado por C4 (0 comandos remotos mutantes) y C5 (0 redirecciones a rutas remotas)."
+      "read_only_evidence": "dry-run.sh:7 y :35 son los dos unicos comandos remotos; ambos usan sha256sum/stat/ls. Verificado por C4 (0 comandos remotos mutantes) y C5 (0 redirecciones a rutas remotas).",
+      "dry_run_now_fail_closed": {
+        "fecha": "2026-11-12",
+        "exit_3": "VPS inalcanzable, manifiesto vacio, o el VPS respondio con 0 filas",
+        "exit_4": "algun destino sin estado (DESCONOCIDO) o no se pudo leer el inventario de /etc/nginx/lua",
+        "estado_nuevo_PERMISO": "contenido identico pero modo/dueno distintos del declarado; se reporta como AVISO y NO hace fallar el audit (el desfase es previo: deploy.sh:80 solo aplica -o/-g cuando instala, y con hash igual no reinstala)",
+        "medido_a_b": "con el VPS caido, la version anterior devolvia exit 0 con 34 lineas de diff fabricadas; la actual devuelve exit 3 con 0 lineas"
+      }
     },
     "plan": {
       "prompt_mode": "--plan",
       "maps_to": "_vps_stage/deploy/dry-run.sh",
-      "same_implementation_as_audit": true,
-      "semantics": "El diff ES el plan: cada fila del manifiesto sale como NUEVO / CAMBIA / IGUAL y el resumen cuenta 'ficheros que CAMBIARIAN' (dry-run.sh:38). No existe un planificador separado, y no hace falta: el plan es el diff de hashes.",
+      "same_implementation_as_audit": false,
+      "semantics": "dry-run.sh --plan: el diff de hashes MAS el manifiesto de riesgos por destino (ALTO si necesita restart y deploy.sh no lo hace; MEDIO si necesita nginx -t + reload, daemon-reload o lo invoca el timer; BAJO si php-fpm recarga solo o no hay servicio asociado) MAS el comando de rollback y la nota de que rollback.sh se niega a actuar sin stamp. Sigue siendo SOLO LECTURA: no crea backup ni escribe en el VPS.",
       "writes_remote": false,
-      "exit_codes": "identico a audit"
+      "exit_codes": "identico a audit",
+      "corregido_2026_11_12": "Cita anterior: \"El diff ES el plan: cada fila del manifiesto sale como NUEVO / CAMBIA / IGUAL... No existe un planificador separado, y no hace falta\". Era cierto del diff y falso del plan: un plan tiene que declarar riesgo y rollback (§12). Ahora --plan lo hace."
     },
     "apply": {
       "prompt_mode": "--apply",
@@ -378,6 +386,8 @@
     "vps_contacted": false
   },
   "correcciones_2026_11_12": [
-    "el modo --audit ya distingue VPS inalcanzable de VPS vacio: deja de ser un hueco declarado"
+    "el modo --audit ya distingue VPS inalcanzable de VPS vacio: deja de ser un hueco declarado",
+    "el modo --plan ya no es \"el diff\": añade riesgos por destino y rollback (sigue siendo solo lectura)",
+    "el modo --audit es fail-closed (exit 3/4) y compara modo/dueno ademas del contenido"
   ]
 }
