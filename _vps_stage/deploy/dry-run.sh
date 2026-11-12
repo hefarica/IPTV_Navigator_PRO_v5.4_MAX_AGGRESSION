@@ -10,7 +10,7 @@ dests="$(manifest_rows | cut -f2 | tr '\n' ' ')"
 # Un --audit que finge haber leido no es de solo lectura: es lectura inventada,
 # y es el item que el contrato del reconciliador listaba como no computado
 # ("que 'audit' distinga VPS inalcanzable de VPS vacio").
-if ! remote="$(rsh "for f in $dests; do if [ -f \"\$f\" ]; then printf '%s\t%s\t%s\t%s\n' \"\$(sha256sum \"\$f\" | cut -d' ' -f1)\" \"\$(stat -c %s \"\$f\")\" \"\$(stat -c %y \"\$f\" | tr ' ' '_')\" \"\$f\"; else printf 'AUSENTE\t-\t-\t%s\n' \"\$f\"; fi; done")"; then
+if ! remote="$(rsh "for f in $dests; do if [ -f \"\$f\" ]; then printf '%s\t%s\t%s\t%s\t%s\n' \"\$(sha256sum \"\$f\" | cut -d' ' -f1)\" \"\$(stat -c %s \"\$f\")\" \"\$(stat -c %a \"\$f\")\" \"\$(stat -c %U:%G \"\$f\")\" \"\$f\"; else printf 'AUSENTE\t-\t-\t-\t%s\n' \"\$f\"; fi; done")"; then
   c_bad "   VPS INALCANZABLE: el diff no se puede calcular y no se imprime ninguno."
   printf '   exit 3 — no se confunde "no pude leer" con "todo es nuevo"\n'
   exit 3
@@ -26,19 +26,30 @@ if [ -z "$remote" ]; then
 fi
 printf '%s\n' "$remote" > "$SNAP_DIR/dryrun_remote_hashes_${STAMP}.txt"
 
-printf '\n%-9s %-10s %-9s %s\n' "ESTADO" "TAMANO" "HASH" "DESTINO ← ORIGEN"
-printf '%s\n' "--------------------------------------------------------------------------------"
+printf '\n%-9s %-10s %-9s %-16s %s\n' "ESTADO" "TAMANO" "HASH" "MODO:DUEÑO" "DESTINO ← ORIGEN"
+printf '%s\n' "----------------------------------------------------------------------------------------------------"
 cambios=0
 desconocidos=0
+permisos=0
 while IFS=$'\t' read -r src dst mode owner note; do
   lf="$REPO_ROOT/$src"
-  rh="$(printf '%s\n' "$remote" | awk -F"\t" -v d="$dst" '$4==d{print $1; exit}')"
-  rsz="$(printf '%s\n' "$remote" | awk -F"\t" -v d="$dst" '$4==d{print $2" "$3; exit}')"
+  # el remoto ahora trae sha, bytes, modo, dueno, ruta -> la ruta es el campo 5
+  rh="$(printf '%s\n' "$remote" | awk -F"\t" -v d="$dst" '$5==d{print $1; exit}')"
+  rm_mode="$(printf '%s\n' "$remote" | awk -F"\t" -v d="$dst" '$5==d{print $3; exit}')"
+  rm_own="$(printf '%s\n' "$remote" | awk -F"\t" -v d="$dst" '$5==d{print $4; exit}')"
+  rsz="$(printf '%s\n' "$remote" | awk -F"\t" -v d="$dst" '$5==d{print $2; exit}')"
   if [ ! -f "$lf" ]; then
-    printf '%-9s %-10s %-9s %s ← %s  (%s)\n' "AUSENTE" "-" "-" "$dst" "$src" "$note"
+    printf '%-9s %-10s %-9s %-16s %s ← %s  (%s)\n' "AUSENTE" "-" "-" "-" "$dst" "$src" "$note"
     continue
   fi
   lh="$(sha_local "$lf")"; ls="$(wc -c < "$lf")"
+  # 2026-11-12: se compara tambien MODO y DUEÑO. Antes solo el sha256, asi que un
+  # chmod o un chown en produccion pasaba como IGUAL y el audit no lo veia.
+  perm="$rm_mode:$rm_own"
+  perm_ok=1
+  if [ -n "$rm_mode" ] && { [ "$rm_mode" != "$mode" ] || [ "$rm_own" != "$owner" ]; }; then
+    perm_ok=0
+  fi
   if [ "$rh" = "AUSENTE" ]; then
     st="NUEVO"; cambios=$((cambios+1))
   elif [ -z "$rh" ]; then
@@ -46,12 +57,17 @@ while IFS=$'\t' read -r src dst mode owner note; do
     # es "no lo se". Decirlo distinto evita inventar un cambio.
     st="DESCONOCIDO"; desconocidos=$((desconocidos+1))
   elif [ "$lh" = "$rh" ]; then
-    st="IGUAL"
+    if [ "$perm_ok" -eq 0 ]; then
+      st="PERMISO"; permisos=$((permisos+1))
+    else
+      st="IGUAL"
+    fi
   else
     st="CAMBIA"; cambios=$((cambios+1))
   fi
-  printf '%-9s %-10s %-9s %s ← %s\n' "$st" "$ls" "${lh:0:12}…" "$dst" "$src"
-  [ "$st" = "CAMBIA" ] && printf '          remoto: %s B  %s…  (%s)\n' "${rsz%% *}" "${rh:0:12}" "${rsz#* }"
+  printf '%-9s %-10s %-9s %-16s %s ← %s\n' "$st" "$ls" "${lh:0:12}…" "$perm" "$dst" "$src"
+  [ "$st" = "CAMBIA" ] && printf '          remoto: %s B  %s…  (manifiesto pide %s:%s)\n' "$rsz" "${rh:0:12}" "$mode" "$owner"
+  [ "$st" = "PERMISO" ] && printf '          contenido identico; el manifiesto pide %s:%s y el VPS tiene %s:%s\n' "$mode" "$owner" "$rm_mode" "$rm_own"
 done < <(manifest_rows)
 
 # Ficheros remotos que el manifiesto NO cubre.
@@ -62,9 +78,9 @@ done < <(manifest_rows)
 # tamano + sha256 + fecha, igual que para los destinos del manifiesto. Sigue
 # siendo solo lectura: sha256sum y stat, cero escrituras.
 printf '\n--- lua en /etc/nginx/lua: gestionadas por el manifiesto vs NO gestionadas ---\n'
-printf '%-9s %-8s %-14s %s\n' "BYTES" "SHA256" "ESTADO" "FICHERO"
+printf '%-9s %-8s %-16s %-14s %s\n' "BYTES" "SHA256" "MODO:DUEÑO" "ESTADO" "FICHERO"
 lua_fallo=0
-if ! lua_remoto="$(rsh "for f in /etc/nginx/lua/*.lua; do [ -f \"\$f\" ] || continue; printf '%s\t%s\t%s\n' \"\$(stat -c %s \"\$f\")\" \"\$(sha256sum \"\$f\" | cut -d' ' -f1)\" \"\$f\"; done")"; then
+if ! lua_remoto="$(rsh "for f in /etc/nginx/lua/*.lua; do [ -f \"\$f\" ] || continue; printf '%s\t%s\t%s\t%s\t%s\n' \"\$(stat -c %s \"\$f\")\" \"\$(sha256sum \"\$f\" | cut -d' ' -f1)\" \"\$(stat -c %a \"\$f\")\" \"\$(stat -c %U:%G \"\$f\")\" \"\$f\"; done")"; then
   printf '   (no se pudo leer: el VPS no respondio a esta lectura)\n'
   lua_fallo=1
 elif [ -z "$lua_remoto" ]; then
@@ -75,17 +91,19 @@ else
   # titulo "las que el manifiesto NO toca", y eran 18 cuando las no gestionadas
   # son 8. Un listado que dice "no gestionadas" y mete las gestionadas dentro es
   # una etiqueta falsa; ahora cada fila dice cual es cual, contrastando con los
-  # destinos del manifiesto que ya se leyeron arriba.
-  printf '%s\n' "$lua_remoto" | sort -k3 | while IFS=$'\t' read -r b h f; do
+  # destinos del manifiesto que ya se leyeron arriba. Y trae modo:dueno medido,
+  # que es lo que permite fijar la fila del manifiesto con el valor real en vez
+  # de heredarlo de una hermana.
+  printf '%s\n' "$lua_remoto" | sort -k5 | while IFS=$'\t' read -r b h m o f; do
     case " $dests " in
       *" $f "*) estado="gestionada" ;;
       *)        estado="NO-GESTIONADA" ;;
     esac
-    printf '%-9s %-8s %-14s %s\n' "$b" "${h:0:12}…" "$estado" "$f"
+    printf '%-9s %-8s %-16s %-14s %s\n' "$b" "${h:0:12}…" "$m:$o" "$estado" "$f"
   done
   printf '   total: %s lua · no gestionadas: %s\n' \
     "$(printf '%s\n' "$lua_remoto" | wc -l)" \
-    "$(printf '%s\n' "$lua_remoto" | while IFS=$'\t' read -r b h f; do case " $dests " in *" $f "*) ;; *) echo x ;; esac; done | wc -l)"
+    "$(printf '%s\n' "$lua_remoto" | while IFS=$'\t' read -r b h m o f; do case " $dests " in *" $f "*) ;; *) echo x ;; esac; done | wc -l)"
 fi
 
 c_hdr "RESUMEN DRY-RUN"
@@ -96,8 +114,15 @@ if [ "$desconocidos" -gt 0 ]; then
 fi
 printf '   hashes remotos guardados: %s\n' "snapshots/dryrun_remote_hashes_${STAMP}.txt"
 printf '   CAMBIOS REALES EN EL VPS: 0 (dry-run: solo lecturas)\n'
+if [ "${permisos:-0}" -gt 0 ]; then
+  printf '   destinos con contenido identico pero MODO/DUEÑO distinto del manifiesto: %d\n' "$permisos"
+fi
 if [ "${lua_fallo:-0}" -eq 1 ]; then
   c_bad "   AUDITORIA INCOMPLETA: no se pudo leer el inventario de /etc/nginx/lua — esto NO es exit 0"
+  exit 4
+fi
+if [ "${permisos:-0}" -gt 0 ]; then
+  c_bad "   DIVERGENCIA DE PERMISOS: $permisos destino(s) no coinciden en modo/dueño con el manifiesto"
   exit 4
 fi
 if [ "$desconocidos" -gt 0 ]; then
