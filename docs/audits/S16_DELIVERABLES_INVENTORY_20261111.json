@@ -1,0 +1,409 @@
+{
+  "schema": "ape.canary.s16_deliverables_inventory.v2",
+  "generated_at": "2026-11-11T08:33:30.340Z",
+  "generated_by": "canary-auditor / t29 (consolidacion final)",
+  "method": "re-medido en esta corrida con fs.statSync + sha256 sobre el arbol; CERO hashes heredados de t19/t27",
+  "head": "472f7cc330e52dc2f7e3d16f6a451fd0b461949e",
+  "gitignore": {
+    "path": ".gitignore",
+    "line": 173,
+    "pattern": "deliverables/"
+  },
+  "summary": {
+    "total_rows": 14,
+    "canonical": 12,
+    "renamed": 1,
+    "partial": 1,
+    "not_exists": 0,
+    "check": "12 + 1 + 1 + 0 = 14"
+  },
+  "rows": [
+    {
+      "n": 1,
+      "canonical_path": "docs/canary/deliverables/01_CANARY_JIT_ARCHITECTURE.pdf",
+      "bucket": "canonical",
+      "kind": "PDF",
+      "exists": true,
+      "note": "Entregable 01. PDF en el directorio de entregables.",
+      "artifacts": [
+        {
+          "rel": "docs/canary/deliverables/01_CANARY_JIT_ARCHITECTURE.pdf",
+          "exists": true,
+          "bytes": 1685154,
+          "sha256": "70d6de7ca4ed83c8ccd0394f469acba55b92ba73f749bda346caa6495f4d0b8c",
+          "mtime": "2026-11-11T08:16:05.576Z",
+          "ignored": true,
+          "tracked": false,
+          "git": "IGNORADO"
+        }
+      ],
+      "git_transport": "PARCIALMENTE_IGNORADO"
+    },
+    {
+      "n": 2,
+      "canonical_path": "docs/canary/deliverables/02_CANARY_APK_OTT_TIVIMATE_MANUAL.pdf",
+      "bucket": "canonical",
+      "kind": "PDF",
+      "exists": true,
+      "note": "Entregable 02.",
+      "artifacts": [
+        {
+          "rel": "docs/canary/deliverables/02_CANARY_APK_OTT_TIVIMATE_MANUAL.pdf",
+          "exists": true,
+          "bytes": 1593602,
+          "sha256": "c724300c2f496c5b19d80119173b06f9392d523ddbba77a3388ec592709dac8a",
+          "mtime": "2026-11-11T08:17:55.749Z",
+          "ignored": true,
+          "tracked": false,
+          "git": "IGNORADO"
+        }
+      ],
+      "git_transport": "PARCIALMENTE_IGNORADO"
+    },
+    {
+      "n": 3,
+      "canonical_path": "docs/canary/deliverables/03_CANARY_JIT_INTEGRATION.patch",
+      "bucket": "canonical",
+      "kind": "patch",
+      "exists": true,
+      "note": "Entregable 03.",
+      "artifacts": [
+        {
+          "rel": "docs/canary/deliverables/03_CANARY_JIT_INTEGRATION.patch",
+          "exists": true,
+          "bytes": 865408,
+          "sha256": "a2ebec163172362a5be912f901e183e68f131de534e0461ab6c2aefc28163f89",
+          "mtime": "2026-11-11T08:17:44.985Z",
+          "ignored": true,
+          "tracked": false,
+          "git": "IGNORADO"
+        }
+      ],
+      "git_transport": "PARCIALMENTE_IGNORADO"
+    },
+    {
+      "n": 4,
+      "canonical_path": "contracts/canary_policy_schema.json",
+      "bucket": "canonical",
+      "kind": "JSON Schema",
+      "exists": true,
+      "note": "Entregable 04. Schema de ape.canary.quality.v1.",
+      "artifacts": [
+        {
+          "rel": "contracts/canary_policy_schema.json",
+          "exists": true,
+          "bytes": 8672,
+          "sha256": "bc9ed9fc94fa793f02061831161f0f3126c44a4179e1a2a3c7a671d4de727f8f",
+          "mtime": "2026-11-11T07:42:29.148Z",
+          "ignored": false,
+          "tracked": false,
+          "git": "untracked"
+        }
+      ],
+      "git_transport": "untracked_no_ignorado"
+    },
+    {
+      "n": 5,
+      "canonical_path": "contracts/device_capability_schema.json",
+      "bucket": "canonical",
+      "kind": "JSON Schema",
+      "exists": true,
+      "note": "Entregable 05. Schema de ape.device.capability.snapshot.v1 (20 capacidades).",
+      "artifacts": [
+        {
+          "rel": "contracts/device_capability_schema.json",
+          "exists": true,
+          "bytes": 18840,
+          "sha256": "8ea89f8564a8b8b8da2b77808ef0113f68b37d9ae36ccbae4d130e84a24d3605",
+          "mtime": "2026-11-11T07:54:35.142Z",
+          "ignored": false,
+          "tracked": false,
+          "git": "untracked"
+        }
+      ],
+      "git_transport": "untracked_no_ignorado"
+    },
+    {
+      "n": 6,
+      "canonical_path": "tools/canary/playlist_adapter.js",
+      "bucket": "canonical",
+      "kind": "JS + test",
+      "exists": true,
+      "note": "Entregable 06. Implementacion + su test.",
+      "artifacts": [
+        {
+          "rel": "tools/canary/playlist_adapter.js",
+          "exists": true,
+          "bytes": 41462,
+          "sha256": "31020f0c1f9994bb59fb4f02da4558db42d5a04b52378f38eece4b2f3552eace",
+          "mtime": "2026-11-11T08:03:34.164Z",
+          "ignored": false,
+          "tracked": false,
+          "git": "untracked"
+        },
+        {
+          "rel": "tools/quality/test_playlist_adapter.js",
+          "exists": true,
+          "bytes": 30784,
+          "sha256": "8b5b313c335a08a01e6d08330620720c80d67caeaf67fc0336d77d553ab9efa4",
+          "mtime": "2026-11-11T08:03:56.012Z",
+          "ignored": false,
+          "tracked": false,
+          "git": "untracked"
+        }
+      ],
+      "git_transport": "untracked_no_ignorado"
+    },
+    {
+      "n": 7,
+      "canonical_path": "docs/canary/deliverables/07_CANARY_DEVICE_REGISTRATION.md",
+      "bucket": "renamed",
+      "kind": "MD",
+      "exists": true,
+      "note": "Entregable 07. DISCREPANCIA DE FORMA: el encargo pedia un DIRECTORIO; lo entregado es un FICHERO .md. Se declara, no se iguala la ruta.",
+      "artifacts": [
+        {
+          "rel": "docs/canary/deliverables/07_CANARY_DEVICE_REGISTRATION.md",
+          "exists": true,
+          "bytes": 25619,
+          "sha256": "96eec6fd6a4969b68ad9e4bcaf80f6fc5ccbb0769ced16c17926008d5e26760c",
+          "mtime": "2026-11-11T08:27:31.930Z",
+          "ignored": true,
+          "tracked": false,
+          "git": "IGNORADO"
+        }
+      ],
+      "git_transport": "PARCIALMENTE_IGNORADO"
+    },
+    {
+      "n": 8,
+      "canonical_path": "vps/bin/ape-pulse-canary-worker.sh",
+      "bucket": "partial",
+      "kind": "shell + unit",
+      "exists": true,
+      "note": "Entregable 08. PARCIAL: el worker y el script del canary existen, pero el artefacto que contiene el bucle Canary<->JIT (vps/bin/ape-visual-emulate.sh, 6.714 B) tiene 0 filas en manifest.tsv; lo desplegable es _vps_stage/canary/ape-visual-emulate.sh (4.068 B, manifest.tsv:39).",
+      "artifacts": [
+        {
+          "rel": "vps/bin/ape-pulse-canary-worker.sh",
+          "exists": true,
+          "bytes": 4043,
+          "sha256": "a17281d6cf865b37f869924124af04c9296827565709c64ceaedd84db5ac282e",
+          "mtime": "2026-11-09T06:34:57.378Z",
+          "ignored": false,
+          "tracked": true,
+          "git": "tracked"
+        },
+        {
+          "rel": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-pulse/ape-pulse-canary-worker.sh",
+          "exists": true,
+          "bytes": 2802,
+          "sha256": "ec52af6d588debc89348f6762978df4a6524be44593f5e56b5266b0ad0dc0509",
+          "mtime": "2026-11-05T03:04:54.397Z",
+          "ignored": false,
+          "tracked": true,
+          "git": "tracked"
+        },
+        {
+          "rel": "vps/bin/ape-visual-emulate.sh",
+          "exists": true,
+          "bytes": 6714,
+          "sha256": "f1d2ecff6e6468eb58e04658703a34df8b0e2df1c7d61540abbb84ebf768fec1",
+          "mtime": "2026-11-09T07:02:33.490Z",
+          "ignored": false,
+          "tracked": true,
+          "git": "tracked"
+        },
+        {
+          "rel": "_vps_stage/canary/ape-visual-emulate.sh",
+          "exists": true,
+          "bytes": 4068,
+          "sha256": "653b56e1ef964bc6a3d0cb32a48724ca2b04969faaa0612804e923c41f7243f8",
+          "mtime": "2026-11-05T08:24:09.954Z",
+          "ignored": false,
+          "tracked": true,
+          "git": "tracked"
+        },
+        {
+          "rel": "_vps_stage/deploy/manifest.tsv",
+          "exists": true,
+          "bytes": 6501,
+          "sha256": "5f5adcf10f66e742dcc68d06cbfc75f0e11c69cf7cc1de695f5372b946f018ed",
+          "mtime": "2026-11-09T09:11:57.763Z",
+          "ignored": false,
+          "tracked": true,
+          "git": "tracked"
+        }
+      ],
+      "git_transport": "tracked"
+    },
+    {
+      "n": 9,
+      "canonical_path": "contracts/canary_vps_reconciler_contract.json",
+      "bucket": "canonical",
+      "kind": "JSON + JS",
+      "exists": true,
+      "note": "Entregable 09. Contrato del reconciliador + comprobador.",
+      "artifacts": [
+        {
+          "rel": "contracts/canary_vps_reconciler_contract.json",
+          "exists": true,
+          "bytes": 15558,
+          "sha256": "761d621558e7742b631de861a3ec7e64665fb74d2ec325e033b7903328ded8b0",
+          "mtime": "2026-11-11T07:48:12.083Z",
+          "ignored": false,
+          "tracked": false,
+          "git": "untracked"
+        },
+        {
+          "rel": "tools/canary/deploy_contract_check.js",
+          "exists": true,
+          "bytes": 17325,
+          "sha256": "7b873ea169be4e6bba630edcbc17164c78665a159aeec989baa32362358a727c",
+          "mtime": "2026-11-11T07:46:55.734Z",
+          "ignored": false,
+          "tracked": false,
+          "git": "untracked"
+        }
+      ],
+      "git_transport": "untracked_no_ignorado"
+    },
+    {
+      "n": 10,
+      "canonical_path": "docs/canary/deliverables/10_CANARY_ANDROID_APK.md",
+      "bucket": "canonical",
+      "kind": "MD",
+      "exists": true,
+      "note": "Entregable 10. Manifiesto de la APK (no copia del binario).",
+      "artifacts": [
+        {
+          "rel": "docs/canary/deliverables/10_CANARY_ANDROID_APK.md",
+          "exists": true,
+          "bytes": 16793,
+          "sha256": "8dc07a601da3639dba204ec419dcfc523d6d13ff2a9dc9dfaf23dd99694bc4ea",
+          "mtime": "2026-11-11T08:22:19.543Z",
+          "ignored": true,
+          "tracked": false,
+          "git": "IGNORADO"
+        }
+      ],
+      "git_transport": "PARCIALMENTE_IGNORADO"
+    },
+    {
+      "n": 11,
+      "canonical_path": "docs/audits/ACCEPTANCE_MATRIX_20261111.json",
+      "bucket": "canonical",
+      "kind": "JSON + informes",
+      "exists": true,
+      "note": "Entregable 11. Matriz de aceptacion + informes de veredicto y oposicion adversarial.",
+      "artifacts": [
+        {
+          "rel": "docs/audits/ACCEPTANCE_MATRIX_20261111.json",
+          "exists": true,
+          "bytes": 32284,
+          "sha256": "5e201693a2aa2b7574d221626b2f5010c67b968a57f8e0c7b8d6e9bc0be73f77",
+          "mtime": "2026-11-11T07:45:22.260Z",
+          "ignored": false,
+          "tracked": false,
+          "git": "untracked"
+        },
+        {
+          "rel": "docs/audits/VEREDICTO_CANARY_JIT_20261111.md",
+          "exists": true,
+          "bytes": 44013,
+          "sha256": "3b9f155041a5c03558dc078421e5c0d0285e62173f883c488275d207b520c0b0",
+          "mtime": "2026-11-11T07:32:55.903Z",
+          "ignored": false,
+          "tracked": false,
+          "git": "untracked"
+        },
+        {
+          "rel": "docs/audits/ADVERSARIAL_CANARY_JIT_20261111.md",
+          "exists": true,
+          "bytes": 31615,
+          "sha256": "8a62e7203a558c86e43996475db4ff117ba84eb6a38d4b64ae6d1020a287faae",
+          "mtime": "2026-11-11T07:04:58.597Z",
+          "ignored": false,
+          "tracked": false,
+          "git": "untracked"
+        }
+      ],
+      "git_transport": "untracked_no_ignorado",
+      "substitution_correction_2026_11_12": {
+        "problema": "El prompt de §16 pide 11_CANARY_TEST_EVIDENCE.json. El inventario mapeo el numero 11 a docs/audits/ACCEPTANCE_MATRIX_20261111.json y declaro exists=true porque ese sustituto existe. Una matriz de veredictos NO es evidencia de pruebas: no contiene ejecuciones, codigos de salida ni duraciones.",
+        "correccion": "Creado docs/canary/deliverables/11_CANARY_TEST_EVIDENCE.json el 2026-11-12 ejecutando de verdad las 8 suites (todas exit 0) y registrando 10 mediciones de red, con 6 puntos declarados como no cubiertos.",
+        "artefacto_nuevo": {
+          "rel": "docs/canary/deliverables/11_CANARY_TEST_EVIDENCE.json",
+          "bytes": 5056,
+          "sha256": "491caf0656c6fd2c4e85d7e65e72074d028524bf8aa451837f675a64ac066f41"
+        },
+        "el_sustituto_previo_sigue_siendo_valido": "docs/audits/ACCEPTANCE_MATRIX_20261111.json no se borra: cubre la matriz de aceptacion de §14, que es otra cosa."
+      }
+    },
+    {
+      "n": 12,
+      "canonical_path": "docs/canary/deliverables/12_CANARY_DEPLOYMENT_RECEIPT.json",
+      "bucket": "canonical",
+      "kind": "JSON",
+      "exists": true,
+      "note": "Entregable 12. Recibo de despliegue.",
+      "artifacts": [
+        {
+          "rel": "docs/canary/deliverables/12_CANARY_DEPLOYMENT_RECEIPT.json",
+          "exists": true,
+          "bytes": 25760,
+          "sha256": "3d22513b8a77be5fccee1d6faa2a5c57b9852b6c485ee17dddfc058bcca6c65a",
+          "mtime": "2026-11-11T08:17:45.354Z",
+          "ignored": true,
+          "tracked": false,
+          "git": "IGNORADO"
+        }
+      ],
+      "git_transport": "PARCIALMENTE_IGNORADO"
+    },
+    {
+      "n": 13,
+      "canonical_path": "_vps_stage/deploy/rollback.sh",
+      "bucket": "canonical",
+      "kind": "shell + §17.13",
+      "exists": true,
+      "note": "Entregable 13. Rollback ejecutable + §17.13 \"Procedimiento de reversión\" en docs/audits/14_CANARY_FINAL_REPORT.md:287.",
+      "artifacts": [
+        {
+          "rel": "_vps_stage/deploy/rollback.sh",
+          "exists": true,
+          "bytes": 1782,
+          "sha256": "3aff6df8b5cd2e9d2935e4dff2f9580659469b2788c39743ce0aa4d42c4c0eb4",
+          "mtime": "2026-10-27T11:58:05.322Z",
+          "ignored": false,
+          "tracked": true,
+          "git": "tracked"
+        }
+      ],
+      "git_transport": "tracked"
+    },
+    {
+      "n": 14,
+      "canonical_path": "docs/audits/14_CANARY_FINAL_REPORT.md",
+      "bucket": "canonical",
+      "kind": "MD",
+      "exists": true,
+      "note": "Entregable 14. Informe final.",
+      "artifacts": [
+        {
+          "rel": "docs/audits/14_CANARY_FINAL_REPORT.md",
+          "exists": true,
+          "bytes": 32324,
+          "sha256": "79c3f8513964463c5c58dd2386a0cea6d667ace335548c76ad05a622156c8916",
+          "mtime": "2026-11-11T07:44:10.364Z",
+          "ignored": false,
+          "tracked": false,
+          "git": "untracked"
+        }
+      ],
+      "git_transport": "untracked_no_ignorado"
+    }
+  ],
+  "correcciones_2026_11_12": [
+    "n=11: el sustituto no era el entregable que pide el prompt; se creo el artefacto real"
+  ]
+}
