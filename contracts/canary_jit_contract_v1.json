@@ -1,0 +1,457 @@
+{
+  "schema": "ape.canary_jit.contract.v1",
+  "contract_id": "canary-jit-parity-gate",
+  "authority": "canary",
+  "revision": 1,
+  "effective": "2026-11-11",
+  "status": "CANDIDATE_NOT_DEPLOYED",
+  "status_evidence": "Contrato versionado en el repo, sin merge, sin deploy y sin push. No hay recibo de motor que lo acredite en produccion: ver deployability.state.",
+  "supersedes": null,
+  "produced_by": "canary-jit-20261111 / contract-architect (t5)",
+  "inputs": [
+    "docs/audits/CANARY_TRUTH_20261111.md",
+    "docs/audits/JIT_TRUTH_20261111.md"
+  ],
+  "authority_block": {
+    "policy_path": "scratch/canary_jit_20261111/unzipped/APE_CANARY_JIT_INTEGRACION_20261111/canary/quality-policy.json",
+    "policy_bytes": 1183,
+    "policy_sha256": "9845aa5da438213d86b1e58fdb8c5e7c081395e0de9798d23689a2dd8b86fc65",
+    "policy_schema": "ape.canary.quality.v1",
+    "policy_id": "visual-canary-fase01-parity",
+    "policy_revision": 1,
+    "policy_declares": {
+      "chain_stages": 8,
+      "encoder_fields": 4,
+      "safety_production_auto_enable": false,
+      "safety_do_not_advertise_realtime": true,
+      "safety_never_replace_existing_playlists": true
+    },
+    "bytes_not_copied_reason": "El contrato pina los BYTES de la autoridad, no una copia. Duplicar la politica dentro del contrato crearia dos fuentes que pueden divergir; el pin obliga a recomputar.",
+    "pin_reproducibility": "NO TRACKEADO: .gitignore:162 ignora scratch/, asi que en un clon limpio el fichero de politica no existe y el pin queda NO_COMPUTADO (nunca PASS). Medido en este workspace con node:crypto sobre los 1183 B.",
+    "divergence_rule": "Si los bytes de la politica cambian, policy_sha256 deja de casar y TODA la cadena heredada (filtros y encoder) queda invalidada: el contrato se rechaza entero, no se parchea por canal."
+  },
+  "triple_state": {
+    "doctrine": "requested, applied y output son tres observaciones distintas del mismo trabajo. Se registran por separado y ninguna puede sustituir a otra.",
+    "requested": {
+      "meaning": "Lo que se PIDIO. Es una intencion, no una medida.",
+      "artifact": "canary/quality-policy.json + canary_quality.js:planForDevice",
+      "required_fields": ["mode", "source", "desired", "policy_sha256", "policy_revision"],
+      "may_claim": ["mode", "geometry", "policy_sha256", "policy_revision"],
+      "may_not_claim": ["execution", "applied_processing", "output_resolution", "output_fps", "output_codec"],
+      "known_lie_source": "canary_quality.js:44 desired_mode='CANARY_SPATIAL_4K' se emite SIEMPRE, incluso cuando execution='NOT_ELIGIBLE'. Deseado no es aplicado."
+    },
+    "applied": {
+      "meaning": "Lo que un MOTOR declaro haber ejecutado, con su recibo medido.",
+      "artifact": "receipt.applied (obligatorio en todo recibo)",
+      "required_fields": ["status", "route", "engine_sha256"],
+      "required_when_status_applied_measured": ["filtergraph", "codec_mode", "encoder", "evidence", "parity", "measured_encode_fps"],
+      "allowed_status": ["APPLIED_MEASURED", "NOT_APPLIED"],
+      "may_claim": ["procesamiento ejecutado, SOLO con evidence.frames > 0 y artefacto legible"],
+      "may_not_claim": ["nada sin evidence", "identidad de un motor cuyo sha256 no este en engine_sha256"]
+    },
+    "output": {
+      "meaning": "Lo que el artefacto de salida ES, medido con ffprobe sobre el fichero/segmento real.",
+      "artifact": "receipt.output + artefacto en disco (path + sha256 + bytes)",
+      "required_fields": ["width", "height", "fps", "transfer", "pix_fmt", "video_codec", "level", "audio", "filters_applied", "declared", "artifact"],
+      "may_claim": ["resolucion", "fps", "codec", "level", "rango", "audio y canales reales"],
+      "may_not_claim": ["que un filtro se aplico por el hecho de estar declarado en requested"]
+    },
+    "collapse_guards": [
+      "E_STATE_COLLAPSED si falta cualquiera de las tres claves.",
+      "E_STATE_COLLAPSED si el recibo trae un unico estado plano (mode, desired_mode, applied_processing en la raiz) en lugar del triple.",
+      "E_STATE_COLLAPSED si output existe y applied no: un artefacto sin declaracion de motor no dice quien lo produjo.",
+      "E_APPLIED_WITHOUT_PROOF si applied.status='NOT_APPLIED' pero output.filters_applied > 0 o output declara paridad.",
+      "output.fps y applied.measured_encode_fps son campos distintos y no intercambiables: uno mide el flujo, el otro mide la velocidad de codificacion.",
+      "requested.desired nunca alimenta el gate de capacidad: el gate solo lee applied.measured_encode_fps."
+    ]
+  },
+  "chain": {
+    "canonical_filtergraph": "deblock,smartblur=lr=1.5:ls=-0.5,format=yuv444p,scale=3840:2160:flags=lanczos,noise=alls=8:allf=t,unsharp=5:5:0.8:3:3:0.4,eq=contrast=1.05:brightness=0.02:saturation=1.05,format=yuv420p",
+    "canonical_filtergraph_chars": 185,
+    "canonical_filtergraph_sha256": "ed1fe6fe00be413f907fefabecb1ae8c97d1090534d1ca1717766518dcbca631",
+    "stages": [
+      {"index": 0, "id": "deblock", "filter": "deblock"},
+      {"index": 1, "id": "dering", "filter": "smartblur=lr=1.5:ls=-0.5", "note": "sustituto declarado: dering no existe en el ffmpeg objetivo"},
+      {"index": 2, "id": "chroma", "filter": "format=yuv444p"},
+      {"index": 3, "id": "upscale", "filter": "scale=3840:2160:flags=lanczos", "conditional": "solo valido con fuente 16:9 confirmada; ver geometry"},
+      {"index": 4, "id": "grain", "filter": "noise=alls=8:allf=t"},
+      {"index": 5, "id": "sharpen", "filter": "unsharp=5:5:0.8:3:3:0.4"},
+      {"index": 6, "id": "grade", "filter": "eq=contrast=1.05:brightness=0.02:saturation=1.05"},
+      {"index": 7, "id": "output", "filter": "format=yuv420p", "hdr_incompatible": true}
+    ],
+    "identity_measured": "La cadena de 185 caracteres es BYTE-IDENTICA en los 5 sitios donde aparece (quality-policy.json:7-14, canary_quality.js:8-11, vps/bin/ape-visual-emulate.sh:52 y :101, tests/canary-quality.test.js:10), sha256 ed1fe6fe... Lo que diverge no es la cadena: es el encoder.",
+    "parity": {
+      "rule": "La paridad se COMPUTA comparando etapa por etapa el filtergraph aplicado contra chain.stages; el resultado se escribe en receipt.applied.parity.",
+      "label_is_not_proof": "canary_quality.js:45 emite canary_fidelity='FILTERGRAPH_IDENTICAL' como LITERAL de cadena, sin comparar nada. Un recibo que traiga esa etiqueta sin computed:true y derived_from se rechaza con E_FIDELITY_LABEL_NOT_MEASURED.",
+      "computed_shape": {"computed": "boolean", "derived_from": "applied.filtergraph", "identical": "boolean", "missing": "array", "extra": "array", "order_mismatch": "array"},
+      "divergence_example_measured": "tools/lab/ape-jit/server.js:8649-8679 (cadenaDeRegla -> chain_4k_test) no comparte etapa semantica con la canonica: sin deblock, sin smartblur, sin noise, sin eq; usa hqdn3d/atadenoise (signo OPUESTO: Canary anade grano, JIT lo quita) y yuv420p10le en lugar de yuv444p. Se rechaza como prueba de paridad (E_FILTERGRAPH_DIVERGED)."
+    }
+  },
+  "geometry": {
+    "policy_selected": "DAR_PRESERVING",
+    "rationale": "Aqui el CONSUMIDOR es mas correcto que la AUTORIDAD y se declara: scale=3840:2160 sin force_original_aspect_ratio DEFORMA.",
+    "authority_defect_measured": {
+      "input": "1920x800 (DAR 12:5 = 2.40:1)",
+      "filter": "scale=3840:2160:flags=lanczos",
+      "output": "3840x2160 [SAR 27:20 DAR 12:5]",
+      "arithmetic": "h_scale = 3840/1920 = 2.0; v_scale = 2160/800 = 2.7; anisotropia v/h = 1.35 = 27/20",
+      "consequence": "Raster deformado 1.35x en vertical; ffmpeg lo 'compensa' escribiendo SAR=27:20, de modo que un player que ignore SAR muestra la imagen estirada.",
+      "artifact": "docs/audits/CANARY_TRUTH_20261111.md:157-166 (corrida ejecutada) y :506 (A7 SOPORTADO); quality-policy.json:18 source_aspect_warning"
+    },
+    "consumer_form_measured_correct": "force_original_aspect_ratio=decrease + pad -> SAR 1:1 DAR 16:9 (server.js:8668-8670; docs/audits/CANARY_TRUTH_20261111.md:507 A8 SOPORTADO).",
+    "square_pixel_rule": "La forma elegida exige SAR 1:1. Un SAR != 1:1 es raster anisotropico: la imagen solo se ve correcta en players que honran SAR. output.sar es campo OBLIGATORIO del recibo (docs/audits/CANARY_TRUTH_20261111.md:559: un recibo que diga 3840x2160 sin SAR esta incompleto).",
+    "accepted_forms": [
+      "scale=3840:2160:flags=lanczos CON fuente DAR 16:9 confirmada (ambas formas coinciden geometricamente)",
+      "scale=3840:2160:force_original_aspect_ratio=decrease:flags=lanczos,pad=3840:2160:(ow-iw)/2:(oh-ih)/2 para cualquier otra fuente"
+    ],
+    "rejection": "E_ASPECT_RATIO_DEFORMED si source.dar != '16:9' y la etapa de escala no preserva DAR, o si el recibo declara dar_preserved:true sin geometria que lo sostenga."
+  },
+  "encoder": {
+    "why_full_block": "quality-policy.json:16 declara SOLO 4 campos (video_codec, preset, tune, x265_params). El script que corre emite 5 x265-params ADICIONALES + rate control + GOP (vps/bin/ape-visual-emulate.sh:112-114) y _vps_stage/deploy/manifest.tsv:39 describe la fila como 'canary 4K (25M/32M/64M keyint 48)'. Un contrato que no puede expresar el encoder que corre sanciona una receta falsa.",
+    "video_codec": "libx265",
+    "preset": "ultrafast",
+    "tune": "zerolatency",
+    "x265_params": [
+      "bframes=0",
+      "frame-threads=1",
+      "keyint=48",
+      "min-keyint=48",
+      "pools=1",
+      "rc-lookahead=0",
+      "scenecut=0"
+    ],
+    "x265_params_declared_in_policy": ["pools=1", "frame-threads=1"],
+    "x265_params_emitted_not_declared": ["keyint=48", "min-keyint=48", "scenecut=0", "bframes=0", "rc-lookahead=0"],
+    "rate_control": {"b_v": "25M", "maxrate": "32M", "bufsize": "64M"},
+    "gop": {"g": 48, "keyint_min": 48, "sc_threshold": 0},
+    "profile_compat": {
+      "level_rule": "El nivel declarado debe cargar resolucion y fps (ver codec_level). El encoder no impone -level en la cadena canonica: el nivel debe declararse y verificarse contra el bitstream, no heredarse.",
+      "hdr_requires": "10 bits (yuv420p10le) + transfer preservado + max_cll/max_fall coherentes con el bitstream",
+      "pix_fmt_out_sdr": "yuv420p",
+      "pix_fmt_out_hdr": "yuv420p10le"
+    },
+    "fingerprint": {
+      "algorithm": "sha256(UTF-8) de 'codec=<video_codec>|preset=<preset>|tune=<tune>|x265-params=<params ordenados lexicograficamente y unidos por :>|b:v=<b_v>|maxrate=<maxrate>|bufsize=<bufsize>|g=<g>|keyint_min=<keyint_min>|sc_threshold=<sc_threshold>'",
+      "canonical_string": "codec=libx265|preset=ultrafast|tune=zerolatency|x265-params=bframes=0:frame-threads=1:keyint=48:min-keyint=48:pools=1:rc-lookahead=0:scenecut=0|b:v=25M|maxrate=32M|bufsize=64M|g=48|keyint_min=48|sc_threshold=0",
+      "sha256": "fb0bc96cdcc4f166fdeda561dd399877c8be7b1f4aa3328caa58924abf032b66",
+      "rule": "Un recibo con encoder completo pero huella distinta se rechaza: E_ENCODER_FINGERPRINT_MISMATCH. Dos ejecuciones con la misma cadena y distinto -b:v no son la misma imagen."
+    },
+    "partial_receipts_that_never_accredit_encoder": [
+      {
+        "route": "chain_4k_test",
+        "artifact": "tools/lab/ape-jit/server.js:8649-8679",
+        "measured": "construye SOLO el -vf: -preset, -tune y -x265-params no viajan",
+        "consequence": "E_RECEIPT_INSUFFICIENT_FOR_ENCODER"
+      },
+      {
+        "route": "copy4k",
+        "artifact": "vps/ape-jit/server.js:368-369",
+        "measured": "-c:v copy sin -vf; el LAB lo documenta en tools/lab/ape-jit/server.js:4486-4490 ('copy no ejecuta -vf')",
+        "consequence": "E_COPY_WITH_FILTERS si ademas declara filtros"
+      }
+    ]
+  },
+  "hdr": {
+    "transfer_values_covered": {
+      "smpte2084": "HDR10 / PQ",
+      "arib-std-b67": "HLG",
+      "dovi": "Dolby Vision (dvh1/dvhe)"
+    },
+    "source_sdr_transfer": "bt709",
+    "rule": "Una cadena SDR de 8 bits NO puede tocar una fuente HDR. Si source.transfer != bt709, la salida debe conservar el transfer, codificar a 10 bits como minimo y no terminar en la etapa format=yuv420p de la cadena canonica.",
+    "authority_defect_declared": "_vps_stage/canary/quality-policy.json:18 declara compatibility.max_source_transfer='SDR only for unvalidated adaptation': la autoridad YA admite que no cubre HDR. El contrato lo convierte en rechazo duro en vez de en nota.",
+    "dv_rule": "DV exige prueba de RPU en el bitstream (output.dv_rpu_preserved=true + artefacto). Sin RPU medido: E_DV_RPU_UNPROVEN.",
+    "legal_basis": [
+      "docs/policies/ANTI_DEGRADATION_LAW.md (Articulo 1: prohibido bajar HDR a SDR para ocultar un fallo)",
+      "contracts/anti_degradation_contract.json:10 (forbidden_automatic_actions incluye hdr_to_sdr_for_fix), sha256 bb359284b42a420d35da8f4dc4278e4214fe7a6cfd9c931a1f9140f272457fc5"
+    ]
+  },
+  "cadence": {
+    "rule": "live_fps == source.fps. El cambio de cadencia es rechazo, no negociacion.",
+    "tolerance_fps": 0.01,
+    "authority_defect_declared": "_vps_stage/canary/quality-policy.json:17 declara reference_experiment_only.fps=5; canary-render.js:19 emite '-r 5 -an'; el script desplegado usa FPS por defecto 5 (vps/bin/ape-visual-emulate.sh:26 'FPS=\"${CANARY_FPS:-5}\"') y lo aplica en :109 '-r \"$FPS\"'. Ese 5 fps es un EXPERIMENTO NO REUTILIZABLE como politica en vivo.",
+    "experiment_marker": {"fps": 5, "seconds": 6, "audio": "disabled", "reusable_as_live_policy": false},
+    "measured_reference": "El unico run con fotogramas declarados dio 30 frames a 5 fps en 164,1 s (_vps_stage/canary/FASE01_REPORT.md:59): no es una cadencia de directo, es un muestreo.",
+    "consumer_defect_declared": "El motor fuerza 30 fps cuando la fuente es otra (vps/ape-jit/server.js:372 y :379; medido EXTINF 8.333333 = 250 frames / 30 fps sobre fuente 25 fps, docs/audits/JIT_TRUTH_20261111.md). Se rechaza igual, venga de la autoridad o del consumidor."
+  },
+  "audio": {
+    "rule": "Preservar audio. Passthrough AAC cuando sea compatible; transcode de audio solo si el contenedor/codec lo exige, y nunca reduciendo canales.",
+    "reference_recipe_defect": "La receta de referencia va con -an (canary-render.js:19 y vps/bin/ape-visual-emulate.sh:109). Un recibo que reproduzca esa receta en vivo pierde el audio y no puede declarar paridad.",
+    "silence_is_not_parity": "E_AUDIO_LOST_AS_PARITY si la fuente tiene canales > 0 y la salida declara 0 canales, o si el recibo uso -an, mientras el recibo afirma paridad.",
+    "channel_reduction_is_degradation": "Reducir canales (no eliminarlos) es degradacion: ver degradation.categories.audio_channels.",
+    "consumer_defect_declared": "vps/ape-jit/server.js:389-393 emite -ac 2 INCONDICIONAL en las tres ramas (medido sobre fuente aac 5.1 -> salida estereo 129 kbps, docs/audits/JIT_TRUTH_20261111.md). Es degradacion sin autorizacion."
+  },
+  "codec_level": {
+    "law": "Ley Cardinal 1 - Nivel <-> Resolucion: level_idc = level x 30; el nivel declarado debe cargar MaxLumaPs y MaxLumaSR de ITU-T H.265 Annex A.",
+    "legal_basis": "docs/manifestos/ape-vps-hevc-crystal-integrator/references/truth_guards.md:24-43",
+    "freeze_reference": "Declarar hvc1.2.4.L153.B0 sobre 8K@120 = el freeze 2026-06-08 (truth_guards.md:42)",
+    "table": [
+      {"level": "3.1", "level_idc": 93, "max_luma_ps": 983040, "max_luma_sr": 33177600, "ceiling": "720p"},
+      {"level": "4.0", "level_idc": 120, "max_luma_ps": 2228224, "max_luma_sr": 66846720, "ceiling": "1080p@30"},
+      {"level": "4.1", "level_idc": 123, "max_luma_ps": 2228224, "max_luma_sr": 133693440, "ceiling": "1080p@60"},
+      {"level": "5.0", "level_idc": 150, "max_luma_ps": 8912896, "max_luma_sr": 267386880, "ceiling": "4K@30"},
+      {"level": "5.1", "level_idc": 153, "max_luma_ps": 8912896, "max_luma_sr": 534773760, "ceiling": "4K@60 (techo)"},
+      {"level": "5.2", "level_idc": 156, "max_luma_ps": 8912896, "max_luma_sr": 1069547520, "ceiling": "4K@120"},
+      {"level": "6.0", "level_idc": 180, "max_luma_ps": 35651584, "max_luma_sr": 1069547520, "ceiling": "8K@30"},
+      {"level": "6.1", "level_idc": 183, "max_luma_ps": 35651584, "max_luma_sr": 2139095040, "ceiling": "8K@60"},
+      {"level": "6.2", "level_idc": 186, "max_luma_ps": 35651584, "max_luma_sr": 4278190080, "ceiling": "8K@120"}
+    ],
+    "rule": "Rechazo si width*height > max_luma_ps(level) o width*height*fps > max_luma_sr(level). El nivel se lee del codec string declarado (hvc1.2.4.L<idc>.B0) y se verifica contra resolucion+fps de salida.",
+    "declared_vs_encoded": "Declarar no es codificar: el motor declara hvc1.2.4.L153.B0 constante (vps/ape-jit/server.js:445) mientras el bitstream medido era level 120 (docs/audits/JIT_TRUTH_20261111.md, R-11). El contrato exige el nivel en output.level medido del bitstream, no heredado del codec string."
+  },
+  "degradation": {
+    "law": "docs/policies/ANTI_DEGRADATION_LAW.md",
+    "contract": "contracts/anti_degradation_contract.json",
+    "exception_requires_all_five": ["channel_id", "device_id", "degradation", "reason", "date"],
+    "missing_any_field": "E_DEGRADATION_UNAUTHORIZED",
+    "categories": {
+      "resolution": "width*height de salida < width*height de fuente",
+      "codec": "familia de codec de salida inferior a la de fuente (HEVC -> AVC)",
+      "dynamic_range": "transfer HDR -> bt709 / pix_fmt de 10+ bits -> 8 bits",
+      "fps": "ver cadence",
+      "video_bitrate": "bitrate de salida < bitrate de fuente",
+      "audio_channels": "canales de audio de salida < canales de fuente (incluye bajar a 0: audio.lost)",
+      "bit_depth": "pix_fmt de salida con menos bits por muestra que la fuente"
+    },
+    "allowed_without_authorization": [
+      "remux/passthrough sin recomprimir",
+      "upscale declarado como UPSCALE_FROM_SOURCE",
+      "preservar todo y declarar NOT_APPLIED cuando no hay capacidad"
+    ]
+  },
+  "capacity_gate": {
+    "rule": "Transcode SOLO si el fps de codificacion medido >= fps de la fuente.",
+    "on_insufficient": "REMUX_PASSTHROUGH + applied.status='NOT_APPLIED' + applied.reason='CAPACITY_INSUFFICIENT'. Si aun asi declara APPLIED_MEASURED: E_CAPACITY_INSUFFICIENT.",
+    "on_unknown": "gate='desconocido' -> RECHAZA con E_CAPACITY_UNKNOWN. Un umbral sin dato no autoriza transcode; no se rellena con una suposicion.",
+    "measurements": [
+      {
+        "id": "M1",
+        "label": "Canary 4K x265 ultrafast/zerolatency, CPUQuota=40%",
+        "encode_fps": 0.1828,
+        "frames": 30,
+        "encode_seconds": 164.1,
+        "wall_seconds": 170,
+        "cpu_pct_avg": 39.09,
+        "cpu_quota_pct": 40,
+        "artifact": "_vps_stage/canary/FASE01_REPORT.md:59 (y :58 para cpu_pct_avg)",
+        "arithmetic": "30 / 164.1 = 0.182815... coherente con el 0.1828 declarado",
+        "verdict": "TRANSCODE NO VIABLE en directo: 0.1828 fps < 25/30/50/60 fps"
+      },
+      {
+        "id": "M2",
+        "label": "Run del incidente 2026-11-09 (mismo techo de CPU del 40%)",
+        "cpu_seconds": 57,
+        "wall_seconds": 146,
+        "frames": null,
+        "encode_fps": null,
+        "status": "NO_COMPUTADO",
+        "reason": "El artefacto no declara fotogramas: 57 s CPU / 146 s de pared por 6 s de clip. Asumir 30 frames daria ~0,2055 fps, y eso seria una hipotesis, no una medicion.",
+        "artifact": "docs/manifestos/INCIDENTE_DEPLOY_MANUAL_2026-11-09.md:147"
+      },
+      {
+        "id": "M3",
+        "label": "Bucle 4K del motor JIT en produccion",
+        "encode_fps": 3.37,
+        "source_fps": 25,
+        "artifact": "docs/manifestos/INCIDENTE_DEPLOY_MANUAL_2026-11-09.md:66-67",
+        "verdict": "NO VIABLE: 3.37 < 25. No es una cifra del Canary; se usa solo para el consumidor."
+      },
+      {
+        "id": "M4",
+        "label": "Cadenas del LAB en host sin GPU",
+        "encode_fps": 0.084,
+        "also_measured_fps": 29.6,
+        "artifact": "skill ape-image-pipeline-truth seccion 9 (tabla de techo)",
+        "usable_as_threshold": false,
+        "reason": "Otra cadena, otro host. No se mezcla con M1/M2/M3 ni se usa como umbral del gate."
+      }
+    ],
+    "honest_default": "Con M1 como unica medicion del Canary con fotogramas, el resultado por defecto del gate para una fuente de directo es NOT_APPLIED + passthrough. Declarar transcode 4K en vivo con la receta del Canary es, hoy, NO_SOPORTADO."
+  },
+  "deployability": {
+    "rule": "Un artefacto no esta desplegado por existir en el repo: esta desplegado si tiene FILA en el manifiesto de deploy y su sha256 casa. Sin fila: NOT_DEPLOYED.",
+    "manifest_file": "_vps_stage/deploy/manifest.tsv",
+    "manifest_file_name_note": "SINGULAR. '_vps_stage/deploy/manifests.tsv' (plural) NO existe en el workspace; comprobado con Test-Path.",
+    "manifest_bytes": 6501,
+    "manifest_sha256": "5f5adcf10f66e742dcc68d06cbfc75f0e11c69cf7cc1de695f5372b946f018ed",
+    "manifest_non_empty_rows": 60,
+    "loop_artifact": {
+      "path": "vps/bin/ape-visual-emulate.sh",
+      "bytes": 6714,
+      "sha256": "f1d2ecff6e6468eb58e04658703a34df8b0e2df1c7d61540abbb84ebf768fec1",
+      "jit_hits": 7,
+      "implements_canary_jit_loop": true,
+      "manifest_rows": 0,
+      "state": "NOT_DEPLOYED"
+    },
+    "mapped_artifact": {
+      "path": "_vps_stage/canary/ape-visual-emulate.sh",
+      "bytes": 4068,
+      "sha256": "653b56e1ef964bc6a3d0cb32a48724ca2b04969faaa0612804e923c41f7243f8",
+      "jit_hits": 0,
+      "implements_canary_jit_loop": false,
+      "manifest_rows": 1,
+      "manifest_line": 39,
+      "deploy_target": "/usr/local/bin/ape-visual-emulate.sh",
+      "manifest_note": "canary 4K (25M/32M/64M keyint 48)",
+      "state": "DEPLOYED"
+    },
+    "h1_blocker": "H-1: el artefacto que SI implementa el bucle Canary<->JIT no tiene fila en el manifiesto; el que se despliega es la copia sin bucle. Doble prueba: _vps_stage/deploy/manifest.tsv:39 y docs/manifestos/INCIDENTE_DEPLOY_MANUAL_2026-11-09.md:128 (backup de 4.068 B). La integracion Canary-JIT empieza por anadir esa fila al manifiesto. NO se modifica el manifiesto desde este contrato: es decision del operador.",
+    "installed_is_not_running": {
+      "artifact": "_vps_stage/deploy/manifest.tsv:49-57",
+      "measured": "deploy.sh instala el fichero y hace nginx -t + reload, pero NO ejecuta 'systemctl restart ape-jit'; verificado que deploy.sh, verify.sh y deploy-vps.yml dan 0 referencias.",
+      "consequence": "Un sha256 que casa no prueba que el proceso ejecute ese codigo: el proceso sigue con el codigo anterior en memoria. Requiere recibo de /health + reinicio, hoy NO_COMPUTADO."
+    },
+    "rejection": "E_NOT_DEPLOYED si el recibo declara state='DEPLOYED' sobre un sha256 sin fila en el manifiesto, o si declara jit_loop=true sobre un sha256 cuya fila tiene jit_hits=0."
+  },
+  "engine": {
+    "rule": "Fijar el motor por sha256, NUNCA por ruta. Un recibo que no nombra el sha256 del motor no acredita nada.",
+    "receipt_required_field": "engine_sha256",
+    "deployable_engine_sha256": "290b11030f3b6bf944c14298f3fe8401c0f9bd773789e26afeca8bb9f8aeb492",
+    "deployable_engine_path": "tools/lab/ape-jit/server.js",
+    "deployable_engine_manifest_line": 59,
+    "candidates": [
+      {
+        "id": "A",
+        "path": "tools/lab/ape-jit/server.js",
+        "bytes": 449392,
+        "sha256": "290b11030f3b6bf944c14298f3fe8401c0f9bd773789e26afeca8bb9f8aeb492",
+        "manifest_row": true,
+        "manifest_line": 59,
+        "has_jit_signal": true,
+        "has_level_v": false,
+        "has_max_cll": false,
+        "has_ac2": false,
+        "note": "Es el que el manifiesto instala. Medido: 0 ocurrencias de -level:v, max-cll y -ac 2; contiene explicito 'NO -ac 2 universal' (server.js:557, :990, :3234)."
+      },
+      {
+        "id": "B",
+        "path": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js",
+        "bytes": 45535,
+        "sha256": "8405f78412dc2a984f690b7270e891d050740d88358f10ca5818f905151fbae0",
+        "manifest_row": false,
+        "has_jit_signal": false,
+        "has_level_v": true,
+        "has_max_cll": true,
+        "has_ac2": true,
+        "note": "Lo cita el README del paquete. NO despliega. Los defectos de codec/HDR/audio medidos por t2 (level:v 4.2 sobre avc1.640028 declarado, max-cll=100,100, -ac 2 sobre 5.1) son de ESTE artefacto."
+      },
+      {
+        "id": "C",
+        "path": "desplegado 2026-11-09",
+        "bytes": 415037,
+        "sha256": null,
+        "manifest_row": "NO_COMPUTADO",
+        "source": "docs/manifestos/INCIDENTE_DEPLOY_MANUAL_2026-11-09.md:132-133",
+        "note": "Version de las 07:19 = git fb00cf09 del fichero de LAB (linea A), no de B. El documento no da hash."
+      }
+    ],
+    "measurement_attribution": {
+      "rule": "Un recibo debe declarar sobre que engine_sha256 se midio. Medir un artefacto y declarar otro es exactamente el fallo que este contrato impide.",
+      "applies_to": "Los defectos de B NO se atribuyen a A: A no tiene -level:v, ni max-cll, ni -ac 2. El contrato los rechaza como CATEGORIA (declarado != codificado, HDR incoherente, audio degradado sin autorizacion), no como defecto del motor desplegable."
+    },
+    "which_engine_runs_today": "NO_COMPUTADO: el README del paquete dice B, el incidente dice C, y el manifiesto instala A. Sin acceso al VPS en esta tarea no hay medicion en vivo.",
+    "rejection": "E_ENGINE_SHA_UNVERIFIED si falta engine_sha256, si no es 64 hex, o si no es el sha256 desplegable del manifiesto."
+  },
+  "receipt_schema": {
+    "id": "ape.canary_jit.receipt.v1",
+    "fail_closed_rule": "Cada lista de esta seccion es la UNICA fuente de campos obligatorios. El validador las recorre en tiempo de ejecucion (required_field_levels) y rechaza la primera ausencia con E_REQUIRED_FIELD_MISSING nombrando el path JSON exacto. No existe una segunda lista en codigo que pueda divergir: omitir un campo ya no desactiva una guarda en silencio.",
+    "required_top_level": ["schema", "requested", "applied", "output", "engine_sha256", "deployability"],
+    "requested": ["mode", "source", "desired", "policy_sha256", "policy_revision"],
+    "applied": ["status", "route", "engine_sha256"],
+    "applied_when_measured": ["filtergraph", "codec_mode", "encoder", "evidence", "parity", "measured_encode_fps"],
+    "evidence": ["frames", "seconds", "decode_errors", "artifact"],
+    "output": ["width", "height", "fps", "transfer", "pix_fmt", "video_codec", "level", "sar", "bitrate_bps", "audio", "filters_applied", "declared", "artifact"],
+    "deployability": ["state", "artifact", "sha256", "manifest_file"],
+    "source": ["width", "height", "fps", "transfer", "pix_fmt", "video_codec", "bitrate_bps", "audio"],
+    "source.audio": ["channels"],
+    "required_field_levels": ["required_top_level", "requested", "source", "source.audio", "applied", "applied_when_measured", "evidence", "output", "deployability"],
+    "required_field_level_map": {
+      "required_top_level": "",
+      "requested": "requested.",
+      "source": "requested.source.",
+      "source.audio": "requested.source.audio.",
+      "applied": "applied.",
+      "applied_when_measured": "applied.",
+      "evidence": "applied.evidence.",
+      "output": "output.",
+      "deployability": "deployability."
+    },
+    "required_when": {
+      "applied_when_measured": "applied.status=APPLIED_MEASURED",
+      "evidence": "applied.status=APPLIED_MEASURED"
+    },
+    "gate_precedence": {
+      "schema": "E_RECEIPT_SCHEMA",
+      "requested": "E_STATE_COLLAPSED",
+      "applied": "E_STATE_COLLAPSED",
+      "output": "E_STATE_COLLAPSED",
+      "applied.status": "E_STATE_COLLAPSED",
+      "engine_sha256": "E_ENGINE_SHA_UNVERIFIED",
+      "applied.engine_sha256": "E_ENGINE_SHA_UNVERIFIED",
+      "requested.policy_sha256": "E_POLICY_PIN_MISMATCH",
+      "requested.source.width": "E_ASPECT_RATIO_DEFORMED",
+      "requested.source.height": "E_ASPECT_RATIO_DEFORMED",
+      "requested.source.fps": "E_FPS_CADENCE_CHANGED",
+      "applied.parity": "E_FIDELITY_LABEL_NOT_MEASURED",
+      "applied.measured_encode_fps": "E_CAPACITY_UNKNOWN",
+      "output.fps": "E_FPS_CADENCE_CHANGED",
+      "output.audio": "E_AUDIO_LOST_AS_PARITY"
+    },
+    "gate_precedence_rule": "Un path listado aqui lo valida un gate especifico con codigo propio mas preciso (E_POLICY_PIN_MISMATCH distingue ausente / ceros / distinto). El walker lo SALTA a proposito: gana el codigo especifico. Todo path obligatorio NO listado aqui cae al walker y produce E_REQUIRED_FIELD_MISSING.",
+    "guard_map": {
+      "output.video_codec": "degradation.codec + codec_level.ley_cardinal_1",
+      "output.pix_fmt": "degradation.bit_depth + hdr.min_10bit",
+      "output.transfer": "hdr.source_to_sdr",
+      "output.sar": "geometry.square_pixels",
+      "output.level": "codec_level.ley_cardinal_1",
+      "requested.source.video_codec": "degradation.codec",
+      "requested.source.pix_fmt": "degradation.bit_depth + degradation.chroma_subsampling",
+      "requested.source.bitrate_bps": "degradation.video_bitrate",
+      "output.bitrate_bps": "degradation.video_bitrate",
+      "requested.source.audio": "degradation.audio_channels + audio.lost"
+    },
+    "guard_map_rule": "Cada campo del guard_map es load-bearing: si falta, la guarda que nombra deja de poder decidir. El validador lo DEMUESTRA borrando el campo del recibo y de la lista del contrato: si aun asi rechaza por otro codigo, lo declara REDUNDANTE_COVERED_BY en vez de fingir que ese campo es la unica barrera.",
+    "policy_pin": {
+      "path": "requested.policy_sha256",
+      "reference": "authority_block.policy_sha256",
+      "rule": "Debe ser 64 hex y coincidir con el pin de la autoridad. Ausente, todo ceros o distinto -> E_POLICY_PIN_MISMATCH.",
+      "why": "Sin este pin, 'Canary es la autoridad' es decorativo: el recibo no queda atado a la receta. Con el, un recibo producido con otra revision se detecta."
+    }
+  },
+  "rejections": [
+    {"code": "E_RECEIPT_SCHEMA", "severity": "high", "rule": "receipt.schema debe ser 'ape.canary_jit.receipt.v1'.", "fixture": "receipt_schema_invalid"},
+    {"code": "E_STATE_COLLAPSED", "severity": "blocker", "rule": "Falta requested, applied u output, o el recibo trae un estado plano (mode/desired_mode/applied_processing/execution/canary_fidelity) en la raiz.", "fixture": "state_collapsed_missing_requested + state_collapsed_flat_keys (+ controles flat_keys_absent_control)"},
+    {"code": "E_REQUIRED_FIELD_MISSING", "severity": "blocker", "rule": "Falta un campo obligatorio declarado en receipt_schema.*: el walker recorre esas listas (fuente unica, sin lista duplicada en codigo) y rechaza nombrando el path JSON exacto y la guarda que ese campo protege. Omitir un campo no desactiva una guarda en silencio.", "fixture": "deployability_absent + section_missing_{requested,applied,evidence,output,deployability}_field + evasion_* (9)"},
+    {"code": "E_POLICY_PIN_MISMATCH", "severity": "blocker", "rule": "requested.policy_sha256 ausente, todo ceros o distinto de authority_block.policy_sha256: el recibo no queda atado a la receta.", "fixture": "policy_pin_absent + policy_pin_zeroed + policy_pin_mismatch (+ control policy_pin_correct_control)"},
+    {"code": "E_ENGINE_SHA_UNVERIFIED", "severity": "blocker", "rule": "engine_sha256 ausente, mal formado o distinto del sha256 desplegable del manifiesto.", "fixture": "engine_sha_missing + engine_sha_not_deployable"},
+    {"code": "E_NOT_DEPLOYED", "severity": "blocker", "rule": "Declara DEPLOYED un artefacto sin fila en el manifest, o jit_loop sobre una fila con 0 hits de jit.", "fixture": "not_in_manifest_deployed"},
+    {"code": "E_RECEIPT_INSUFFICIENT_FOR_ENCODER", "severity": "blocker", "rule": "Una ruta que solo construye -vf (chain_4k_test) no puede acreditar encoder.", "fixture": "vf_only_chain4k_test"},
+    {"code": "E_ENCODER_BLOCK_INCOMPLETE", "severity": "high", "rule": "Falta rate control, GOP o params libres en el bloque encoder.", "fixture": "encoder_incomplete"},
+    {"code": "E_ENCODER_FINGERPRINT_MISMATCH", "severity": "high", "rule": "La huella del encoder del recibo no casa con encoder.fingerprint.sha256.", "fixture": "encoder_fingerprint_mismatch"},
+    {"code": "E_FIDELITY_LABEL_NOT_MEASURED", "severity": "high", "rule": "Etiqueta de paridad sin computed:true y derived_from (el literal FILTERGRAPH_IDENTICAL no es prueba).", "fixture": "fidelity_label_literal"},
+    {"code": "E_FILTERGRAPH_DIVERGED", "severity": "high", "rule": "El recibo afirma paridad identica y la comparacion etapa por etapa la desmiente.", "fixture": "filtergraph_diverged"},
+    {"code": "E_APPLIED_WITHOUT_PROOF", "severity": "blocker", "rule": "APPLIED_MEASURED sin evidencia de fotograma (frames>0, seconds>0, decode_errors=0, artefacto legible) o NOT_APPLIED con filtros aplicados.", "fixture": "applied_without_frame_evidence"},
+    {"code": "E_CAPACITY_UNKNOWN", "severity": "high", "rule": "Sin fps de codificacion medido el gate es 'desconocido' y falla cerrado.", "fixture": "capacity_unknown"},
+    {"code": "E_CAPACITY_INSUFFICIENT", "severity": "high", "rule": "Declara transcode aplicado con fps de codificacion medido < fps de la fuente.", "fixture": "capacity_insufficient_claimed_applied"},
+    {"code": "E_FPS_CADENCE_CHANGED", "severity": "blocker", "rule": "fps de salida distinto del fps de fuente.", "fixture": "fps_mismatch"},
+    {"code": "E_COPY_WITH_FILTERS", "severity": "blocker", "rule": "-c:v copy con filtros declarados o aplicados: copy no ejecuta -vf.", "fixture": "copy_with_filters"},
+    {"code": "E_HDR_SOURCE_TO_SDR_CHAIN", "severity": "blocker", "rule": "Fuente PQ/HLG mapeada a cadena SDR de 8 bits.", "fixture": "pq_to_sdr + hlg_to_sdr"},
+    {"code": "E_DV_RPU_UNPROVEN", "severity": "high", "rule": "Dolby Vision sin prueba de RPU en el bitstream.", "fixture": "dv_without_rpu"},
+    {"code": "E_ASPECT_RATIO_DEFORMED", "severity": "high", "rule": "Escala sin preservacion de DAR sobre fuente no 16:9, o salida con SAR != 1:1 (raster anisotropico).", "fixture": "aspect_ratio_deformed"},
+    {"code": "E_LEVEL_RESOLUTION_IMPOSSIBLE", "severity": "blocker", "rule": "Nivel declarado que no carga resolucion+fps (Ley Cardinal 1).", "fixture": "level_8k120_L153"},
+    {"code": "E_AUDIO_LOST_AS_PARITY", "severity": "blocker", "rule": "Audio eliminado y declarado como paridad.", "fixture": "audio_dropped_as_parity"},
+    {"code": "E_DEGRADATION_UNAUTHORIZED", "severity": "blocker", "rule": "Degradacion sin los cinco campos de autorizacion.", "fixture": "degradation_unauthorized"},
+    {"code": "E_FAKE_NATIVE_CLAIM", "severity": "high", "rule": "Declara salida NATIVA con mas pixeles que la fuente.", "fixture": "fake_native_claim"}
+  ],
+  "not_computed": [
+    {"item": "sha256 del motor desplegado el 2026-11-09 (C)", "reason": "INCIDENTE_DEPLOY_MANUAL_2026-11-09.md:132 da bytes (415.037 B) pero no hash."},
+    {"item": "Cual de los tres motores corre hoy", "reason": "README:3-8 dice B, el incidente dice C, el manifiesto instala A. Sin acceso al VPS."},
+    {"item": "fps del run del incidente (57 s CPU / 146 s de pared)", "reason": "INCIDENTE:147 no declara fotogramas ni duracion encodada."},
+    {"item": "Que el proceso vivo ejecute el codigo del sha256 instalado", "reason": "manifest.tsv:49-57 mide que deploy.sh no reinicia ape-jit; sin lectura de /health ni de /proc no se puede afirmar."},
+    {"item": "fps de codificacion del Canary en una fuente de 25/30/50/60 fps", "reason": "La unica medicion con fotogramas es M1 a 5 fps muestreados (FASE01_REPORT.md:59). El fps a cadencia de directo no se midio nunca."},
+    {"item": "RPU Dolby Vision en cualquier artefacto", "reason": "Ninguna auditoria de entrada midio dvcC/dovi RPU; el contrato lo exige como evidencia y falla cerrado."},
+    {"item": "Presencia de HDR real en la fuente del canary", "reason": "quality-policy.json:18 limita la compatibilidad a SDR no validado; no hay fuente HDR medida."}
+  ],
+  "gate_command": "node tools/quality/test_canary_jit_contract.js"
+}

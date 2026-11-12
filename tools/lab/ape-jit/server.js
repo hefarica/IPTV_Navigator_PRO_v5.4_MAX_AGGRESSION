@@ -28,6 +28,14 @@ const OUT_ROOT = process.env.OUT_ROOT || '/dev/shm/ape-jit';
  * configurable por entorno: IDLE_MS=30000 lo devuelve al comportamiento anterior. */
 const IDLE_MS = Number(process.env.IDLE_MS || 90000);
 
+/* [FIX nice 2026-11-12] `spawn('nice', ...)` resolvia por PATH: si `nice` no existe
+ * (Windows, contenedor minimo, imagen sin coreutils) el ENOENT del spawn no decia si
+ * faltaba nice, ffmpeg o el cwd. Mismo patron ya medido en el espejo B
+ * (vps/ape-jit/server.js:26-27): binario absoluto si existe, y si no hay nice se lanza
+ * ffmpeg DIRECTAMENTE con los args sin el prefijo `-n 19`. */
+const NICE_BIN = fs.existsSync('/usr/bin/nice') ? '/usr/bin/nice' : '';
+const FFMPEG_BIN = fs.existsSync('/usr/bin/ffmpeg') ? '/usr/bin/ffmpeg' : 'ffmpeg';
+
 /* ═══════════════════════════════════════════════════════════════════════════
  * MODULO DE IMAGEN — configuracion en caliente
  *
@@ -4862,7 +4870,7 @@ async function start(id, spec, sdr, sdr720) {
     log('START_ABORT', id, 'slot ocupado, no se abre una segunda conexion');
     return;
   }
-  const child = spawn('nice', ['-n', '19', 'ffmpeg', ...args], {
+  const child = spawn(NICE_BIN || FFMPEG_BIN, NICE_BIN ? ['-n', '19', FFMPEG_BIN, ...args] : args, {
     cwd: dir,
     detached: false,
     stdio: ['ignore', 'ignore', 'pipe'],
@@ -6052,6 +6060,16 @@ function buildReceipt(id) {
   return out;
 }
 
+
+/* CAPACITY_* — datos del MODULO, no del handler.
+ * Estaban declarados dentro del cuerpo de `http.createServer` y la rama /meta
+ * los usa antes de su linea de declaracion en la MISMA invocacion: TDZ
+ * permanente en cada peticion /meta/<id valido>. Son datos puros, sin estado
+ * por peticion (tabla de fps sostenidos de ESTE host), asi que su ambito
+ * correcto es el del modulo. Valores SIN CAMBIOS. */
+const CAPACITY_FPS = { 480: 25.39, 720: 18.00, 1080: 12.00, 1440: 6.20, 2160: 3.37, 3240: 2.30, 4320: 1.47 };
+const CAPACITY_MIN_FPS = 5.0;      // suelo absoluto: por debajo NO se puede servir
+const CAPACITY_MIN_RATIO = 0.30;   // y ademas, al menos 30% del fps de la fuente
 
 const server = http.createServer((req, res) => {
   installTiming(req, res);
@@ -7989,10 +8007,14 @@ function loadFromGestorProfile(gp) {
  *   - a 4K este host rinde 3.37 fps y la fuente pide 25: NO hay forma.
  *   - a 480p/720p/1080p rinde de sobra en regimen.
  * El umbral es ABSOLUTO (fps sostenidos), no un ratio: 5 fps es el suelo por
- * debajo del cual ni siquiera se puede servir un segmento de 2 s en su tiempo. */
-const CAPACITY_FPS = { 480: 25.39, 720: 18.00, 1080: 12.00, 1440: 6.20, 2160: 3.37, 3240: 2.30, 4320: 1.47 };
-const CAPACITY_MIN_FPS = 5.0;      // suelo absoluto: por debajo NO se puede servir
-const CAPACITY_MIN_RATIO = 0.30;   // y ademas, al menos 30% del fps de la fuente
+ * debajo del cual ni siquiera se puede servir un segmento de 2 s en su tiempo.
+ *
+ * [FIX TDZ 2026-11-12] Las tres constantes CAPACITY_* se declaran ahora en el
+ * ambito del MODULO, justo antes de `const server = http.createServer(...)`.
+ * Declararlas AQUI las dejaba en zona muerta temporal: la rama /meta de ESTE
+ * MISMO handler las usa en la linea ~6183, que se ejecuta ANTES que esta en
+ * cada invocacion -> ReferenceError en la primera peticion /meta/<id> y el
+ * proceso entero muere. DoS de UNA peticion no autenticada. */
 
 function capacityForHeight(h) {
   const alto = Number(h) || 0;
