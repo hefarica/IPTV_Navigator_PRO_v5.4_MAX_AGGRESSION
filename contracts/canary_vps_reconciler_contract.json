@@ -1,0 +1,383 @@
+{
+  "schema": "ape.canary.vps_reconciler.contract.v1",
+  "contract_id": "canary-vps-reconciler",
+  "authority": "canary",
+  "revision": 1,
+  "effective": "2026-11-11",
+  "status": "CANDIDATE_NOT_DEPLOYED",
+  "status_evidence": "Contrato versionado en el repo. No se ha desplegado nada, no se ha contactado el VPS y no se ha tocado _vps_stage/deploy.",
+  "purpose": "Mapear la seccion 12 del prompt MAESTRO (audit / plan / apply) al tooling REAL de _vps_stage/deploy, demostrando que sin --apply no se escribe, y prohibir la creacion de un reconciliador paralelo.",
+  "parallel_reconciler_created": false,
+  "parallel_reconciler_justification": "El reconciliador ya existe y esta medido: _vps_stage/deploy/deploy.sh:9-12 delega en dry-run.sh cuando falta --apply (exec, no retorno), y dry-run.sh:6-7 deriva los destinos del manifiesto y lee los hashes remotos con sha256sum/stat, sin ninguna mutacion remota (comprobado con tools/canary/deploy_contract_check.js C4/C5 y con ejecucion local D1). Crear otro habria duplicado la fuente de verdad del despliegue y roto la unica puerta SSH (lib.sh:31-32).",
+  "implementation": {
+    "deploy_dir": "_vps_stage/deploy",
+    "entrypoint": "_vps_stage/deploy/deploy.sh",
+    "plan_implementation": "_vps_stage/deploy/dry-run.sh",
+    "validation": "_vps_stage/deploy/validate.sh",
+    "rollback": "_vps_stage/deploy/rollback.sh",
+    "smoke": "_vps_stage/deploy/verify.sh",
+    "manifest": "_vps_stage/deploy/manifest.tsv",
+    "ssh_gate": "lib.sh:31-32 (SSH_BIN, sobreescribible) + lib.sh:21 (BatchMode=yes: sin prompt interactivo)"
+  },
+  "modes": {
+    "audit": {
+      "prompt_mode": "--audit",
+      "maps_to": "_vps_stage/deploy/dry-run.sh",
+      "invoked_by": "deploy.sh:9-12 (sin --apply: aviso + exec)",
+      "semantics": "Lectura: estado remoto por sha256sum/stat (dry-run.sh:7) y presencia local (dry-run.sh:17). Reporta AUSENTE / NUEVO / IGUAL / CAMBIA (dry-run.sh:22-28) y lista el lua del VPS que el manifiesto no toca (dry-run.sh:35).",
+      "writes_remote": false,
+      "writes_local": [
+        "dry-run.sh:8 (snapshot de hashes remotos en snapshots/)"
+      ],
+      "exit_codes": "0 si completa. Si el VPS no responde, el rsh falla pero el script NO aborta (no hay set -e): imprime el diff como si todo fuese NUEVO/AUSENTE y termina 0. LIMITE DECLARADO: exit 0 no distingue 'VPS inalcanzable' de 'todo nuevo'.",
+      "read_only_evidence": "dry-run.sh:7 y :35 son los dos unicos comandos remotos; ambos usan sha256sum/stat/ls. Verificado por C4 (0 comandos remotos mutantes) y C5 (0 redirecciones a rutas remotas)."
+    },
+    "plan": {
+      "prompt_mode": "--plan",
+      "maps_to": "_vps_stage/deploy/dry-run.sh",
+      "same_implementation_as_audit": true,
+      "semantics": "El diff ES el plan: cada fila del manifiesto sale como NUEVO / CAMBIA / IGUAL y el resumen cuenta 'ficheros que CAMBIARIAN' (dry-run.sh:38). No existe un planificador separado, y no hace falta: el plan es el diff de hashes.",
+      "writes_remote": false,
+      "exit_codes": "identico a audit"
+    },
+    "apply": {
+      "prompt_mode": "--apply",
+      "maps_to": "_vps_stage/deploy/deploy.sh --apply --yes",
+      "semantics": "Despliegue atomico por fases: staging en /tmp (deploy.sh:18-20) -> validacion remota de staging + paridad de transporte (:38-39) -> lint en staging (:41-42) -> backup (:59-63) -> install atomico por fila (:80) -> nginx -t (:98) -> provision/include de /sync (:107,:117) -> re-validacion + reload (:125-130) -> restart solo si ya estaba activo (:144-165) -> verify.sh (:186).",
+      "writes_remote": true,
+      "requires": [
+        "--apply",
+        "--yes",
+        "validate.sh exit 0"
+      ],
+      "first_remote_mutation": "deploy.sh:20 (mkdir -p del staging y del backup); la primera mutacion de un DESTINO desplegado es deploy.sh:80 (install -m)",
+      "abort_without_mutation": "--apply sin --yes aborta en deploy.sh:13 con exit 2 antes de cualquier rsh (medido: D2, 0 llamadas)"
+    }
+  },
+  "preconditions": {
+    "apply_must_have": [
+      {
+        "id": "P1",
+        "what": "--yes explicito del operador",
+        "gate": "deploy.sh:13",
+        "exit": 2
+      },
+      {
+        "id": "P2",
+        "what": "validate.sh en verde",
+        "gate": "deploy.sh:16",
+        "exit": 3
+      },
+      {
+        "id": "P3",
+        "what": "manifiesto legible",
+        "gate": "lib.sh:35-38 (manifest_rows aborta si falta el fichero)",
+        "exit": 3
+      },
+      {
+        "id": "P4",
+        "what": "origenes locales presentes",
+        "gate": "deploy.sh:32 (AUSENTE-LOCAL) y :73",
+        "exit": 11
+      },
+      {
+        "id": "P5",
+        "what": "SSH sin prompt interactivo",
+        "gate": "lib.sh:21 (BatchMode=yes)",
+        "exit": 255
+      }
+    ],
+    "audit_plan_must_have": [
+      {
+        "id": "P6",
+        "what": "manifiesto legible",
+        "gate": "lib.sh:35-38",
+        "exit": 3
+      },
+      {
+        "id": "P7",
+        "what": "acceso de lectura al VPS para sha256sum/stat",
+        "gate": "dry-run.sh:7",
+        "exit": "no aborta: el diff degrada a NUEVO/AUSENTE y termina 0"
+      }
+    ]
+  },
+  "gates": [
+    {
+      "id": "G0",
+      "what": "sin --apply delega en dry-run.sh y NO muta",
+      "file_line": "deploy.sh:9-12",
+      "exit": "no aplica (exec)",
+      "check": "C1 + D1"
+    },
+    {
+      "id": "G1",
+      "what": "--yes obligatorio",
+      "file_line": "deploy.sh:13",
+      "exit": 2,
+      "check": "C2 + D2"
+    },
+    {
+      "id": "G2",
+      "what": "validate.sh antes de mutar",
+      "file_line": "deploy.sh:16",
+      "exit": 3,
+      "check": "C3 + D3"
+    },
+    {
+      "id": "G3",
+      "what": "staging creado",
+      "file_line": "deploy.sh:20",
+      "exit": 4
+    },
+    {
+      "id": "G4",
+      "what": "transporte integro a staging (sha local == sha remoto)",
+      "file_line": "deploy.sh:37-39",
+      "exit": 5
+    },
+    {
+      "id": "G5",
+      "what": "lint en staging (luac -p / php -l)",
+      "file_line": "deploy.sh:41-42",
+      "exit": 6
+    },
+    {
+      "id": "G6",
+      "what": "el manifiesto se itero completo (anti robo de stdin)",
+      "file_line": "deploy.sh:49-52",
+      "exit": 10
+    },
+    {
+      "id": "G7",
+      "what": "paridad post-install por fichero + recuento de instaladas",
+      "file_line": "deploy.sh:80-97",
+      "exit": "7 (via fail + rollback)"
+    },
+    {
+      "id": "G8",
+      "what": "nginx -t tras instalar",
+      "file_line": "deploy.sh:98",
+      "exit": "7 (con rollback)"
+    },
+    {
+      "id": "G9",
+      "what": "provision de estado /sync",
+      "file_line": "deploy.sh:107",
+      "exit": "13 (con rollback)"
+    },
+    {
+      "id": "G10",
+      "what": "include del snippet de /sync",
+      "file_line": "deploy.sh:117",
+      "exit": "14 (con rollback)"
+    },
+    {
+      "id": "G11",
+      "what": "re-validacion nginx -t + reload",
+      "file_line": "deploy.sh:125-130",
+      "exit": "15 / 8 (con rollback)"
+    },
+    {
+      "id": "G12",
+      "what": "restart SOLO si el servicio ya estaba activo (y sigue activo despues)",
+      "file_line": "deploy.sh:144-165",
+      "exit": "16 / 17 (con rollback)"
+    },
+    {
+      "id": "G13",
+      "what": "verify.sh: smoke HTTP + paridad completa repo==remoto",
+      "file_line": "deploy.sh:186 + verify.sh:112-116",
+      "exit": "9 (con rollback) / 2 en verify"
+    }
+  ],
+  "rollback_rule": {
+    "rule": "Cualquier fallo POSTERIOR al backup (deploy.sh:59-63) ejecuta rollback.sh <STAMP> --yes antes de salir. Cualquier fallo ANTERIOR (exit 2, 3, 4, 5, 6, 10, 11) no necesita rollback porque no se ha instalado nada.",
+    "invocations": [
+      "deploy.sh:100",
+      "deploy.sh:109",
+      "deploy.sh:119",
+      "deploy.sh:127",
+      "deploy.sh:130",
+      "deploy.sh:155",
+      "deploy.sh:161",
+      "deploy.sh:188"
+    ],
+    "rollback_is_explicit": "rollback.sh exige --yes propio (deploy.sh:100 lo pasa); si el rollback falla, el script lo declara y pide intervencion manual con el backup (deploy.sh:100, menaje 'ROLLBACK TAMBIÉN FALLÓ').",
+    "not_covered": "No hay rollback para el caso 'install OK pero verify posterior detecta deriva de datos' mas alla del propio verify (que si hace rollback en :188)."
+  },
+  "verification_items": [
+    {
+      "id": 1,
+      "item": "FILE EXISTS",
+      "coverage": "COVERED",
+      "by": "deploy.sh:32 (AUSENTE-LOCAL -> exit 11), deploy.sh:73, verify.sh:91-93 (SIN-FUENTE), preflight.sh:26-28",
+      "note": "Existencia LOCAL del origen. La existencia REMOTA se compara en deploy.sh:34 y dry-run.sh:7 pero no es un gate: un destino ausente se trata como cambio."
+    },
+    {
+      "id": 2,
+      "item": "FILE HASH MATCHES",
+      "coverage": "COVERED",
+      "by": "deploy.sh:84-89 (paridad por fichero tras install), verify.sh:96-116 (paridad completa repo==remoto, exit 2), deploy.sh:38-39 (paridad de transporte a staging)",
+      "note": "Es el gate mas fuerte del pipeline: compara sha256 local contra sha256 remoto."
+    },
+    {
+      "id": 3,
+      "item": "CONFIG VALID",
+      "coverage": "COVERED",
+      "by": "validate.sh:15 (luac -p), validate.sh:18 (php -l), validate.sh:21 (node -c), deploy.sh:98 y :125 (nginx -t)",
+      "note": "Los .conf NO se validan antes de instalar: validate.sh:24 los DIFIERE y nginx -t corre en deploy.sh:98, DESPUES de instalar (:80). Mitigado por rollback, no por orden."
+    },
+    {
+      "id": 4,
+      "item": "SERVICE INSTALLED",
+      "coverage": "PARTIAL",
+      "by": "manifest.tsv (fila de ape-canary@.service) + deploy.sh:80 (install -m) + deploy.sh:170 (daemon-reload)",
+      "note": "El FICHERO de la unit se instala y se verifica por hash; NO hay systemctl enable ni is-enabled en ningun script (0 ocurrencias): 'instalado' como habilitado/registrado es NO_COMPUTADO."
+    },
+    {
+      "id": 5,
+      "item": "SERVICE HEALTHY",
+      "coverage": "PARTIAL",
+      "by": "verify.sh:77-78 (8088 __selftest y _ape/health via check_code, solo si APE_DRY_RUN != 1) + deploy.sh:158-163 (is-active tras restart, solo si ya estaba activo)",
+      "note": "Cubre la capa lua y el 'sigue activo tras reiniciar'. NO hay comprobacion de salud de ape-jit (ningun /health en el pipeline): NO_COMPUTADO para el motor JIT."
+    },
+    {
+      "id": 6,
+      "item": "ENDPOINT AUTHORIZED",
+      "coverage": "PARTIAL",
+      "by": "sync-smoke.js:17-18 (401 sin firma, 401 key desconocida, 413, 429, 200 con HMAC valida) invocado desde verify.sh:119-127",
+      "note": "Cubre la AUTORIZACION de /sync. Solo corre en deploy real (verify.sh:119 excluye dry-run) y requiere SYNC_KEY/TOKEN: sin claves el 200 se marca SKIP (sync-smoke.js:12,15)."
+    },
+    {
+      "id": 7,
+      "item": "ROUTE COMPATIBLE",
+      "coverage": "PARTIAL",
+      "by": "deploy.sh:98 y :125 (nginx -t) + deploy.sh:117 (sync-include.sh anade el snippet)",
+      "note": "Prueba que la config PARSEA. No hay test de comportamiento por ruta (codigo esperado fuera del edge): NO_COMPUTADO la compatibilidad funcional."
+    },
+    {
+      "id": 8,
+      "item": "POLICY REVISION MATCHES",
+      "coverage": "NO_COMPUTADO",
+      "by": null,
+      "note": "El manifiesto no incluye quality-policy.json (vive en scratch/, gitignored) y ningun script del pipeline compara revision ni policy_sha256. Lo comprueba otro contrato (tools/quality/test_canary_jit_contract.js), no el deploy."
+    },
+    {
+      "id": 9,
+      "item": "JIT INHERITS CANARY",
+      "coverage": "NO_COMPUTADO",
+      "by": null,
+      "note": "Nada en _vps_stage/deploy verifica que el motor consuma la politica del Canary. Es materia de contracts/canary_jit_contract_v1.json, fuera de este pipeline."
+    },
+    {
+      "id": 10,
+      "item": "DEVICE REGISTRATION WORKS",
+      "coverage": "NO_COMPUTADO",
+      "by": null,
+      "note": "sync-smoke.js firma con un device_id y clave PREEXISTENTES (SYNC_DEVICE_ID/SYNC_KEY) y prueba que la firma se acepta; ningun script llama al alta/enrolamiento de dispositivo (0 ocurrencias de enroll/register en el pipeline)."
+    },
+    {
+      "id": 11,
+      "item": "PLAYLIST INDEX CONSISTENT",
+      "coverage": "PARTIAL",
+      "by": "verify.sh:61-69 (descubre la .m3u8 mas reciente en disco y la pide: 200 + primera linea #EXTM3U)",
+      "note": "Prueba que la lista SERVIDA esta viva. No compara el indice (index/JSON) contra los ficheros en disco: consistencia del indice = NO_COMPUTADO."
+    },
+    {
+      "id": 12,
+      "item": "VIDEO PIPELINE VERIFIED",
+      "coverage": "NO_COMPUTADO",
+      "by": null,
+      "note": "El pipeline de deploy no decodifica ni codifica video: no hay ffprobe/ffmpeg en ningun script de _vps_stage/deploy. La cadena de imagen del JIT se mide en tools/lab, no aqui."
+    }
+  ],
+  "verification_summary": {
+    "total_items": 12,
+    "covered": 3,
+    "partial": 5,
+    "not_computed": 4,
+    "honest_reading": "El pipeline cubre integridad de ficheros (existencia + hash) y validez sintactica; NO cubre los cuatro items de politica/dispositivo/video. Declarar 'deploy verificado' con 12/12 seria falso."
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "media",
+      "claim": "dry-run.sh:2 dice 'CERO escrituras'",
+      "body": "dry-run.sh:8 escribe un snapshot LOCAL (snapshots/dryrun_remote_hashes_<STAMP>.txt).",
+      "verdict": "La cabecera es imprecisa: read-only contra el VPS = cierto; cero escrituras en absoluto = falso (1 escritura local). Medido en D1."
+    },
+    {
+      "id": "F2",
+      "severity": "baja",
+      "claim": "lib.sh:9 dice que el host se toma de entorno 'para no hardcodear IPs'",
+      "body": "lib.sh:12 tiene 178.156.147.234 como valor por defecto.",
+      "verdict": "No es un secreto y se puede sobrescribir (VPS_HOST), pero el comentario promete mas de lo que hace el codigo."
+    },
+    {
+      "id": "F3",
+      "severity": "media",
+      "claim": "preflight.sh:2 dice 'Sale !=0 si algo bloquea'",
+      "body": "preflight.sh:4 inicializa fails=0 y NUNCA lo incrementa; un origen local ausente solo suma a warns (preflight.sh:27-28).",
+      "verdict": "El preflight solo sale !=0 por fallo de RED (exit 2) o de comando remoto (exit 3). No bloquea por manifiesto: 'bloqueos: 0' es una cifra muerta."
+    },
+    {
+      "id": "F4",
+      "severity": "media",
+      "claim": "validate.sh:2 dice validar 'sin escribir nada en el VPS'",
+      "body": "validate.sh:15 y :18 ejecutan luac -p y php -l REMOTOS por ssh (stdin), no locales.",
+      "verdict": "Cierto en escrituras (0), pero validate.sh NO es offline: sin VPS, cada .lua/.php se marca FALLA y el deploy aborta con exit 3. Una validacion que depende del host que va a mutar."
+    },
+    {
+      "id": "F5",
+      "severity": "baja",
+      "claim": "dry-run.sh escribe el snapshot sin comprobar el directorio",
+      "body": "lib.sh:8 solo asigna SNAP_DIR; no lo crea. Si snapshots/ falta, el redirect de dry-run.sh:8 falla y el script continua (no hay set -e).",
+      "verdict": "Hoy no rompe porque snapshots/ esta versionado con 11 ficheros; es fragil ante un clon sin ese directorio."
+    },
+    {
+      "id": "F6",
+      "severity": "baja",
+      "claim": "medicion de exit codes en pruebas locales",
+      "body": "En este host (Windows + bash de WSL), un $? o $var dentro de la cadena de `bash -c` se expande ANTES de ejecutar el script: medido, el script salia 2 y el wrapper imprimia EXIT=0 / RC= vacio.",
+      "verdict": "No es un defecto del pipeline, es una trampa de medicion. deploy_contract_check.js lee spawn.status en vez de parsear $?."
+    }
+  ],
+  "not_computed": [
+    {
+      "item": "Que el proceso vivo ejecute el codigo del sha instalado",
+      "reason": "deploy.sh:153 reinicia solo si ya estaba activo y :158 comprueba is-active; no lee /health ni el sha del proceso. Requiere medir en el VPS (no se ha contactado)."
+    },
+    {
+      "item": "Estado real del VPS hoy",
+      "reason": "Prohibido contactar 178.156.147.234 / iptv-ape.duckdns.org en esta tarea."
+    },
+    {
+      "item": "Que 'audit' distinga VPS inalcanzable de VPS vacio",
+      "reason": "dry-run.sh no aborta si el rsh falla (no hay set -e): exit 0 no lo distingue. Necesita un cambio de script, y este contrato no lo toca.",
+      "resuelto_2026_11_12": {
+        "cambio": "dry-run.sh es ahora fail-closed: comprueba el estado de rsh, exige >=1 fila del manifiesto y >=1 fila devuelta por el VPS, y separa el estado DESCONOCIDO de NUEVO",
+        "exit_codes": "3 = VPS inalcanzable o lectura incompleta; 4 = algun destino sin estado. Antes de esto: exit 0 con \"DRY-RUN COMPLETO\"",
+        "medido": "A/B con SSH_BIN=/bin/false: el dry-run anterior devolvio exit 0 con 34 lineas de diff fabricadas; el nuevo devuelve exit 3 con 0 lineas",
+        "regresion": "tools/quality/test_dryrun_fail_closed.js 3/3",
+        "sigue_siendo_no_computado": false
+      }
+    }
+  ],
+  "evidence": {
+    "gate_command": "node tools/canary/deploy_contract_check.js",
+    "gate_result": "10/10 PASS, exit 0 (analisis C1-C6 + ejecucion controlada D1-D4)",
+    "gate_negative_control": "node tools/canary/deploy_contract_check.js --deploy-dir <copia con 'rsh \"rm -rf ...\"' anadido a dry-run.sh> -> FAIL C4 'MUTACIONES REMOTAS: dry-run.sh:42 (rm)', RESULT=FAIL, exit 1",
+    "artifacts_sha256_at_measure": {
+      "deploy.sh": "067fc798f66ae134bdd1d94d12bc39a1fd0e54b4eddcc508a096c555459a99b7",
+      "dry-run.sh": "6d6b893fee544b08d4e3eb1a68801c38b307b77742d47649117e6afaa00ef715",
+      "validate.sh": "955445618acb1df6c6e82326483e1c4c5db5b89d33d1b96c19d02232e53cf8eb",
+      "lib.sh": "e0f2d5592cf377a4fe45975d39fc7345d268957abd0d5104efd14ac54ba24b10",
+      "manifest.tsv": "5f5adcf10f66e742dcc68d06cbfc75f0e11c69cf7cc1de695f5372b946f018ed"
+    },
+    "vps_contacted": false
+  },
+  "correcciones_2026_11_12": [
+    "el modo --audit ya distingue VPS inalcanzable de VPS vacio: deja de ser un hueco declarado"
+  ]
+}

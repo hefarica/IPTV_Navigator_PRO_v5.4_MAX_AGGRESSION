@@ -26,6 +26,7 @@ Requisito de §16: «Incluye también un diagrama de extremo a extremo y una mat
 | 13 | **APK — recibo de build (§15)** | Solo manifiesto (`10_…md`) | `BUILD_RECEIPT` con **los 9 campos**: 28.010.884 B · `9872483a…` · `com.ape.crystalagent` · 657 · `3.9.9-host-plus-rea-657` · cert `9e32dc4d…` · commit `00aa8332` · **DEVICE_TEST_RECEIPT no obtenido** | `docs/audits/APK_BUILD_RECEIPT_20261112.md` | **IMPLEMENTED_NOT_DEPLOYED** |
 | 14 | **Estado de verdad único (§17)** | Disperso en 9 documentos fechados | `docs/audits/STATE_OF_TRUTH_20261112.md` con las 14 secciones de §17 y §14 en los 8 estados | `STATE_OF_TRUTH_20261112.md` | **VERIFIED** |
 | 15 | **Juez del contrato `artifactBytes()`** | Llamaba a `path.isAbsolute()` sin comprobar tipo. Medido: lanza `TypeError ERR_INVALID_ARG_TYPE` con objeto, `null` y `undefined`. Sin try/catch envolvente en `validateReceipt`, el `throw` **salía del juez**: un recibo con la forma que el contrato documenta (path+sha256+bytes, L61) reventaba el verificador. Un juez que excepciona se puede sortear | Acepta la forma string **y** la objeto, midiendo siempre del disco: un objeto que miente en sha/bytes se sigue aceptando **porque no se le cree**. **A/B medido:** juez anterior `LANZO ERR_INVALID_ARG_TYPE` → juez nuevo `ACCEPT/OK_APPLIED_MEASURED`. Regresión `test_judge_never_throws.js` **25/25**; batería **92/92** intacta | `tools/quality/test_canary_jit_contract.js:218` · `tools/quality/test_judge_never_throws.js` | **VERIFIED** |
+| 16 | **`--audit` de §12 (`dry-run.sh`)** | No comprobaba el estado de `rsh`. Con el VPS inalcanzable, `remote` quedaba vacío, el `-z` marcaba **todos** los destinos como `NUEVO` y el script imprimía `DRY-RUN COMPLETO` con **exit 0**. Medido en A/B: **34 líneas de diff fabricadas** y exit 0 sobre un host caído | **Fail-closed**: exit **3** si el VPS no responde o devuelve 0 filas; exit **4** si algún destino queda sin estado; estado `DESCONOCIDO` separado de `NUEVO`. A/B: exit 3 y **0 líneas** inventadas | `_vps_stage/deploy/dry-run.sh` · `tools/quality/test_dryrun_fail_closed.js` **3/3** | **VERIFIED** |
 
 ---
 
@@ -86,9 +87,9 @@ Requisito de §16: «Incluye también un diagrama de extremo a extremo y una mat
 
 | Categoría | Filas |
 |---|---|
-| Cambiado y medido | **15** |
+| Cambiado y medido | **16** |
 | Sin cambiar (declarado) | **10** |
-| De lo cambiado: VERIFIED | 13 |
+| De lo cambiado: VERIFIED | 14 |
 | De lo cambiado: PARTIALLY_FUNCTIONAL | 2 (P01, P14 cláusula 2) |
 | De lo cambiado: IMPLEMENTED_NOT_DEPLOYED | 1 (APK) |
 
