@@ -88,6 +88,7 @@ El `sha256` del motor **coincide con el pin del contrato y con el fichero instal
 6. **`tools exit contract` en rojo** por 3 ficheros ajenos al trabajo de hoy (`probe_panel_selects.js`, `verify_gestor_final.js`, `verify_jit_browser.js`).
 7. **El juez puede excepcionar**: `artifactBytes()` (`test_canary_jit_contract.js:218`) lanza `TypeError` ante la forma de `applied.evidence.artifact` que el propio esquema documenta. Reportado por `t38`, **no parcheado**.
 8. **`staging` (8089) no es espejo de producción**: 10/10 canales en 403 a ~10 ms frente a 8/10 en 200 a ~650 ms. Como banco de pruebas no distingue «lo rompió mi cambio» de «ya estaba roto».
+9. **Dos artefactos Android con propósito parecido y ruta distinta.** El paquete existente integra un módulo `:shim` (`IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/build.gradle.kts:113`, `implementation(project(":shim"))`), que es el camino que §6 prefiere. Aparte existe `ottshim/`, proyecto Gradle propio (`settings.gradle.kts` → `include(":app")`, sin `:shim`) que produce `dev.venice.ottshim` v0.1 · `versionCode 1` · `minSdk 26`, **no compilado por CI y con 0 filas en el manifiesto**, versionado por el operador en `0b308032` (2026-11-06). **No está establecido si `ottshim/app` y el `:shim` integrado son el mismo código**, y no se afirma. Queda como ambigüedad de §15/§16: cuál de los dos artefactos es «la APK» que se entrega.
 
 ## 11 · Pendientes de autorización
 
