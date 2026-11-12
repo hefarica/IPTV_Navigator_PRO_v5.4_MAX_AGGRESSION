@@ -79,3 +79,31 @@ git apply -R docs/canary/fixes/04_engine_dos/0004-engine-tdz-dos.patch
 ```
 
 O `git switch audit/rea-alignment-20261108` y borrar la rama: el árbol vuelve a `472f7cc3` con el motor en `28352c50…`.
+
+## 6 · Resultado en CI (rama empujada, 2026-11-12)
+
+Push de ix/engine-tdz-dos-20261112 (d4838ec2). **master no se toco** (d2c27293). Un push a rama **no despliega**: los cuatro workflows de deploy son workflow_dispatch manual con frase de confirmacion.
+
+| Workflow | Resultado | Lectura |
+|---|---|---|
+| CI · validate (doctrine + syntax) | **success** | la doctrina y la sintaxis pasan con el motor parcheado |
+| 	ools exit contract | **failure** | **PREEXISTENTE y ajeno a este cambio** |
+
+### Por que el fallo de 	ools exit contract NO es de este cambio
+
+El gate exige candidatos_total: 0 y encuentra **3**:
+
+`
+tools/lab/ape-jit/probe_panel_selects.js
+tools/lab/ape-jit/verify_gestor_final.js
+tools/lab/ape-jit/verify_jit_browser.js
+`
+
+Evidencia de que es preexistente, en orden de fuerza:
+
+1. git diff --name-only 472f7cc3..HEAD -- <esos tres ficheros> = **0**. No los toco ninguno.
+2. Mi commit toca **4** ficheros y **ninguno** esta en esa lista.
+3. El diff del motor anade **27 lineas y 0** contienen process.exit.
+4. server.js **no aparece** entre los candidatos que reporta el gate.
+
+**Consecuencia honesta:** el repositorio ya tenia este gate en rojo antes de mi cambio. No lo arreglo aqui porque esta fuera del alcance del arreglo del motor y porque anadir marcas xit-ok a ficheros ajenos seria cambiar la disciplina de otro. Queda registrado como hallazgo abierto con su evidencia.
