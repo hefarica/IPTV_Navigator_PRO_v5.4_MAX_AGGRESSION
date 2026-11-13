@@ -103,12 +103,15 @@ for ($i = 0; $i -lt $lineas.Count; $i++) {
   if ($lineas[$i] -notmatch '^#EXTINF') { continue }
   $nombre = if ($lineas[$i] -match ',(.+)$') { $matches[1].Trim() } else { '(sin nombre)' }
   $perfil = if ($lineas[$i] -match 'ape-profile="([^"]+)"') { $matches[1] } else { $null }
+  # [2026-11-13] segunda declaracion a verificar: ape-codec-family. Declarar hevc
+  # y servir h264 no es cosmetico — un player puede fiarse de la familia declarada.
+  $codecDecl = if ($lineas[$i] -match 'ape-codec-family="([^"]+)"') { $matches[1] } else { $null }
   $url = $null
   for ($k = $i + 1; $k -lt $lineas.Count; $k++) {
     if ($lineas[$k] -match '^#EXTINF') { break }
     if ($lineas[$k] -match '^\s*(https?://\S+)') { $url = $matches[1]; break }
   }
-  $canales += [pscustomobject]@{ indice = $canales.Count + 1; nombre = $nombre; perfil = $perfil; url = $url }
+  $canales += [pscustomobject]@{ indice = $canales.Count + 1; nombre = $nombre; perfil = $perfil; codec_declarado = $codecDecl; url = $url }
 }
 
 # ── 3 · perfil declarado -> clase de resolucion esperada (escalera documentada:
@@ -157,6 +160,7 @@ foreach ($ch in $canales) {
     esperado_px = $null; medido = 'NO_COMPUTADO'; motivo = ''; cumple = $null
     codec = $null; perfil_real = $null; level = $null
     ancho = $null; alto = $null; fps = $null; mbps = $null
+    codec_declarado = $ch.codec_declarado; codec_cumple = $null; codec_motivo = ''
   }
 
   if ($ch.perfil -and $esperado.ContainsKey($ch.perfil)) { $res.esperado_px = $esperado[$ch.perfil] }
@@ -202,6 +206,30 @@ foreach ($ch in $canales) {
     } else {
       $res.motivo = 'perfil no declarado o desconocido: no hay con que comparar'
     }
+
+    # ── segunda verificacion: familia de codec declarada vs real ──
+    if ($res.codec_declarado) {
+      $decl = $res.codec_declarado.ToLower()
+      $real = "$($res.codec)".ToLower()
+      $familiaReal = switch -Regex ($real) {
+        '^h264|^avc' { 'h264' }
+        '^hevc|^h265' { 'hevc' }
+        '^av1' { 'av1' }
+        '^vp9' { 'vp9' }
+        default { $real }
+      }
+      # la declaracion puede ser una lista ("hevc,av1,h264"): basta con que
+      # incluya la familia real para ser honesta
+      $partes = @($decl -split '[,/ ]+' | Where-Object { $_ })
+      $res.codec_cumple = ($partes -contains $familiaReal)
+      if (-not $res.codec_cumple) {
+        $res.codec_motivo = "declara '$($res.codec_declarado)' y sirve $familiaReal"
+      } elseif ($partes.Count -gt 1) {
+        $res.codec_motivo = "declara '$($res.codec_declarado)' (lista; incluye $familiaReal)"
+      }
+    } else {
+      $res.codec_motivo = 'sin ape-codec-family declarado'
+    }
   } catch {
     $res.motivo = "EXC: $($_.Exception.Message.Substring(0,[Math]::Min(70,$_.Exception.Message.Length)))"
   }
@@ -222,14 +250,17 @@ foreach ($f in $filas) {
   $nom = if ($f.canal) { $f.canal.Substring(0, [Math]::Min(38, $f.canal.Length)) } else { '?' }
   Write-Host ("   {0,-3} {1,-7} {2,-12} {3,-11} {4,-5} {5,-7} {6,-12} {7}" -f $f.indice, $f.perfil, $f.medido, $resol, $f.fps, $f.mbps, $verd, $nom)
   if ($f.motivo) { Write-Host ("       -> {0}" -f $f.motivo) }
+  if ($f.codec_cumple -eq $false) { Write-Host ("       -> CODEC: {0}" -f $f.codec_motivo) }
 }
 
 $noCumplen = @($filas | Where-Object { $_.cumple -eq $false }).Count
 $medidos = @($filas | Where-Object { $_.medido -eq 'MEDIDO' }).Count
+$codecMal = @($filas | Where-Object { $_.codec_cumple -eq $false }).Count
 Write-Host ""
-Write-Host ("   medidos: {0} · NO CUMPLEN: {1}" -f $medidos, $noCumplen)
+Write-Host ("   medidos: {0} · NO CUMPLEN resolucion: {1} · NO CUMPLEN codec: {2}" -f $medidos, $noCumplen, $codecMal)
 Write-Host "   NOTA: 'NO CUMPLE' significa que el perfil declara MAS resolucion de la que se sirve."
 Write-Host "         Que sirva MAS de lo declarado tambien se marca y se dice, pero no es degradacion."
+Write-Host "         La clase de resolucion se decide por el LADO MAYOR: 3840x1600 es 4K scope y CUMPLE."
 
 $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
