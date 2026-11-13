@@ -129,7 +129,13 @@ function report(label, checks, body) {
     const ra = report('A · legacy (sin REA)', [
         ['DNA con hash real del v24', new RegExp('#EXT-X-APE-LAB-DNA:sha256=' + HASH_V24).test(a)],
         ['CRYSTAL-6K con PROVENANCE=LAB', /#EXT-X-APE-CRYSTAL-6K:[^\n]*PROVENANCE=LAB/.test(a)],
-        ['SOURCE = fuente real del perfil base (1920x1080)', /CRYSTAL-6K-MODE:EMULATED;SOURCE=1920x1080/.test(a)],
+        // [2026-11-13] ANTES esta asercion exigia SOURCE=1920x1080 — es decir, afirmaba como
+        // fuente la resolucion que el LAB ASUME para el perfil base. Medido en el ONN 4K: el
+        // canal entrega 1280x720 y el manifiesto declaraba 1080p. Se invertia la honestidad:
+        // el test exigia la mentira. Ahora, SIN sonda, el SOURCE es UNKNOWN.
+        ['SOURCE=UNKNOWN sin sonda (no asume 1080p)', /CRYSTAL-6K-MODE:EMULATED;SOURCE=UNKNOWN/.test(a)],
+        ['declara SOURCE_ORIGIN=UNMEASURED', /CRYSTAL-6K-MODE:[^\n]*SOURCE_ORIGIN=UNMEASURED/.test(a)],
+        ['CONSERVA el objetivo 6K RES=5760x3240', /CRYSTAL-6K:[^\n]*RES=5760x3240/.test(a)],
         ['NO declara el objetivo (5760x3240) como fuente', !/CRYSTAL-6K-MODE:EMULATED;SOURCE=5760x3240/.test(a)],
         ['TRUTH: DECLARED_ENHANCEMENT;NOT_SOURCE', /CRYSTAL-6K-TRUTH:DECLARED_ENHANCEMENT;NOT_SOURCE/.test(a)],
         ['CACHING-PRECEDENCE declarada', /#EXT-X-APE-CACHING-PRECEDENCE:PROFILE=P3;/.test(a)],

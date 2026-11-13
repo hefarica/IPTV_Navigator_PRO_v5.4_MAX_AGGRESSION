@@ -91,3 +91,7 @@ jobs:
       - name: Contrato Canary-JIT (motor desplegado == lo pinado)
         run: node tools/quality/test_canary_jit_contract.js
 
+      - name: 6K emulado sobre fuente MEDIDA (no asumida)
+        env:
+          LABV24: ${{ github.workspace }}/artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json
+        run: node tools/quality/test_6k_source_honest.js

@@ -9511,6 +9511,39 @@ ${__apeContinuityTags().join('\n')}
         const _6kBase = Object.prototype.hasOwnProperty.call(_APE_6K_TABLE, String(c.profile || '')) ? String(c.profile) : null;
         const _6k = _6kBase ? _APE_6K_TABLE[_6kBase] : null;
         if (_6k) {
+            // [2026-11-13] SOURCE= HONESTO — el 6K emulado SE MANTIENE, pero calculado sobre la
+            // fuente REAL, no sobre la que el LAB asume.
+            //
+            // MEDIDO en el ONN 4K: un canal publicado como "UHD"/"4K S1" entrega
+            // 1280x720 video/avc (c2.amlogic.avc.decoder). El manifiesto declaraba
+            //   SOURCE=1920x1080  RATIO=3.00x
+            // porque salia de settings.resolution del perfil base del LAB (1920x1080), que es
+            // un SUPUESTO del LAB, no una medicion del canal. El ratio 3.00x es 5760/1920;
+            // sobre el 720p real el factor verdadero es 5760/1280 = 4.50x.
+            //
+            // Se conserva intacto: RES=5760x3240 (el objetivo 6K), TECHNIQUE, TRUTH:NOT_SOURCE y
+            // DOWNSCALE_FORBIDDEN. Lo unico que cambia es la ENTRADA del calculo: de supuesto a
+            // medido. Si no hay sonda, se declara UNKNOWN en las DOS y no se inventa nada —
+            // declarar 1080p sin medirlo es exactamente la mentira que este cambio elimina.
+            //
+            // Fuente de la medicion: ApeQualityProber.quickProbe enriquece channel._probeData
+            // con RESOLUTION real leida de un segmento (ape-quality-prober.js L546:
+            // result.resolution = `${segResult.width}x${segResult.height}`).
+            // El canal NO llega hasta aqui: esta funcion solo recibe (m3u, ctx). La medicion
+            // viaja en ctx.sourceResMeasured, que el call site rellena desde channel._probeData.
+            // (`c` es el ctx; intentar leer c._probeData o channel._probeData aqui devuelve
+            // siempre undefined — el gate lo cazo con 10/17 antes de corregirlo.)
+            const _srcMeasured = (c && c.sourceResMeasured) ? String(c.sourceResMeasured) : null;
+            let _src6kFinal = 'UNKNOWN';
+            let _ratio6kFinal = 'UNKNOWN';
+            if (_srcMeasured) {
+                _src6kFinal = _srcMeasured;
+                // 5760 es el ancho objetivo de la capa 6K (RES=5760x3240, ver tag de arriba).
+                const _srcW = parseInt(_srcMeasured.split('x')[0], 10);
+                if (isFinite(_srcW) && _srcW > 0) {
+                    _ratio6kFinal = (5760 / _srcW).toFixed(2) + 'x';
+                }
+            }
             // los tags primero, delante del STREAM-INF
             const t6 = [
                 '#EXT-X-APE-CRYSTAL-6K:OPT-IN-ACTIVE;PROFILE=' + _6k.id + ';BASE=' + _6kBase
@@ -9521,8 +9554,9 @@ ${__apeContinuityTags().join('\n')}
                     // escribe la lista NO conoce el device que la va a leer. Declararlo evita que
                     // OPT-IN-ACTIVE se lea como "ya activo en este aparato".
                     + ';ACTIVATION=DEVICE_GATED;DEVICE_REQUIRES=4K_5760x3240;DEVICE_STATUS=unknown',
-                '#EXT-X-APE-CRYSTAL-6K-MODE:EMULATED;SOURCE=' + _6k.src + ';TECHNIQUE=' + _6k.tec
-                    + ';RATIO=' + _6k.ratio + ';ENHANCEMENT=DISPLAY_DECLARED',
+                '#EXT-X-APE-CRYSTAL-6K-MODE:EMULATED;SOURCE=' + _src6kFinal + ';TECHNIQUE=' + _6k.tec
+                    + ';RATIO=' + _ratio6kFinal + ';ENHANCEMENT=DISPLAY_DECLARED'
+                    + ';SOURCE_ORIGIN=' + (_srcMeasured ? 'PROBED' : 'UNMEASURED'),
                 '#EXT-X-APE-CRYSTAL-6K-BITRATE:' + _6k.mbps + ';MAX=' + (_6k.mbps + 20) + ';UNIT=Mbps',
                 '#EXT-X-APE-CRYSTAL-6K-TRUTH:DECLARED_ENHANCEMENT;NOT_SOURCE;DOWNSCALE_FORBIDDEN'
             ];
@@ -12961,7 +12995,18 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
         _finalM3U = _apeAppendLegacyEnhancementMetadata(_finalM3U, {
             profile: profile,
             res: _res796,
-            name: (channel && channel.name) || ''
+            name: (channel && channel.name) || '',
+            // [2026-11-13] Resolucion MEDIDA del canal, leida de la sonda. null si no hay
+            // medicion — y null es un valor legitimo: significa "no se sabe", no "asume 1080p".
+            // DIRECTIVA DEL OPERADOR: "no lo tome como 1080, pero que lo lleve a 6k emulado".
+            // O sea: el objetivo 6K se mantiene; lo que cambia es la ENTRADA del calculo.
+            // `channel` SI esta en scope aqui (lo usa la linea de arriba); el tag 6K vive en
+            // _apeAppendLegacyEnhancementMetadata, que solo recibe este ctx, asi que la medicion
+            // tiene que viajar por aqui. Sin este campo, el SOURCE del tag cae a UNKNOWN.
+            sourceResMeasured: (channel && channel._probeData
+                && /^\d{2,5}x\d{2,5}$/.test(String(channel._probeData.resolution || '')))
+                ? String(channel._probeData.resolution)
+                : null
         });
         return _apeFinalizeReaChannel(_finalM3U, {
             channel: channel,
