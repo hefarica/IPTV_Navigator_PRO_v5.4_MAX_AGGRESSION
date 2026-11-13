@@ -90,14 +90,29 @@ class QoEReporter(private val ctx: Context, private val cfg: Config) {
         } catch (e: Exception) { Log.w(TAG, "capabilities err: ${e.message}") }
     }
 
+    /**
+     * SoC que viaja en `caps.soc`. Se envia el token CANONICO, no el crudo.
+     *
+     * Por que (medido el 2026-11-13): el gate de produccion hace igualdad EXACTA tras
+     * strtolower+trim contra ['mt8696','amlogic','s905x4','s905x3'].
+     *   - `Build.SOC_MODEL` del ONN 4K = 'AMLS905Y4'  -> 'amls905y4' ∉ lista -> allowed=false
+     *   - `Build.HARDWARE`             = 'amlogic'     -> SÍ esta en la lista
+     * El APK ya tenia el mapa SOC_ALIASES con 'amls905y4' -> 'amlogic', y
+     * `SyncProtocol.canonicalSoc()` lo resuelve; pero NADIE lo llamaba en este camino.
+     * Enviar el crudo cerraba el gate en silencio, sin ningun error visible en el device.
+     *
+     * Si el SoC no esta en el mapa se manda el crudo: es preferible que el VPS lo vea y
+     * lo rechace con motivo, a inventar un token canonico que no le corresponde.
+     */
     private fun socName(): String {
-        return try {
+        val raw = try {
             if (android.os.Build.VERSION.SDK_INT >= 31 && android.os.Build.SOC_MODEL.isNotBlank()) {
                 android.os.Build.SOC_MODEL.trim()
             } else {
                 android.os.Build.HARDWARE.trim()
             }
         } catch (e: Exception) { "" }
+        return SyncProtocol.canonicalSoc(raw) ?: raw
     }
 
     /** Fase A: nombres de settings + getprop, deduplicados y ordenados. NUNCA valores. */

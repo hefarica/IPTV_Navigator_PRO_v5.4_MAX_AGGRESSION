@@ -61,7 +61,7 @@ function ara_sync_socs(): array
      * Build.SOC_MODEL. La prueba de esta decisión vive en tools/probe/probe_capabilities.ps1
      * (campo soc_gate_pasa) y se reproduce con: getprop ro.soc.model.
      */
-    return ['mt8696', 'amlogic', 's905x4', 's905x3', 's905y4', 'amls905y4'];
+    return ['mt8696', 'amlogic', 's905x4', 's905x3'];
 }
 
 function ara_sync_unmapped(): string
@@ -83,7 +83,7 @@ function ara_sync_no_wire_8k(): array
      * tiene ruta 8K real, y declarar wire 8K sobre él sería exactamente la mentira que la
      * Ley Cardinal 1 prohíbe. Añadirlo aquí es la opción CONSERVADORA: nunca sobre-declara.
      */
-    return ['s905x4', 's905x3', 'mt8696', 's905y4', 'amls905y4'];
+    return ['s905x4', 's905x3', 'mt8696', 'amlogic'];
 }
 
 function ara_sync_levers(): array
