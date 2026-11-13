@@ -90,3 +90,29 @@ adb -s 192.168.1.3:34813 shell 'dumpsys display | grep -oE "mActiveModeId=[0-9]+
 adb -s 192.168.1.3:34813 shell 'dumpsys SurfaceFlinger | grep -A12 "SurfaceView\[studio.scillarium"'
 #   -> geomBufferSize = 1280x720 · geomLayerTransform = SCALE 1.5000
 ```
+
+### Caveat de reproducibilidad, declarado
+
+**La medición de `geomLayerTransform` exige una superficie de vídeo ACTIVA.** Se tomó con
+OTT Navigator reproduciendo un canal 720p. Al intentar re-verificarla más tarde, el estado
+era:
+
+- Envié `KEYCODE_HOME` para probar el reset del override con el reproductor cerrado →
+  **la superficie desapareció**.
+- Relancé el reproductor de la APK con una URL `pulse` → creó `SurfaceView` pero con
+  `geomBufferSize=[0 0 -1 -1]` y `composition type=INVALID (0)`: **sin buffer**, porque el
+  `pulse` devuelve 502 (las credenciales de prueba del proveedor no valen).
+
+**Consecuencia honesta:** el dato es real y está en la medición original, pero **no se puede
+reproducir sin que haya un canal reproduciéndose en OTT**, y yo no puedo seleccionar canales
+dentro de OTT. La verificación queda **pendiente del operador**: poner un canal y volver a
+lanzar el tercer comando.
+
+Los dos primeros comandos (`wm size` y `mActiveModeId`) **sí se verificaron varias veces** y
+no dependen de que haya vídeo.
+
+### Lo que descarta el experimento, y por qué no lo cierra
+
+El intento de re-verificación **no refuta nada**: no midió una escala distinta, midió una
+capa sin buffer. **Una capa sin buffer no es un cero** — es ausencia de sujeto. Distinto
+sería haber medido `SCALE 1.0` con vídeo real: eso sí tumbaría el hallazgo.
