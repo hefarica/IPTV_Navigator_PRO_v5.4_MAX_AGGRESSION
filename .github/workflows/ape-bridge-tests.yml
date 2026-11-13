@@ -95,3 +95,6 @@ jobs:
         env:
           LABV24: ${{ github.workspace }}/artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json
         run: node tools/quality/test_6k_source_honest.js
+
+      - name: Politica de composicion polimorfica (tope 1080p del firmware)
+        run: node tools/quality/test_composition_policy.js

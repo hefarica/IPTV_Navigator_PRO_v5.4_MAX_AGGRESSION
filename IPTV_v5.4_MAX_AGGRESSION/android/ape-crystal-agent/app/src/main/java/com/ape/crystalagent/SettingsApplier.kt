@@ -154,7 +154,52 @@ class SettingsApplier(ctx: Context) {
                     else -> null
                 } != null
             } catch (e: Exception) { false }
-            if (!exists) continue
+            // [2026-11-13] EXCEPCION DE ARRANQUE para las DOS claves de geometria de pantalla.
+            //
+            // La regla "NO crea keys inertes" (correcta) protege contra escribir levers VPP que
+            // este SoC no expone. Pero display_size_forced NO es inerte: es la clave que
+            // WindowManager lee al arrancar para fijar el tamano LOGICO de la composicion.
+            //
+            // MEDIDO en el ONN 4K el 2026-11-13:
+            //   settings put global display_size_forced 1280x720  -> rc=0
+            //   wm size        -> Override size: 1280x720
+            //   DisplayFrames  -> w=1280 h=720
+            //   mActiveModeId  -> 123 (3840x2160 @59.94)  <- el panel sigue en 4K
+            // Y de fabrica la clave viene a null (medido), asi que sin esta excepcion L157 la
+            // saltaria siempre y la politica de composicion NUNCA podria aplicarse.
+            //
+            // POR QUE IMPORTA: con composicion 1080p, un video 720p se escala x1,5 en el
+            // compositor (factor NO entero, medido en SurfaceFlinger: geomLayerTransform
+            // SCALE 1.5000) y luego el panel lo escala x2. Con composicion 720p el video pasa
+            // 1:1 y el panel hace un unico escalado x3,0 entero.
+            //
+            // Se limita a ESTAS DOS claves: siguen pasando por la allowlist (ALLOW_KEY), por
+            // KeyGuard (WRITE_SECURE_SETTINGS) y por su regex de valor. No abre la puerta a
+            // escribir settings arbitrarios.
+            val bootstrapGeometria = (k == "display_size_forced" || k == "display_density_forced")
+            if (!exists && !bootstrapGeometria) continue
+            if (!exists) Log.i(TAG, "CREANDO clave de geometria ausente: $ns/$k=$v")
+            // [2026-11-13] TOPE REAL de composicion, medido. El regex de ALLOW_KEY admite 4 digitos,
+            // asi que dejaria pasar 3840x2160 — pero este SoC NO puede componer a 4K:
+            //   ro.surface_flinger.max_graphics_height = 1080   (propiedad de build, inmutable)
+            //   wm size 3840x2160 -> sin efecto (devuelve rc=0 mintiendo)
+            // Escribir un valor que el framework va a ignorar es una mentira al log y al VPS.
+            // Se rechaza aqui, con motivo, en vez de fingir que se aplico.
+            if (k == "display_size_forced") {
+                val dims = v.split('x')
+                val w = dims.getOrNull(0)?.toIntOrNull() ?: 0
+                val h = dims.getOrNull(1)?.toIntOrNull() ?: 0
+                if (w <= 0 || h <= 0 || w > 1920 || h > 1080) {
+                    // putSetting devuelve Boolean; el rechazo lo contabiliza applyDetailed tras
+                    // la llamada. Se devuelve false y NO se toca la lista de rechazados, que es
+                    // local de applyDetailed: intentarlo desde aqui no compila. Ese fue
+                    // exactamente el error de la primera version de este cambio.
+                    Log.w(TAG, "RECHAZADO $ns/$k=$v — excede el tope de composicion 1920x1080 " +
+                        "impuesto por ro.surface_flinger.max_graphics_height; el panel puede estar " +
+                        "en 4K pero la composicion no. Valor no aplicado.")
+                    return false
+                }
+            }
             try {
                 val r = when (ns) {
                     "global" -> Settings.Global.putString(cr, k, v)
