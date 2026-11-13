@@ -1,0 +1,23 @@
+{
+  "schema": "ape.harness.apply.v1",
+  "generado": "2026-11-13T07:55:37.543Z",
+  "origen": "https://iptv-ape.duckdns.org/lists/APE_LISTA_1794100720046.m3u8",
+  "salida": "APE_LISTA_HARNESS.m3u8",
+  "lineas": {
+    "entrada": 22360128,
+    "salida": 22360137,
+    "anadidas": 9
+  },
+  "canales": 21224,
+  "sha256_cuerpo": "fd1f3db6abbace928efaaf90fb1cdb15ca83736dc85715b6b385d120352f5766",
+  "bloques_anadidos": 9,
+  "ya_traia_harness": false,
+  "verificaciones": {
+    "V2_extinf": "OK",
+    "V3_rutas": "OK",
+    "V4_cuerpo": "OK",
+    "V5_bloques": "OK"
+  },
+  "atomicidad": "escrito a .tmp y renombrado solo tras pasar las verificaciones",
+  "nota": "el cuerpo (todo desde el primer #EXTINF) es IDENTICO byte a byte: solo se anadio cabecera"
+}
