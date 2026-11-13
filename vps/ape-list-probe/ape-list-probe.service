@@ -1,0 +1,59 @@
+[Unit]
+Description=APE List Probe — endpoint de SOLO LECTURA sobre las listas servidas
+Documentation=file:///opt/ape-list-probe/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ape-probe
+Group=ape-probe
+WorkingDirectory=/opt/ape-list-probe
+Environment=APE_PROBE_PORT=8787
+Environment=APE_PROBE_BIND=127.0.0.1
+Environment=APE_MAX_BYTES=3221225472
+Environment=APE_FETCH_TIMEOUT_MS=300000
+Environment=APE_SAMPLE_URLS=3
+Environment=APE_RATE_PER_MIN=12
+Environment=APE_PROBE_CACHE=/var/lib/ape-list-probe/cache.json
+# APE_PROBE_LIST vive en el EnvironmentFile, que NO viaja en el repo.
+EnvironmentFile=-/etc/ape-list-probe/env
+ExecStart=/usr/bin/node /opt/ape-list-probe/server.js
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=300
+StartLimitBurst=5
+TimeoutStopSec=20
+
+# ── DUREZA ───────────────────────────────────────────────────────────────────
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateUsers=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+ReadWritePaths=/var/lib/ape-list-probe
+PrivateTmp=true
+UMask=0077
+
+# Techo de recursos: hashear 1,3 GB usa RAM acotada (streaming), no 1,3 GB.
+MemoryMax=512M
+CPUQuota=50%
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

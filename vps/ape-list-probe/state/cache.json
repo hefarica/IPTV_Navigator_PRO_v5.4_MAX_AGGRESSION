@@ -1,0 +1,25 @@
+{
+  "https://iptv-ape.duckdns.org/lists/APE_LISTA_1794100720046.m3u8": {
+    "etag": "\"6aefd56f-4e2a19a7\"",
+    "datos": {
+      "sha256": "81b00a123d1df3b4682f0124a8d52430bd056403287c369bb22391bbd8ee49fe",
+      "bytes": 1311381927,
+      "lineas": 22360128,
+      "canales": 21224,
+      "patrones": [
+        {
+          "clase": "https://iptv-ape.duckdns.org/pulse/{n}.{ext}",
+          "urls": 21224
+        }
+      ],
+      "harness": {
+        "extm3u": true,
+        "url2_cartridge": true,
+        "apex_qmax": false,
+        "ape_channels": 21224,
+        "quality_watch": false,
+        "lab": true
+      }
+    }
+  }
+}
