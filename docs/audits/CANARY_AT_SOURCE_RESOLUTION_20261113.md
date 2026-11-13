@@ -4,34 +4,43 @@
 
 ## El resultado
 
-Misma cadena Canary (mismo orden, mismos valores), solo cambia `scale=3840:2160` por `scale=1920:1080`. Mismo encoder, misma fuente, 3 s = 90 fotogramas a 30 fps.
+Misma cadena Canary (mismo orden, mismos valores), solo cambia `scale=3840:2160` por `scale=1920:1080`. Mismo encoder, misma fuente, 3 s = 90 fotogramas a 30 fps. **Se reporta el mínimo de N pasadas**, no una sola.
 
-| Configuración | Mejor de 3 pasadas | Cadencia | vs fuente (30 fps) |
-|---|---|---|---|
-| **4K (3840x2160)** | 131 s *(1 sola pasada)* | 0,687 fps | **43,7×** |
-| **1080p, cadena completa** | **16 s** | 5,62 fps | **5,3×** |
-| **1080p sin grano** | **9 s** | 10,0 fps | **3,0×** |
+| Configuración | Mínimo de N | Pasadas | Cadencia | vs fuente (30 fps) |
+|---|---|---|---|---|
+| **4K (3840x2160)** | **77 s** (N=2) | 93 · **77** s | 1,17 fps | **25,7×** |
+| **1080p, cadena completa** | **16 s** (N=3) | 16 · 21 · 18 s | 5,62 fps | **5,3×** |
+| **1080p sin grano** | **9 s** (N=3) | 9 · 10 · 9 s | 10,0 fps | **3,0×** |
 
-**El grano es la etapa dominante:** quitarlo pasa de 16 s a 9 s — **1,78× menos coste**, muy por encima del ruido.
+**El 4K cuesta 4,8× lo que el 1080p** (77 s vs 16 s).
+**El grano es la etapa dominante en 1080p:** quitarlo pasa de 16 s a 9 s — **1,78× menos coste**, muy por encima del ruido (dispersión 31 % en la completa, 11 % sin grano).
 
-## Corrección de mis propias medidas
+## Corrección de mis propias medidas — dos veces
 
-Las pasadas que hice sueltas dieron **30 s**, **22 s** y **39 s** para configuraciones donde la mejor de tres es **16 s** y **9 s**. La dispersión medida:
+**Primera corrección:** las pasadas sueltas dieron **30 s**, **22 s** y **39 s** para configuraciones cuya mejor de tres es **16 s** y **9 s**.
 
-| Configuración | Pasadas | Dispersión |
+**Segunda corrección (esta ronda):** el `131 s` de 4K que publiqué era **una sola pasada**, y con dos pasadas el mínimo es **77 s**.
+
+| Dato publicado antes | Medido con mínimo de N | Inflado |
 |---|---|---|
-| completa | 16 · 21 · 18 s | **31 %** |
-| sin grano | 9 · 10 · 9 s | **11 %** |
+| 131 s · 0,687 fps · **43,7×** | **77 s** · 1,17 fps · **25,7×** | **+70 %** |
 
-**Una sola pasada de reloj en esta máquina no vale como medida.** Se reporta el **mínimo de tres**, que es robusto a los picos de carga. El `131 s` de 4K es **una sola pasada** y por tanto está **inflado**: necesita remedición con el mismo criterio antes de compararlo de igual a igual.
+**Una sola pasada de reloj en esta máquina no vale como medida**, ni para lo bueno ni para lo malo. Y el sesgo va en la dirección que uno menos espera: hace parecer el sistema **peor** de lo que es, porque cualquier proceso de fondo se suma.
 
 ## Qué cambia esto
 
-**El titular anterior era «43,7× más lento».** Para los flujos que el sistema **realmente sirve**, la cadena está a **5,3×** — y a **3,0×** sin el grano. Sobre una máquina de 4 núcleos.
+El titular con el que se abrió esta línea de trabajo era **«43,7× más lento»**, y luego **«137×»** con la cifra histórica del Canary. Con metodología consistente:
 
-- **No es tiempo real.** 3× sigue siendo 3×.
-- **Pero deja de ser un abismo.** El VPS tiene **3 vCPU** frente a los 4 de esta máquina, así que allí será peor; sin medirlo no afirmo cuánto.
-- Y coincide con lo que el propio sistema ya declara: `#EXT-X-APE-4KFALSE-MODE:ACTIVE` reconoce que el 4K es sintético. **El coste de ese 4K sintético es 8× sobre el 1080p nativo** (131 s vs 16 s), pagado para un upscale sobre un flujo que no lo tiene.
+| | vs fuente |
+|---|---|
+| Canary histórico (dato previo) | 137× |
+| Cadena a 4K, mínimo de 2 | **25,7×** |
+| Cadena a 1080p (la resolución real), mínimo de 3 | **5,3×** |
+| Cadena a 1080p sin grano, mínimo de 3 | **3,0×** |
+
+- **Sigue sin ser tiempo real.** 3× es 3×.
+- El VPS tiene **3 vCPU** frente a los 4 de esta máquina: allí será peor, y **no lo extrapolo**.
+- Pero el abismo de 137× no describe el sistema tal como está hoy sobre los flujos que sirve.
 
 ## Lo que NO dice
 
