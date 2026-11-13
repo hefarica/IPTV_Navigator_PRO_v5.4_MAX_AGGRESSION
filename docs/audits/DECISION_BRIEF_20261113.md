@@ -103,3 +103,24 @@ Leído de `shared_prefs/ape_sync.xml` **solo nombres de clave y timestamps**, si
 Y la forma de los tokens, sin contenido: `state_token` 44 B primer byte ASCII `Y`, `event_token` 48 B primer byte `1` → **texto plano**, no ciphertext.
 
 Esto **cierra parcialmente §7**: la app sincroniza y tiene last-known-good con perfil asignado. Lo que **no** prueba: que el registro esté autenticado con credencial por instalación, ni que la política recibida se aplique.
+
+---
+
+## D-6 · Las copias de `vps/` degradan audio — **trampa latente, no riesgo vivo**
+
+**Medido:** `vps_jit/server.js` L220/L222/L223 y `IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js` L390/L392/L393:
+
+```
+audioOk ? ['-c:a','aac','-b:a','128k','-ac','2'] : ['-an']
+ramas -c:a copy: 0
+```
+
+Todas las ramas fuerzan **estéreo**, y si falla el audio lo **eliminan** con `-an`. Contra la ley: *«canales de audio reducidos»* está prohibido.
+
+**Pero el alcance NO es producción.** `_vps_stage/deploy/manifest.tsv` instala `tools/lab/ape-jit/server.js` (el limpio: `audio_passthrough=1`, `stereo_locked=0`). Lo desplegado es correcto.
+
+**El peligro es el siguiente cambio:** repuntar la fila del manifiesto a `vps/ape-jit/server.js` —que parece lo natural— desplegaría el motor que degrada. Y las dos copias de `vps/` son además implementaciones paralelas que ya no coinciden con la que se ejecuta.
+
+**Dos salidas, ambas tuyas:**
+1. **Retirar o marcar como no desplegables** las copias de `vps/`, dejando `tools/lab` como única implementación. Elimina la trampa sin tocar ffmpeg. **Es la que recomiendo.**
+2. Corregir las tres líneas con `-c:a copy` + A/B del origen. Más caro y necesita saber si el proveedor sirve 5.1 real.

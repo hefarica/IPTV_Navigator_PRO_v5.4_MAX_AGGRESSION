@@ -78,9 +78,31 @@ Contra la ley: *«canales de audio reducidos»* está prohibido. Un 5.1 se entre
 
 **El motor vivo (`tools/lab`) sí cumple** (`audio_passthrough=1`, `stereo_locked=0`) — el problema está en las **dos copias desplegables** de `vps/`.
 
+## 3.b · Cuál es el alcance real, medido antes de gritar
+
+Antes de dar esto por riesgo vivo, comprobé **qué fichero instala el deploy**:
+
+```
+_vps_stage/deploy/manifest.tsv  (60 filas; 1 sola con el motor)
+  tools/lab/ape-jit/server.js  ->  /opt/ape-jit/server.js  644 root:root
+```
+
+**El manifiesto instala el motor LIMPIO.** Por tanto:
+
+| | |
+|---|---|
+| **Riesgo vivo** | **CERO por esta vía.** Lo desplegado es `tools/lab`, que hace passthrough de audio |
+| **Riesgo latente** | **ALTO.** `IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js` degrada audio, y `vps/` es el sitio «natural» donde alguien buscaría el fichero del VPS |
+
+La trampa concreta: cambiar la fila del manifiesto a `vps/ape-jit/server.js` —un cambio que parece inocuo y hasta correcto— **desplegaría un motor que convierte 5.1 en estéreo y quita el audio cuando falla**.
+
+Por eso la corrección honesta de mi severidad: **no es una degradación en producción, es una degradación esperando a que alguien apunte ahí.** Y las dos copias de `vps/` son además implementaciones paralelas que ya no coinciden con la que se ejecuta, lo que ya es un problema por sí mismo (§2: *«JIT no puede mantener una receta visual independiente»*).
+
 ## 4 · Por qué esto no lo arreglo yo
 
-Son las copias que un deploy instalaría. Cambiar los argumentos de ffmpeg ahí es un cambio de comportamiento en producción, necesita su A/B (¿el origen sirve 5.1 real?) y su autorización. Las tres líneas afectadas están localizadas y citadas.
+Cambiar los argumentos de ffmpeg en `vps/` es un cambio de comportamiento en ficheros que un deploy instalaría, necesita su A/B (¿el origen sirve 5.1 real?) y su autorización. Las tres líneas afectadas están localizadas y citadas.
+
+Alternativa más limpia que también es decisión tuya: **retirar o marcar como no desplegables** las dos copias de `vps/`, y dejar `tools/lab` como única implementación. Eso elimina la trampa sin tocar ffmpeg.
 
 Queda como **D-6** en el brief de decisiones.
 
