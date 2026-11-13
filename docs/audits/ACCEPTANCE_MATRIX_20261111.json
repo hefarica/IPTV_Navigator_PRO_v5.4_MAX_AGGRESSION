@@ -35,7 +35,7 @@
       "NOT_COMPUTED": 7
     },
     "verified_con_artefacto_reproducible": 0,
-    "lectura": "3 VERIFIED (P07, P09, P16). 1 NOT_COMPUTED, 1 PARCIAL, 15 MEDIDO. ACTUALIZADO 2026-11-12 (5): con el ONN 4K medido por ADB, P07 TERMICA pasa a VERIFIED (soc 63,7 C con umbral 65,0, sin cruzarlo en 30+ s). P04, P06, P08, P10 pasan a PARTIALLY_FUNCTIONAL/MEDIDO con sus numeros. Sigue sin medirse la imagen en el panel: screencap no captura el plano de video por hardware.",
+    "lectura": "3 VERIFIED (P07, P09, P16). 2 FAILED (P03, P17). 1 NOT_COMPUTED, 1 PARCIAL, 15 MEDIDO. ACTUALIZADO 2026-11-13 (6): P17 SEGURIDAD sigue FAILED y ahora con motivo medido en el cliente, no solo en el servidor: la APK com.ape.crystalagent es DEBUGGABLE y su almacenamiento privado tiene una clave ADB privada y dos tokens legibles por cualquiera con ADB. Barrido: 18 de 19 apps del mismo aparato son release — es un defecto de esta build.",
     "las_pruebas_medidas_lo_estan_porque_fallan": "Tiempo real (P03) y Seguridad (P17) estan MEDIDAS y su resultado es negativo; Registro (P13) pasa a MEDIDO tras corregir su criterio: se midio que el enrol autentica y que el registro vivo NO. Un fallo medido es un dato; un exito sin artefacto no lo es.",
     "cuentas": [
       {
@@ -672,6 +672,10 @@
         {
           "ref": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php:342-351",
           "nota": "HALLAZGO S-3 (desacople): ara_heartbeats no tiene model ni assigned_ip ni FK al peer WireGuard, asi que el registro vivo no permite saber a que peer corresponde ni que politica se le asigno"
+        },
+        {
+          "ref": "docs/audits/SECURITY_APK_DEBUGGABLE_20261113.md",
+          "nota": "MEDIDO en el ONN 4K. La APK com.ape.crystalagent es DEBUGGABLE (pkgFlags=[DEBUGGABLE ...]) y run-as confirma acceso a su almacenamiento privado; el CONTROL con studio.scillarium.ottnavigator responde \"package not debuggable\", luego no es limitacion del aparato. Su almacenamiento privado contiene, por nombre y sin abrir nada: files/adbkey 1703 B (clave PRIVADA de host ADB), files/state_token 48 B, files/event_token 44 B, shared_prefs/ape_secure.xml 1144 B. Barrido de las 19 apps de terceros del aparato: SOLO esta es debuggable, las otras 18 son release — es un defecto de esta build, no de la plataforma."
         }
       ],
       "falta": "Corregir H1 (TDZ de CAPACITY_FPS), H4 (allowlist de Host) y H7 (filtro de metodo). Fuera del alcance de este informe y de la tarea: aqui solo se registra con severidad, fichero y linea.",
@@ -684,7 +688,25 @@
         ],
         "razon": "S-1 es el hallazgo MAYOR para este contrato: no exige credencial alguna y permite INYECTAR el estado que el VPS usa para el gate por dispositivo, de modo que un anonimo puede hacer que un device aparezca con otro state/player/ara_version/caps. S-2 es grave pero exige poseer el APK (o extraerlo) para leer el secreto. H1 tumba el motor y el Host injection redirige, pero ninguno de los dos falsifica la decision por dispositivo: por eso quedan por debajo de S-1.",
         "nota": "La jerarquia es de ESTE contrato (Canary->JIT + gate por dispositivo), no una escala absoluta de seguridad."
-      }
+      },
+      "barrido_debuggable": {
+        "total_apps_terceros": 19,
+        "debuggables": [
+          "com.ape.crystalagent"
+        ],
+        "release": 18,
+        "lectura": "18 de 19 apps del mismo aparato compilan release. El defecto es de esta build y no hay excusa de plataforma."
+      },
+      "exposicion_no_leida": {
+        "declarado": true,
+        "detalle": "NO se abrieron adbkey, state_token, event_token ni ape_secure.xml. El hallazgo se sostiene en existencia, tamano y legibilidad. Un informe que necesite mostrar el secreto para probar que existe es un informe que lo ha filtrado."
+      },
+      "arreglo_propuesto": [
+        "compilar con debuggable=false (raiz, lo mas barato)",
+        "no guardar la clave ADB privada en files/: Keystore o provision por sesion",
+        "rotar la clave ADB una vez cerrado el primer punto",
+        "rotar state_token y event_token por la misma razon"
+      ]
     }
   ],
   "cifras_y_su_fuente": [
