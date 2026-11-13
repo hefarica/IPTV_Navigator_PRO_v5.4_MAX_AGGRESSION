@@ -296,6 +296,15 @@ jobs:
           source ./lib.sh
           echo "   ventana: ultimas 2000 lineas del access log"
 
+          # [2026-11-12] ANTES de interpretar un "0 peticiones" hay que demostrar
+          # que el fichero mirado es el que se escribe. Medido: la ventana tenia
+          # 180 lineas; eso puede ser "log quieto" o "log equivocado". Se imprime
+          # el inventario y la ultima linea de cada log con su fecha.
+          echo ""
+          echo "   === inventario del log de nginx ==="
+          rsh "ls -la /var/log/nginx/ 2>/dev/null | head -n 12; echo '--- ultimas 2 lineas de cada access log con fecha:'; for f in /var/log/nginx/*access*.log; do [ -r \"\$f\" ] || continue; echo \"[\$f]\"; tail -n 2 \"\$f\" | cut -c1-140; done" 2>/dev/null | sed 's/^/   /' || echo "   (no se pudo listar /var/log/nginx)"
+          echo ""
+
           # [2026-11-12] Primera version adivinaba el UA con un grep. Medido: 0
           # lineas mientras el ONN reproducia, y eso NO prueba que no pase por el
           # VPS — podria ser otro UA o una ventana demasiado corta. Ahora se
