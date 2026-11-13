@@ -21,6 +21,11 @@ on:
         options: [dry-run, staging, deploy, canary]
         default: dry-run
         required: true
+      filter_ip:
+        description: 'Opcional: IP pública a buscar en el access log del VPS (diagnóstico de solo lectura). Vacío = no filtra por IP.'
+        type: string
+        default: ''
+        required: false
 
 # Un despliegue a la vez. Nunca dos contra el mismo VPS.
 concurrency:
@@ -289,20 +294,38 @@ jobs:
           cd "$DEPLOY_DIR"
           # shellcheck disable=SC1091
           source ./lib.sh
-          echo "   ventana: ultimas 500 lineas del access log"
-          out="$(rsh "for f in /var/log/nginx/access.log /var/log/nginx/apt.log; do [ -r \"\$f\" ] && tail -n 500 \"\$f\"; done 2>/dev/null | grep -aiE 'OTT Navigator|TiviMate|VLC|Kodi|Smarters|ExoPlayer|Android' | tail -n 40" 2>/dev/null || true)"
-          if [ -z "$out" ]; then
-            echo "   0 lineas con UA de player en la ventana."
-            echo "   Esto NO significa que el aparato no exista: significa que no"
-            echo "   ha pedido nada al VPS en las ultimas 500 lineas del log."
-            echo "   Para medirlo hay que reproducir un canal de una lista del VPS"
-            echo "   y volver a lanzar este paso."
-          else
-            echo "   === peticiones de player detectadas ==="
-            printf '%s\n' "$out" | sed 's/^/   /'
+          echo "   ventana: ultimas 2000 lineas del access log"
+
+          # [2026-11-12] Primera version adivinaba el UA con un grep. Medido: 0
+          # lineas mientras el ONN reproducia, y eso NO prueba que no pase por el
+          # VPS — podria ser otro UA o una ventana demasiado corta. Ahora se
+          # observa primero (que UA hay) y solo despues se filtra.
+          raw="$(rsh "for f in /var/log/nginx/access.log /var/log/nginx/apt.log; do [ -r \"\$f\" ] && tail -n 2000 \"\$f\"; done 2>/dev/null" || true)"
+          if [ -z "$raw" ]; then
+            echo "   NO se pudo leer el access log (0 lineas devueltas)."
+            echo "   Esto es 'no computado', no 'nadie pide nada'."
+            exit 0
+          fi
+          echo "   lineas en la ventana: $(printf '%s\n' "$raw" | wc -l)"
+          echo ""
+          echo "   === UA mas frecuentes (top 8, recortado) ==="
+          printf '%s\n' "$raw" | grep -oE '"[^"]*"$' | sort | uniq -c | sort -rn | head -n 8 | cut -c1-110 | sed 's/^/   /' || true
+          echo ""
+          echo "   === codigos de estado ==="
+          printf '%s\n' "$raw" | grep -oE '" [0-9]{3} ' | sort | uniq -c | sort -rn | sed 's/^/   /' || true
+
+          IPF="${{ inputs.filter_ip }}"
+          if [ -n "$IPF" ]; then
             echo ""
-            echo "   resumen por codigo de estado:"
-            printf '%s\n' "$out" | grep -oE '" [0-9]{3} ' | sort | uniq -c | sed 's/^/   /' || true
+            echo "   === peticiones de la IP $IPF ==="
+            hits="$(printf '%s\n' "$raw" | grep -aF "$IPF" | tail -n 25 || true)"
+            if [ -z "$hits" ]; then
+              echo "   0 peticiones de esa IP en la ventana."
+              echo "   NO prueba que el dispositivo no use el VPS: prueba que no pidio"
+              echo "   nada en estas $(printf '%s\n' "$raw" | wc -l) lineas."
+            else
+              printf '%s\n' "$hits" | cut -c1-150 | sed 's/^/   /'
+            fi
           fi
 
 
