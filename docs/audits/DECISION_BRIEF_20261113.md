@@ -121,6 +121,14 @@ Todas las ramas fuerzan **estéreo**, y si falla el audio lo **eliminan** con `-
 
 **El peligro es el siguiente cambio:** repuntar la fila del manifiesto a `vps/ape-jit/server.js` —que parece lo natural— desplegaría el motor que degrada. Y las dos copias de `vps/` son además implementaciones paralelas que ya no coinciden con la que se ejecuta.
 
+**Ojo con el alcance, medido:** `vps/` NO es huérfana — **6 filas del manifiesto sí son de `vps/`** (incluida `vps/prisma/api/pulse.php`, el endpoint de `/pulse/`). Las huérfanas son **solo dos**, las copias del motor, y ni siquiera son versiones del desplegado: son otro programa, 10× y 15× más pequeño.
+
+```
+desplegado   tools/lab/ape-jit/server.js                 449.392 B  290b1103  (el pinado)
+huérfano     IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js  45.535 B  8405f784
+huérfano     vps_jit/server.js                              29.624 B  e400fa19
+```
+
 **Dos salidas, ambas tuyas:**
-1. **Retirar o marcar como no desplegables** las copias de `vps/`, dejando `tools/lab` como única implementación. Elimina la trampa sin tocar ffmpeg. **Es la que recomiendo.**
+1. **Retirar o marcar no-desplegables SOLO esos dos ficheros del motor.** No tocar `vps/prisma/` ni `vps/bin/`, que sí están desplegados. Elimina la trampa sin tocar ffmpeg y sin romper nada instalado. **Es la que recomiendo.**
 2. Corregir las tres líneas con `-c:a copy` + A/B del origen. Más caro y necesita saber si el proveedor sirve 5.1 real.

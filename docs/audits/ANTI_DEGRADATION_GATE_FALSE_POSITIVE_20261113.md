@@ -78,33 +78,57 @@ Contra la ley: *«canales de audio reducidos»* está prohibido. Un 5.1 se entre
 
 **El motor vivo (`tools/lab`) sí cumple** (`audio_passthrough=1`, `stereo_locked=0`) — el problema está en las **dos copias desplegables** de `vps/`.
 
-## 3.b · Cuál es el alcance real, medido antes de gritar
+## 3.b · Alcance real: dos ficheros huérfanos, y NO todo `vps/` (cuadro definitivo)
 
-Antes de dar esto por riesgo vivo, comprobé **qué fichero instala el deploy**:
+**El manifiesto tiene 33 filas** (no 60: las líneas `#` de comentario no son filas). **Las 33 fuentes existen**, ninguna falta. Y de ellas, **6 sí apuntan a `vps/`** — entre ellas `vps/prisma/api/pulse.php`, que es el endpoint que se midió sirviendo `/pulse/`.
 
-```
-_vps_stage/deploy/manifest.tsv  (60 filas; 1 sola con el motor)
-  tools/lab/ape-jit/server.js  ->  /opt/ape-jit/server.js  644 root:root
-```
+Por tanto **`vps/` no es una carpeta huérfana**: 6 de sus ficheros son los desplegados. Retirar `vps/` entero rompería seis ficheros vivos.
 
-**El manifiesto instala el motor LIMPIO.** Por tanto:
+La copia del motor, en cambio, **no está en el manifiesto**:
+
+| Fichero | ¿En el manifiesto? | Bytes | SHA-256 |
+|---|---|---|---|
+| **`tools/lab/ape-jit/server.js`** | **SÍ → `/opt/ape-jit/server.js`** | **449.392** | **`290b1103…`** (el pinado del contrato) |
+| `IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js` | no | 45.535 | `8405f784…` |
+| `vps_jit/server.js` | no | 29.624 | `e400fa19…` |
+
+**No son versiones divergentes del mismo programa: son programas distintos.** 10× y 15× más pequeños que el desplegado — no tienen el guard de capacidad, ni el reconciliador, ni el resto del motor real.
+
+Los tres hashes son distintos entre sí. El único que coincide con lo que el contrato pina (`290b1103…`) es el que el manifiesto instala.
+
+### Conclusión de severidad
 
 | | |
 |---|---|
-| **Riesgo vivo** | **CERO por esta vía.** Lo desplegado es `tools/lab`, que hace passthrough de audio |
-| **Riesgo latente** | **ALTO.** `IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js` degrada audio, y `vps/` es el sitio «natural» donde alguien buscaría el fichero del VPS |
+| **Riesgo vivo de degradación de audio** | **CERO.** Lo desplegado es `tools/lab`, que hace passthrough (`audio_passthrough=1`, `stereo_locked=0`) |
+| **Riesgo latente** | **Dos ficheros muertos que degradan audio**, y `vps/ape-jit/server.js` está donde alguien buscaría «el server.js del VPS» |
+| **Riesgo añadido** | Los dos huérfanos **no son versiones del motor**: son otro programa. Quien los lea para entender el sistema, lee código que no se ejecuta |
 
-La trampa concreta: cambiar la fila del manifiesto a `vps/ape-jit/server.js` —un cambio que parece inocuo y hasta correcto— **desplegaría un motor que convierte 5.1 en estéreo y quita el audio cuando falla**.
+## 4 · Qué hay que hacer, y por qué no lo hago yo
 
-Por eso la corrección honesta de mi severidad: **no es una degradación en producción, es una degradación esperando a que alguien apunte ahí.** Y las dos copias de `vps/` son además implementaciones paralelas que ya no coinciden con la que se ejecuta, lo que ya es un problema por sí mismo (§2: *«JIT no puede mantener una receta visual independiente»*).
+**Solo dos ficheros, no la carpeta:**
 
-## 4 · Por qué esto no lo arreglo yo
+```
+retirar o marcar no-desplegable:  IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js
+                                  vps_jit/server.js
+NO tocar:                         vps/prisma/, vps/bin/  ← 6 filas del manifiesto, desplegadas
+```
 
-Cambiar los argumentos de ffmpeg en `vps/` es un cambio de comportamiento en ficheros que un deploy instalaría, necesita su A/B (¿el origen sirve 5.1 real?) y su autorización. Las tres líneas afectadas están localizadas y citadas.
+Elimina la trampa sin tocar ffmpeg y sin romper nada instalado. Alternativa equivalente: corregir las tres líneas con `-c:a copy` y su A/B.
 
-Alternativa más limpia que también es decisión tuya: **retirar o marcar como no desplegables** las dos copias de `vps/`, y dejar `tools/lab` como única implementación. Eso elimina la trampa sin tocar ffmpeg.
+**Ninguna de las dos la ejecuto yo:** son ficheros que un deploy podría instalar, y retirar código —aunque sea huérfano— es irreversible sin tu visto bueno. Queda como **D-6**.
 
-Queda como **D-6** en el brief de decisiones.
+## 4.b · Cómo cambió esta recomendación, y por qué
+
+Tres precisiones sucesivas, cada una corrigiendo a la anterior:
+
+1. «La APK degrada audio» → falso positivo del gate: eran comentarios.
+2. «Las dos copias **desplegables** degradan audio» → falso: el manifiesto instala `tools/lab`.
+3. «Retirar las copias de `vps/`» → falso: **6 filas del manifiesto sí son de `vps/`**.
+
+El patrón del error es el mismo las tres veces: **generalizar de un fichero a una carpeta.** El gate lo hizo (de un patrón a un fichero), yo lo hice (de un fichero a `vps/`).
+
+Lo que detuvo cada error fue contar y hashear en vez de razonar por analogía.
 
 ## 5 · Lo que este episodio enseña sobre los gates
 
