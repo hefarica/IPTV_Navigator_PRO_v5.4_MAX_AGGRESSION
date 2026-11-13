@@ -242,10 +242,25 @@ function esMenu(texto) {
 /** Reglas que NO se aplican sobre un menu: no hay declaracion que validar. */
 const REGLAS_SOLO_DECLARACION = new Set(['SR-R1', 'SR-R3', 'SR-R4', 'SR-R5', 'SR-R7']);
 
-/** Evalua un texto contra las reglas que le corresponden. */
-function aplicarReglas(texto, ubicacion, esMenuAqui) {
+/**
+ * Evalua un texto contra las reglas que le corresponden.
+ *
+ * `propio` es opcional: las hojas escalares SOLO de este objeto, sin el contexto
+ * heredado. R6 lo usa porque una etiqueta cruzada exige que `minterpolate` y
+ * `RESOLUTION=` esten en la MISMA declaracion. En un registro de calibracion
+ * conviven un `video-filter` con `minterpolate` y otras claves con
+ * `RESOLUTION=`; fundirlos acusa una etiqueta cruzada que no existe. Fue el
+ * ultimo falso positivo abierto sobre el LAB.
+ */
+function aplicarReglas(texto, ubicacion, esMenuAqui, propio) {
   for (const r of reglas) {
     if (esMenuAqui && REGLAS_SOLO_DECLARACION.has(r.id)) continue;
+    // R6 se evalua a nivel de OBJETO, no de valor. Un objeto `temporal` que
+    // declara `etiqueta: minterpolate` y `resolucion: 3840x2160` en claves
+    // separadas SI es una etiqueta cruzada: el eje temporal esta reclamando una
+    // resolucion. Exigir las dos en el mismo valor dejaba pasar ese caso.
+    // El falso positivo del LAB se acota con la exclusion de `video-filter`
+    // dentro de la regla, no aqui.
     const fallo = CHECKS[r.id](texto);
     if (fallo) anotar(r.id, texto, ubicacion);
   }
