@@ -114,3 +114,9 @@ jobs:
       # cumple debe pasar y uno que viola las 7 debe fallar.
       - name: Reglas de superresolucion (gate + fixtures)
         run: node tools/quality/test_sr_rules_gate.js
+
+      # REGLAS PARA LA GENERACION: el generador puede validar una declaracion
+      # antes de emitirla y completarla si le falta contexto, en vez de elegir
+      # entre publicar mal o no publicar.
+      - name: Reglas SR en caliente (validar y completar antes de emitir)
+        run: node tools/quality/test_sr_rules_para_generacion.js

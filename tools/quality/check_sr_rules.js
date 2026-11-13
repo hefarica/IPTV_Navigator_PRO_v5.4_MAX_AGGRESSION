@@ -492,7 +492,81 @@ function imprimirInforme(r) {
   console.log(`  ${r.violaciones.length} regla(s) violada(s) · ${r.total_lineas_afectadas} ${r.formato === 'json' ? 'hoja(s)' : 'linea(s)'}.`);
 }
 
-module.exports = { analizar, imprimirInforme, contrato, REGLAS: reglas };
+/**
+ * Valida UNA declaracion antes de emitirla. Esto es lo que hace que las reglas
+ * sean "PARA LA GENERACION" y no solo una auditoria posterior.
+ *
+ * Un generador llama a esto por linea antes de escribirla:
+ *
+ *   const { validarDeclaracion } = require('./tools/quality/check_sr_rules.js');
+ *   const v = validarDeclaracion('#EXT-X-APE-AI-SR-ENABLED:true');
+ *   if (!v.ok) { /* no emitir, o completar los campos que faltan *\/ }
+ *
+ * Devuelve datos, no imprime y no sale del proceso: el generador decide que
+ * hacer con el veredicto. Un gate que mata el proceso no sirve en caliente.
+ */
+function validarDeclaracion(texto) {
+  violaciones.clear();
+  unidades = 1;
+  declaracionesSr = 0;
+  const menu = esMenu(String(texto || ''));
+  if (!menu && esSr(String(texto || ''))) declaracionesSr++;
+  aplicarReglas(String(texto || ''), '(declaracion)', menu);
+  const lista = [...violaciones.entries()]
+    .map(([id, v]) => ({
+      id,
+      nombre: v.regla.nombre || '',
+      severidad: v.regla.severidad || null,
+      veredicto: v.regla.veredicto || null,
+      correccion: v.regla.correccion || '',
+    }))
+    .sort((a, b) => (a.id < b.id ? -1 : 1));
+  return {
+    ok: lista.length === 0,
+    esMenu: menu,
+    declaraSr: !menu && declaracionesSr > 0,
+    violaciones: lista,
+  };
+}
+
+/**
+ * Completa una declaracion con los campos que la hacen conforme, sin cambiar
+ * los que ya tiene. Devuelve el texto corregido y que se anadio.
+ *
+ * Existe para que el generador no tenga que "no emitir": puede emitir BIEN.
+ * Una regla que solo prohibe obliga a elegir entre publicar mal o no publicar.
+ */
+function completarDeclaracion(texto) {
+  const original = String(texto || '');
+  const v = validarDeclaracion(original);
+  if (v.ok || v.esMenu) return { texto: original, anadido: [], ok: v.ok };
+
+  const anadidos = [];
+  let salida = original;
+
+  for (const viol of v.violaciones) {
+    if (viol.id === 'SR-R1' && !/DEGRADATION=/.test(salida) && !/STATE=(DECLARED|NO_COMPUTADO)/.test(salida)) {
+      // Sin modelo de degradacion medido, el unico estado honesto es DECLARED.
+      salida += (salida.includes(':') && !salida.endsWith(';') ? ';' : ';') + 'STATE=DECLARED';
+      anadidos.push('STATE=DECLARED');
+    }
+    if (viol.id === 'SR-R7' && !/(CLASS|MODE)=(ARCHIVE|VOD)/.test(salida)) {
+      salida += ';CLASS=ARCHIVE';
+      anadidos.push('CLASS=ARCHIVE');
+    }
+    if (viol.id === 'SR-R3' && /(CLASS|ROLE|ORIGIN)=SOURCE/.test(salida)) {
+      salida = salida.replace(/(CLASS|ROLE|ORIGIN)=SOURCE/g, '$1=ENHANCEMENT');
+      anadidos.push('SOURCE->ENHANCEMENT');
+    }
+    // SR-R2, SR-R4, SR-R5, SR-R6 no se completan solos: quitar una metrica falsa
+    // o deshacer una etiqueta cruzada es una decision editorial, no un sufijo.
+  }
+
+  const despues = validarDeclaracion(salida);
+  return { texto: salida, anadido: anadidos, ok: despues.ok, restantes: despues.violaciones };
+}
+
+module.exports = { analizar, imprimirInforme, validarDeclaracion, completarDeclaracion, contrato, REGLAS: reglas };
 
 // --- CLI: solo cuando se ejecuta directamente ------------------------------
 if (require.main === module) {
