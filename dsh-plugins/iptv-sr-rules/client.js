@@ -24,7 +24,7 @@ window.__ModuleLoader__.load({
     // ---------------------------------------------------------------------
     const RULES = [
       {
-        id: 'R1',
+        id: 'SR-R1',
         title: 'El modelo de degradacion manda',
         source: 'El modelo de degradacion usado al entrenar determina que entradas reales puede procesar la red.',
         list: 'Sin conocer desenfoque, escala, ruido y compresion del stream no se puede prometer superresolucion. DECLARED es el unico estado honesto.',
@@ -32,7 +32,7 @@ window.__ModuleLoader__.load({
         why: 'La red solo reconoce las degradaciones con las que fue entrenada. Aplicarla a otra degradacion no es superresolucion: es alucinacion con forma de mejora.',
       },
       {
-        id: 'R2',
+        id: 'SR-R2',
         title: 'PSNR y SSIM necesitan el ORIGINAL',
         source: 'La fidelidad se mide con PSNR y SSIM comparando contra la imagen de alta resolucion de referencia.',
         list: 'En IPTV el original no existe. Declarar PSNR, SSIM o VMAF sobre una fuente IPTV no mide: inventa una referencia que nadie tiene.',
@@ -40,7 +40,7 @@ window.__ModuleLoader__.load({
         why: 'Ambas metricas son una diferencia contra la verdad. Sin verdad no hay metrica, solo aritmetica sobre pixeles propios.',
       },
       {
-        id: 'R3',
+        id: 'SR-R3',
         title: 'La perdida adversarial inventa detalle',
         source: 'La perdida adversarial produce texturas nitidas y realistas que pueden no coincidir pixel a pixel con la escena real.',
         list: 'Declarar AI-SR sobre una fuente 360p es la misma mentira que declarar 6K sobre 360p. Solo ENHANCEMENT, nunca SOURCE.',
@@ -48,7 +48,7 @@ window.__ModuleLoader__.load({
         why: 'El modelo elige la respuesta mas plausible, no la verdadera. Lo que aparece puede no haber estado nunca en la escena.',
       },
       {
-        id: 'R4',
+        id: 'SR-R4',
         title: 'Interpolacion no es superresolucion',
         source: 'La interpolacion bicubica solo distribuye los pixeles existentes; un modelo entrenado predice los detalles de alta frecuencia que faltan.',
         list: 'LANCZOS y BICUBIC son INTERPOLATION. Solo un modelo entrenado es SUPER_RESOLUTION. No pueden compartir etiqueta en la metadata.',
@@ -56,7 +56,7 @@ window.__ModuleLoader__.load({
         why: 'Ambos son legitimas. Confundirlas en la etiqueta es lo que convierte una mejora real en una declaracion falsa.',
       },
       {
-        id: 'R5',
+        id: 'SR-R5',
         title: 'Restauracion condicionada, no generacion libre',
         source: 'La superresolucion se condiciona a una imagen de entrada y debe respetar su contenido; no crea imagenes desde una indicacion.',
         list: 'unsharp, eq y noise son realce de contraste, no superresolucion. Etiquetarlos igual que un modelo falsea la procedencia.',
@@ -64,7 +64,7 @@ window.__ModuleLoader__.load({
         why: 'El realce opera sobre lo que ya esta; el modelo predice lo que falta. Son operaciones distintas con riesgo distinto.',
       },
       {
-        id: 'R6',
+        id: 'SR-R6',
         title: 'La interpolacion de fotogramas es el eje temporal',
         source: 'La interpolacion de fotogramas sintetiza fotogramas entre los existentes: es el equivalente temporal de la superresolucion espacial.',
         list: 'minterpolate declara FRAME_INTERPOLATION. Nunca RESOLUTION. Son ejes distintos y mezclarlos rompe la trazabilidad.',
@@ -72,7 +72,7 @@ window.__ModuleLoader__.load({
         why: 'Espacial y temporal se pueden declarar juntos, pero cada uno con su propio campo. Un solo campo para dos ejes no audita nada.',
       },
       {
-        id: 'R7',
+        id: 'SR-R7',
         title: 'Broadcast y archivo: el caso legitimo',
         source: 'Las cadenas de television y los restauradores cinematograficos amplian material de definicion estandar y de archivo para pantallas HD y 4K.',
         list: 'El unico escenario IPTV donde la superresolucion tiene sentido declarado es archivo y VOD, con modelo y presupuesto medidos. Nunca live sin medir.',
