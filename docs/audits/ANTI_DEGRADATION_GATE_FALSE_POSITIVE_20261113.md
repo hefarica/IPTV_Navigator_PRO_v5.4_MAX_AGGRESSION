@@ -135,3 +135,44 @@ Lo que detuvo cada error fue contar y hashear en vez de razonar por analogía.
 Un gate estático por regex no distingue *«hacer X»* de *«escribir que no se haga X»*. Cualquier patrón que busque una construcción prohibida va a tropezar con los comentarios que la explican, y el reflejo natural es relajar el patrón — que es exactamente cómo un gate se vuelve decorativo.
 
 Lo que se hizo en su lugar: **exigir contexto negado, acotado a la línea, y probar que la degradación real sigue disparando**. La prueba no es un adorno: encontró un falso negativo en el propio arreglo antes de que llegara a `master`.
+
+---
+
+## 5 · ¿Y hoy se pierde audio? Medido: no. Pero el código está mal igual
+
+La ley prohíbe «canales de audio reducidos». Las copias huérfanas hacen `-ac 2`. **Pero `-ac 2` sobre una fuente de 2 canales no reduce nada.**
+
+Medido con `ffprobe` sobre los mismos 7 flujos servidos:
+
+| Canal | Canales | Layout | Códec |
+|---|---|---|---|
+| `AR\| BEIN SPORTS NEWS FHD` | 2 | stereo | aac |
+| `AR\| BEIN SPORTS NBA FHD` | 2 | stereo | aac |
+| `AR\| BEIN SPORTS 03 FHD` | 2 | stereo | aac |
+| `AR\| BEIN SPORTS 04 FHD` | 2 | stereo | aac |
+| `AR\| BEIN SPORTS 05 FHD` | 2 | stereo | aac |
+| `AR\| BEIN SPORTS 06 FHD` | 2 | stereo | aac |
+| `AR\| BEIN SPORTS 07 FHD` | 2 | stereo | aac |
+
+**Siete de siete estéreo. Cero con más de dos canales.**
+
+Por tanto, con estas fuentes, **el `-ac 2` no quita nada**: es un no-op sobre 2.0.
+
+### Lo que sí sigue siendo cierto
+
+El código **fuerza estéreo sin condición y no tiene rama de copia** (`ramas -c:a copy: 0`). Eso significa:
+
+- **Ante una fuente 5.1, la degradaría.** No he encontrado ninguna en esta muestra, pero la muestra es un bloque de un proveedor; **no es un censo**.
+- Y hay una segunda rama que **sí** quita audio: `: ['-an']` cuando `audioOk` es falso. Eso convierte un fallo de audio en ausencia de audio en vez de en un fallo visible.
+
+**Conclusión de severidad, cuarta y última precisión de este hilo:**
+
+| Afirmación | Estado |
+|---|---|
+| «La APK degrada audio» | **FALSO** — el gate contaba comentarios |
+| «Las copias desplegadas degradan audio» | **FALSO** — el manifiesto instala `tools/lab` |
+| «Hay que retirar `vps/`» | **FALSO** — 6 filas del manifiesto son de `vps/` |
+| «Hoy se pierde audio en producción» | **FALSO** — las fuentes medidas son 2.0 y lo desplegado hace passthrough |
+| **«Las copias huérfanas tienen un downmix fijo y una rama que borra el audio»** | **CIERTO** — el riesgo es condicional al futuro, no una pérdida actual |
+
+Lo que queda de D-6 no es una pérdida medida: es **código que perdería audio si la fuente lo tuviera**, en dos ficheros que no se despliegan. Eso rebaja la urgencia sin hacerlo desaparecer: un `-ac 2` fijo y un `-an` de reserva son la clase de cosa que un día muerde.
