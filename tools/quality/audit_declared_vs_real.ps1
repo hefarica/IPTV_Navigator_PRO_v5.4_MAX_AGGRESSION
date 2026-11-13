@@ -31,6 +31,12 @@ param(
   # -MaxBytes se pide solo la cabeza (Range) y se corta al llegar a N bytes.
   # Queda como muestra declarada del principio del catalogo, no del catalogo.
   [long]$MaxBytes = 30000000,
+  # [2026-11-13] Para atacar lo que mas importa: los perfiles que PROMETEN 4K/8K.
+  # Con -OnlyProfiles 'P0,P1' la herramienta audita solo esos y reporta cuantos
+  # encontro. Sin filtro, audita los primeros N, que en la lista viva son todos P3.
+  [string]$OnlyProfiles = '',
+  # Offset en bytes para muestrear otra zona de una lista enorme (Range).
+  [long]$Offset = 0,
   [string]$OutDir = 'docs/audits'
 )
 
@@ -65,16 +71,16 @@ if ($ListPath) {
   # Range: pedir solo la cabeza en vez de 1 GB
   if ($MaxBytes -gt 0) {
     $req = New-Object System.Net.Http.HttpRequestMessage('GET', $ListUrl)
-    $req.Headers.Range = New-Object System.Net.Http.Headers.RangeHeaderValue(0, ($MaxBytes - 1))
+    $fin = $Offset + $MaxBytes - 1
+    $req.Headers.Range = New-Object System.Net.Http.Headers.RangeHeaderValue($Offset, $fin)
     $resp = $http.SendAsync($req).Result
     $codigo = [int]$resp.StatusCode
     $bytes = $resp.Content.ReadAsByteArrayAsync().Result
     $txt = [System.Text.Encoding]::UTF8.GetString($bytes)
     $bytesTotales = $bytes.Length
-    # si el servidor honro el Range, sabemos que hay mas
     $truncada = ($codigo -eq 206)
     $origen = $ListUrl
-    Write-Host ("   Range 0-{0}: HTTP {1} · {2} B {3}" -f ($MaxBytes - 1), $codigo, $bytes.Length, $(if ($codigo -eq 206) { '(respuesta parcial: la lista continua)' } else { '(el servidor ignoro el Range: esto es la lista entera o su primer bloque)' }))
+    Write-Host ("   Range {0}-{1}: HTTP {2} · {3} B {4}" -f $Offset, $fin, $codigo, $bytes.Length, $(if ($codigo -eq 206) { '(respuesta parcial)' } else { '(el servidor ignoro el Range)' }))
   } else {
     $bytes = $http.GetByteArrayAsync($ListUrl).Result
     $txt = [System.Text.Encoding]::UTF8.GetString($bytes)
@@ -113,6 +119,12 @@ function Campo($arr, $k) { (($arr | Where-Object { $_ -match "^$k=" } | Select-O
 
 $filas = @()
 $analizados = 0
+$filtro = @()
+if ($OnlyProfiles) { $filtro = @($OnlyProfiles -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }) }
+if ($filtro.Count) {
+  $canales = @($canales | Where-Object { $_.perfil -and ($filtro -contains $_.perfil) })
+  Write-Host ("   filtro -OnlyProfiles '{0}': {1} canales coinciden en el bloque leido" -f $OnlyProfiles, $canales.Count)
+}
 foreach ($ch in $canales) {
   if ($analizados -ge $MaxChannels) { break }
   if (-not $ch.url) {
