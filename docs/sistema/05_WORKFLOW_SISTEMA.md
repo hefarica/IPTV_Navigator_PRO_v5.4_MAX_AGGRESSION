@@ -171,6 +171,34 @@ Comandos reales contra el ONN (`adb -s 192.168.1.3:34813 shell …`).
 - **Causa:** `tools/cicd/vps_deploy_map.json` apunta `health_url` a `/api/health`; la ruta viva es `/api/health.php` (200).
 - **Estado:** corregir el mapa, no el servidor.
 
+### F7 · Al elegir 4K, la imagen se ve GIGANTE
+- **Síntoma reportado:** «cuando escojo 4K, la imagen queda grandísima».
+- **Causa medida:** `Override density: 640` sobre una densidad nativa de **320**. Es un ×2 de la interfaz. Se apila con una composición forzada a 1080p sobre panel 4K (otro ×2).
+- **Origen:** **provocado en esta sesión.** Dejé puesta `display_size_forced=1920x1080` (de fábrica viene `null`) y apareció un override de densidad que no estaba. **No puedo probar quién puso el 640** — ejecuté `wm density` sólo para leerla, pero escribí `wm size` varias veces y una secuencia pudo disparar compensación del framework. Se declara así.
+- **Arreglo, en este orden:**
+  ```bash
+  adb shell 'settings delete global display_size_forced'
+  adb shell 'settings delete secure display_density_forced'
+  adb shell 'wm density reset'
+  adb shell 'wm size reset'
+  ```
+- **Verificación:** `powershell -File tools/probe/check_display_state.ps1` → debe dar `LIMPIO` con exit 0.
+- **Prevención — regla de operación:** **toda prueba de pantalla o densidad se revierte en el MISMO bloque de comandos que la aplica.** Nunca queda pendiente entre turnos. El aparato del operador no es un entorno de pruebas.
+- **Estado:** **CERRADO** — aparato verificado en baseline por la herramienta.
+
+### Herramienta de guardia: `check_display_state.ps1`
+
+Se corre **antes y después** de cualquier prueba que toque `wm size`, `wm density`,
+`display_size_forced`, `display_density_forced` o el modo de display.
+
+```bash
+powershell -File tools/probe/check_display_state.ps1        # solo verifica, exit 0/1
+powershell -File tools/probe/check_display_state.ps1 -Fix   # revierte lo desviado
+```
+
+Comprueba 9 cosas contra baseline y nombra el comando exacto de reversión de cada desvío.
+**Con `-Fix` solo revierte las dos claves de geometría y los overrides de `wm`; no toca nada más.**
+
 ---
 
 ## 7 · Huecos abiertos y qué evidencia falta
