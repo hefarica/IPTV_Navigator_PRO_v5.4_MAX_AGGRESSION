@@ -361,6 +361,19 @@ jobs:
           echo "   === rutas con 404 (posibles recursos retirados) ==="
           printf '%s\n' "$raw" | grep -aE '" 404 ' | grep -oE '"[A-Z]+ [^" ]+' | awk '{print $2}' | sed 's/[?].*//' | sort | uniq -c | sort -rn | head -n 8 | sed 's/^/   /' || echo "   (ninguna)"
 
+          # [2026-11-12] ¿Quién pide /pulse/? Es el envoltorio del sistema APE.
+          # Si el ONN lo pide al reproducir, entonces el televisor SI consume la
+          # cadena del sistema y no solo el proveedor. Se muestran las lineas
+          # crudas con su UA y su codigo, no solo el conteo.
+          echo ""
+          echo "   === lineas crudas de /pulse/ (UA + codigo) ==="
+          pl="$(printf '%s\n' "$raw" | grep -a '/pulse/' | tail -n 12 || true)"
+          if [ -z "$pl" ]; then
+            echo "   (ninguna peticion a /pulse/ en la ventana)"
+          else
+            printf '%s\n' "$pl" | cut -c1-190 | sed 's/^/   /'
+          fi
+
 
   # ── 3 · VALIDACIÓN SINTÁCTICA (read-only) ────────────────────────────────
   validate:
