@@ -1,0 +1,48 @@
+{
+  "schema": "ape.blockiness.calibration.v1",
+  "generado": "2026-11-13T06:58:03.507Z",
+  "video": "WhatsApp Video 2026-11-13 at 1.01.22 AM.mp4",
+  "tamano": "1024x576",
+  "regiones": {
+    "full": {
+      "n": 18,
+      "min": 0.9855,
+      "p25": 1.0292,
+      "mediana": 1.0732,
+      "p75": 1.1227,
+      "p95": 1.3256,
+      "max": 1.3256,
+      "media": 1.0901
+    },
+    "grass": {
+      "n": 18,
+      "min": 0.9077,
+      "p25": 0.9497,
+      "mediana": 0.9941,
+      "p75": 1.0337,
+      "p95": 1.1382,
+      "max": 1.1382,
+      "media": 0.9955
+    },
+    "bottom_band": {
+      "n": 18,
+      "min": 0.6602,
+      "p25": 0.9144,
+      "mediana": 0.9444,
+      "p75": 0.9924,
+      "p95": 1.0583,
+      "max": 1.0583,
+      "media": 0.9324
+    }
+  },
+  "control_negativo": {
+    "descripcion": "gradiente sintetico puro (lavfi gradients); si la metrica lo marca sucio, la metrica esta rota",
+    "ratio": 1.0016947357271428,
+    "veredicto": "OK (cerca de 1.0)"
+  },
+  "no_computado": [
+    "La calibracion es sobre UNA fuente (el video del operador, grabado con telefono a 1,38 Mbps).",
+    "La compresion del telefono contamina la medida: no es la imagen del televisor.",
+    "Para umbrales de produccion hace falta medir frames del DECODIFICADOR, no de una grabacion."
+  ]
+}
