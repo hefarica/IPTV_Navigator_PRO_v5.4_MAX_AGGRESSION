@@ -1,0 +1,83 @@
+{
+  "schema": "ape.hf.zone-aware.v1",
+  "generado": "2026-11-13T07:16:24.503Z",
+  "fuente": "degradado.mp4",
+  "umbrales": {
+    "suelo_ruido_pct": 0.04,
+    "alerta_pct": 2,
+    "severo_pct": 8,
+    "tolerancia_zona_pct": 20
+  },
+  "linea_base": {
+    "hf": 2.0282,
+    "varianza": 33.73,
+    "muestras": 3
+  },
+  "sin_clasificacion_de_zona": {
+    "alertas": 4,
+    "detalle": [
+      {
+        "t": 4,
+        "hf": 1.3963,
+        "caida": 31.16,
+        "nivel": "SEVERO"
+      },
+      {
+        "t": 4.5,
+        "hf": 1.4141,
+        "caida": 30.28,
+        "nivel": "SEVERO"
+      },
+      {
+        "t": 5,
+        "hf": 1.5064,
+        "caida": 25.73,
+        "nivel": "SEVERO"
+      },
+      {
+        "t": 5.5,
+        "hf": 1.7383,
+        "caida": 14.29,
+        "nivel": "SEVERO"
+      }
+    ]
+  },
+  "con_clasificacion_de_zona": {
+    "alertas": 4,
+    "detalle": [
+      {
+        "t": 4,
+        "hf": 1.3963,
+        "caida": 31.16,
+        "nivel": "SEVERO",
+        "varianza": 35.79,
+        "dif_varianza_pct": 6.1
+      },
+      {
+        "t": 4.5,
+        "hf": 1.4141,
+        "caida": 30.28,
+        "nivel": "SEVERO",
+        "varianza": 34.58,
+        "dif_varianza_pct": 2.5
+      },
+      {
+        "t": 5,
+        "hf": 1.5064,
+        "caida": 25.73,
+        "nivel": "SEVERO",
+        "varianza": 31.75,
+        "dif_varianza_pct": 5.9
+      },
+      {
+        "t": 5.5,
+        "hf": 1.7383,
+        "caida": 14.29,
+        "nivel": "SEVERO",
+        "varianza": 33.01,
+        "dif_varianza_pct": 2.1
+      }
+    ]
+  },
+  "veredicto": "la clasificacion de zona NO elimina todas las alertas: quedan 4"
+}
