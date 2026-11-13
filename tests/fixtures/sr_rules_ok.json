@@ -1,0 +1,31 @@
+{
+  "schema": "ape.channel-metadata.v1",
+  "canal": {
+    "id": "ok-1",
+    "nombre": "ARCHIVO CON SR DECLARADA",
+    "clase": "VOD",
+    "superresolucion": {
+      "modelo": "RealESRGAN",
+      "escala": "4x",
+      "degradacion": "blur:1.5,scale:4,noise:8,codec:h264",
+      "estado": "DECLARED",
+      "rol": "ENHANCEMENT"
+    },
+    "metricas": {
+      "vmaf_target": "95.0",
+      "referencia": "master_uhd_remux_sha256_abc123"
+    },
+    "escalado": {
+      "metodo": "LANCZOS",
+      "clase": "INTERPOLATION"
+    },
+    "realce": {
+      "metodo": "unsharp=5:5:0.8",
+      "clase": "ENHANCEMENT_CONTRAST"
+    },
+    "temporal": {
+      "metodo": "minterpolate=fps=60",
+      "clase": "FRAME_INTERPOLATION"
+    }
+  }
+}

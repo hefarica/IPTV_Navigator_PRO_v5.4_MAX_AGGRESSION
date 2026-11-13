@@ -68,7 +68,29 @@ ok('fixture que viola -> detecta las 7', detectadas.length === 7,
   `${detectadas.length}/7: ${detectadas.join(',')}`);
 ok('fixture que viola -> las nombra', /regla\(s\) violada\(s\)/.test(rMal.salida));
 
-// --- 4. Control negativo: sin declaraciones no hay verificacion ------------
+// --- 4. El MISMO contrato sobre JSON de metadata --------------------------
+// El objetivo pide reglas para listas Y para JSON metadata Y para cualquier
+// modulo IPTV. Si el gate solo entiende listas, esa mitad no esta hecha.
+const JSON_OK = path.join(ROOT, 'tests', 'fixtures', 'sr_rules_ok.json');
+const JSON_MAL = path.join(ROOT, 'tests', 'fixtures', 'sr_rules_mal.json');
+
+const rJOk = corre(JSON_OK);
+ok('JSON que cumple -> exit 0', rJOk.code === 0, `exit=${rJOk.code}`);
+ok('JSON que cumple -> dice cumplen las 7', /cumplen las 7 reglas/.test(rJOk.salida));
+ok('JSON que cumple -> se reconoce como JSON', /JSON metadata/.test(rJOk.salida));
+
+const rJMal = corre(JSON_MAL);
+ok('JSON que viola -> exit 1', rJMal.code === 1, `exit=${rJMal.code}`);
+const jDetectadas = ids.filter((id) => rJMal.salida.includes('[' + id + ']'));
+ok('JSON que viola -> detecta las 7', jDetectadas.length === 7,
+  `${jDetectadas.length}/7: ${jDetectadas.join(',')}`);
+ok('JSON que viola -> localiza por ruta $..', /\$\./.test(rJMal.salida),
+  'no solo por numero de linea');
+ok('JSON que viola -> no duplica cada hoja',
+  !/(\$[\w.$\[\]]+):\s*\1/m.test(rJMal.salida),
+  'una hoja, una evaluacion');
+
+// --- 5. Control negativo: sin declaraciones no hay verificacion ------------
 if (fs.existsSync(VACIO_FIX)) {
   const rVacio = corre(VACIO_FIX);
   ok('lista sin SR -> exit 0', rVacio.code === 0, `exit=${rVacio.code}`);

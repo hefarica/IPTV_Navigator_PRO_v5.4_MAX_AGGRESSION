@@ -1,0 +1,28 @@
+{
+  "schema": "ape.channel-metadata.v1",
+  "canal": {
+    "id": "mal-1",
+    "nombre": "DIRECTO CON SR INVENTADA",
+    "clase": "LIVE",
+    "superresolucion": {
+      "modelo": "RealESRGAN",
+      "escala": "4x",
+      "etiqueta": "APE-AI-SR",
+      "rol": "SOURCE"
+    },
+    "metricas": {
+      "etiqueta": "APE-VMAF-TARGET:95.0"
+    },
+    "escalado": {
+      "etiqueta": "APE-AI-SR-UPSCALE:LANCZOS",
+      "clase": "SUPER_RESOLUTION"
+    },
+    "realce": {
+      "etiqueta": "APE-AI-SR-FILTER:unsharp=5:5:0.8"
+    },
+    "temporal": {
+      "etiqueta": "minterpolate=fps=120",
+      "resolucion": "3840x2160"
+    }
+  }
+}

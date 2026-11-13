@@ -115,6 +115,56 @@
     "STATE=APPLIED": "Solo admisible con DEGRADATION= y REFERENCE= presentes"
   },
 
+  "alias_de_campo": {
+    "nota": "Una lista M3U8 escribe DEGRADATION=blur:... ; un JSON de metadata escribe \"degradacion\": \"blur:...\". Son la MISMA declaracion en dos sintaxis. Sin este mapa, la regla solo entiende una de las dos y la otra pasa en silencio. El gate normaliza la clave JSON al tag canonico antes de evaluar.",
+    "mapa": {
+      "degradacion": "DEGRADATION",
+      "degradation": "DEGRADATION",
+      "clase": "CLASS",
+      "class": "CLASS",
+      "modo": "MODE",
+      "mode": "MODE",
+      "estado": "STATE",
+      "state": "STATE",
+      "rol": "ROLE",
+      "role": "ROLE",
+      "origen": "ORIGIN",
+      "origin": "ORIGIN",
+      "referencia": "REFERENCE",
+      "reference": "REFERENCE",
+      "ref": "REF",
+      "metodo": "METHOD",
+      "method": "METHOD",
+      "resolucion": "RESOLUTION",
+      "resolution": "RESOLUTION",
+      "modelo": "MODEL",
+      "model": "MODEL",
+      "escala": "SCALE",
+      "scale": "SCALE"
+    },
+    "como_se_normaliza": "clave JSON -> alias_de_campo.mapa[clave.toLowerCase()] -> TAG_CANONICO; se evalua TANTO la forma original como la normalizada, y se anota una sola vez por hoja."
+  },
+
+  "tokens_superresolucion": {
+    "nota": "Un detector que solo reconoce tokens en INGLES deja pasar la misma declaracion escrita en espanol. La metadata de este ecosistema usa ambos. Esta lista es la fuente unica: el gate la lee de aqui y no la duplica.",
+    "tokens": [
+      "APE-AI-SR",
+      "APE-SUPER-RESOLUTION",
+      "SUPER_RESOLUTION",
+      "SUPER-RESOLUTION",
+      "SUPERRESOLUCION",
+      "SUPERRESOLUCIÓN",
+      "RealESRGAN",
+      "ESRGAN",
+      "Real-CUGAN"
+    ],
+    "no_cuentan_como_declaracion": [
+      "APE-AI-SR-FALLBACK",
+      "APE-AI-SR-DISABLED"
+    ],
+    "por_que_los_ultimos_no_cuentan": "Un FALLBACK o un DISABLED afirma que la superresolucion NO se aplica. Contarlos como declaracion invertiria el sentido de la regla y castigaria la linea mas honesta del fichero."
+  },
+
   "prohibido": [
     "declarar AI-SR sobre una fuente sin conocer su degradacion",
     "declarar PSNR, SSIM, VMAF o LPIPS sin referencia real",
