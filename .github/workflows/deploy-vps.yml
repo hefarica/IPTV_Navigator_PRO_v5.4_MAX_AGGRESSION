@@ -333,15 +333,33 @@ jobs:
           if [ -n "$IPF" ]; then
             echo ""
             echo "   === peticiones de la IP $IPF ==="
-            hits="$(printf '%s\n' "$raw" | grep -aF "$IPF" | tail -n 25 || true)"
+            hits="$(printf '%s\n' "$raw" | grep -aF "$IPF" || true)"
             if [ -z "$hits" ]; then
               echo "   0 peticiones de esa IP en la ventana."
               echo "   NO prueba que el dispositivo no use el VPS: prueba que no pidio"
               echo "   nada en estas $(printf '%s\n' "$raw" | wc -l) lineas."
             else
-              printf '%s\n' "$hits" | cut -c1-150 | sed 's/^/   /'
+              echo "   total de esa IP: $(printf '%s\n' "$hits" | wc -l) peticiones"
+              echo "   --- rutas pedidas por esa IP (agrupadas) ---"
+              printf '%s\n' "$hits" | grep -oE '"[A-Z]+ [^" ]+' | awk '{print $2}' | sed 's/[?].*//' | sort | uniq -c | sort -rn | head -n 12 | sed 's/^/   /' || true
+              echo "   --- ultimas 8 lineas de esa IP ---"
+              printf '%s\n' "$hits" | tail -n 8 | cut -c1-150 | sed 's/^/   /'
             fi
           fi
+
+          # [2026-11-12] ¿El VPS TRANSPORTA video o solo rebasa metadatos? Es la
+          # pregunta que decide §9, y hasta ahora la doctrina decia "rebase-only,
+          # no transporta video". Las respuestas 206 (Range) son la pista: se
+          # agrupan las rutas que devuelven 206 y las que pide okhttp.
+          echo ""
+          echo "   === rutas servidas con 206 (Range = datos de media) ==="
+          printf '%s\n' "$raw" | grep -aE '" 206 ' | grep -oE '"[A-Z]+ [^" ]+' | awk '{print $2}' | sed 's/[?].*//' | sort | uniq -c | sort -rn | head -n 10 | sed 's/^/   /' || echo "   (ninguna)"
+          echo ""
+          echo "   === rutas pedidas por okhttp (cliente Android) ==="
+          printf '%s\n' "$raw" | grep -a 'okhttp' | grep -oE '"[A-Z]+ [^" ]+' | awk '{print $2}' | sed 's/[?].*//' | sort | uniq -c | sort -rn | head -n 10 | sed 's/^/   /' || echo "   (ninguna)"
+          echo ""
+          echo "   === rutas con 404 (posibles recursos retirados) ==="
+          printf '%s\n' "$raw" | grep -aE '" 404 ' | grep -oE '"[A-Z]+ [^" ]+' | awk '{print $2}' | sed 's/[?].*//' | sort | uniq -c | sort -rn | head -n 8 | sed 's/^/   /' || echo "   (ninguna)"
 
 
   # ── 3 · VALIDACIÓN SINTÁCTICA (read-only) ────────────────────────────────
