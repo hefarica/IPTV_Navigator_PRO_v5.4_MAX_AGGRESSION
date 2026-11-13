@@ -53,8 +53,14 @@ El titular con el que se abrió esta línea de trabajo era **«43,7× más lento
 
 Si el objetivo es sostener la cadencia sobre flujos que ya son 1080p, el orden de ataque tiene tres palancas medidas:
 
-1. **No upscalear a 4K lo que no es 4K.** De 43,7× a 5,3× medido. Es la palanca más grande y la más honesta: además alinea la salida con la fuente.
-2. **El grano.** De 5,3× a 3,0×. Es el 44 % del coste restante.
+1. **No upscalear a 4K lo que no es 4K.** De **25,7× a 5,3×** medido. Es la palanca más grande y la más honesta: además alinea la salida con la fuente.
+2. **El grano.** De 5,3× a 3,0×. Es el **44 %** del coste restante (16/9 = 1,78×).
 3. **El encoder.** `ultrafast` ya está medido como la elección correcta (veryfast = 3,5× más caro por +0,016 de SSIM).
 
 Ninguna de las tres se ha aplicado a producción. Y ninguna llega a tiempo real por sí sola: seguiría faltando hardware o una cadena más corta, y eso es decisión del operador.
+
+## Anexo · por qué estas cifras son mínimos y no promedios
+
+Un promedio castiga al sistema por procesos de fondo que no tienen nada que ver con la cadena. El **mínimo** responde a la pregunta correcta: *¿cuánto tarda esto cuando la máquina solo hace esto?* — que es la condición de un servidor dedicado.
+
+Las tres medidas de esta línea se reportan así, y cada una declara su N y su dispersión. Si alguien reproduce esto con una sola pasada, obtendrá números peores y no estará midiendo lo mismo.
