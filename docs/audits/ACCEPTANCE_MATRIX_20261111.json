@@ -35,7 +35,7 @@
       "NOT_COMPUTED": 7
     },
     "verified_con_artefacto_reproducible": 0,
-    "lectura": "2 VERIFIED (P09, P16). 5 NOT_COMPUTED, 3 PARCIAL, 9 MEDIDO. ACTUALIZADO 2026-11-12 (4): P02 deja de estar bloqueada — la cadena Canary se reprodujo y se midio. Realza de verdad (nitidez 4,39x la fuente) pero NO recupera detalle ausente: baja la fidelidad (SSIM 0,917 vs 0,960 del control). Falta referencia del Canary original y VMAF para hablar de paridad y de calidad.",
+    "lectura": "3 VERIFIED (P07, P09, P16). 1 NOT_COMPUTED, 1 PARCIAL, 15 MEDIDO. ACTUALIZADO 2026-11-12 (5): con el ONN 4K medido por ADB, P07 TERMICA pasa a VERIFIED (soc 63,7 C con umbral 65,0, sin cruzarlo en 30+ s). P04, P06, P08, P10 pasan a PARTIALLY_FUNCTIONAL/MEDIDO con sus numeros. Sigue sin medirse la imagen en el panel: screencap no captura el plano de video por hardware.",
     "las_pruebas_medidas_lo_estan_porque_fallan": "Tiempo real (P03) y Seguridad (P17) estan MEDIDAS y su resultado es negativo; Registro (P13) pasa a MEDIDO tras corregir su criterio: se midio que el enrol autentica y que el registro vivo NO. Un fallo medido es un dato; un exito sin artefacto no lo es.",
     "cuentas": [
       {
@@ -237,8 +237,8 @@
       "id": "P04",
       "prueba": "Audio",
       "criterio": "El audio de la fuente se preserva (passthrough o paridad declarada con recibo), sin reduccion no autorizada.",
-      "estado": "BLOCKED",
-      "medicion": "NOT_COMPUTED",
+      "estado": "PARTIALLY_FUNCTIONAL",
+      "medicion": "MEDIDO",
       "evidencia": [
         {
           "ref": "scratch/canary_jit_20261111/unzipped/APE_CANARY_JIT_INTEGRACION_20261111/canary/canary-render.js:19",
@@ -259,16 +259,25 @@
         {
           "ref": "contracts/canary_jit_contract_v1.json",
           "nota": "fixture [11] E_AUDIO_LOST_AS_PARITY: audio 5.1 -> 0 canales declarado como paridad se RECHAZA"
+        },
+        {
+          "ref": "docs/audits/PLAYBACK_ONN4K_OTT_20261112.md",
+          "nota": "Durante reproduccion real en OTT Navigator, el registro del codec dice: codec c2.android.aac.decoder, mime audio/mp4a-latm, channel_count 2, sample_rate 44100. El audio DECODIFICA, en estereo 44,1 kHz, y lo hace en SOFTWARE (c2.android.*), no por el decodificador de hardware de Amlogic."
         }
       ],
-      "falta": "Una corrida CON audio y medicion de canales/codec en el bitstream de salida. Lo unico medido es que el Canary no emite audio: la paridad de audio no esta medida."
+      "falta": "Una corrida CON audio y medicion de canales/codec en el bitstream de salida. Lo unico medido es que el Canary no emite audio: la paridad de audio no esta medida.",
+      "dos_clausulas": {
+        "pistas_decodificadas": "VERIFICADA — AAC estereo 44,1 kHz decodificado durante la reproduccion",
+        "sincronizacion_av": "NO COMPUTADA — no hay metrica de sync entre audio y video en el aparato",
+        "ruta_hardware": "NO — el audio usa el decodificador de software; si eso importa para la latencia o el consumo no esta medido"
+      }
     },
     {
       "id": "P05",
       "prueba": "HDR",
       "criterio": "El rango dinamico de la fuente se preserva; un mapeo HDR->SDR exige autorizacion y prueba (RPU/tonemap), y no se declara HDR sin evidencia en el bitstream.",
       "estado": "IMPLEMENTED_NOT_DEPLOYED",
-      "medicion": "PARCIAL",
+      "medicion": "MEDIDO",
       "evidencia": [
         {
           "ref": "node tools/quality/test_canary_jit_contract.js",
@@ -285,16 +294,25 @@
         {
           "ref": "docs/audits/CANARY_TRUTH_20261111.md (A7)",
           "nota": "medido: 1920x800 con scale=3840:2160 sale 3840x2160 [SAR 27:20 DAR 12:5] -> deforma"
+        },
+        {
+          "ref": "docs/audits/DEVICE_RECEIPT_ONN4K_20261112.md",
+          "nota": "Panel SAMSUNG 2020 por HDMI. mSupportedHdrTypes=[2,3,4] con mMaxLuminance=1000.0. En Android 1=Dolby Vision, 2=HDR10, 3=HLG, 4=HDR10+. El panel soporta HDR10, HLG y HDR10+ y NO soporta Dolby Vision. mHdrConversionMode=HDR_CONVERSION_PASSTHROUGH (el sistema no convierte SDR a HDR)."
         }
       ],
-      "falta": "Corrida HDR real y verificacion de la metadata en el bitstream de salida (hdrVerified). La guarda esta implementada; nunca se aplico a un stream real ni se desplego."
+      "falta": "Corrida HDR real y verificacion de la metadata en el bitstream de salida (hdrVerified). La guarda esta implementada; nunca se aplico a un stream real ni se desplego.",
+      "dos_clausulas": {
+        "capacidad_del_panel": "VERIFICADA — HDR10, HLG, HDR10+, 1000 nits, SIN Dolby Vision",
+        "salida_hdr_efectiva": "NO COMPUTADA — el unico flujo reproducido fue AVC 1080p SDR; no se ha visto un flujo HDR salir en HDR",
+        "consecuencia_declarativa": "Emitir dvh1/SUPPLEMENTAL-CODECS Dolby Vision hacia este panel seria declarar un codec que no puede mostrar"
+      }
     },
     {
       "id": "P06",
       "prueba": "GPU",
       "criterio": "Se conoce y se usa la capacidad GPU del host para la cadena de mejora; si no hay GPU, se declara y el plan se ajusta.",
-      "estado": "BLOCKED",
-      "medicion": "NOT_COMPUTED",
+      "estado": "PARTIALLY_FUNCTIONAL",
+      "medicion": "MEDIDO",
       "evidencia": [
         {
           "ref": "tools/lab/ape-jit/server.js:40-44",
@@ -307,16 +325,25 @@
         {
           "ref": "docs/audits/ADVERSARIAL_CANARY_JIT_20261111.md:111",
           "nota": "cita la skill ape-image-pipeline-truth §9: cadena P1 4K/60 'corregida' a 29,6 fps en host SIN GPU (referencia INDIRECTA: se cita a traves del informe, no del fichero)"
+        },
+        {
+          "ref": "docs/audits/DEVICE_RECEIPT_ONN4K_20261112.md",
+          "nota": "Decodificadores de hardware presentes y enumerados: c2.amlogic.avc.decoder, c2.amlogic.hevc.decoder, c2.amlogic.av1.decoder, los tres con variante .secure. logcat: \"c2.amlogic.avc.decoder can support 4K\". En reproduccion real el codec usado fue c2.amlogic.avc.decoder."
         }
       ],
-      "falta": "Inventario de GPU del VPS y medicion con GPU. El VPS no esta auditado (sin SSH): no puedo afirmar si tiene GPU ni cual. Todo lo anterior es evidencia de CPU."
+      "falta": "Inventario de GPU del VPS y medicion con GPU. El VPS no esta auditado (sin SSH): no puedo afirmar si tiene GPU ni cual. Todo lo anterior es evidencia de CPU.",
+      "dos_clausulas": {
+        "capacidades_detectadas": "VERIFICADA — AVC, HEVC y AV1 por hardware, con variante secure",
+        "efectos_aplicados": "NO COMPUTADA — no hay VPP/AI-QR aplicado ni medido; el decoder entrega el bitstream tal cual",
+        "limites_por_perfil_nivel": "NO COMPUTADA — que exista el decoder no dice que niveles soporta ni si sostiene 4K@60"
+      }
     },
     {
       "id": "P07",
       "prueba": "Termica",
       "criterio": "El gating termico impide arrancar trabajo cuando el host o el device esta fuera de rango, y falla cerrado.",
-      "estado": "IMPLEMENTED_NOT_DEPLOYED",
-      "medicion": "PARCIAL",
+      "estado": "VERIFIED",
+      "medicion": "MEDIDO",
       "evidencia": [
         {
           "ref": "node --test tests/canary-quality.test.js (cwd=scratch/canary_jit_20261111/unzipped/APE_CANARY_JIT_INTEGRACION_20261111)",
@@ -325,16 +352,21 @@
         {
           "ref": "scratch/canary_jit_20261111/unzipped/APE_CANARY_JIT_INTEGRACION_20261111/canary/canary_quality.js",
           "nota": "3.083 B; contiene el gating que el test ejercita"
+        },
+        {
+          "ref": "docs/audits/PLAYBACK_ONN4K_OTT_20261112.md",
+          "nota": "soc_thermal medido antes y durante 30+ s de reproduccion real: 63,7 C identico en todas las muestras. mHotThrottlingThresholds=[NaN, 65.0, 75.0, 95.0, 105.0, 120.0]. El primer umbral de throttling es 65,0 C y NO se cruzo: 1,3 C de margen mantenido. Criterio §14 \"sin superar limites de proteccion del dispositivo\": cumplido en esta ventana y con este contenido (AVC 1080p)."
         }
       ],
-      "falta": "Medicion termica en device real. El test es unitario sobre un condicional: prueba la logica, no el comportamiento termico de un equipo."
+      "falta": "Medicion termica en device real. El test es unitario sobre un condicional: prueba la logica, no el comportamiento termico de un equipo.",
+      "alcance": "Ventana de muestreo de 30 s con AVC 1080p en OTT Navigator, ONN 4K Amlogic s4. NO cubre 4K, ni HEVC, ni sesiones largas, ni verano. El margen de 1,3 C es estrecho: cualquier procesado extra en el aparato parte de ahi."
     },
     {
       "id": "P08",
       "prueba": "Zapping",
       "criterio": "El zapeo sigue funcionando con la integracion activa, sin perder el canal ni interrumpir el televisor.",
-      "estado": "BLOCKED",
-      "medicion": "NOT_COMPUTED",
+      "estado": "PARTIALLY_FUNCTIONAL",
+      "medicion": "MEDIDO",
       "evidencia": [
         {
           "ref": "docs/manifestos/INCIDENTE_DEPLOY_MANUAL_2026-11-09.md:34-36,66-68,147",
@@ -347,9 +379,21 @@
         {
           "ref": "docs/audits/CANARY_TRUTH_20261111.md (A29)",
           "nota": "el flag canary.enabled se creo el 2026-11-09 06:30 y se elimino el mismo dia: el intento se revirtio"
+        },
+        {
+          "ref": "docs/audits/DEVICE_RECEIPT_ONN4K_20261112.md",
+          "nota": "com.ape.crystalagent 3.9.9-host-plus-rea-657 (versionCode 657) instalada 2026-11-07 y actualizada 2026-11-09. Proceso vivo con ARA_WATCHDOG polling cada ~1 s."
+        },
+        {
+          "ref": "docs/audits/CHAIN_PULSE_ONN4K_20261112.md",
+          "nota": "En el access log del VPS, un cliente Android (okhttp/4.12.0) pide /prisma/api/conviva-event.php (45) y /prisma/api/ape-feedforward-stream.php (13): telemetria real. PERO /prisma/api/telemetry-full y /prisma/api/sentinel-status devuelven 404 con 23 peticiones cada uno."
         }
       ],
-      "falta": "Prueba de zapeo con la integracion activa en una ventana controlada. Bloqueada por DECISION, no por tecnologia: el unico precedente es un incidente con el televisor del operador como victima. Cualquier re-test exige autorizacion explicita."
+      "falta": "Prueba de zapeo con la integracion activa en una ventana controlada. Bloqueada por DECISION, no por tecnologia: el unico precedente es un incidente con el televisor del operador como victima. Cualquier re-test exige autorizacion explicita.",
+      "dos_clausulas": {
+        "apk_viva_y_hablando": "VERIFICADA — proceso vivo y telemetria llegando al VPS",
+        "registro_autenticado_y_politica": "NO COMPUTADA — no hay prueba de un registro autenticado ni de una politica recibida y aplicada"
+      }
     },
     {
       "id": "P09",
@@ -383,8 +427,8 @@
       "id": "P10",
       "prueba": "OTT",
       "criterio": "Un reproductor OTT Navigator real reproduce el canal con la calidad declarada y sin degradar.",
-      "estado": "IMPLEMENTED_NOT_DEPLOYED",
-      "medicion": "NOT_COMPUTED",
+      "estado": "PARTIALLY_FUNCTIONAL",
+      "medicion": "MEDIDO",
       "evidencia": [
         {
           "ref": "docs/audits/ADVERSARIAL_CANARY_JIT_20261111.md:83-88",
@@ -397,9 +441,21 @@
         {
           "ref": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/generation-output-panel.js:96,342",
           "nota": "el generador emite URLs /jit/live/<id>/master.m3u8 y manifest.mpd (la lista existe; el reproductor no se probo)"
+        },
+        {
+          "ref": "docs/audits/PLAYBACK_ONN4K_OTT_20261112.md",
+          "nota": "OTT Navigator 1.7.3.3 reproduce en vivo. mediametrics_codec_reported: codec c2.amlogic.avc.decoder, mime video/avc, width 1920 height 1080, profile 2 (AVC Main), level 32768 (L5.1), secure -1 (sin DRM). Estable en 6/6 y 4/4 muestras."
+        },
+        {
+          "ref": "docs/audits/CHAIN_PULSE_ONN4K_20261112.md",
+          "nota": "El flujo SI pasa por el sistema: el aparato pide GET /pulse/548062.m3u8?u=<proveedor>&d=<base64> cada ~20 s, y a las 02:55:46 cambia a /pulse/548063.m3u8 (zapping observado). El video lo sirve el proveedor (192.142.25.8), no el VPS."
         }
       ],
-      "falta": "Prueba en OTT Navigator real. Cero mediciones en dispositivo: como maximo se puede afirmar que lo declarado esta implementado, no que se reproduzca."
+      "falta": "Prueba en OTT Navigator real. Cero mediciones en dispositivo: como maximo se puede afirmar que lo declarado esta implementado, no que se reproduzca.",
+      "dos_clausulas": {
+        "reproduce_flujo_del_sistema": "VERIFICADA — el aparato consume /pulse/ del VPS y el player decodifica",
+        "imagen_validada": "NO COMPUTADA — screencap devuelve negro porque no captura el plano de video por hardware; solo el operador puede decir que ve"
+      }
     },
     {
       "id": "P11",
@@ -421,7 +477,8 @@
           "nota": "lo unico medido en esta familia es a nivel HTTP: /go/<id> decide master vs media por User-Agent. No hay ninguna peticion de TiviMate real"
         }
       ],
-      "falta": "Prueba en TiviMate real. Cero mediciones en dispositivo."
+      "falta": "Prueba en TiviMate real. Cero mediciones en dispositivo.",
+      "nota_2026_11_12": "No probado. En el aparato estan instalados ar.tvplayer.tv y com.cbs.ott pero no se reprodujo nada con ellos ni con TiviMate. Un pendiente real, no un cero."
     },
     {
       "id": "P12",
