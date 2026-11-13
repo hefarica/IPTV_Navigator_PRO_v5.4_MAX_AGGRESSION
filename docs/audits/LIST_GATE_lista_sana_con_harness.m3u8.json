@@ -1,6 +1,6 @@
 {
   "schema": "ape.list-gate.v1",
-  "generado": "2026-11-13T09:56:01.201Z",
+  "generado": "2026-11-13T09:58:28.578Z",
   "objetivo": "lista_sana_con_harness.m3u8",
   "veredicto": "APTA",
   "identidad": {
@@ -32,6 +32,6 @@
     "ruta": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\vps\\ape-list-probe\\v3\\ape-list-probe.js",
     "sha256": "7b24f3adaf426df33f620dd062c55b7c5f4a5d09b6fbbcd172c0271c95adde8c"
   },
-  "duracion_ms": 7,
+  "duracion_ms": 9,
   "nota": "El censo propio corre ADEMAS del probe v3 porque v3 clasifica estas listas como HLS_MASTER y entonces no cuenta canales ni comprueba servibilidad. Los dos son necesarios."
 }
