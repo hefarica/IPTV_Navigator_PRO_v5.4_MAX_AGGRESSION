@@ -115,6 +115,22 @@ for ($i = 0; $i -lt $lineas.Count; $i++) {
 #        8K/4320->P0, 4K/UHD/2160->P1, FHD/1080->P3, HD/720->P4, SD/480->P5) ──
 $esperado = @{ 'P0' = 4320; 'P0.5' = 2160; 'P1' = 2160; 'P2' = 1440; 'P3' = 1080; 'P4' = 720; 'P5' = 480 }
 
+# [2026-11-13] CORRECCION IMPORTANTE: clasificar por el ALTO es erroneo para
+# contenido anamorfico/scope. Medido en la lista viva: canales "4K" sirviendo
+# 3840x1600 (2.40:1) y 3840x2078. Tienen 3840 de ancho: SON 4K, solo que con
+# menos alto por el aspect ratio del cine. Comparar solo el alto los marcaba como
+# "NO CUMPLE" y habria sido un falso positivo en 4 canales.
+# La clase se decide por el LADO MAYOR: 3840 de ancho es 4K aunque el alto sea 1600.
+function ClasePx([int]$w, [int]$h) {
+  $m = [Math]::Max($w, $h)
+  if ($m -ge 7000) { return 4320 }   # 8K (7680 o 4320 de alto en 8K vertical)
+  if ($m -ge 3000) { return 2160 }   # 4K / scope 4K
+  if ($m -ge 2400) { return 1440 }   # QHD
+  if ($m -ge 1700) { return 1080 }   # FHD
+  if ($m -ge 1100) { return 720 }    # HD
+  return 480                          # SD
+}
+
 function Campo($arr, $k) { (($arr | Where-Object { $_ -match "^$k=" } | Select-Object -First 1) -replace "^$k=", '') }
 
 $filas = @()
@@ -175,10 +191,14 @@ foreach ($ch in $canales) {
     if ($br -and [int64]::TryParse(("$br" -replace '\D', ''), [ref]$brNum) -and $brNum -gt 0) { $res.mbps = [math]::Round($brNum / 1e6, 2) }
 
     if ($null -ne $res.esperado_px -and $res.alto -gt 0) {
-      # tolerancia: un perfil declara la clase; medir >= lo esperado es aceptable
-      $res.cumple = ($res.alto -ge $res.esperado_px)
-      if (-not $res.cumple) { $res.motivo = "declara $($res.esperado_px)p y sirve $($res.alto)p" }
-      elseif ($res.alto -gt $res.esperado_px) { $res.motivo = "declara $($res.esperado_px)p y sirve $($res.alto)p (MEJOR de lo declarado)" }
+      # [2026-11-13] se compara la CLASE por lado mayor, no el alto en bruto:
+      # 3840x1600 es 4K scope y cumple un perfil 4K.
+      $claseReal = ClasePx $res.ancho $res.alto
+      $res | Add-Member -NotePropertyName clase_px -NotePropertyValue $claseReal -Force
+      $res.cumple = ($claseReal -ge $res.esperado_px)
+      if (-not $res.cumple) { $res.motivo = "declara $($res.esperado_px)p y sirve $($res.ancho)x$($res.alto) (clase $($claseReal)p)" }
+      elseif ($claseReal -gt $res.esperado_px) { $res.motivo = "declara $($res.esperado_px)p y sirve $($res.ancho)x$($res.alto) (MEJOR de lo declarado)" }
+      else { $res.motivo = "declara $($res.esperado_px)p y sirve $($res.ancho)x$($res.alto)" }
     } else {
       $res.motivo = 'perfil no declarado o desconocido: no hay con que comparar'
     }

@@ -2,7 +2,51 @@
 
 **Lo que se midió:** 3 zonas de la lista viva `APE_LISTA_1794100720046.m3u8` (vía `Range`, HTTP **206** en las tres), filtrando solo `-OnlyProfiles 'P0,P1'` — los canales que **declaran 4K/8K** — y sondeando el segmento real de cada uno.
 
-## El resultado: 7 de 7 «4K» no son 4K
+## El resultado completo: 21 medidos, 16 no cumplen, 5 sí
+
+Ampliado el muestreo a 5 zonas más de la lista viva (`Range` 206 en todas):
+
+| Zona | Medidos | NO CUMPLEN | CUMPLEN |
+|---|---|---|---|
+| offset 0 | 3 | 3 | 0 |
+| offset 48 MB | 2 | 2 | 0 |
+| offset 143 MB | 6 | 6 | 0 |
+| offset 668 MB | 4 | 4 | 0 |
+| **offset 1049 MB** | 6 | **1** | **5** |
+| **TOTAL** | **21** | **16 (76%)** | **5** |
+
+**Y los 5 que cumplen son 4K de verdad**, la familia NOVA PREMIERE:
+
+```
+GR| NOVA PREMIERE 9 4K  ->  3840x1600  CUMPLE   (4K scope 2.40:1)
+GR| NOVA PREMIERE 8 4K  ->  3840x1600  CUMPLE
+GR| NOVA PREMIERE 7 4K  ->  3840x2078  CUMPLE
+GR| NOVA PREMIERE 6 4K  ->  3840x1600  CUMPLE
+GR| NOVA PREMIERE 5 4K  ->  3840x2160  CUMPLE   (4K real 16:9)
+```
+
+## La formulación precisa del defecto
+
+No es «el perfil siempre miente». Es:
+
+> **El resolutor acierta cuando el nombre del canal es veraz y falla cuando no lo es. No tiene forma de distinguirlos.**
+
+- `NOVA PREMIERE 5 4K` → el nombre dice 4K, el flujo **es** 4K → acierta.
+- `BEIN SPORTS NBA 4K` → el nombre dice 4K, el flujo es **720p** → falla.
+
+El acierto es una coincidencia, no una verificación. Y **16 de 21 veces la coincidencia no se da**.
+
+## Una corrección de mi propia herramienta, que evitó 4 falsos positivos
+
+En la primera pasada marqué como violaciones a los canales `3840x1600` y `3840x2078`: mi comprobador comparaba **solo el alto** contra 2160. Pero **3840 de ancho con menos alto es 4K scope** (2.40:1 y similares), no una degradación: el contenido tiene el ancho de 4K y el alto que le da su aspect ratio de cine.
+
+Corregido: la clase se decide por el **lado mayor**. Con el arreglo, esos 4 canales pasan a **CUMPLE** y el veredicto del bloque de 1049 MB baja de «5 de 6 fallan» a «1 de 6 falla».
+
+**Sin esa corrección, el informe habría acusado a cuatro canales legítimos de violar §11.** Es el tercer falso positivo que la verificación previa detiene en esta sesión.
+
+## El hallazgo original (muestra inicial)
+
+Filtrando solo los canales que declaran 4K/8K en 2 de 3 zonas:
 
 | Canal | Declarado | **Medido** | Bitrate |
 |---|---|---|---|
@@ -14,7 +58,7 @@
 | `\|AE\| SAMA DUBAI 4K` | **P1 (2160p)** | **1920x1080** | 5,19 Mbps |
 | `\|AE\| DUBAI TV 4K` | **P1 (2160p)** | **1920x1080** | 9,47 Mbps |
 
-**Siete canales que declaran 2160p. Ninguno sirve 2160p.** Uno sirve **576p a 1,15 Mbps**, que es SD.
+Uno sirve **576p a 1,15 Mbps**, que es SD, declarando 4K.
 
 ## La causa raíz, comprobada con la herramienta del propio sistema
 

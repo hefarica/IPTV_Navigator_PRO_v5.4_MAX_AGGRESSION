@@ -1,0 +1,11 @@
+{
+  "schema": "ape.declared_vs_real.v1",
+  "fecha_utc": "20261113T033254Z",
+  "origen": "https://iptv-ape.duckdns.org/lists/APE_LISTA_1794100720046.m3u8",
+  "canales_en_lista": 0,
+  "analizados": 0,
+  "medidos": 0,
+  "no_cumplen": 0,
+  "nota_frame_rate": "Se usa avg_frame_rate. r_frame_rate en un segmento MPEG-TS aislado da valores falsos (medido: 125/1 en un canal de 25 fps).",
+  "filas": []
+}

@@ -1,0 +1,46 @@
+{
+  "schema": "ape.declared_vs_real.v1",
+  "fecha_utc": "20261113T033224Z",
+  "origen": "https://iptv-ape.duckdns.org/lists/APE_LISTA_1794100720046.m3u8",
+  "canales_en_lista": 2,
+  "analizados": 2,
+  "medidos": 2,
+  "no_cumplen": 2,
+  "nota_frame_rate": "Se usa avg_frame_rate. r_frame_rate en un segmento MPEG-TS aislado da valores falsos (medido: 125/1 en un canal de 25 fps).",
+  "filas": [
+    {
+      "esperado_px": 2160,
+      "url": "https://iptv-ape.duckdns.org/pulse/2250.m3u8?u=http%3A%2F%2Fevestv.wuitf.com%2Flive%2F2RHAVYWB%2FSDXH4MYV%2F2250.m3u8&d=eyJ0IjoiZ2VuZXJpYyIsInMiOiJ1bmtub3duIiwiciI6MjA0OCwidyI6MTkyMCwiaCI6MTA4MCwiZiI6MzAsImhkciI6InNkciIsInAiOiJQMSJ9&p=P1&n=AR%7C+BEIN+SPORTS+02+4K+%5BBK1%5D+%5BEVEST%5D&id=2250&s=e4379adb25787bfc&v=9.3.0&logo=https%3A%2F%2Flo1.in%2Fbss%2FbsS2.png&fp=77c2efa0&m=cartridge&l=APE_LISTA_1794100720046",
+      "codec": "hevc",
+      "indice": 52,
+      "perfil_real": "Main",
+      "perfil": "P1",
+      "mbps": null,
+      "fps": 60.0,
+      "cumple": false,
+      "ancho": 1920,
+      "motivo": "declara 2160p y sirve 1080p",
+      "medido": "MEDIDO",
+      "alto": 1080,
+      "canal": "AR| BEIN SPORTS 02 4K [BK1] [EVEST]",
+      "level": "123"
+    },
+    {
+      "esperado_px": 2160,
+      "url": "https://iptv-ape.duckdns.org/pulse/2251.m3u8?u=http%3A%2F%2Fevestv.wuitf.com%2Flive%2F2RHAVYWB%2FSDXH4MYV%2F2251.m3u8&d=eyJ0IjoiZ2VuZXJpYyIsInMiOiJ1bmtub3duIiwiciI6MjA0OCwidyI6MTkyMCwiaCI6MTA4MCwiZiI6MzAsImhkciI6InNkciIsInAiOiJQMSJ9&p=P1&n=AR%7C+BEIN+SPORTS+01+4K+%5BBK1%5D+%5BEVEST%5D&id=2251&s=478c9defec08667b&v=9.3.0&logo=https%3A%2F%2Flo1.in%2Fbss%2FbsS1.png&fp=06b099d0&m=cartridge&l=APE_LISTA_1794100720046",
+      "codec": "hevc",
+      "indice": 53,
+      "perfil_real": "Main",
+      "perfil": "P1",
+      "mbps": null,
+      "fps": 60.0,
+      "cumple": false,
+      "ancho": 1920,
+      "motivo": "declara 2160p y sirve 1080p",
+      "medido": "MEDIDO",
+      "alto": 1080,
+      "canal": "AR| BEIN SPORTS 01 4K [BK1] [EVEST]",
+      "level": "123"
+    }
+  ]
+}
