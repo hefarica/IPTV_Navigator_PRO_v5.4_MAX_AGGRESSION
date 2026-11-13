@@ -71,25 +71,72 @@ El `sha256` del motor **coincide con el pin del contrato y con el fichero instal
 
 ## 5 · Calidad visual observada
 
-**No medida.** Sin dispositivo no hay imagen. Lo único medido relacionado es que el motor, cuando se le pidió P4.5, **entregó una copia** (`RESOLUTION=1280x720`, `CODECS="avc1.42c01f"`) y su propio recibo se declaró `NOT_APPLIED` — el motor no anunció como aplicado lo que no ejecutó, que es lo correcto aunque el resultado sea que no hay mejora.
+**Medida en entorno controlado, NO en el panel.** La cadena Canary se reprodujo exacta (1080p→4K, 3 s, ffmpeg 8.0.1) y se comparó contra un control neutro (solo lanczos, mismo encoder). Ver `CANARY_AB_IMAGE_20261112.md`.
+
+| | A (Canary) | B (lanczos) |
+|---|---|---|
+| SSIM ida y vuelta vs fuente | 0,9169 | 0,9598 |
+| Nitidez (laplaciano) | **6,978** | 1,175 |
+
+La cadena **realza 4,39×** sobre la fuente (1,588) pero **baja la fidelidad**: el realce es `unsharp`+`noise`, no recuperación de detalle. Ablación: quitar el **grano ahorra el 29 % del tiempo** y **sube** el SSIM, pero desploma la nitidez medida un 61 % — lo que demuestra que **la métrica mide grano además de detalle**.
+
+**Nada de esto dice cómo se ve en un televisor.** Cero píxeles vistos por un panel.
+
+Y el motor, cuando se le pidió P4.5, **entregó una copia** (`RESOLUTION=1280x720`, `CODECS="avc1.42c01f"`) declarándose `NOT_APPLIED` — correcto: no anunció como aplicado lo que no ejecutó.
 
 ## 6 · Rendimiento y continuidad
 
 - **Canary**: **0,1828 fps** (30 fotogramas / 164,1 s) contra 25 fps de fuente → ≈137× más lento. `FAILED` medido, no bloqueado.
+- **Cadena Canary completa en esta máquina**: **131 s para 3 s** = 0,687 fps = **43,7× más lento** que la fuente de 30 fps. Encoder `veryfast`: 462 s (3,5×). El 4:4:4 intermedio no cuesta nada (130 vs 131 s).
 - **JIT**: el motor arranca, sirve `/health` y `/meta`, y no se ha ejercitado un transcode en producción a propósito (consumiría los 3 vCPU).
-- Continuidad: sin medición de cortes. No hay prueba de duración, canales, dispositivo ni red que lo sostenga.
+- Continuidad: **medida en el ONN con OTT Navigator** — 30+ s de reproducción real sin cambio de códec ni de resolución (6/6 y 4/4 muestras). **Frames perdidos: no computado**, el códec no los expone (`frame_rate:-1`).
 
 ## 7 · Dispositivos comprobados
 
-**Ninguno.** `adb devices` devuelve lista vacía, comprobado en esta ronda.
+**Uno: el ONN 4K.** Conectado por ADB (`192.168.1.3:5555` / `:34813`), medido en solo lectura. Ver `DEVICE_RECEIPT_ONN4K_20261112.md`.
+
+```
+onn. 4K Streaming Box · Amlogic s4 · Android 14 (SDK 34) · 4 cores · 1,88 GiB RAM
+Panel SAMSUNG (2020) por HDMI · 3840x2160
+```
+
+| Dato | Valor medido |
+|---|---|
+| HDR del panel | **`[2,3,4]` = HDR10 + HLG + HDR10+ · 1000 nits · SIN Dolby Vision** |
+| Conversión HDR | **PASSTHROUGH** (no convierte SDR a HDR — confirma la corrección del 2026-06-17) |
+| Decoders HW | `c2.amlogic.avc` / `hevc` / `av1`, los tres con `.secure` |
+| Cadencias | 59,94 · 60 · 50 · 29,97 · 30 · 25 · 23,976 · 24 |
+| **Térmica** | `soc_thermal` **63,7 °C** estable, umbral de throttling **65,0 °C** → **1,3 °C de margen** |
+| Resolución lógica | **override a 1920x1080** sobre panel 4K (`wm size`) |
 
 ## 8 · Estado de los reproductores
 
-**OTT Navigator, TiviMate, ExoPlayer: no ejercitados.** No hay dispositivo ni player instrumentado. Cualquier afirmación sobre ellos sería inventada.
+**OTT Navigator 1.7.3.3 — reproducido y medido.** Ver `PLAYBACK_ONN4K_OTT_20261112.md` y `CHAIN_PULSE_ONN4K_20261112.md`.
+
+```
+mediametrics_codec_reported:
+  codec: c2.amlogic.avc.decoder   mime: video/avc
+  width: 1920  height: 1080  profile: 2  level: 32768  secure: -1 (sin DRM)
+audio: c2.android.aac.decoder (SOFTWARE) · 2 canales · 44.100 Hz
+```
+
+El flujo **sí pasa por el sistema**: el aparato pide `GET /pulse/<id>.m3u8?u=<proveedor>` cada **~20 s**, y se observó un cambio de canal (548062 → 548063 a las 02:55:46).
+
+**TiviMate: no probado** (no está instalado). **ExoPlayer: no ejercitado.**
 
 ## 9 · Listas compatibles
 
-**5 listas vivas, 5 configuraciones cada una, 25/25.** Contenido real verificado: la lista grande pesa **1.311.381.927 B** y honra `Range` con 206. Las 2 listas que el gate probaba antes (`APE_LISTA_1793589060441`, `APE_LISTA_1793558303852_CDN`) **están retiradas**: su 404 era un fixture caducado, no una caída.
+**5 listas vivas, 5 configuraciones cada una, 25/25.** La lista grande pesa **1.311.381.927 B** y honra `Range` con 206. Las 2 que el gate probaba antes están **retiradas**: su 404 era un fixture caducado, no una caída.
+
+**Pero las declaraciones del catálogo no coinciden con lo servido.** Medido con `tools/quality/audit_declared_vs_real.ps1` sobre la lista viva:
+
+| Declaración | Contrastada con | Resultado |
+|---|---|---|
+| `ape-profile` | resolución real del segmento | **16 de 21 sobre-declaran (76 %)** |
+| `ape-codec-family` | códec real del segmento | **7 de 7 declaran `hevc`, sirven `h264`** |
+| `#EXTVLCOPT` (filtros VLC) | lo que el player aplica | **no viaja** a OTT Navigator |
+
+Y la causa está en el código: **`profileForChannel(name, group)`** resuelve el perfil del **nombre**, sin mirar el flujo. Ver `PROFILE_FROM_NAME_NOT_MEASURED_20261113.md` y `CODEC_FAMILY_DECLARED_VS_SERVED_20261113.md`.
 
 ## 10 · Límites conocidos
 
@@ -119,6 +166,10 @@ El `sha256` del motor **coincide con el pin del contrato y con el fichero instal
 | D-7 | Commit/push a `master` | `master` sigue en `d2c27293` |
 | — | Arrancar `ape-pulse-canary.timer` | Detenido a propósito; decisión del operador |
 | — | `systemctl enable` en el tooling | B4 abierto, no materializado (el servicio ya está `enabled`) |
+| **G-1** | **El perfil sale del NOMBRE, no de la medición** | `profileForChannel(name, group)` en `tools/pulse/ape-pulse-wrap.js:72-87`. Medido: **16 de 21** canales que declaran resolución la sobre-declaran. Arreglarlo exige tocar el generador: medir antes de declarar, declarar la etiqueta como etiqueta, o dejar de escalar por token premium |
+| **G-2** | **`ape-codec-family` es una preferencia, no un hecho** | `m3u8-typed-arrays-ultimate.js:8245` cae en `PROFILES[perfil].codec` y luego en `'HEVC'`. Medido: **7 de 7** declaran hevc y sirven h264. La decisión es deliberada (MAX IMAGE FIRST, comentario L8240-8244), pero choca con §11 |
+| — | **TiviMate** | No instalado en el aparato. Probarlo exige instalarlo: decisión del operador |
+| — | **Censo declarado-vs-real de la lista entera** | `tools/quality/audit_declared_vs_real.ps1` ya lo hace por muestras. Sobre 1,3 GB son horas de `ffprobe`; hay que decidir si se corre, se paraleliza y con qué prioridad (los P0/P1 primero) |
 
 ## 12 · Procedimiento de reversión
 
