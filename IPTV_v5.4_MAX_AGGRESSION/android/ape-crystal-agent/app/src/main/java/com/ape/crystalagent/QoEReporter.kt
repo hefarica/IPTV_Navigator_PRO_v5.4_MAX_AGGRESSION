@@ -36,10 +36,21 @@ class QoEReporter(private val ctx: Context, private val cfg: Config) {
         job = scope.launch(Dispatchers.IO) {
             while (isActive) {
                 try {
+                    // El soc_gate del VPS lee caps.soc, caps.soc_8k y caps.ai_sr
+                    // (ara-x/spec/actuator_allowlist.json -> soc_gate.caps_keys_read_by_vps).
+                    // `ai_sr` NO se enviaba antes del 2026-11-13: el gate no tenia nada que leer
+                    // y la politica VPP nunca podia activarse. Ahora se SONDEA en el device.
+                    val vpp = DeviceSampler(ctx).vppCapability()
                     val caps = JSONObject()
                         .put("soc", socName())
                         // [2.3.0] soc_8k ya NO repite la identidad del SoC. S905Y4 es 4K.
                         .put("soc_8k", "")
+                        // Capacidad VPP medida. La razon viaja para que el VPS pueda explicar
+                        // el denegado en vez de devolver allowed=false sin motivo.
+                        .put("ai_sr", vpp.aiSr)
+                        .put("ai_sr_reason", vpp.reason)
+                        .put("ai_sr_keys_found", vpp.keysFound)
+                        .put("ai_sr_keys_probed", vpp.keysProbed)
                         // Fase A: SOLO nombres (sin valores) para que el VPS filtre.
                         .put("names", inventoryNames())
                     postEvent("heartbeat", JSONObject()

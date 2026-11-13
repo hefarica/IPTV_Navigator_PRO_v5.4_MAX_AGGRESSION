@@ -73,6 +73,9 @@ jobs:
           echo "== crystal 4K / 6K =="
           node tools/check_crystal_4k_law.js
           node tools/check_crystal_6k_law.js
+      - name: Test de contrato capacidades APK <-> soc_gate del VPS
+        run: node tools/quality/test_caps_contract.js
+
       - name: Test de seleccion de variante (resolucion manda, no el bitrate)
         run: node tools/quality/test_variant_select.js
 
