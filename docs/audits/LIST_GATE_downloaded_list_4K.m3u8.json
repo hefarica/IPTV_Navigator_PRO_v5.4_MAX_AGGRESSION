@@ -1,0 +1,55 @@
+{
+  "schema": "ape.list-gate.v1",
+  "generado": "2026-11-13T08:05:44.060Z",
+  "objetivo": "downloaded_list_4K.m3u8",
+  "veredicto": "NO_APTA",
+  "identidad": {
+    "sha256": "e75aeb6c0924faf3063e247cd24e04a3c38d65d4c335daf2a691b305a46e92b8",
+    "bytes": 220194640,
+    "last_modified": null,
+    "etag": null,
+    "lineas": 2051453,
+    "extinf": 2754,
+    "stream_inf": 2754,
+    "urls": 2753
+  },
+  "estructura": {
+    "entradas_con_url": 2753,
+    "huerfanas": 1,
+    "ape_channels_declarado": 2754,
+    "coherente": true
+  },
+  "servibilidad": [
+    {
+      "clase": "https://iptv-ape.duckdns.org/live/{n}.{ext}",
+      "urls_en_la_lista": 2753,
+      "probadas": 2,
+      "estado": "MUERTA",
+      "codigos": [
+        404
+      ],
+      "ejemplo": "https://iptv-ape.duckdns.org/live/1.m3u8"
+    }
+  ],
+  "harness": {
+    "presente": 6,
+    "falta": [
+      "#EXT-X-APE-QUALITY-WATCH:ENABLED;SCHEMA=ape.quality-watch.cycle.v1;INTERVAL=60;SINK=device_settings",
+      "#EXT-X-APE-QUALITY-WATCH-THRESHOLDS:NOISE_FLOOR=0.04;ALERT=2.0;SEVERE=8.0;ZONE_TOLERANCE=20",
+      "#EXT-X-APE-QUALITY-WATCH-NOTE:METADATA;NO_DECLARA_MEDICION;EL_VEREDICTO_LO_EMITE_EL_OBSERVADOR"
+    ],
+    "exigido": 9
+  },
+  "fallos": [
+    "1 clase(s) de ruta MUERTA(S) — la lista no reproduce por esa via",
+    "1 entrada(s) #EXTINF sin URL",
+    "faltan 3 linea(s) del harness"
+  ],
+  "probe_v3": {
+    "disponible": true,
+    "ruta": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\vps\\ape-list-probe\\v3\\ape-list-probe.js",
+    "sha256": "7b24f3adaf426df33f620dd062c55b7c5f4a5d09b6fbbcd172c0271c95adde8c"
+  },
+  "duracion_ms": 1218,
+  "nota": "El censo propio corre ADEMAS del probe v3 porque v3 clasifica estas listas como HLS_MASTER y entonces no cuenta canales ni comprueba servibilidad. Los dos son necesarios."
+}

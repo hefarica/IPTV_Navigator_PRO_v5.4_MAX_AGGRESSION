@@ -101,3 +101,4 @@ jobs:
        - name: Metrica de detalle HF (validada, monotona con bitrate)         run: node tools/quality/test_hf_detail_metric.js
        - name: Detector de bloque sobre HEVC (queda refutado, HF no)         run: node tools/quality/test_hevc_block_detector.js
        # Candado: ninguna lista con rutas muertas se publica.       # Falla si UNA clase de ruta responde 4xx/5xx en TODAS sus muestras.       - name: Lista publicada — rutas vivas         run: node tools/quality/check_playlist_servability.js OMEGA_UPDATE/APE_OMEGA_PRODUCTION_v5.2.m3u8 2
+       # CABLEADO COMPLETO: identidad + estructura + servibilidad + harness en un veredicto.       # Falla si la lista tiene rutas muertas, entradas huerfanas o el harness incompleto.       - name: Lista APTA (gate completo)         run: node tools/quality/list_gate.js OMEGA_UPDATE/APE_OMEGA_PRODUCTION_v5.2.m3u8 --muestras 2

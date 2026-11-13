@@ -41,8 +41,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '../..');
-const TMP = path.join(ROOT, 'scratch', 'hevc_search');
-fs.rmSync(TMP, { recursive: true, force: true });
+const TMP = path.join(ROOT, 'scratch', 'hevc_search' + '_' + process.pid + '_' + Date.now());
+try { fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }); } catch (e) { /* EPERM en Windows no debe tumbar el gate */ }
 fs.mkdirSync(TMP, { recursive: true });
 
 const FUENTE = process.argv[2] ||

@@ -1,0 +1,59 @@
+{
+  "schema": "ape.list-gate.v1",
+  "generado": "2026-11-13T08:07:35.468Z",
+  "objetivo": "https://iptv-ape.duckdns.org/lists/{segmentos}.m3u8",
+  "veredicto": "APTA_SIN_HARNESS",
+  "identidad": {
+    "sha256": "81b00a123d1df3b4682f0124a8d52430bd056403287c369bb22391bbd8ee49fe",
+    "bytes": 1311381927,
+    "last_modified": "Sun, 08 Nov 2026 01:50:39 GMT",
+    "etag": "\"6aefd56f-4e2a19a7\"",
+    "lineas": 22360128,
+    "extinf": 21224,
+    "stream_inf": 21224,
+    "urls": 21224
+  },
+  "estructura": {
+    "entradas_con_url": 21224,
+    "huerfanas": 0,
+    "ape_channels_declarado": 21224,
+    "coherente": true
+  },
+  "servibilidad": [
+    {
+      "clase": "https://iptv-ape.duckdns.org/pulse/{n}.{ext}",
+      "urls_en_la_lista": 21224,
+      "probadas": 3,
+      "estado": "VIVA",
+      "codigos": [
+        200
+      ],
+      "ejemplo": "https://iptv-ape.duckdns.org/pulse/1.m3u8?u=http%3A%2F%2Fevestv.wuitf.com%2Flive%2F2RHAVYWB%2FSDXH4MYV%2F1.m3u8&d=eyJ0IjoiZ2VuZXJpYyIsInMiOiJ1bmtub3duIiwiciI6MjA0OCwidyI6MTkyMCwiaCI6MTA4MCwiZiI6MzAsImhkciI6InNkciIsInAiOiJQMyJ9&p=P3&n=%E2%9C%A6%E2%97%8F%E2%9C%A6%7C+FHD+-+BEIN+SPORTS+FHD+%7C%E2%9C%A6%E2%97%8F%E2%9C%A6+%5BEVEST%5D&id=1&s=4a543669e54a0bfa&v=9.3.0&logo=https%3A%2F%2Flo1.in%2Fbss%2Fbs.png&fp=8a866c12&m=cartridge&l=APE_LISTA_1794100720046"
+    }
+  ],
+  "harness": {
+    "presente": 0,
+    "falta": [
+      "#EXT-X-APE-QMAX-VERSION:2.0-ADAPTIVE",
+      "#EXT-X-APE-QMAX-STRATEGY:GREEDY-BEST-AVAILABLE",
+      "#EXT-X-APE-QMAX-ANTI-DOWNGRADE:ENFORCED",
+      "#EXT-X-APE-QMAX-TIER-CASCADE:S>A>A->B>C>D",
+      "#EXT-X-APE-QMAX-SELECTION-RULE:IF-4K-EXISTS-1080P-FORBIDDEN",
+      "#EXT-X-APE-QMAX-BANDWIDTH-SAFETY-MARGIN:0.30",
+      "#EXT-X-APE-QUALITY-WATCH:ENABLED;SCHEMA=ape.quality-watch.cycle.v1;INTERVAL=60;SINK=device_settings",
+      "#EXT-X-APE-QUALITY-WATCH-THRESHOLDS:NOISE_FLOOR=0.04;ALERT=2.0;SEVERE=8.0;ZONE_TOLERANCE=20",
+      "#EXT-X-APE-QUALITY-WATCH-NOTE:METADATA;NO_DECLARA_MEDICION;EL_VEREDICTO_LO_EMITE_EL_OBSERVADOR"
+    ],
+    "exigido": 9
+  },
+  "fallos": [
+    "faltan 9 linea(s) del harness"
+  ],
+  "probe_v3": {
+    "disponible": true,
+    "ruta": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\vps\\ape-list-probe\\v3\\ape-list-probe.js",
+    "sha256": "7b24f3adaf426df33f620dd062c55b7c5f4a5d09b6fbbcd172c0271c95adde8c"
+  },
+  "duracion_ms": 49917,
+  "nota": "El censo propio corre ADEMAS del probe v3 porque v3 clasifica estas listas como HLS_MASTER y entonces no cuenta canales ni comprueba servibilidad. Los dos son necesarios."
+}
