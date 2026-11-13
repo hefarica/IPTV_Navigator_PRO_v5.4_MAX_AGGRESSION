@@ -15,7 +15,7 @@
   },
   "vps": {
     "host": "iptv-ape.duckdns.org",
-    "revision_desplegada": "NO es repo git (/var/www/html no tiene .git) — se declara NO VERIFICABLE",
+    "revision_desplegada": "NO es repo git (/var/www/html sin .git) — NO VERIFICABLE",
     "nota": "No se ha consultado la revision git del VPS. No se afirma cual esta desplegada.",
     "componentes_preparados": [
       {
@@ -47,6 +47,33 @@
           "ninguna ejecucion en el VPS",
           "no hay unidad systemd instalada"
         ]
+      }
+    ],
+    "componentes_desplegados": [
+      {
+        "id": "ape-list-probe v3",
+        "estado": "DEPLOYED_AND_VERIFIED",
+        "instalado": "2026-11-13 08:49 UTC",
+        "ruta": "/opt/ape-list-probe/",
+        "unidad": "ape-list-probe.service (active + enabled)",
+        "bind": "127.0.0.1:8787 — SOLO LOOPBACK",
+        "token": "NO necesario en loopback; APE_PROBE_TOKEN solo se exige al escuchar fuera de loopback",
+        "exposicion_publica": "NINGUNA — verificado HTTP 000 desde 178.156.147.234",
+        "hardening": "NoNewPrivileges, ProtectSystem=strict, ProtectHome, CapabilityBoundingSet vacio, MemoryMax=256M, CPUQuota=25%, TasksMax=32, RestrictAddressFamilies",
+        "incidencia_resuelta": "chmod 600 root:root en /etc/ape-list-probe/env impedia la lectura por www-data (\"node: /etc/ape-list-probe/env: not found\"). Corregido a root:www-data 640.",
+        "node_version": "Node 20.20.0 en el VPS; el paquete declara engines>=22. VERIFICADO que arranca y responde /health en 20.20.0. No se actualizo Node: romperia otros servicios.",
+        "auditoria_real": {
+          "objetivo": "https://iptv-ape.duckdns.org/lists/APE_LISTA_1794100720046.m3u8",
+          "tipo_lista": "HLS_MASTER",
+          "urls": 21224,
+          "lineas": 22360136,
+          "bytes": 1311382426,
+          "integridad": "completa=True, censo_completo=True",
+          "duracion_ms": 113096,
+          "exthttp_bloques": 21224,
+          "exthttp_invalidos": 0,
+          "nota_canales": "canales=0 correcto: HLS_MASTER cuenta STREAM-INF, no EXTINF. Decision de alcance, no fallo."
+        }
       }
     ]
   },
@@ -165,6 +192,6 @@
     "Instalar y arrancar ape-quality-watch en el VPS",
     "Regenerar la lista OMEGA truncada o retirarla",
     "Firmar la APK (falta la contrasena del keystore signing/ape-fluid-dev.jks)",
-    "Opcional: exponer ape-list-probe fuera de loopback (requiere APE_PROBE_TOKEN de >=24 caracteres)"
+    "Opcional: exponer ape-list-probe fuera de loopback (requiere APE_PROBE_TOKEN >=24 chars)"
   ]
 }
