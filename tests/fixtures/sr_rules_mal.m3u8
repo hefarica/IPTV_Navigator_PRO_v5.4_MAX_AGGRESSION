@@ -1,0 +1,24 @@
+#EXTM3U
+#EXT-X-VERSION:9
+#EXT-X-INDEPENDENT-SEGMENTS
+#EXT-X-APE-CHANNELS:1
+# Fixture que VIOLA las 7 reglas, una por linea. Existe para probar que el gate
+# detecta cada una y no se queda corto.
+#
+# SR-R1: superresolucion sin DEGRADATION= ni STATE=
+#EXT-X-APE-AI-SR:MODEL=ESRGAN-4x,ENABLED=true
+# SR-R2: metrica perceptual con valor afirmado y sin referencia
+#EXT-X-APE-VMAF-TARGET:95.0
+# SR-R3: detalle sintetizado etiquetado como fuente
+#EXT-X-APE-MODEL-ORIGIN:CLASS=SOURCE,MODEL=RealESRGAN
+# SR-R4: interpolacion etiquetada como superresolucion
+#EXT-X-APE-UPSCALE:LANCZOS,LABEL=SUPER_RESOLUTION
+# SR-R5: realce de contraste etiquetado como superresolucion
+#EXT-X-APE-FILTER:unsharp=5:5:0.8,LABEL=SUPER_RESOLUTION
+# SR-R6: interpolacion de fotogramas declarada como resolucion
+#EXT-X-APE-FPS-BOOST:minterpolate=fps=120,RESOLUTION=3840x2160
+# SR-R7: superresolucion en directo, sin CLASS=ARCHIVE|VOD
+#EXT-X-APE-AI-SR-SCALE:2x,ENABLED=true
+#EXTINF:-1 tvg-id="bad1" tvg-name="DIRECTO MAL 1" group-title="LIVE",DIRECTO MAL 1
+#EXT-X-STREAM-INF:BANDWIDTH=5500000,RESOLUTION=1280x720,CODECS="avc1.640028"
+https://fixture.invalid/directo/1.m3u8

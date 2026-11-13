@@ -1,0 +1,11 @@
+#EXTM3U
+#EXT-X-VERSION:9
+#EXT-X-INDEPENDENT-SEGMENTS
+#EXT-X-APE-CHANNELS:1
+# Control negativo del gate de superresolucion: esta lista NO declara nada de
+# superresolucion. Sirve para probar que el gate distingue "no hay nada que
+# validar" de "todo correcto". Un cero de un instrumento que no ve el objetivo
+# no es un cero: es ausencia de sujeto.
+#EXTINF:-1 tvg-id="plain1" tvg-name="CANAL SIN SR" group-title="LIVE",CANAL SIN SR
+#EXT-X-STREAM-INF:BANDWIDTH=5500000,RESOLUTION=1280x720,CODECS="avc1.640028"
+https://fixture.invalid/plain/1.m3u8

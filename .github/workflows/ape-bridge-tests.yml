@@ -107,3 +107,10 @@ jobs:
       # porque dependen del proveedor y cambian; ver docs/audits/LIST_GATE_*.json
       - name: Lista APTA (gate completo, fixture offline)
         run: node tools/quality/list_gate.js tests/fixtures/lista_sana_con_harness.m3u8 --sin-red
+
+      # REGLAS DE SUPERRESOLUCION: valida lo que la metadata AFIRMA sobre SR.
+      # Fuente: contracts/super_resolution_rules.json (relectura aplicada del
+      # glosario de Ultralytics). Prueba en los DOS sentidos: un fixture que
+      # cumple debe pasar y uno que viola las 7 debe fallar.
+      - name: Reglas de superresolucion (gate + fixtures)
+        run: node tools/quality/test_sr_rules_gate.js

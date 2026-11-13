@@ -1,0 +1,25 @@
+#EXTM3U
+#EXT-X-VERSION:9
+#EXT-X-INDEPENDENT-SEGMENTS
+#EXT-X-APE-CHANNELS:2
+# Fixture que CUMPLE las 7 reglas. Existe para probar que el gate se puede
+# satisfacer: un gate que nada puede pasar no es un gate, es un adorno.
+#
+# SR-R1: declara el modelo de degradacion (DEGRADATION=) y el estado.
+#EXT-X-APE-AI-SR:MODEL=realesrgan,SCALE=4,DEGRADATION=blur:1.5,scale:4,noise:8,codec:h264,STATE=DECLARED,CLASS=ENHANCEMENT,MODE=ARCHIVE
+# SR-R2: la metrica lleva referencia real.
+#EXT-X-APE-VMAF-TARGET:95.0,REFERENCE=master_uhd_remux_sha256_abc123
+# SR-R4: la interpolacion se declara como interpolacion, no como superresolucion.
+#EXT-X-APE-SCALE-METHOD:LANCZOS,CLASS=INTERPOLATION
+# SR-R4: nombrar el fallback es correcto y no es una etiqueta cruzada.
+#EXT-X-APE-AI-SR-FALLBACK:BICUBIC
+# SR-R5: el realce se declara como realce.
+#EXT-X-APE-CONTRAST-METHOD:unsharp=5:5:0.8,CLASS=ENHANCEMENT_CONTRAST
+# SR-R6: la interpolacion de fotogramas va por el eje temporal.
+#EXT-X-APE-TEMPORAL:minterpolate=fps=60,CLASS=FRAME_INTERPOLATION
+#EXTINF:-1 tvg-id="ok1" tvg-name="ARCHIVO OK 1" group-title="VOD",ARCHIVO OK 1
+#EXT-X-STREAM-INF:BANDWIDTH=5500000,RESOLUTION=1280x720,CODECS="avc1.640028"
+https://fixture.invalid/archivo/1.m3u8
+#EXTINF:-1 tvg-id="ok2" tvg-name="ARCHIVO OK 2" group-title="VOD",ARCHIVO OK 2
+#EXT-X-STREAM-INF:BANDWIDTH=5500000,RESOLUTION=1280x720,CODECS="avc1.640028"
+https://fixture.invalid/archivo/2.m3u8

@@ -195,8 +195,14 @@ window.__ModuleLoader__.load({
             );
           }),
           h('div', { className: 'srp-foot' },
-            'Fuente: ultralytics.com/es/glossary/super-resolution. Las siete reglas son una relectura de esa fuente, no una copia de su texto. '
-            + 'Un detalle inventado no es una mejora: es una afirmacion sin referencia.'
+            'Fuente conceptual: ultralytics.com/es/glossary/super-resolution. Las siete reglas son una relectura aplicada de esa fuente, no una copia de su texto. '
+            + 'Un detalle inventado no es una mejora: es una afirmacion sin referencia.',
+            h('br'),
+            h('br'),
+            'Esta pagina MUESTRA las reglas. Quien las APLICA es el candado: '
+            + 'contracts/super_resolution_rules.json es la fuente unica, y '
+            + 'tools/quality/check_sr_rules.js las verifica sobre una lista real. '
+            + 'Una regla que solo se lee no es una regla.'
           )
         )
       );

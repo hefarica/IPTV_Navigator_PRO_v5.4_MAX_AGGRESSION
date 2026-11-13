@@ -1,0 +1,134 @@
+{
+  "schema": "ape.super-resolution-rules.v1",
+  "version": "1.0.0",
+  "fecha": "2026-11-13",
+  "fuente": {
+    "tipo": "documentacion",
+    "url": "https://www.ultralytics.com/es/glossary/super-resolution",
+    "titulo": "Super Resolution — glosario de Ultralytics",
+    "naturaleza": "Articulo tecnico, NO codigo. No hay port: no entra ni una linea de codigo de terceros. Las reglas son una relectura aplicada al destino, escritas desde cero contra las convenciones de este repo.",
+    "tier_rea": 3,
+    "por_que_tier_3": "Fuente solo-lectura: solo patrones descritos en texto. Se implementa desde cero. Sin licencia de codigo que resolver porque no hay codigo."
+  },
+
+  "hallazgos_de_la_fuente": {
+    "modelo_de_degradacion": "El modelo de degradacion usado al entrenar determina que entradas reales puede procesar la red.",
+    "metricas_necesitan_referencia": "PSNR y SSIM son una diferencia contra la imagen de alta resolucion de referencia.",
+    "adversarial_inventa": "La perdida adversarial produce texturas nitidas y realistas que pueden no coincidir pixel a pixel con la escena real.",
+    "interpolacion_distribuye": "La interpolacion bicubica solo distribuye los pixeles existentes; el modelo predice los detalles de alta frecuencia que faltan.",
+    "restauracion_condicionada": "La superresolucion se condiciona a una imagen de entrada y debe respetar su contenido.",
+    "fotogramas_es_temporal": "La interpolacion de fotogramas sintetiza fotogramas entre los existentes: equivalente temporal de la superresolucion espacial.",
+    "broadcast_es_legitimo": "Las cadenas amplian material de definicion estandar y de archivo para pantallas HD y 4K.",
+    "presupuesto_medido": "ESPCN 4x, modelo de ~100 KB: +1 dB de PSNR equivale a ~21 % menos error cuadratico medio."
+  },
+
+  "reglas": [
+    {
+      "id": "SR-R1",
+      "nombre": "El modelo de degradacion manda",
+      "detecta": {
+        "dispara_con": ["APE-AI-SR", "APE-SUPER-RESOLUTION", "SUPER_RESOLUTION"],
+        "exige_presente": ["DEGRADATION="],
+        "alternativa_valida": "STATE=DECLARED o STATE=NO_COMPUTADO en la misma linea"
+      },
+      "falla_si": "se declara superresolucion sin DEGRADATION= y sin STATE=DECLARED|NO_COMPUTADO",
+      "severidad": "ALTA",
+      "correccion": "anadir DEGRADATION=blur:X,scale:Y,noise:Z,codec:W, o declarar STATE=DECLARED"
+    },
+    {
+      "id": "SR-R2",
+      "nombre": "PSNR y SSIM necesitan el original",
+      "detecta": {
+        "dispara_con": ["PSNR", "SSIM", "VMAF", "LPIPS"],
+        "exige_presente": ["REFERENCE=", "REF="]
+      },
+      "falla_si": "se declara una metrica perceptual sin REFERENCE= ni REF=",
+      "severidad": "CRITICA",
+      "correccion": "quitar la metrica o declarar REFERENCE=<identidad de la referencia real>",
+      "nota": "En IPTV el original no existe. Una metrica sin referencia no mide: inventa."
+    },
+    {
+      "id": "SR-R3",
+      "nombre": "La perdida adversarial inventa detalle",
+      "detecta": {
+        "dispara_con": ["APE-AI-SR", "SUPER_RESOLUTION", "REALESRGAN", "ESRGAN"],
+        "prohibido_presente": ["CLASS=SOURCE", "ROLE=SOURCE", "ORIGIN=SOURCE"]
+      },
+      "falla_si": "una declaracion de superresolucion se etiqueta como SOURCE",
+      "severidad": "CRITICA",
+      "correccion": "etiquetar como CLASS=ENHANCEMENT — el detalle es sintetizado, no capturado"
+    },
+    {
+      "id": "SR-R4",
+      "nombre": "Interpolacion no es superresolucion",
+      "detecta": {
+        "dispara_con": ["LANCZOS", "BICUBIC", "BILINEAR"],
+        "prohibido_presente": ["SUPER_RESOLUTION", "APE-AI-SR"]
+      },
+      "falla_si": "un metodo de interpolacion se etiqueta como SUPER_RESOLUTION",
+      "severidad": "ALTA",
+      "correccion": "LANCZOS y BICUBIC son CLASS=INTERPOLATION"
+    },
+    {
+      "id": "SR-R5",
+      "nombre": "Restauracion condicionada, no generacion",
+      "detecta": {
+        "dispara_con": ["unsharp", "eq=", "noise=", "smartblur", "deblock"],
+        "prohibido_presente": ["SUPER_RESOLUTION", "APE-AI-SR"]
+      },
+      "falla_si": "un filtro de realce se etiqueta como superresolucion",
+      "severidad": "ALTA",
+      "correccion": "unsharp/eq/noise son CLASS=ENHANCEMENT_CONTRAST, no superresolucion"
+    },
+    {
+      "id": "SR-R6",
+      "nombre": "La interpolacion de fotogramas es el eje temporal",
+      "detecta": {
+        "dispara_con": ["minterpolate", "FRAME-INTERPOLATION", "RIFE"],
+        "prohibido_presente": ["RESOLUTION=", "SUPER_RESOLUTION"]
+      },
+      "falla_si": "una interpolacion temporal se declara como RESOLUTION",
+      "severidad": "ALTA",
+      "correccion": "minterpolate es CLASS=FRAME_INTERPOLATION, campo temporal, nunca resolución"
+    },
+    {
+      "id": "SR-R7",
+      "nombre": "Broadcast y archivo, el caso legitimo",
+      "detecta": {
+        "dispara_con": ["APE-AI-SR", "SUPER_RESOLUTION"],
+        "exige_presente": ["CLASS=ARCHIVE", "CLASS=VOD", "MODE=ARCHIVE", "MODE=VOD"]
+      },
+      "falla_si": "se declara superresolucion sin declarar que el contenido es archivo o VOD",
+      "severidad": "MEDIA",
+      "correccion": "declarar CLASS=ARCHIVE|VOD, o retirar la declaracion en directo",
+      "nota": "En directo el coste de un detalle inventado se paga en cada fotograma y no hay segunda pasada."
+    }
+  ],
+
+  "etiquetas_canonicas": {
+    "CLASS=INTERPOLATION": "Distribuye pixeles existentes (LANCZOS, BICUBIC, BILINEAR)",
+    "CLASS=SUPER_RESOLUTION": "Modelo entrenado que predice detalle ausente",
+    "CLASS=ENHANCEMENT_CONTRAST": "Realce sobre lo que ya esta (unsharp, eq, noise)",
+    "CLASS=FRAME_INTERPOLATION": "Sintesis de fotogramas en el eje temporal (minterpolate, RIFE)",
+    "STATE=DECLARED": "Se declara sin medir: estado honesto por defecto",
+    "STATE=NO_COMPUTADO": "No evaluable: se dice, no se supone",
+    "STATE=APPLIED": "Solo admisible con DEGRADATION= y REFERENCE= presentes"
+  },
+
+  "prohibido": [
+    "declarar AI-SR sobre una fuente sin conocer su degradacion",
+    "declarar PSNR, SSIM, VMAF o LPIPS sin referencia real",
+    "etiquetar detalle sintetizado como SOURCE",
+    "etiquetar interpolacion como superresolucion",
+    "etiquetar realce de contraste como superresolucion",
+    "declarar interpolacion temporal como resolucion",
+    "prometer 6K u 8K a partir de una fuente de baja resolucion"
+  ],
+
+  "limites_declarados": [
+    "Este contrato valida DECLARACIONES en metadata, no pixeles. Un gate que lee texto no puede medir una imagen.",
+    "Ninguna de estas reglas mejora la imagen: impiden que se mienta sobre ella.",
+    "El presupuesto de +1 dB PSNR es de la fuente (ESPCN 4x, ~100 KB). No se extrapola a 6K.",
+    "El gate no sustituye a list_gate: son ortogonales. list_gate valida estructura; este valida afirmaciones."
+  ]
+}
