@@ -227,3 +227,86 @@ la APK ya envía cada 30 s deposite el ticket.
 
 *Medido por el agente REA el 2026-11-13. Cada afirmación cita comando, fichero:línea o
 salida. Las tres correcciones de esta sesión tienen backup en el VPS.*
+
+---
+
+# 8. RESUELTO — 2026-11-13 11:14 UTC
+
+**El canary está activo y funcional. Cadena completa recorrida con un canal real.**
+
+## El bloqueante era un bit de permiso
+
+```
+-rw-r--r-- 1 root root 4068 /usr/local/bin/ape-visual-emulate.sh
+                              ^ sin +x  ->  203/EXEC
+```
+
+El unit `ape-canary@.service` hace `ExecStart=/usr/local/bin/ape-visual-emulate.sh %i` y
+corre como `User=www-data`. El fichero existía desde el 12 nov con permisos 644: el kernel
+no podía ejecutarlo. **Ese era el `203/EXEC` que se veía desde el 12 nov 06:26.**
+
+`chmod 755` -> `Result=success`, `ExecMainStatus=0`.
+
+## Los cinco cambios aplicados
+
+| # | Cambio | Evidencia |
+|---|---|---|
+| 1 | `ape-pulse-canary.timer` arrancado + primera activación del servicio | `OnUnitActiveSec` necesita una activación previa como referencia; sin ella `NextElapse` queda vacío |
+| 2 | `/etc/ara/pulse/canary.enabled` creado | era el flag maestro que `pulse.php:179` exige |
+| 3 | `&z=1` en `ape-pulse-wrap.js:226` | fuente ADICIONAL; 0 de 3.602 pulsos lo llevaban |
+| 4 | allowlist ampliada a 4 hosts | faltaba `evestv.wuitf.com` (11.350 canales) |
+| 5 | `chmod 755` en `ape-visual-emulate.sh` | el 203/EXEC |
+
+Y dos correcciones colaterales: el ruido de `/proc` del worker (~180 errores/hora) y el
+mapeo de claves del device en `pulse.php` (17.618 de 17.639 pulsos con device vacío).
+
+## La cadena recorrida, con salida real
+
+```
+pulso /pulse/115.m3u8?...&z=1        -> HTTP 200
+ticket en cola                        {"id":"d77543ae1977da69",
+                                       "url":"http://line.tivi-ott.net/.../115.m3u8",
+                                       "seconds":6}
+worker                                "dispara canary id=d77543ae1977da69"
+                                      "canary d77543ae1977da69 lanzado"
+cola                                  0  (consumido)
+ape-canary@d77543ae1977da69.service   success / status=0
+```
+
+## La salida del canary
+
+```json
+{"session":"d77543ae1977da69","segment":"out0.ts",
+ "width":3840,"height":2160,"fps":5,"seconds":6,
+ "cpu_seconds":57.47,"wall_seconds":147,"cpu_pct_avg":39.1,
+ "filters":"deblock,dering(smartblur),yuv444p,lanczos,grain,unsharp,eq,yuv420p"}
+```
+
+```
+out0.ts     21.310.176 B   ffprobe -> codec_name=hevc, 3840x2160, yuv420p
+out.m3u8            142 B
+status.json         236 B
+```
+
+## Estado final del canary
+
+```
+timer         : active
+flag maestro  : PRESENTE
+allowlist     : 4 hosts (evestv.wuitf.com, line.tivi-ott.net, nfqdexu.x1megaott.store, iptv-ape.duckdns.org)
+ape-visual-emulate.sh : ejecutable
+cola          : 0
+listas z=1    : 21.224
+```
+
+## Lo que sigue pendiente, y no es el canary
+
+- **La APK no está corriendo en el device** (sin proceso `com.ape.crystalagent`, 0 eventos
+  `ARA-ZAP`). Mientras no corra, la fuente PRINCIPAL del zapeo sigue muda; today la fuente
+  que fluye es la adicional (`z=1` en la lista).
+- **`/sync` (ara-sync.php) no encola tickets.** Para que la APK alimente el canary por su
+  cuenta hace falta añadir el campo al esquema estricto y que el APK lo envíe.
+- **`line.tivi-ott.net` responde 407 al VPS.** El canary lo usa como origen y consigue
+  material (out0.ts de 21 MB), así que ese 407 no bloquea el canary; sí afecta a `/pulse/`.
+
+*Cerrado el 2026-11-13. Siguiente foco declarado: JIT.*
