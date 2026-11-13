@@ -26,6 +26,11 @@ param(
   [string]$ListPath,
   [int]$MaxChannels = 10,
   [int]$TimeoutSec = 45,
+  # [2026-11-13] §8 pide "parser de streaming para listas grandes". La lista viva
+  # pasa de 1 GB: descargarla entera para auditar 10 canales es absurdo. Con
+  # -MaxBytes se pide solo la cabeza (Range) y se corta al llegar a N bytes.
+  # Queda como muestra declarada del principio del catalogo, no del catalogo.
+  [long]$MaxBytes = 30000000,
   [string]$OutDir = 'docs/audits'
 )
 
@@ -38,14 +43,50 @@ $http.Timeout = [TimeSpan]::FromSeconds($TimeoutSec)
 $http.DefaultRequestHeaders.TryAddWithoutValidation('User-Agent', 'OTT Navigator/1.7.3.3') | Out-Null
 
 # ── 1 · leer la lista ────────────────────────────────────────────────────────
+$truncada = $false
+$bytesTotales = 0
 if ($ListPath) {
   if (-not (Test-Path $ListPath)) { Write-Host "ERROR: no existe $ListPath"; exit 2 }
-  $txt = Get-Content $ListPath -Raw -Encoding utf8
+  $fi = Get-Item $ListPath
+  if ($MaxBytes -gt 0 -and $fi.Length -gt $MaxBytes) {
+    # corte por bytes: se leen solo los primeros MaxBytes
+    $fs = [System.IO.File]::OpenRead($fi.FullName)
+    $buf = New-Object byte[] $MaxBytes
+    $leidos = $fs.Read($buf, 0, $MaxBytes)
+    $fs.Close()
+    $txt = [System.Text.Encoding]::UTF8.GetString($buf, 0, $leidos)
+    $bytesTotales = $leidos; $truncada = $true
+  } else {
+    $txt = Get-Content $ListPath -Raw -Encoding utf8
+    $bytesTotales = $fi.Length
+  }
   $origen = $ListPath
 } else {
-  $bytes = $http.GetByteArrayAsync($ListUrl).Result
-  $txt = [System.Text.Encoding]::UTF8.GetString($bytes)
-  $origen = $ListUrl
+  # Range: pedir solo la cabeza en vez de 1 GB
+  if ($MaxBytes -gt 0) {
+    $req = New-Object System.Net.Http.HttpRequestMessage('GET', $ListUrl)
+    $req.Headers.Range = New-Object System.Net.Http.Headers.RangeHeaderValue(0, ($MaxBytes - 1))
+    $resp = $http.SendAsync($req).Result
+    $codigo = [int]$resp.StatusCode
+    $bytes = $resp.Content.ReadAsByteArrayAsync().Result
+    $txt = [System.Text.Encoding]::UTF8.GetString($bytes)
+    $bytesTotales = $bytes.Length
+    # si el servidor honro el Range, sabemos que hay mas
+    $truncada = ($codigo -eq 206)
+    $origen = $ListUrl
+    Write-Host ("   Range 0-{0}: HTTP {1} · {2} B {3}" -f ($MaxBytes - 1), $codigo, $bytes.Length, $(if ($codigo -eq 206) { '(respuesta parcial: la lista continua)' } else { '(el servidor ignoro el Range: esto es la lista entera o su primer bloque)' }))
+  } else {
+    $bytes = $http.GetByteArrayAsync($ListUrl).Result
+    $txt = [System.Text.Encoding]::UTF8.GetString($bytes)
+    $bytesTotales = $bytes.Length
+    $origen = $ListUrl
+  }
+}
+# Al cortar por bytes el ultimo canal del bloque queda incompleto: se descarta
+# el ultimo tramo si no termina en salto de linea, para no parsear media linea.
+if ($truncada) {
+  $ultimoNl = $txt.LastIndexOf("`n")
+  if ($ultimoNl -gt 0) { $txt = $txt.Substring(0, $ultimoNl) }
 }
 $lineas = $txt -split "`r?`n"
 
@@ -93,7 +134,13 @@ foreach ($ch in $canales) {
   if ($ch.perfil -and $esperado.ContainsKey($ch.perfil)) { $res.esperado_px = $esperado[$ch.perfil] }
 
   try {
-    $mb = [System.Text.Encoding]::UTF8.GetString($http.GetByteArrayAsync($ch.url).Result)
+    $bytesMb = $http.GetByteArrayAsync($ch.url).Result
+    # [2026-11-13] BUG corregido: si la respuesta venia nula o vacia,
+    # [Encoding]::UTF8.GetString($null) lanzaba "Value cannot be null" y el canal
+    # quedaba NO_COMPUTADO con un mensaje de excepcion en vez del motivo real.
+    # En la lista viva de produccion paso con 1 de 6 canales.
+    if ($null -eq $bytesMb -or $bytesMb.Length -eq 0) { $res.motivo = 'el manifiesto del canal vino vacio'; $filas += [pscustomobject]$res; continue }
+    $mb = [System.Text.Encoding]::UTF8.GetString($bytesMb)
     $seg = ($mb -split "`r?`n" | Where-Object { $_ -match '^https?://' } | Select-Object -First 1)
     if (-not $seg) { $res.motivo = 'el manifiesto no tiene segmentos'; $filas += [pscustomobject]$res; continue }
 
@@ -133,12 +180,16 @@ foreach ($ch in $canales) {
 Write-Host "== declarado vs real · $origen"
 Write-Host ("   canales en la lista: {0} · analizados: {1}" -f $canales.Count, $analizados)
 Write-Host ""
-Write-Host ("   {0,-3} {1,-9} {2,-8} {3,-12} {4,-6} {5,-8} {6}" -f '#', 'perfil', 'medido', 'resolucion', 'fps', 'Mbps', 'veredicto')
+Write-Host ("   {0,-3} {1,-7} {2,-12} {3,-11} {4,-5} {5,-7} {6,-12} {7}" -f '#', 'perfil', 'medido', 'resolucion', 'fps', 'Mbps', 'veredicto', 'canal')
 foreach ($f in $filas) {
   $verd = if ($null -eq $f.cumple) { if ($f.medido -eq 'MEDIDO') { 'sin perfil' } else { 'NO COMPUTADO' } }
            elseif ($f.cumple) { 'CUMPLE' } else { 'NO CUMPLE' }
   $resol = if ($f.medido -eq 'MEDIDO') { "$($f.ancho)x$($f.alto)" } else { '-' }
-  Write-Host ("   {0,-3} {1,-9} {2,-8} {3,-12} {4,-6} {5,-8} {6}  {7}" -f $f.indice, $f.perfil, $f.medido, $resol, $f.fps, $f.mbps, $verd, $f.motivo)
+  # [2026-11-13] el nombre del canal es lo que hace accionable el hallazgo: sin
+  # el, "el canal 3 falla" no sirve para ir a arreglarlo.
+  $nom = if ($f.canal) { $f.canal.Substring(0, [Math]::Min(38, $f.canal.Length)) } else { '?' }
+  Write-Host ("   {0,-3} {1,-7} {2,-12} {3,-11} {4,-5} {5,-7} {6,-12} {7}" -f $f.indice, $f.perfil, $f.medido, $resol, $f.fps, $f.mbps, $verd, $nom)
+  if ($f.motivo) { Write-Host ("       -> {0}" -f $f.motivo) }
 }
 
 $noCumplen = @($filas | Where-Object { $_.cumple -eq $false }).Count

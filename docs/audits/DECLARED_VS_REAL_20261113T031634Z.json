@@ -1,0 +1,63 @@
+{
+  "schema": "ape.declared_vs_real.v1",
+  "fecha_utc": "20261113T031634Z",
+  "origen": "https://iptv-ape.duckdns.org/lists/APE_PRUEBA_PERFILES.m3u8",
+  "canales_en_lista": 3,
+  "analizados": 3,
+  "medidos": 3,
+  "no_cumplen": 1,
+  "nota_frame_rate": "Se usa avg_frame_rate. r_frame_rate en un segmento MPEG-TS aislado da valores falsos (medido: 125/1 en un canal de 25 fps).",
+  "filas": [
+    {
+      "alto": 1080,
+      "url": "https://iptv-ape.duckdns.org/pulse/6297.m3u8?u=http%3A%2F%2Fline.tivi-ott.net%2Flive%2F3JHFTC%2FU56BDP%2F47.m3u8&d=eyJ0IjoiZ2VuZXJpYyIsInMiOiJ1bmtub3duIiwiciI6MjA0OCwidyI6MTkyMCwiaCI6MTA4MCwiZiI6MzAsImhkciI6InNkciIsInAiOiJQMSJ9&p=P1&n=%7CAL%7C+KLAN+MACEDONIA+4K+%5Bline.tivi-ott.net%5D&id=6297&s=e28ae9c3e0301a46&v=9.3.0&logo=http%3A%2F%2Fpicon.tivi-ott.net%3A25461%2Fpicon%2FALBANIA%2FKLAN%2520MACEDONIA.png&fp=5d4f085f&m=cartridge&l=APE_PRUEBA_PERFILES",
+      "perfil_real": "Main",
+      "ancho": 1920,
+      "motivo": "declara 2160p y sirve 1080p",
+      "codec": "h264",
+      "fps": 25.0,
+      "medido": "MEDIDO",
+      "level": "40",
+      "canal": "|AL| KLAN MACEDONIA 4K [line.tivi-ott.net]",
+      "indice": 1,
+      "perfil": "P1",
+      "cumple": false,
+      "mbps": null,
+      "esperado_px": 2160
+    },
+    {
+      "alto": 1080,
+      "url": "https://iptv-ape.duckdns.org/pulse/6243.m3u8?u=http%3A%2F%2Fline.tivi-ott.net%2Flive%2F3JHFTC%2FU56BDP%2F3.m3u8&d=eyJ0IjoiZ2VuZXJpYyIsInMiOiJ1bmtub3duIiwiciI6MjA0OCwidyI6MTkyMCwiaCI6MTA4MCwiZiI6MzAsImhkciI6InNkciIsInAiOiJQMyJ9&p=P3&n=%7CAL%7C+TOP+CHANNEL+FHD+%5Bline.tivi-ott.net%5D&id=6243&s=4b589622be634a96&v=9.3.0&logo=http%3A%2F%2Fpicon.tivi-ott.net%3A25461%2Fpicon%2FALBANIA%2FTOPCHANNEL.png&fp=59f0f619&m=cartridge&l=APE_PRUEBA_PERFILES",
+      "perfil_real": "High",
+      "ancho": 1920,
+      "motivo": "",
+      "codec": "h264",
+      "fps": 25.0,
+      "medido": "MEDIDO",
+      "level": "40",
+      "canal": "|AL| TOP CHANNEL FHD [line.tivi-ott.net]",
+      "indice": 2,
+      "perfil": "P3",
+      "cumple": true,
+      "mbps": 7.03,
+      "esperado_px": 1080
+    },
+    {
+      "alto": 1080,
+      "url": "https://iptv-ape.duckdns.org/pulse/6244.m3u8?u=http%3A%2F%2Fline.tivi-ott.net%2Flive%2F3JHFTC%2FU56BDP%2F5.m3u8&d=eyJ0IjoiZ2VuZXJpYyIsInMiOiJ1bmtub3duIiwiciI6MjA0OCwidyI6MTkyMCwiaCI6MTA4MCwiZiI6MzAsImhkciI6InNkciIsInAiOiJQMyJ9&p=P3&n=%7CAL%7C+TOP+CHANNEL+HD+%5Bline.tivi-ott.net%5D&id=6244&s=9546f106a821483c&v=9.3.0&logo=http%3A%2F%2Fpicon.tivi-ott.net%3A25461%2Fpicon%2FALBANIA%2FTOPCHANNEL.png&fp=d2e74623&m=cartridge&l=APE_PRUEBA_PERFILES",
+      "perfil_real": "High",
+      "ancho": 1920,
+      "motivo": "declara 720p y sirve 1080p (MEJOR de lo declarado)",
+      "codec": "h264",
+      "fps": 25.0,
+      "medido": "MEDIDO",
+      "level": "40",
+      "canal": "|AL| TOP CHANNEL HD [line.tivi-ott.net]",
+      "indice": 3,
+      "perfil": "P4",
+      "cumple": true,
+      "mbps": 6.24,
+      "esperado_px": 720
+    }
+  ]
+}
