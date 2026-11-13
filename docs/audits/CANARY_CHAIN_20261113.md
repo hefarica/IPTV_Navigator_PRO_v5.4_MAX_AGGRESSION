@@ -310,3 +310,82 @@ listas z=1    : 21.224
   material (out0.ts de 21 MB), así que ese 407 no bloquea el canary; sí afecta a `/pulse/`.
 
 *Cerrado el 2026-11-13. Siguiente foco declarado: JIT.*
+
+---
+
+# 9. Workflow permanente del canary — 2026-11-13 11:22 UTC
+
+Objetivo del operador: **"que corra siempre, nunca se caiga, y despierte en cada
+zapping en segundo plano, sin generar lacks ni freezeos"**.
+
+## Lo que ya estaba bien (medido, no supuesto)
+
+| Guarda | Dónde | Efecto |
+|---|---|---|
+| `if list-units --state=active \| grep -q 'ape-canary@' -> exit 0` | worker:31 | **una sola instancia**: no se acumulan |
+| `jit_busy()` -> skip si ffmpeg en `/dev/shm/ape-jit` | worker:67 | no compite con el JIT |
+| `CPUQuota=40%` | unit | máximo 40 % de **un** core de 3 |
+| `Nice=10` · `IOWeight=10` · `IOSchedulingClass=best-effort` | unit | cede CPU y disco a la reproducción |
+| `RuntimeMaxSec=300` | unit | se autolimita a 5 min |
+| `ConditionPathExists=/etc/ara/skills/SKILLS.md` | unit | fail-closed |
+| lock TTL 300 s por canal | `pulse.php` | un canal no reencola antes de 5 min |
+
+**Coste medido del canary** (9 sesiones en `status.json`): 3840x2160, **cpu% 35-39**,
+wall 75-194 s. En 3 vCPU con `CPUQuota=40%` y `Nice=10`, no puede hambrear el playback.
+
+## Lo que faltaba y se añadió
+
+El unit tenía **`Restart=no`**. Un fallo dejaba el canary muerto hasta la siguiente
+ventana del timer — y la primera vez que miré el servicio estaba exactamente así.
+
+```ini
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=600   # en [Unit], NO en [Service]
+StartLimitBurst=3
+```
+
+**Dos trampas encontradas al aplicarlo:**
+
+1. **`StartLimitIntervalSec` puesto en `[Service]` es ignorado por systemd.** Puesto ahí,
+   `systemctl show` seguía devolviendo `StartLimitIntervalUSec=10s` (el default). Movido a
+   `[Unit]` -> `10min`.
+2. **Duplicado silencioso.** El fichero original tenía `Restart=no` más abajo que la línea
+   que inserté; en systemd **gana la última**, así que `systemctl show` seguía diciendo
+   `Restart=no`. Quitada esa línea -> `Restart=on-failure`.
+
+**Verificado con `systemctl show` (lo que systemd VE, no lo que dice el fichero):**
+
+```
+Restart=on-failure · RestartUSec=10s
+StartLimitBurst=3 · StartLimitIntervalUSec=10min
+RuntimeMaxUSec=5min · CPUQuotaPerSecUSec=400ms · Nice=10
+```
+
+## El flujo completo, ya en producción
+
+```
+zapeo del usuario
+   |
+   +-- fuente PRINCIPAL   APK (ottshim -> ZAP -> AgentService -> /sync)   [APK no corriendo]
+   |
+   +-- fuente ADICIONAL   URL de la lista con &z=1  (21.224 URLs)         [ACTIVA]
+                            |
+                            v
+              pulse.php: $zap && flag -> ticket en cola
+                            |
+              ape-pulse-canary.timer (20 s) -> worker
+                            |  fail-closed: allowlist de 4 hosts
+                            |  skip si JIT sirviendo
+                            |  skip si ya hay un canary activo
+                            v
+              ape-canary@<id>.service (Restart=on-failure, CPUQuota 40%, Nice 10)
+                            |
+                            v
+              out0.ts (HEVC 3840x2160) + out.m3u8 + status.json
+```
+
+**Latencia de activación**: el timer barre cada 20 s, así que un zapeo genera su
+canary en **≤ 20 s**. El canary tarda ~15 s en producir el segmento.
+
+*Cerrado 2026-11-13. Siguiente: 4xx/5xx y el overlay de upscaling.*
