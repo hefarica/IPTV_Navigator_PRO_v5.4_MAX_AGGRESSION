@@ -1,0 +1,37 @@
+{
+  "schema": "ape.list-gate.v1",
+  "generado": "2026-11-13T08:18:01.452Z",
+  "objetivo": "lista_sana_con_harness.m3u8",
+  "veredicto": "APTA",
+  "identidad": {
+    "sha256": "1e473c780d063047ea3447d78e6e6ba44ef3fc28f6097bc423e6c8944d285e36",
+    "bytes": 1310,
+    "last_modified": null,
+    "etag": null,
+    "lineas": 22,
+    "extinf": 3,
+    "stream_inf": 3,
+    "urls": 3
+  },
+  "estructura": {
+    "entradas_con_url": 3,
+    "huerfanas": 0,
+    "ape_channels_declarado": 3,
+    "coherente": true
+  },
+  "servibilidad": [],
+  "modo": "OFFLINE: no se probo servibilidad",
+  "harness": {
+    "presente": 9,
+    "falta": [],
+    "exigido": 9
+  },
+  "fallos": [],
+  "probe_v3": {
+    "disponible": true,
+    "ruta": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\vps\\ape-list-probe\\v3\\ape-list-probe.js",
+    "sha256": "7b24f3adaf426df33f620dd062c55b7c5f4a5d09b6fbbcd172c0271c95adde8c"
+  },
+  "duracion_ms": 7,
+  "nota": "El censo propio corre ADEMAS del probe v3 porque v3 clasifica estas listas como HLS_MASTER y entonces no cuenta canales ni comprueba servibilidad. Los dos son necesarios."
+}

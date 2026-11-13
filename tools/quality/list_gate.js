@@ -41,6 +41,7 @@ const argv = process.argv.slice(2);
 const JSON_OUT = argv.includes('--json');
 const pos = argv.filter(a => !a.startsWith('--'));
 const objetivo = pos[0];
+const SIN_RED = argv.includes('--sin-red');   // CI: no toca la red, solo estructura y harness
 const idxM = argv.indexOf('--muestras');
 const MUESTRAS = idxM >= 0 ? Number(argv[idxM + 1] || 3) : 3;
 
@@ -187,7 +188,9 @@ async function servibilidad(censo) {
     const t0 = Date.now();
     const v3 = correrV3();
     const censo = await censar(objetivo);
-    const serv = censo.no_computado.length ? [] : await servibilidad(censo);
+    // En modo --sin-red NO se prueba servibilidad: CI no debe depender del proveedor ni de
+    // la red. Se declara NO_COMPUTADO con el motivo, que no es lo mismo que MUERTA.
+    const serv = (SIN_RED || censo.no_computado.length) ? [] : await servibilidad(censo);
 
     const muertas = serv.filter(s => s.estado === 'MUERTA');
     const vivas = serv.filter(s => s.estado === 'VIVA' || s.estado === 'MIXTA');
@@ -195,7 +198,7 @@ async function servibilidad(censo) {
 
     // Veredicto: una lista es APTA si tiene rutas vivas, no esta truncada y lleva el harness.
     const fallos = [];
-    if (censo.no_computado.length) fallos.push('NO_COMPUTADO: ' + censo.no_computado.join(' | '));
+    if (censo.no_computado.length && !SIN_RED) fallos.push('NO_COMPUTADO: ' + censo.no_computado.join(' | '));
     if (muertas.length) fallos.push(`${muertas.length} clase(s) de ruta MUERTA(S) — la lista no reproduce por esa via`);
     if (huerfanas > 0) fallos.push(`${huerfanas} entrada(s) #EXTINF sin URL`);
     if (censo.harness_falta.length) fallos.push(`faltan ${censo.harness_falta.length} linea(s) del harness`);
@@ -203,7 +206,7 @@ async function servibilidad(censo) {
         fallos.push(`APE_CHANNELS declara ${censo.ape_channels_declarado} y hay ${censo.extinf} #EXTINF`);
     }
 
-    const veredicto = censo.no_computado.length ? 'NO_COMPUTADO'
+    const veredicto = (censo.no_computado.length && !SIN_RED) ? 'NO_COMPUTADO'
         : (muertas.length || huerfanas > 0 ? 'NO_APTA'
             : (censo.harness_falta.length ? 'APTA_SIN_HARNESS' : 'APTA'));
 
@@ -223,6 +226,7 @@ async function servibilidad(censo) {
             coherente: censo.ape_channels_declarado === null || censo.ape_channels_declarado === censo.extinf
         },
         servibilidad: serv,
+        modo: SIN_RED ? 'OFFLINE: no se probo servibilidad' : 'COMPLETO',
         harness: {
             presente: censo.harness_presente.length,
             falta: censo.harness_falta,
@@ -261,7 +265,8 @@ async function servibilidad(censo) {
             (censo.ape_channels_declarado === null ? '' : (censo.ape_channels_declarado === censo.extinf ? ' (coincide)' : ' (NO COINCIDE)')));
         console.log('');
         console.log('SERVIBILIDAD');
-        if (!serv.length) console.log('  NO COMPUTADO');
+        if (SIN_RED) console.log('  NO COMPUTADO (modo offline: CI no toca la red)');
+        else if (!serv.length) console.log('  NO COMPUTADO');
         for (const s of serv) {
             console.log(`  ${s.estado.padEnd(11)} ${s.clase}`);
             console.log(`              ${s.urls_en_la_lista.toLocaleString('es')} en la lista · ${s.probadas} probadas · codigos [${s.codigos.join(',')}]`);
