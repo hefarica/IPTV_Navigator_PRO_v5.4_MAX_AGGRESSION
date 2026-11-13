@@ -309,7 +309,13 @@ jobs:
           # lineas mientras el ONN reproducia, y eso NO prueba que no pase por el
           # VPS — podria ser otro UA o una ventana demasiado corta. Ahora se
           # observa primero (que UA hay) y solo despues se filtra.
-          raw="$(rsh "for f in /var/log/nginx/access.log /var/log/nginx/apt.log; do [ -r \"\$f\" ] && tail -n 2000 \"\$f\"; done 2>/dev/null" || true)"
+          # [2026-11-12] El nginx de este VPS parte el trafico en VARIOS logs:
+          # access.log solo lleva health checks de curl local. El trafico real
+          # esta en playlist_access.log, shield_access.log, ara_sync_access.log…
+          # Medido: el primer "0 peticiones de esa IP" se calculo sobre
+          # access.log+apt.log y era FALSO; en playlist_access.log la IP SI
+          # aparecia. Se leen TODOS los *access*.log.
+          raw="$(rsh "for f in /var/log/nginx/*access*.log; do [ -r \"\$f\" ] || continue; tail -n 1500 \"\$f\"; done 2>/dev/null" || true)"
           if [ -z "$raw" ]; then
             echo "   NO se pudo leer el access log (0 lineas devueltas)."
             echo "   Esto es 'no computado', no 'nadie pide nada'."
