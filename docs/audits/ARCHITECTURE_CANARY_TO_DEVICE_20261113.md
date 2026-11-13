@@ -80,6 +80,9 @@ android.permission.SYSTEM_ALERT_WINDOW:    granted = FALSE   ← NO hay overlay
 
 **13 claves.** Ese es el poder real del Canary sobre el dispositivo.
 
+Desglose verificable: **10 en `global` + 3 en `secure` + 0 en `system` = 13**.
+(Las cadenas `"global"`, `"secure"` y `"system"` de la izquierda son los nombres de namespace del mapa, **no** ajustes.)
+
 ## 4 · Lo que está VERIFICADO que funciona
 
 **`hdr_conversion_mode = 1`** (PASSTHROUGH), medido en el aparato.
