@@ -12,6 +12,21 @@ on:
       - 'frontend/tests/lab-profile-count.test.js'
       - 'frontend/js/ape-v9/ape-lab-v8-profiles.js'
       - 'contracts/ape_*.json'
+      # [2026-11-13] Paths que FALTABAN. Medido: el gate anti-degradacion escanea
+      # el codigo JIT y lee el contrato y AGENTS.md, pero ninguno de esos ficheros
+      # disparaba este workflow. Cambiar el motor —donde esta la degradacion de
+      # audio que el gate vigila— no ejecutaba el gate. Un gate que no corre
+      # cuando cambia lo que vigila es decorativo.
+      - 'tools/quality/test_*.js'
+      - 'contracts/anti_degradation_contract.json'
+      - 'contracts/canary_*.json'
+      - 'tools/lab/ape-jit/**'
+      - 'IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/**'
+      - 'vps_jit/**'
+      - 'AGENTS.md'
+      - 'docs/policies/ANTI_DEGRADATION_LAW.md'
+      - 'docs/policies/CRYSTAL_4K_ENHANCEMENT_LAW.md'
+      - 'docs/policies/CRYSTAL_6K_MAX_ENHANCEMENT_LAW.md'
       - '.github/workflows/ape-bridge-tests.yml'
 
 permissions:
@@ -43,4 +58,21 @@ jobs:
           node frontend/tests/lab-profile-count.test.js
           node tools/check_audio_safe_policy.js
           node tools/check_omega_directives.js
+      # [2026-11-13] La LEY ANTI-DEGRADACION es innegociable, y su gate NO lo
+      # ejecutaba ningun workflow: cualquier commit podia reintroducir degradacion
+      # y nada lo cazaba. Se añade aqui, junto a los otros gates de politica.
+      # Primero la PRUEBA del gate (que el gate siga viendo degradacion real y no
+      # castigue la documentacion), despues los gates. Si la prueba falla, el
+      # gate no es fiable y el job debe parar antes de creerle.
+      - name: Gate anti-degradacion (ley innegociable) + su propia prueba
+        run: |
+          echo "== prueba del gate: que no sea ciego ni castigue documentar =="
+          node tools/quality/test_anti_degradation_gate.js
+          echo "== la ley y el contrato =="
+          node tools/check_anti_degradation_policy.js
+          echo "== crystal 4K / 6K =="
+          node tools/check_crystal_4k_law.js
+          node tools/check_crystal_6k_law.js
+      - name: Contrato Canary-JIT (motor desplegado == lo pinado)
+        run: node tools/quality/test_canary_jit_contract.js
 
