@@ -1,0 +1,72 @@
+{
+  "schema": "ape.hf.session-calibrator.v1",
+  "generado": "2026-11-13T07:12:25.841Z",
+  "fuente": "b.mp4",
+  "umbrales": {
+    "suelo_ruido_pct": 0.04,
+    "cambio_pct": 2,
+    "severo_pct": 8,
+    "origen": "suelo de ruido medido (0,04 % entre dos codificaciones identicas) x 50 = 2 %; 8 % equivale a bajar el bitrate a la mitad (medido: 4000->800 kbps da -8,0 % en el cesped)"
+  },
+  "linea_base": {
+    "cuadro": 2.0249,
+    "plano": 1.848
+  },
+  "muestras": 24,
+  "alertas": [
+    {
+      "region": "cuadro",
+      "t": 5,
+      "hf": 1.5974,
+      "base": 2.0249,
+      "caida_pct": 21.11,
+      "nivel": "SEVERO"
+    },
+    {
+      "region": "cuadro",
+      "t": 5.5,
+      "hf": 1.4774,
+      "base": 2.0249,
+      "caida_pct": 27.04,
+      "nivel": "SEVERO"
+    },
+    {
+      "region": "cuadro",
+      "t": 6,
+      "hf": 1.7047,
+      "base": 2.0249,
+      "caida_pct": 15.81,
+      "nivel": "SEVERO"
+    },
+    {
+      "region": "cuadro",
+      "t": 6.5,
+      "hf": 1.6764,
+      "base": 2.0249,
+      "caida_pct": 17.21,
+      "nivel": "SEVERO"
+    },
+    {
+      "region": "cuadro",
+      "t": 7,
+      "hf": 1.7278,
+      "base": 2.0249,
+      "caida_pct": 14.67,
+      "nivel": "SEVERO"
+    },
+    {
+      "region": "cuadro",
+      "t": 8,
+      "hf": 1.59,
+      "base": 2.0249,
+      "caida_pct": 21.48,
+      "nivel": "SEVERO"
+    }
+  ],
+  "veredicto": "DEGRADADO: hay caidas severas de detalle",
+  "no_computado": [
+    "Se ejecuta contra FICHEROS. El bloqueante del ImageReader como salida de MediaCodec sigue en pie: no se puede correr sobre el decodificador del aparato sin resolverlo.",
+    "La linea base son los primeros 3 s. Si el stream ya viene degradado desde el inicio, no hay caida que detectar.",
+    "Una escena con menos detalle natural (un plano de cielo) bajaría el HF sin que haya degradación: por eso se usan DOS regiones y se compara contra la propia base."
+  ]
+}

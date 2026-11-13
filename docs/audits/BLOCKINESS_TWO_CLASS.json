@@ -1,0 +1,296 @@
+{
+  "schema": "ape.blockiness.two-class.v1",
+  "generado": "2026-11-13T07:00:11.258Z",
+  "metodo": "mismo contenido x varios bitrates: la unica variable es la compresion",
+  "bitrates": [
+    20000,
+    8000,
+    3000,
+    1000,
+    400
+  ],
+  "contenidos": {
+    "real": {
+      "filas": [
+        {
+          "nombre": "REF_20M",
+          "kbps_objetivo": 20000,
+          "kbps_real": 20017,
+          "regiones": {
+            "full": {
+              "n": 7,
+              "min": 1.058,
+              "p25": 1.0626,
+              "mediana": 1.1185,
+              "p75": 1.1385,
+              "p95": 1.1955,
+              "max": 1.1955,
+              "media": 1.1117
+            },
+            "banda_inferior": {
+              "n": 7,
+              "min": 0.8307,
+              "p25": 0.8916,
+              "mediana": 0.951,
+              "p75": 1.0101,
+              "p95": 1.0222,
+              "max": 1.0222,
+              "media": 0.9401
+            }
+          }
+        },
+        {
+          "nombre": "ALTO_8M",
+          "kbps_objetivo": 8000,
+          "kbps_real": 8145,
+          "regiones": {
+            "full": {
+              "n": 7,
+              "min": 1.0769,
+              "p25": 1.0843,
+              "mediana": 1.1378,
+              "p75": 1.2037,
+              "p95": 1.2232,
+              "max": 1.2232,
+              "media": 1.1427
+            },
+            "banda_inferior": {
+              "n": 7,
+              "min": 0.8427,
+              "p25": 0.8678,
+              "mediana": 0.9027,
+              "p75": 1.0023,
+              "p95": 1.0169,
+              "max": 1.0169,
+              "media": 0.925
+            }
+          }
+        },
+        {
+          "nombre": "MEDIO_3M",
+          "kbps_objetivo": 3000,
+          "kbps_real": 3076,
+          "regiones": {
+            "full": {
+              "n": 7,
+              "min": 1.0609,
+              "p25": 1.0616,
+              "mediana": 1.1364,
+              "p75": 1.2081,
+              "p95": 1.25,
+              "max": 1.25,
+              "media": 1.1415
+            },
+            "banda_inferior": {
+              "n": 7,
+              "min": 0.8454,
+              "p25": 0.8785,
+              "mediana": 0.9175,
+              "p75": 1.0012,
+              "p95": 1.0214,
+              "max": 1.0214,
+              "media": 0.9276
+            }
+          }
+        },
+        {
+          "nombre": "BAJO_1M",
+          "kbps_objetivo": 1000,
+          "kbps_real": 1018,
+          "regiones": {
+            "full": {
+              "n": 7,
+              "min": 1.04,
+              "p25": 1.0486,
+              "mediana": 1.1183,
+              "p75": 1.1952,
+              "p95": 1.2429,
+              "max": 1.2429,
+              "media": 1.1174
+            },
+            "banda_inferior": {
+              "n": 7,
+              "min": 0.7951,
+              "p25": 0.8712,
+              "mediana": 0.9022,
+              "p75": 0.9913,
+              "p95": 1.0196,
+              "max": 1.0196,
+              "media": 0.9184
+            }
+          }
+        },
+        {
+          "nombre": "MUYBAJO_400K",
+          "kbps_objetivo": 400,
+          "kbps_real": 413,
+          "regiones": {
+            "full": {
+              "n": 7,
+              "min": 1.0346,
+              "p25": 1.0415,
+              "mediana": 1.145,
+              "p75": 1.3277,
+              "p95": 1.3553,
+              "max": 1.3553,
+              "media": 1.1669
+            },
+            "banda_inferior": {
+              "n": 7,
+              "min": 0.6666,
+              "p25": 0.8186,
+              "mediana": 0.9008,
+              "p75": 0.9569,
+              "p95": 0.99,
+              "max": 0.99,
+              "media": 0.871
+            }
+          }
+        }
+      ],
+      "monotono": true,
+      "detalle": "REF=1.1185 -> MUY_BAJO=1.145 ; inversiones=2/4"
+    },
+    "sintetico": {
+      "filas": [
+        {
+          "nombre": "REF_20M",
+          "kbps_objetivo": 20000,
+          "kbps_real": 11913,
+          "regiones": {
+            "full": {
+              "n": 7,
+              "min": 2.5608,
+              "p25": 2.5637,
+              "mediana": 2.6507,
+              "p75": 2.6581,
+              "p95": 2.6598,
+              "max": 2.6598,
+              "media": 2.617
+            },
+            "banda_inferior": {
+              "n": 7,
+              "min": 0.3999,
+              "p25": 0.4497,
+              "mediana": 0.486,
+              "p75": 0.5029,
+              "p95": 0.5039,
+              "max": 0.5039,
+              "media": 0.4731
+            }
+          }
+        },
+        {
+          "nombre": "ALTO_8M",
+          "kbps_objetivo": 8000,
+          "kbps_real": 8202,
+          "regiones": {
+            "full": {
+              "n": 7,
+              "min": 2.5431,
+              "p25": 2.5466,
+              "mediana": 2.6308,
+              "p75": 2.6423,
+              "p95": 2.6435,
+              "max": 2.6435,
+              "media": 2.6009
+            },
+            "banda_inferior": {
+              "n": 7,
+              "min": 0.4199,
+              "p25": 0.4605,
+              "mediana": 0.4903,
+              "p75": 0.5013,
+              "p95": 0.5056,
+              "max": 0.5056,
+              "media": 0.4787
+            }
+          }
+        },
+        {
+          "nombre": "MEDIO_3M",
+          "kbps_objetivo": 3000,
+          "kbps_real": 4006,
+          "regiones": {
+            "full": {
+              "n": 7,
+              "min": 2.5056,
+              "p25": 2.5138,
+              "mediana": 2.5935,
+              "p75": 2.6097,
+              "p95": 2.6132,
+              "max": 2.6132,
+              "media": 2.567
+            },
+            "banda_inferior": {
+              "n": 7,
+              "min": 0.441,
+              "p25": 0.4653,
+              "mediana": 0.4732,
+              "p75": 0.4939,
+              "p95": 0.499,
+              "max": 0.499,
+              "media": 0.4754
+            }
+          }
+        },
+        {
+          "nombre": "BAJO_1M",
+          "kbps_objetivo": 1000,
+          "kbps_real": 1264,
+          "regiones": {
+            "full": {
+              "n": 7,
+              "min": 2.6035,
+              "p25": 2.7054,
+              "mediana": 2.8646,
+              "p75": 2.9007,
+              "p95": 2.9877,
+              "max": 2.9877,
+              "media": 2.8135
+            },
+            "banda_inferior": {
+              "n": 7,
+              "min": 0.3392,
+              "p25": 0.358,
+              "mediana": 0.3742,
+              "p75": 0.4249,
+              "p95": 0.4307,
+              "max": 0.4307,
+              "media": 0.3831
+            }
+          }
+        },
+        {
+          "nombre": "MUYBAJO_400K",
+          "kbps_objetivo": 400,
+          "kbps_real": 522,
+          "regiones": {
+            "full": {
+              "n": 7,
+              "min": 2.8705,
+              "p25": 2.8714,
+              "mediana": 2.8811,
+              "p75": 2.9856,
+              "p95": 3.0439,
+              "max": 3.0439,
+              "media": 2.9167
+            },
+            "banda_inferior": {
+              "n": 7,
+              "min": 0.123,
+              "p25": 0.1838,
+              "mediana": 0.2202,
+              "p75": 0.2566,
+              "p95": 0.2968,
+              "max": 0.2968,
+              "media": 0.2152
+            }
+          }
+        }
+      ],
+      "monotono": true,
+      "detalle": "REF=2.6507 -> MUY_BAJO=2.8811 ; inversiones=2/4"
+    }
+  }
+}

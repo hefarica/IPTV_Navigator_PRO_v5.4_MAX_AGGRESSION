@@ -98,3 +98,5 @@ jobs:
 
       - name: Politica de composicion polimorfica (tope 1080p del firmware)
         run: node tools/quality/test_composition_policy.js
+       - name: Metrica de detalle HF (validada, monotona con bitrate)         run: node tools/quality/test_hf_detail_metric.js
+       - name: Detector de bloque sobre HEVC (queda refutado, HF no)         run: node tools/quality/test_hevc_block_detector.js

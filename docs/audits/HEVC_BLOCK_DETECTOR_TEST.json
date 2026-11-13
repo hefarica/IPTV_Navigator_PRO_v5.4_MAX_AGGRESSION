@@ -1,0 +1,56 @@
+{
+  "schema": "ape.hevc.detector-test.v1",
+  "generado": "2026-11-13T07:07:03.635Z",
+  "bitrates": [
+    8000,
+    2000,
+    500
+  ],
+  "resultados": {
+    "h264": {
+      "hf": [
+        1.82383056640625,
+        1.72761474609375,
+        1.3338818359375
+      ],
+      "borde8": [
+        1.258822686999686,
+        1.198331337491147,
+        1.2536575022969838
+      ],
+      "hf_monotona_decreciente": {
+        "inversiones": 0,
+        "monotona": true
+      },
+      "borde8_monotona_creciente": {
+        "inversiones": 1,
+        "monotona": false
+      }
+    },
+    "hevc": {
+      "hf": [
+        1.79725341796875,
+        1.7076123046875,
+        1.48552734375
+      ],
+      "borde8": [
+        1.2584796056279466,
+        1.1327185563890625,
+        1.107142273922344
+      ],
+      "hf_monotona_decreciente": {
+        "inversiones": 0,
+        "monotona": true
+      },
+      "borde8_monotona_creciente": {
+        "inversiones": 2,
+        "monotona": false
+      }
+    }
+  },
+  "conclusion": "La metrica borde8/resto no discrimina compresion en ninguno de los dos codecs porque ambos llevan deblocking en bucle (HEVC ademas SAO), que borra precisamente esos bordes. Adaptarla a HEVC no la arregla: la metrica correcta es la energia de alta frecuencia.",
+  "no_computado": [
+    "No se ha medido sobre un stream HEVC real de proveedor: se ha codificado desde la grabacion del operador.",
+    "Una sola fuente de contenido. Otro contenido podria dar numeros distintos, aunque el mecanismo (deblocking en bucle) es del codec, no del contenido."
+  ]
+}
