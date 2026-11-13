@@ -1,0 +1,6 @@
+{
+  "cli_health": "PASS",
+  "sigterm_exit_code": 0,
+  "sigterm_seconds": 0.007,
+  "invalid_config": "PASS"
+}

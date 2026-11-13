@@ -1,0 +1,160 @@
+TAP version 13
+# Subtest: conserva hash, bytes y última línea cuando no existe LF final
+ok 1 - conserva hash, bytes y última línea cuando no existe LF final
+  ---
+  duration_ms: 29.227874
+  type: 'test'
+  ...
+# Subtest: reconoce BOM, CRLF y UTF-8 dividido entre trozos
+ok 2 - reconoce BOM, CRLF y UTF-8 dividido entre trozos
+  ---
+  duration_ms: 14.456366
+  type: 'test'
+  ...
+# Subtest: separa hash de contenido M3U y hash de entidad HTTP gzip
+ok 3 - separa hash de contenido M3U y hash de entidad HTTP gzip
+  ---
+  duration_ms: 5.106438
+  type: 'test'
+  ...
+# Subtest: detecta UTF-16LE con BOM partido y conserva los bytes originales
+ok 4 - detecta UTF-16LE con BOM partido y conserva los bytes originales
+  ---
+  duration_ms: 17.834097
+  type: 'test'
+  ...
+# Subtest: detecta UTF-16BE con BOM partido y conserva los bytes originales
+ok 5 - detecta UTF-16BE con BOM partido y conserva los bytes originales
+  ---
+  duration_ms: 19.49462
+  type: 'test'
+  ...
+# Subtest: no publica identidad completa al exceder el límite de bytes
+ok 6 - no publica identidad completa al exceder el límite de bytes
+  ---
+  duration_ms: 4.51029
+  type: 'test'
+  ...
+# Subtest: una descarga truncada no deja un hash completo ni un resultado sano
+ok 7 - una descarga truncada no deja un hash completo ni un resultado sano
+  ---
+  duration_ms: 14.28769
+  type: 'test'
+  ...
+# Subtest: una línea excesiva se interrumpe sin acumular el cuerpo completo
+ok 8 - una línea excesiva se interrumpe sin acumular el cuerpo completo
+  ---
+  duration_ms: 5.847496
+  type: 'test'
+  ...
+# Subtest: interrumpe una descarga que envía cabeceras y deja el cuerpo detenido
+ok 9 - interrumpe una descarga que envía cabeceras y deja el cuerpo detenido
+  ---
+  duration_ms: 43.587263
+  type: 'test'
+  ...
+# Subtest: un HTTP 200 con HTML no se clasifica como catálogo válido
+ok 10 - un HTTP 200 con HTML no se clasifica como catálogo válido
+  ---
+  duration_ms: 5.723388
+  type: 'test'
+  ...
+# Subtest: distingue segmentos HLS de canales IPTV
+ok 11 - distingue segmentos HLS de canales IPTV
+  ---
+  duration_ms: 5.504859
+  type: 'test'
+  ...
+# Subtest: distingue un manifiesto HLS master de un catálogo IPTV
+ok 12 - distingue un manifiesto HLS master de un catálogo IPTV
+  ---
+  duration_ms: 6.40019
+  type: 'test'
+  ...
+# Subtest: rechaza loopback y redes reservadas sin permiso explícito
+ok 13 - rechaza loopback y redes reservadas sin permiso explícito
+  ---
+  duration_ms: 1.967887
+  type: 'test'
+  ...
+# Subtest: vuelve a aplicar la política de destino al seguir una redirección
+ok 14 - vuelve a aplicar la política de destino al seguir una redirección
+  ---
+  duration_ms: 5.617289
+  type: 'test'
+  ...
+# Subtest: oculta credenciales de rutas Xtream, userinfo y consultas
+ok 15 - oculta credenciales de rutas Xtream, userinfo y consultas
+  ---
+  duration_ms: 2.647351
+  type: 'test'
+  ...
+# Subtest: usa 304 con ETag fuerte y permite forzar el recálculo completo
+ok 16 - usa 304 con ETag fuerte y permite forzar el recálculo completo
+  ---
+  duration_ms: 7.032641
+  type: 'test'
+  ...
+# Subtest: no reusa identidad exacta basándose solamente en ETag débil
+ok 17 - no reusa identidad exacta basándose solamente en ETag débil
+  ---
+  duration_ms: 5.135262
+  type: 'test'
+  ...
+# Subtest: una revalidación 304 comprueba de nuevo la muestra y detecta un 404 nuevo
+ok 18 - una revalidación 304 comprueba de nuevo la muestra y detecta un 404 nuevo
+  ---
+  duration_ms: 7.390241
+  type: 'test'
+  ...
+# Subtest: contrasta APE_CHANNELS y exige nombres completos de las directivas
+ok 19 - contrasta APE_CHANNELS y exige nombres completos de las directivas
+  ---
+  duration_ms: 3.331323
+  type: 'test'
+  ...
+# Subtest: limita clases distintas sin perder el censo ni los conteos de clases conocidas
+ok 20 - limita clases distintas sin perder el censo ni los conteos de clases conocidas
+  ---
+  duration_ms: 3.265603
+  type: 'test'
+  ...
+# Subtest: una clase con una muestra útil y otra fallida queda MIXTA
+ok 21 - una clase con una muestra útil y otra fallida queda MIXTA
+  ---
+  duration_ms: 6.385047
+  type: 'test'
+  ...
+# Subtest: cierra una muestra de vídeo infinita después de leer su prefijo
+ok 22 - cierra una muestra de vídeo infinita después de leer su prefijo
+  ---
+  duration_ms: 7.819709
+  type: 'test'
+  ...
+# Subtest: una redirección a HTML no hace pasar una muestra como vídeo válido
+ok 23 - una redirección a HTML no hace pasar una muestra como vídeo válido
+  ---
+  duration_ms: 3.421788
+  type: 'test'
+  ...
+# Subtest: acota descargas simultáneas de listas distintas
+ok 24 - acota descargas simultáneas de listas distintas
+  ---
+  duration_ms: 39.357035
+  type: 'test'
+  ...
+# Subtest: el servicio rechaza POST y mantiene disponible /health
+ok 25 - el servicio rechaza POST y mantiene disponible /health
+  ---
+  duration_ms: 5.961363
+  type: 'test'
+  ...
+1..25
+# tests 25
+# suites 0
+# pass 25
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 401.676453

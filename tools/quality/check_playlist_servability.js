@@ -218,5 +218,8 @@ async function probar(u) {
         console.log('  artefacto: ' + path.relative(ROOT, dest));
     }
 
-    process.exit(informe.veredicto === 'PASA' ? 0 : 1);
+    // NO process.exit(): con sockets keep-alive de fetch abiertos, Node en Windows aborta
+    // con una asercion de libuv y el codigo de salida deja de ser el real (0xC0000409).
+    // Se fija exitCode y se deja drenar el bucle de eventos.
+    process.exitCode = informe.veredicto === 'PASA' ? 0 : 1;
 })().catch(e => { console.error('ERROR: ' + (e && e.stack || e)); process.exit(1); });

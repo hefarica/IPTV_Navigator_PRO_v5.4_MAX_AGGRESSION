@@ -1,0 +1,14 @@
+{
+  "name": "ape-list-probe",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Auditor de listas M3U en streaming y de solo lectura",
+  "type": "commonjs",
+  "main": "ape-list-probe.js",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node ape-list-probe.js",
+    "test": "node --test test/probe.test.js",
+    "benchmark": "node test/stream-benchmark.js"
+  }
+}
