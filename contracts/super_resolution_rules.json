@@ -25,6 +25,7 @@
   "reglas": [
     {
       "id": "SR-R1",
+      "veredicto": "NO_COMPUTADO",
       "nombre": "El modelo de degradacion manda",
       "detecta": {
         "dispara_con": ["APE-AI-SR", "APE-SUPER-RESOLUTION", "SUPER_RESOLUTION"],
@@ -37,6 +38,7 @@
     },
     {
       "id": "SR-R2",
+      "veredicto": "PROHIBIDO",
       "nombre": "PSNR y SSIM necesitan el original",
       "detecta": {
         "dispara_con": ["PSNR", "SSIM", "VMAF", "LPIPS"],
@@ -49,6 +51,7 @@
     },
     {
       "id": "SR-R3",
+      "veredicto": "PROHIBIDO",
       "nombre": "La perdida adversarial inventa detalle",
       "detecta": {
         "dispara_con": ["APE-AI-SR", "SUPER_RESOLUTION", "REALESRGAN", "ESRGAN"],
@@ -60,6 +63,7 @@
     },
     {
       "id": "SR-R4",
+      "veredicto": "PERMITIDO",
       "nombre": "Interpolacion no es superresolucion",
       "detecta": {
         "dispara_con": ["LANCZOS", "BICUBIC", "BILINEAR"],
@@ -71,6 +75,7 @@
     },
     {
       "id": "SR-R5",
+      "veredicto": "PROHIBIDO",
       "nombre": "Restauracion condicionada, no generacion",
       "detecta": {
         "dispara_con": ["unsharp", "eq=", "noise=", "smartblur", "deblock"],
@@ -82,6 +87,7 @@
     },
     {
       "id": "SR-R6",
+      "veredicto": "PERMITIDO",
       "nombre": "La interpolacion de fotogramas es el eje temporal",
       "detecta": {
         "dispara_con": ["minterpolate", "FRAME-INTERPOLATION", "RIFE"],
@@ -93,6 +99,7 @@
     },
     {
       "id": "SR-R7",
+      "veredicto": "PERMITIDO",
       "nombre": "Broadcast y archivo, el caso legitimo",
       "detecta": {
         "dispara_con": ["APE-AI-SR", "SUPER_RESOLUTION"],
@@ -113,6 +120,16 @@
     "STATE=DECLARED": "Se declara sin medir: estado honesto por defecto",
     "STATE=NO_COMPUTADO": "No evaluable: se dice, no se supone",
     "STATE=APPLIED": "Solo admisible con DEGRADATION= y REFERENCE= presentes"
+  },
+
+  "menu_vs_declaracion": {
+    "nota": "CRITICO. Un registro de calibracion declara las ALTERNATIVAS que el generador puede elegir; no declara que alguna este aplicada. Confundir las dos cosas produce falsos positivos en masa, y un gate con falsos positivos en masa se desactiva y deja de proteger nada.",
+    "ejemplo_de_menu": "\"X-APE-AI-SR-ENABLED\": \"TRUE,ENABLED,ADAPTIVE,AUTO\"",
+    "ejemplo_de_declaracion": "\"X-APE-AI-SR\": \"MODEL=realesrgan,SCALE=4,ENABLED=true\"",
+    "como_se_distingue": "Se parte el valor por comas. Si hay 2 o mas trozos y TODOS son tokens simples (^[A-Za-z0-9_.+-]+$), es un MENU: una lista de alternativas. Si algun trozo lleva ':' o '=', lleva estructura interna y es una DECLARACION.",
+    "consecuencia": "Sobre un menu NO se aplican las reglas de 'declara superresolucion' (SR-R1, SR-R3, SR-R7) ni las de etiqueta cruzada (SR-R4, SR-R5): no hay declaracion que validar.",
+    "evidencia": "El LAB_CALIBRATED_FINAL_v24 declara los menus de los 6 perfiles (X-APE-AI-SR-MODEL: REALESRGAN_X4PLUS,ESRGAN_X2,LANCZOS4,BICUBIC). Sin esta distincion el gate reportaba 52 hojas violadas en un fichero que no declara nada aplicado. Lo detecto la comparacion con ape-sr-iptv-rules, que da 100/100 PASS al mismo fichero.",
+    "cruce_de_instrumentos": "Dos instrumentos dieron veredictos opuestos sobre el mismo artefacto. Se resolvio leyendo el fichero: era un menu. Gana la lectura, no el instrumento."
   },
 
   "alias_de_campo": {
@@ -179,6 +196,8 @@
     "Este contrato valida DECLARACIONES en metadata, no pixeles. Un gate que lee texto no puede medir una imagen.",
     "Ninguna de estas reglas mejora la imagen: impiden que se mienta sobre ella.",
     "El presupuesto de +1 dB PSNR es de la fuente (ESPCN 4x, ~100 KB). No se extrapola a 6K.",
-    "El gate no sustituye a list_gate: son ortogonales. list_gate valida estructura; este valida afirmaciones."
+    "El gate no sustituye a list_gate: son ortogonales. list_gate valida estructura; este valida afirmaciones.",
+    "FALSO POSITIVO CONOCIDO, NO RESUELTO: sobre un registro de calibracion donde un mismo objeto mezcla un `video-filter` con `minterpolate` y otras claves con `RESOLUTION=`, SR-R6 puede disparar aunque la interpolacion este declarada en su sitio. Medido en LAB_CALIBRATED_FINAL_v24 (12 hojas de 6 perfiles). Se corrigieron CINCO causas de falso positivo; esta sexta no se cerro y se declara abierta en vez de taparla con una exclusion mas amplia, que debilitaria la regla donde si importa.",
+    "DIVISION DE TRABAJO MEDIDA: para LISTAS M3U/M3U8 este gate es el instrumento util (streaming, 2 millones de lineas en 44 s, cableado al CI). Para JSON de metadata el instrumento superior es el plugin ape-sr-iptv-rules (34 reglas, 18 hechos citados archivo:linea, 293 comprobaciones). Dos instrumentos sobre el mismo artefacto dieron veredictos opuestos; al leer el fichero gano la lectura, y de ahi salieron las correcciones."
   ]
 }

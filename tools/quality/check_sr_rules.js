@@ -21,24 +21,24 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 
+/**
+ * DOS FORMAS DE USO, el mismo motor:
+ *
+ *   CLI      node tools/quality/check_sr_rules.js <fichero>     -> exit 0/1/2
+ *   LIBRERIA const { analizar } = require('./check_sr_rules')   -> resultado
+ *
+ * La forma de libreria existe porque el objetivo pide reglas "para cualquier
+ * modulo o sistema IPTV": un modulo no puede ejecutar un CLI y leer un exit
+ * code sin lanzar un proceso. `analizar()` devuelve el informe como dato.
+ */
 const CONTRACT = path.join(__dirname, '..', '..', 'contracts', 'super_resolution_rules.json');
-
-const target = process.argv[2];
-if (!target) {
-  console.error('uso: node tools/quality/check_sr_rules.js <lista.m3u8|metadata.json>');
-  process.exit(2);
-}
-if (!fs.existsSync(target)) {
-  console.error(`NO COMPUTADO: no existe ${target}`);
-  process.exit(2);
-}
 
 let contrato;
 try {
   contrato = JSON.parse(fs.readFileSync(CONTRACT, 'utf8'));
 } catch (e) {
-  console.error(`NO COMPUTADO: contrato ilegible (${CONTRACT}): ${e.message}`);
-  process.exit(2);
+  // Sin contrato no hay reglas: es fatal en las dos formas de uso.
+  throw new Error(`contrato ilegible (${CONTRACT}): ${e.message}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -79,14 +79,22 @@ const CHECKS = {
     return 'declara superresolucion sin DEGRADATION= ni STATE=DECLARED|NO_COMPUTADO';
   },
   // SR-R2: metrica perceptual sin referencia. En IPTV el original no existe.
-  // Preciso: dispara con una AFIRMACION (valor numerico, TARGET, SCORE), no con
-  // el nombre de una estrategia. `VMAF-MAXIMIZATION-ENABLED` es como se llama
-  // un modo; `VMAF-TARGET:95.0` y `EPSNR=45` son valores que alguien afirma.
+  //
+  // Dos precisiones, ambas por falsos positivos medidos:
+  //   1. Dispara con una AFIRMACION (valor numerico, TARGET, SCORE), no con el
+  //      nombre de una estrategia: `VMAF-MAXIMIZATION-ENABLED` es un modo.
+  //   2. El valor tiene que estar PEGADO al nombre de la metrica. En el LAB
+  //      aparecia "...NETFLIX=VMAF ... COMPLIANCE_PCT=95..." y R2 disparaba por
+  //      el 95, que es un porcentaje de cumplimiento, no un VMAF. Un numero a
+  //      200 caracteres de la metrica no es su valor.
   'SR-R2': (l) => {
-    if (!tiene(l, ['PSNR', 'SSIM', 'VMAF', 'LPIPS'])) return null;
+    const METRICA = '(?:PSNR|SSIM|VMAF|LPIPS)';
+    if (!new RegExp(METRICA, 'i').test(l)) return null;
     if (l.includes('REFERENCE=') || l.includes('REF=')) return null;
-    const afirmaValor = /(?:=|:)\s*-?\d/.test(l) || /\b(TARGET|SCORE|AVG|MEAN)\b/i.test(l);
-    if (!afirmaValor) return null;
+    // El valor pegado a la metrica: hasta 12 caracteres no alfanumericos, = o :, y un numero.
+    const pegado = new RegExp(`${METRICA}[^A-Za-z0-9]{0,12}(?:=|:)\\s*-?\\d`, 'i').test(l);
+    const rotulado = new RegExp(`${METRICA}[^A-Za-z0-9]{0,12}(?:TARGET|SCORE|AVG|MEAN)`, 'i').test(l);
+    if (!pegado && !rotulado) return null;
     return 'afirma un valor perceptual (PSNR/SSIM/VMAF/LPIPS) sin REFERENCE= ni REF=';
   },
   // SR-R3: detalle sintetizado etiquetado como fuente.
@@ -108,8 +116,15 @@ const CHECKS = {
     return 'etiqueta realce de contraste como superresolucion';
   },
   // SR-R6: interpolacion temporal declarada como resolucion.
+  //
+  // Precision medida: si `minterpolate` aparece DENTRO de un `video-filter`,
+  // esta en su sitio — un filtro declara un filtro, no una resolucion. En el
+  // LAB conviven `video-filter: ...minterpolate=fps=120...` y otras claves con
+  // `RESOLUTION=`; la version anterior los fundia y acusaba una etiqueta
+  // cruzada que no existia.
   'SR-R6': (l) => {
     if (!tiene(l, ['minterpolate', 'FRAME-INTERPOLATION', 'RIFE'])) return null;
+    if (tiene(l, ['video-filter', 'VIDEO_FILTER', 'VIDEO-FILTER', 'VideoFilter'])) return null;
     if (!tiene(l, ['RESOLUTION=', 'SUPER_RESOLUTION'])) return null;
     return 'declara interpolacion de fotogramas como RESOLUTION';
   },
@@ -149,15 +164,75 @@ function anotar(id, texto, ubicacion) {
   if (v.ejemplos.length < 3) v.ejemplos.push({ n: ubicacion, texto: String(texto).slice(0, 180) });
 }
 
-/** Evalua un texto contra las 7 reglas. Cuenta las declaraciones de SR que ve. */
-function evaluarTexto(texto, ubicacion) {
-  if (typeof texto !== 'string' || !texto) return 0;
-  unidades++;
-  if (esSr(texto)) declaracionesSr++;
+/**
+ * ¿Este texto es un MENU de alternativas y no una declaracion?
+ *
+ * Un registro de calibracion escribe las opciones que el generador PUEDE
+ * elegir: `"X-APE-AI-SR-ENABLED": "TRUE,ENABLED,ADAPTIVE,AUTO"`. Eso no declara
+ * que la superresolucion este aplicada; declara el catalogo.
+ *
+ * Se distingue por la forma: si el valor se parte por comas en 2+ trozos y
+ * TODOS son tokens simples, es un menu. Si algun trozo lleva ':' o '=',
+ * tiene estructura interna y es una declaracion.
+ *
+ * Evidencia: el LAB_CALIBRATED_FINAL_v24 declara los menus de los 6 perfiles.
+ * Sin esta distincion el gate reportaba 52 hojas violadas en un fichero que no
+ * declara nada aplicado. Lo detecto el cruce con ape-sr-iptv-rules, que da
+ * 100/100 PASS al mismo fichero.
+ */
+const TOKEN_SIMPLE = /^[A-Za-z0-9_.+\-]+$/;
+
+/** ¿ESTE valor es una lista de alternativas con forma de menu? */
+function esValorMenu(valor) {
+  if (typeof valor !== 'string') return false;
+  const t = valor.trim();
+  if (!t.includes(',')) return false;
+  const trozos = t.split(',').map((s) => s.trim()).filter(Boolean);
+  if (trozos.length < 2) return false;
+  return trozos.every((x) => TOKEN_SIMPLE.test(x));
+}
+
+/**
+ * ¿Esta linea/objeto es un MENU de alternativas y no una declaracion?
+ *
+ * Un registro de calibracion escribe las opciones que el generador PUEDE
+ * elegir: `X-APE-AI-SR-ENABLED: TRUE,ENABLED,ADAPTIVE,AUTO`. Eso no declara que
+ * la superresolucion este aplicada; declara el catalogo.
+ *
+ * Se busca en TODA la cadena, no solo al final: en un objeto con varias claves
+ * el menu puede estar en cualquier posicion. La version anterior solo miraba la
+ * cola y seguia acusando 33 hojas del LAB.
+ */
+function esMenu(texto) {
+  if (typeof texto !== 'string') return false;
+  // Cualquier `CLAVE: a,b,c` o `CLAVE= a,b,c` con todos los trozos simples.
+  const re = /[:=]\s*([A-Za-z0-9_.+\-]+(?:\s*,\s*[A-Za-z0-9_.+\-]+)+)(?=[\s;]|$)/g;
+  let m;
+  while ((m = re.exec(texto)) !== null) {
+    if (esValorMenu(m[1])) return true;
+  }
+  return false;
+}
+
+/** Reglas que NO se aplican sobre un menu: no hay declaracion que validar. */
+const REGLAS_SOLO_DECLARACION = new Set(['SR-R1', 'SR-R3', 'SR-R4', 'SR-R5', 'SR-R7']);
+
+/** Evalua un texto contra las reglas que le corresponden. */
+function aplicarReglas(texto, ubicacion, esMenuAqui) {
   for (const r of reglas) {
+    if (esMenuAqui && REGLAS_SOLO_DECLARACION.has(r.id)) continue;
     const fallo = CHECKS[r.id](texto);
     if (fallo) anotar(r.id, texto, ubicacion);
   }
+}
+
+/** Evalua una linea de lista M3U/M3U8. */
+function evaluarTexto(texto, ubicacion) {
+  if (typeof texto !== 'string' || !texto) return 0;
+  unidades++;
+  const menu = esMenu(texto);
+  if (!menu && esSr(texto)) declaracionesSr++;
+  aplicarReglas(texto, ubicacion, menu);
   return 0;
 }
 
@@ -253,12 +328,13 @@ function recorrerJson(nodo, ruta, contexto) {
   // Tampoco se aplana el subarbol entero: eso fundiria declaraciones hermanas
   // (el LANCZOS del escalado con el modelo de SR) y acusaria etiquetas cruzadas
   // que no existen.
+  //
+  // Y si el objeto es un MENU de alternativas, las reglas de declaracion no se
+  // aplican: un catalogo de opciones no declara nada aplicado.
   unidades++;
-  if (esSr(ctx)) declaracionesSr++;
-  for (const r of reglas) {
-    const fallo = CHECKS[r.id](ctx);
-    if (fallo) anotar(r.id, aqui.slice(-220) || ruta, ruta);
-  }
+  const menu = esMenu(aqui);
+  if (!menu && esSr(ctx)) declaracionesSr++;
+  aplicarReglas(ctx, ruta, menu);
 
   // Sin declaracion en este nivel: se sigue bajando con el contexto acumulado.
   for (const [k, v] of Object.entries(nodo)) {
@@ -297,22 +373,33 @@ function esJson(fichero) {
   }
 }
 
-(async () => {
+/**
+ * Analiza un fichero (lista o JSON) y devuelve el informe COMO DATO.
+ * No imprime, no sale del proceso: eso lo decide quien llama.
+ *
+ * Cada llamada reinicia el estado, para que un modulo pueda analizar varias
+ * listas seguidas sin que las violaciones de una contaminen la siguiente.
+ */
+async function analizar(target) {
+  violaciones.clear();
+  unidades = 0;
+  declaracionesSr = 0;
+
+  if (!fs.existsSync(target)) {
+    return { ok: false, motivo: 'NO_COMPUTADO', error: `no existe ${target}` };
+  }
+
   const formatoJson = esJson(target);
 
   if (formatoJson) {
-    // JSON de metadata: se carga entero. Los ficheros de metadata son de KB o
-    // MB, no de GB; si algun dia lo fueran, se troceara por ramas.
     let doc;
     try {
       doc = JSON.parse(fs.readFileSync(target, 'utf8'));
     } catch (e) {
-      console.error(`NO COMPUTADO: JSON ilegible (${path.basename(target)}): ${e.message}`);
-      process.exit(2);
+      return { ok: false, motivo: 'NO_COMPUTADO', error: `JSON ilegible: ${e.message}` };
     }
     recorrerJson(doc, '$');
   } else {
-    // Lista M3U/M3U8: streaming, porque hay listas de 1,3 GB.
     const rl = readline.createInterface({
       input: fs.createReadStream(target, { encoding: 'utf8' }),
       crlfDelay: Infinity,
@@ -324,53 +411,104 @@ function esJson(fichero) {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Informe
-  // -------------------------------------------------------------------------
+  const lista = [...violaciones.entries()]
+    .map(([id, v]) => ({
+      id,
+      nombre: v.regla.nombre || '',
+      severidad: v.regla.severidad || null,
+      veredicto: v.regla.veredicto || null,
+      falla_si: v.regla.falla_si || '',
+      correccion: v.regla.correccion || '',
+      total: v.total,
+      ejemplos: v.ejemplos,
+    }))
+    .sort((a, b) => (a.id < b.id ? -1 : 1));
+
+  const motivo = declaracionesSr === 0 ? 'SIN_DECLARACIONES'
+    : lista.length === 0 ? 'CUMPLE'
+    : 'VIOLA';
+
+  return {
+    ok: lista.length === 0,
+    motivo,
+    objetivo: path.basename(target),
+    formato: formatoJson ? 'json' : 'lista',
+    contrato_version: contrato.version,
+    unidades,
+    declaraciones: declaracionesSr,
+    violaciones: lista,
+    total_lineas_afectadas: lista.reduce((a, v) => a + v.total, 0),
+    // Un "sin declaraciones" no es un aprobado: no habia nada que verificar.
+    aviso: declaracionesSr === 0
+      ? 'CUMPLIMIENTO POR AUSENCIA, no una verificacion: el objetivo no declara superresolucion'
+      : null,
+  };
+}
+
+/** Formatea el informe para consola. Separado de `analizar` para poder callar. */
+function imprimirInforme(r) {
   console.log('');
   console.log('=== SR RULES GATE ===');
-  console.log(`  objetivo      : ${path.basename(target)}`);
-  console.log(`  formato       : ${formatoJson ? 'JSON metadata' : 'lista M3U/M3U8'}`);
-  console.log(`  contrato      : super_resolution_rules.json v${contrato.version}`);
-  console.log(`  unidades      : ${unidades.toLocaleString('es-ES')} ${formatoJson ? 'hojas de texto' : 'lineas'}`);
-  console.log(`  declaraciones : ${declaracionesSr.toLocaleString('es-ES')} de superresolucion`);
-  console.log('');
-
-  if (declaracionesSr === 0) {
-    console.log('  Sin declaraciones de superresolucion: el contrato no tiene nada que validar.');
-    console.log('  Esto es CUMPLIMIENTO POR AUSENCIA, no una verificacion.');
+  if (r.error) {
+    console.log(`  NO COMPUTADO: ${r.error}`);
     console.log('');
-    console.log('  Sin fallos.');
-    process.exitCode = 0;
     return;
   }
+  console.log(`  objetivo      : ${r.objetivo}`);
+  console.log(`  formato       : ${r.formato === 'json' ? 'JSON metadata' : 'lista M3U/M3U8'}`);
+  console.log(`  contrato      : super_resolution_rules.json v${r.contrato_version}`);
+  console.log(`  unidades      : ${r.unidades.toLocaleString('es-ES')} ${r.formato === 'json' ? 'hojas de texto' : 'lineas'}`);
+  console.log(`  declaraciones : ${r.declaraciones.toLocaleString('es-ES')} de superresolucion`);
+  console.log('');
 
-  if (violaciones.size === 0) {
+  // El aviso de ausencia solo puede sustituir al informe si NO hay violaciones.
+  // R2 y R6 disparan sin token de superresolucion (una metrica sin referencia,
+  // una interpolacion temporal vendida como resolucion), asi que
+  // `declaraciones === 0` NO implica `violaciones === 0`. La version anterior
+  // imprimia "Sin fallos" con violaciones presentes: mentia en el informe.
+  if (r.aviso && r.violaciones.length === 0) {
+    console.log(`  ${r.aviso}`);
+    console.log('');
+    console.log('  Sin fallos.');
+    return;
+  }
+  if (r.motivo === 'CUMPLE') {
     console.log('  Las declaraciones de superresolucion cumplen las 7 reglas.');
     console.log('');
     console.log('  Sin fallos.');
-    process.exitCode = 0;
     return;
   }
 
   console.log('  VIOLACIONES');
-  const orden = [...violaciones.keys()].sort();
-  for (const id of orden) {
-    const v = violaciones.get(id);
+  for (const v of r.violaciones) {
     console.log('');
-    console.log(`  [${id}] ${v.regla.nombre || ''}   (${v.total} ${formatoJson ? 'hoja(s)' : 'linea(s)'})`);
-    console.log(`         severidad : ${v.regla.severidad || '?'}`);
-    console.log(`         falla si  : ${v.regla.falla_si || '?'}`);
-    console.log(`         correccion: ${v.regla.correccion || '?'}`);
-    for (const e of v.ejemplos) {
-      console.log(`         ${e.n}: ${e.texto}`);
-    }
+    console.log(`  [${v.id}] ${v.nombre}   (${v.total} ${r.formato === 'json' ? 'hoja(s)' : 'linea(s)'})`);
+    console.log(`         severidad : ${v.severidad || '?'}${v.veredicto ? ' · veredicto: ' + v.veredicto : ''}`);
+    console.log(`         falla si  : ${v.falla_si}`);
+    console.log(`         correccion: ${v.correccion}`);
+    for (const e of v.ejemplos) console.log(`         ${e.n}: ${e.texto}`);
   }
   console.log('');
-  const totalFallos = [...violaciones.values()].reduce((a, v) => a + v.total, 0);
-  console.log(`  ${violaciones.size} regla(s) violada(s) · ${totalFallos} ${formatoJson ? 'hoja(s)' : 'linea(s)'}.`);
-  process.exitCode = 1;
-})().catch((e) => {
-  console.error(`NO COMPUTADO: ${e.message}`);
-  process.exit(2);
-});
+  console.log(`  ${r.violaciones.length} regla(s) violada(s) · ${r.total_lineas_afectadas} ${r.formato === 'json' ? 'hoja(s)' : 'linea(s)'}.`);
+}
+
+module.exports = { analizar, imprimirInforme, contrato, REGLAS: reglas };
+
+// --- CLI: solo cuando se ejecuta directamente ------------------------------
+if (require.main === module) {
+  const target = process.argv[2];
+  if (!target) {
+    console.error('uso: node tools/quality/check_sr_rules.js <lista.m3u8|metadata.json>');
+    process.exit(2);
+  }
+  analizar(target)
+    .then((r) => {
+      imprimirInforme(r);
+      if (r.motivo === 'NO_COMPUTADO') process.exitCode = 2;
+      else process.exitCode = r.ok ? 0 : 1;
+    })
+    .catch((e) => {
+      console.error(`NO COMPUTADO: ${e.message}`);
+      process.exit(2);
+    });
+}
