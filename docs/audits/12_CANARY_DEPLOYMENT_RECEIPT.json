@@ -1,6 +1,6 @@
 {
   "schema": "ape.canary.deployment-receipt.v1",
-  "generado": "2026-11-13T08:50:00-05:00",
+  "generado": "2026-11-13T09:00:00-05:00",
   "estado_global": "PARTIALLY_DEPLOYED",
   "declaracion": "La LISTA con harness esta DESPLEGADA y VERIFICADA de extremo a extremo. Los servicios (quality-watch, probe v3) siguen sin desplegar. La APK sigue sin firmar. Nada se declara desplegado sin la medicion que lo respalde.",
   "repo": {
@@ -15,7 +15,7 @@
   },
   "vps": {
     "host": "iptv-ape.duckdns.org",
-    "revision_desplegada": "DESCONOCIDA",
+    "revision_desplegada": "NO es repo git (/var/www/html no tiene .git) — se declara NO VERIFICABLE",
     "nota": "No se ha consultado la revision git del VPS. No se afirma cual esta desplegada.",
     "componentes_preparados": [
       {
@@ -163,8 +163,8 @@
   "rollback": "docs/audits/13_CANARY_ROLLBACK_PROCEDURE.md",
   "requiere_autorizacion_del_operador": [
     "Instalar y arrancar ape-quality-watch en el VPS",
-    "Instalar ape-list-probe v3 y poner APE_PROBE_TOKEN",
     "Regenerar la lista OMEGA truncada o retirarla",
-    "Firmar la APK (falta la contrasena del keystore)"
+    "Firmar la APK (falta la contrasena del keystore signing/ape-fluid-dev.jks)",
+    "Opcional: exponer ape-list-probe fuera de loopback (requiere APE_PROBE_TOKEN de >=24 caracteres)"
   ]
 }
