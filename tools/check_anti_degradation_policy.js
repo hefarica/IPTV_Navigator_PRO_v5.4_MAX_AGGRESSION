@@ -3,9 +3,16 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+
+// [2026-11-13] Modo de prueba: en `--scan=<ruta>` el gate NO emite juicios ni
+// lee la linea base; solo devuelve los contadores del fichero indicado, para
+// poder PROBAR que el discriminador de negacion no esconde degradacion real.
+const MODO_SCAN = process.argv.find((a) => a.startsWith('--scan='));
+
 let pass = 0, total = 0;
 function ok(name, cond, detail) {
   total++;
+  if (MODO_SCAN) { if (cond) pass++; return; }   // silencio en modo escaneo
   if (cond) { pass++; console.log('PASS ' + name + (detail ? ' · ' + detail : '')); }
   else console.log('FAIL ' + name + (detail ? ' · ' + detail : ''));
 }
@@ -48,13 +55,46 @@ const PATTERNS = {
 };
 const PATTERN_AUDIO_COPY = /-c:a['",\s]+copy/g;
 
+// [2026-11-13] El gate contaba como degradacion el TEXTO QUE PROHIBE degradar.
+// Medido: tools/lab/ape-jit/server.js salia "stereo_locked 0 -> 3" y las tres
+// coincidencias eran comentarios y cadenas:
+//   L565  // NO -ac 2 universal: eso degrada 5.1 a estereo
+//   L998  '5. NUNCA poner -ac 2 universal: degradaria 5.1 a estereo.'
+//   L3242 reason: 'NO se fuerza -ac 2: eso degradaria 5.1 a estereo'
+// Un gate que castiga documentar la regla entrena a ignorarlo: peor que uno verde falso.
+// Se exige contexto NEGADO para descartar la coincidencia. Sigue siendo heuristica:
+// un `-ac 2` real sin negacion delante SIGUE contando (hay prueba en tools/quality/).
+const NEGACION = /\b(?:NO|NUNCA|NUNCA\s+JAMAS|never|degrada\w*|degradar\w*|prohibid\w*|forbidden)\b/i;
+const VENTANA_NEGACION = 48; // caracteres antes del match que se miran
+
+function esDegradacionReal(txt, indice) {
+  // [2026-11-13] La ventana NO puede cruzar un salto de linea. Medido por la
+  // prueba (tools/quality/test_anti_degradation_gate.js, caso D): un `-ac 2`
+  // REAL quedaba suprimido porque la linea anterior decia "NO -ac 2". Eso es un
+  // falso NEGATIVO, que es peor que el falso positivo que esto viene a corregir:
+  // deja el gate ciego a degradacion verdadera. Se acota a la linea del match.
+  const inicioLinea = txt.lastIndexOf('\n', indice) + 1;
+  const desde = Math.max(inicioLinea, indice - VENTANA_NEGACION);
+  const contexto = txt.slice(desde, indice);
+  return !NEGACION.test(contexto);
+}
+
+function contarReales(txt, re) {
+  const r = new RegExp(re.source, re.flags.replace('g', '') + 'g');
+  let n = 0, m;
+  while ((m = r.exec(txt)) !== null) {
+    if (esDegradacionReal(txt, m.index)) n++;
+    if (m.index === r.lastIndex) r.lastIndex++;
+  }
+  return n;
+}
+
 function scanJit(rel) {
   if (!fs.existsSync(rel)) return null;
   const txt = fs.readFileSync(rel, 'utf8');
   const counts = {};
   for (const k of Object.keys(PATTERNS)) {
-    const m = txt.match(PATTERNS[k]);
-    counts[k] = m ? m.length : 0;
+    counts[k] = contarReales(txt, PATTERNS[k]);
   }
   counts.audio_passthrough = PATTERN_AUDIO_COPY.test(txt) ? 1 : 0;
   counts.degrading = Object.keys(PATTERNS)
@@ -68,6 +108,15 @@ for (const f of JIT_FILES) {
   const r = scanJit(f);
   if (r) scan[f] = r;
 }
+
+if (MODO_SCAN) {
+  const objetivo = MODO_SCAN.slice('--scan='.length);
+  const r = scanJit(objetivo);
+  if (!r) { console.log('no existe: ' + objetivo); process.exit(2); }
+  console.log(JSON.stringify(r));
+  process.exit(0);
+}
+
 const scannedCount = Object.keys(scan).length;
 ok('JIT escaneado (código, no solo doctrina)', scannedCount > 0,
   scannedCount + ' de ' + JIT_FILES.length + ' implementaciones presentes');
