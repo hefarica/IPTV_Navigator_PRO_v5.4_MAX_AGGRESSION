@@ -711,6 +711,57 @@
                 return;
             }
 
+            // ═══ VERIFICACION DE COMPLETITUD (no de transporte) ═══
+            // X-Chunk-SHA256 prueba que los trozos LLEGARON. No prueba que el
+            // fichero este ENTERO: una lista ya truncada produce un hash
+            // perfectamente valido, y el servidor la acepta sin quejarse.
+            // Caso real (2026-11-13): APE_OMEGA_PRODUCTION_v5.2.m3u8 declaraba
+            // 4.143 canales, tenia 2.753 completos y acababa a mitad de un
+            // bloque de metadatos. Se descubrio a mano, no por un gate.
+            //
+            // Dos comprobaciones inequivocas, sin heuristicas:
+            //   1. El conteo declarado en APE-CHANNELS debe coincidir con los
+            //      #EXTINF reales.
+            //   2. La ultima linea con contenido no puede ser un #EXTINF: un
+            //      canal que empieza y no recibe URL es exactamente el corte.
+            const _declCh = (contentToUpload.match(/^#EXT-X-APE-CHANNELS:(\d+)/m) || [])[1];
+            const _realCh = (contentToUpload.match(/^#EXTINF/gm) || []).length;
+            // Un guard que lanza es peor que no tener guard. El limite de
+            // string de JS/V8 es ~512 MB y hay listas mayores, que ni siquiera
+            // llegan aqui como string (el generador las escribe por streaming
+            // a disco). Si el conteo falla por tamano, se deja pasar: el gate
+            // externo (tools/quality/list_gate.js) las cubre.
+            let _completitud = null;
+            try {
+                if (_declCh && Number(_declCh) !== _realCh) {
+                    _completitud = {
+                        titulo: '⛔ LISTA INCOMPLETA — no se sube',
+                        detalle:
+                            `Declara ${_declCh} canales y tiene ${_realCh}.\n` +
+                            `Faltan ${Number(_declCh) - _realCh}.\n\n` +
+                            'Una lista truncada no sustituye a la ultima valida.',
+                    };
+                } else {
+                    const _lastNonEmpty = (contentToUpload.trimEnd().split('\n').pop() || '').trim();
+                    if (_lastNonEmpty.startsWith('#EXTINF')) {
+                        _completitud = {
+                            titulo: '⛔ LISTA TRUNCADA — no se sube',
+                            detalle:
+                                'El fichero termina en un #EXTINF sin URL: se corto a mitad de un canal.\n\n' +
+                                `Ultima linea:\n${_lastNonEmpty.slice(0, 160)}`,
+                        };
+                    }
+                }
+            } catch (eCompletitud) {
+                console.warn('[COMPLETITUD] no evaluable:', eCompletitud && eCompletitud.message);
+            }
+            if (_completitud) {
+                this.state.uploadInProgress = false;
+                this._updateUploadUI('end');
+                alert(`${_completitud.titulo}\n\n${_completitud.detalle}`);
+                return;
+            }
+
             this.state.uploadInProgress = true;
             this._updateUploadUI('start');
             console.log('🚀 [GATEWAY] Initializing hardened upload sequence...');

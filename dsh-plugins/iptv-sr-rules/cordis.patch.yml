@@ -1,0 +1,3 @@
+- insert:
+    - id: iptv-sr-rules
+      name: '@local/iptv-sr-rules'
