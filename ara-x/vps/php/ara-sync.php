@@ -47,7 +47,21 @@ const ARA_UNKNOWN_SHA256 = '0000000000000000000000000000000000000000000000000000
 
 function ara_sync_socs(): array
 {
-    return ['mt8696', 'amlogic', 's905x4', 's905x3'];
+    /*
+     * Vocabulario de SoC aceptado por el gate (igualdad EXACTA tras strtolower+trim).
+     *
+     * 2026-11-13: se añaden 's905y4' y 'amls905y4'. Motivo MEDIDO en el ONN 4K del operador:
+     *   SDK = 34  -> el heartbeat reporta Build.SOC_MODEL = 'AMLS905Y4'
+     *   ro.hardware = 'amlogic'   (este SÍ estaba, pero NO se usa: SOC_MODEL no está vacío)
+     *   ro.board.platform = 's4'
+     *   Con la lista anterior, 'amls905y4' ∉ [mt8696, amlogic, s905x4, s905x3] -> allowed=FALSE
+     *   y la política NUNCA viajaba al dispositivo, sin ningún error visible en el cliente.
+     *
+     * Se añade el nombre de familia y la forma con prefijo 'aml', que es como la reporta
+     * Build.SOC_MODEL. La prueba de esta decisión vive en tools/probe/probe_capabilities.ps1
+     * (campo soc_gate_pasa) y se reproduce con: getprop ro.soc.model.
+     */
+    return ['mt8696', 'amlogic', 's905x4', 's905x3', 's905y4', 'amls905y4'];
 }
 
 function ara_sync_unmapped(): string
@@ -63,7 +77,13 @@ function ara_sync_request_socs(): array
 
 function ara_sync_no_wire_8k(): array
 {
-    return ['s905x4', 's905x3', 'mt8696'];
+    /*
+     * SoC que NO deben declarar wire 8K. Se añade 's905y4'/'amls905y4' el 2026-11-13 por
+     * coherencia con ara_sync_socs(): el S905Y4 es un SoC 4K (ro.board.platform='s4'), no
+     * tiene ruta 8K real, y declarar wire 8K sobre él sería exactamente la mentira que la
+     * Ley Cardinal 1 prohíbe. Añadirlo aquí es la opción CONSERVADORA: nunca sobre-declara.
+     */
+    return ['s905x4', 's905x3', 'mt8696', 's905y4', 'amls905y4'];
 }
 
 function ara_sync_levers(): array

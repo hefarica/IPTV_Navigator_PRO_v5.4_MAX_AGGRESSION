@@ -73,6 +73,9 @@ jobs:
           echo "== crystal 4K / 6K =="
           node tools/check_crystal_4k_law.js
           node tools/check_crystal_6k_law.js
+      - name: Test de cadencia del display (Display4K no debe pisar el modo)
+        run: node tools/quality/test_display_cadence.js
+
       - name: Contrato Canary-JIT (motor desplegado == lo pinado)
         run: node tools/quality/test_canary_jit_contract.js
 
