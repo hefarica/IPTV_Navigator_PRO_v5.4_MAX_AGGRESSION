@@ -1,0 +1,13 @@
+diff --git a/_vps_stage/deploy/manifest.tsv b/_vps_stage/deploy/manifest.tsv
+index 6e395e3..415b275 100644
+--- a/_vps_stage/deploy/manifest.tsv
++++ b/_vps_stage/deploy/manifest.tsv
+@@ -36,7 +36,7 @@ _vps_stage/skills/corpus/canary-isolation.md	/etc/ara/skills/corpus/canary-isola
+ _vps_stage/skills/corpus/s905x4-limits.md	/etc/ara/skills/corpus/s905x4-limits.md	644	root:root	FASE0 corpus
+ _vps_stage/skills/corpus/sources.txt	/etc/ara/skills/corpus/sources.txt	644	root:root	FASE0 fuentes trazables
+ _vps_stage/canary/ara-skill	/usr/local/bin/ara-skill	755	root:root	gate check/list/show/corpus
+-_vps_stage/canary/ape-visual-emulate.sh	/usr/local/bin/ape-visual-emulate.sh	755	root:root	canary 4K (25M/32M/64M keyint 48)
++vps/bin/ape-visual-emulate.sh	/usr/local/bin/ape-visual-emulate.sh	755	root:root	canary 4K (25M/32M/64M keyint 48) | origen cambiado a vps/bin/ape-visual-emulate.sh (6.714 B) porque es el unico que llama a /jit/signal (H-1/D-3); la copia de 4.068 B no tiene bucle JIT
+ _vps_stage/canary/ape-canary@.service	/etc/systemd/system/ape-canary@.service	644	root:root	CPU 40% MEM 1G IO 10 NICE 10
+ 
+ # [2026-11-09] EL MOTOR JIT Y PULSE.PHP ESTABAN FUERA DEL PIPELINE.

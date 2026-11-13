@@ -1,0 +1,396 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://iptv-ape.local/contracts/device_capability_schema.json",
+  "title": "ape.device.capability.snapshot.v1 — snapshot de capacidades medibles del dispositivo",
+  "$comment": "REGLA DURA: toda capacidad es {value, provenance[, evidence]}. Un dato sin provenance es invalido. 'measured' exige evidence.artifact (fichero:linea, hash o comando con salida). Afirmar soporte de encoder (hw_encoders o codec_profiles con valor no vacio) exige provenance=measured Y evidencia: no se puede afirmar un encoder sin haberlo medido. Lo que no se puede medir se declara {value:null, provenance:'unavailable'} — el schema NO obliga a inventar un valor, obliga a declarar que no se tiene. EL ENUM DE provenance ES DE 4 VALORES CANONICOS EN INGLES. La redaccion en espanol se admite solo como ALIAS DE ENTRADA: la normaliza el consumidor ANTES de validar con la tabla provenance_alias_map. El schema NO acepta 'medido' directamente.",
+  "provenance_alias_map": {
+    "medido": "measured",
+    "declarado": "declared",
+    "inferido": "inferred",
+    "no_disponible": "unavailable"
+  },
+  "provenance_canonical": ["measured", "declared", "inferred", "unavailable"],
+  "type": "object",
+  "required": ["schema", "snapshot_id", "captured_at", "capabilities"],
+  "properties": {
+    "schema": { "const": "ape.device.capability.snapshot.v1" },
+    "snapshot_id": {
+      "description": "Identificador del snapshot. Libre, pero no vacio: un snapshot sin identidad no es auditable.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "captured_at": {
+      "description": "Instante de captura en ISO-8601 UTC. El schema exige la forma, no valida la veracidad del reloj.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$"
+    },
+    "device_id": {
+      "description": "Opcional. Serial o modelo; en este repo el serial medido esta en docs/audits/CONDICION_4_MEDICION_ONN4K_20261108.md:4.",
+      "type": "string",
+      "minLength": 1
+    },
+    "capabilities": {
+      "type": "object",
+      "description": "Las 20 capacidades de la seccion 5. Las 20 son obligatorias: la ausencia de dato se declara con provenance='unavailable', no omitiendo la clave.",
+      "required": [
+        "api_level",
+        "soc",
+        "cpu_arch",
+        "cpu_cores",
+        "hw_decoders",
+        "hw_encoders",
+        "gpu",
+        "vulkan",
+        "max_texture_size",
+        "ram",
+        "display_resolution",
+        "display_refresh_rate",
+        "hdr",
+        "codec_profiles",
+        "thermal_state",
+        "battery",
+        "decoder_perf",
+        "rendered_frames",
+        "dropped_frames",
+        "buffering_events"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "api_level": {
+          "description": "Nivel de API de Android. Medido: docs/audits/CONDICION_4_MEDICION_ONN4K_20261108.md:137 (getprop ro.build.version.sdk -> 34).",
+          "type": "object",
+          "required": ["value", "provenance"],
+          "properties": {
+            "value": { "type": ["integer", "null"], "minimum": 1 },
+            "provenance": { "$ref": "#/$defs/provenance" },
+            "evidence": { "$ref": "#/$defs/evidence" }
+          },
+          "additionalProperties": false,
+          "allOf": [{ "$ref": "#/$defs/measuredNeedsEvidence" }]
+        },
+        "soc": {
+          "description": "Plataforma/SoC. Medido: CONDICION_4:137 (getprop ro.board.platform -> s4) y docs/audits/INFORME_FINAL_VERIFICACION_20261108.md:94.",
+          "type": "object",
+          "required": ["value", "provenance"],
+          "properties": {
+            "value": { "type": ["string", "null"], "minLength": 1 },
+            "provenance": { "$ref": "#/$defs/provenance" },
+            "evidence": { "$ref": "#/$defs/evidence" }
+          },
+          "additionalProperties": false,
+          "allOf": [{ "$ref": "#/$defs/measuredNeedsEvidence" }]
+        },
+        "cpu_arch": {
+          "description": "Arquitectura de CPU. NO_COMPUTADO en este repo: ver docs/audits/SCHEMAS_20261111.md.",
+          "type": "object",
+          "required": ["value", "provenance"],
+          "properties": {
+            "value": { "type": ["string", "null"], "minLength": 1 },
+            "provenance": { "$ref": "#/$defs/provenance" },
+            "evidence": { "$ref": "#/$defs/evidence" }
+          },
+          "additionalProperties": false,
+          "allOf": [{ "$ref": "#/$defs/measuredNeedsEvidence" }]
+        },
+        "cpu_cores": {
+          "description": "Numero de nucleos. NO_COMPUTADO en este repo.",
+          "type": "object",
+          "required": ["value", "provenance"],
+          "properties": {
+            "value": { "type": ["integer", "null"], "minimum": 1 },
+            "provenance": { "$ref": "#/$defs/provenance" },
+            "evidence": { "$ref": "#/$defs/evidence" }
+          },
+          "additionalProperties": false,
+          "allOf": [{ "$ref": "#/$defs/measuredNeedsEvidence" }]
+        },
+        "hw_decoders": {
+          "description": "Decoders de hardware. Medido: CONDICION_4:33-34 (c2.amlogic.hevc.decoder, size max=4096x4096) y docs/audits/PRUEBA_FISICA_REA_654_20261108.md:50 (c2.amlogic.avc.decoder can support 4K).",
+          "type": "object",
+          "required": ["value", "provenance"],
+          "properties": {
+            "value": { "type": ["array", "null"], "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+            "provenance": { "$ref": "#/$defs/provenance" },
+            "evidence": { "$ref": "#/$defs/evidence" }
+          },
+          "additionalProperties": false,
+          "allOf": [{ "$ref": "#/$defs/measuredNeedsEvidence" }]
+        },
+        "hw_encoders": {
+          "description": "Encoders de hardware. REGLA: una lista no vacia afirma soporte de encoder, y eso exige medido + evidencia (si no, INVALID). NO_COMPUTADO en este repo.",
+          "type": "object",
+          "required": ["value", "provenance"],
+          "properties": {
+            "value": { "type": ["array", "null"], "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+            "provenance": { "$ref": "#/$defs/provenance" },
+            "evidence": { "$ref": "#/$defs/evidence" }
+          },
+          "additionalProperties": false,
+          "allOf": [
+            { "$ref": "#/$defs/measuredNeedsEvidence" },
+            { "$ref": "#/$defs/encoderClaimNeedsMeasurement" }
+          ]
+        },
+        "gpu": {
+          "description": "GPU. NO_COMPUTADO para este dispositivo: docs/rea/31_FILTERS_TRUTH.md:58 nombra Mali-G31 pero para un S905Y4, no para el s4 medido.",
+          "type": "object",
+          "required": ["value", "provenance"],
+          "properties": {
+            "value": { "type": ["string", "null"], "minLength": 1 },
+            "provenance": { "$ref": "#/$defs/provenance" },
+            "evidence": { "$ref": "#/$defs/evidence" }
+          },
+          "additionalProperties": false,
+          "allOf": [{ "$ref": "#/$defs/measuredNeedsEvidence" }]
+        },
+        "vulkan": {
+          "description": "Soporte Vulkan. NO_COMPUTADO para el dispositivo: docs/rea/03_BUILD_SHADERS_SECURITY.md:114 mide Vulkan del HOST Windows, no del ONN.",
+          "type": "object",
+          "required": ["value", "provenance"],
+          "properties": {
+            "value": {
+              "type": ["object", "null"],
+              "required": ["supported"],
+              "properties": {
+                "supported": { "type": ["boolean", "null"] },
+                "api_version": { "type": ["string", "null"], "minLength": 1 }
+              },
+              "additionalProperties": false
+            },
+            "provenance": { "$ref": "#/$defs/provenance" },
+            "evidence": { "$ref": "#/$defs/evidence" }
+          },
+          "additionalProperties": false,
+          "allOf": [{ "$ref": "#/$defs/measuredNeedsEvidence" }]
+        },
+        "max_texture_size": {
+          "description": "Tamano maximo de textura GL. NO_COMPUTADO en este repo.",
+          "type": "object",
+          "required": ["value", "provenance"],
+          "properties": {
+            "value": { "type": ["integer", "null"], "minimum": 1 },
+            "provenance": { "$ref": "#/$defs/provenance" },
+            "evidence": { "$ref": "#/$defs/evidence" }
+          },
+          "additionalProperties": false,
+          "allOf": [{ "$ref": "#/$defs/measuredNeedsEvidence" }]
+        },
+        "ram": {
+          "description": "Memoria. NO_COMPUTADO en este repo.",
+          "type": "object",
+          "required": ["value", "provenance"],
+          "properties": {
+            "value": {
+              "type": ["object", "null"],
+              "required": ["total_bytes"],
+              "properties": {
+                "total_bytes": { "type": ["integer", "null"], "minimum": 1 },
+                "available_bytes": { "type": ["integer", "null"], "minimum": 0 }
+              },
+              "additionalProperties": false
+            },
+            "provenance": { "$ref": "#/$defs/provenance" },
+            "evidence": { "$ref": "#/$defs/evidence" }
+          },
+          "additionalProperties": false,
+          "allOf": [{ "$ref": "#/$defs/measuredNeedsEvidence" }]
+        },
+        "display_resolution": {
+          "description": "Resolucion fisica. Medido: CONDICION_4:52 (Physical size: 3840x2160) y :157 (mBaseDisplayInfo real 3840x2160).",
+          "type": "object",
+          "required": ["value", "provenance"],
+          "properties": {
+            "value": {
+              "type": ["object", "null"],
+              "required": ["width", "height"],
+              "properties": {
+                "width": { "type": ["integer", "null"], "minimum": 1 },
+                "height": { "type": ["integer", "null"], "minimum": 1 }
+              },
+              "additionalProperties": false
+            },
+            "provenance": { "$ref": "#/$defs/provenance" },
+            "evidence": { "$ref": "#/$defs/evidence" }
+          },
+          "additionalProperties": false,
+          "allOf": [{ "$ref": "#/$defs/measuredNeedsEvidence" }]
+        },
+        "display_refresh_rate": {
+          "description": "Refresco del display en Hz. Medido: CONDICION_4:52 y :157 (mode 694 @ 60.000004 fps) y :161 (mode 694 = 3840x2160 @ 60 Hz).",
+          "type": "object",
+          "required": ["value", "provenance"],
+          "properties": {
+            "value": { "type": ["number", "null"], "exclusiveMinimum": 0, "maximum": 240 },
+            "provenance": { "$ref": "#/$defs/provenance" },
+            "evidence": { "$ref": "#/$defs/evidence" }
+          },
+          "additionalProperties": false,
+          "allOf": [{ "$ref": "#/$defs/measuredNeedsEvidence" }]
+        },
+        "hdr": {
+          "description": "HDR soportado por el display. NO_COMPUTADO: CONDICION_4:140 define el comando (dumpsys display | supportedHdrTypes) pero su salida no se capturo en ningun documento.",
+          "type": "object",
+          "required": ["value", "provenance"],
+          "properties": {
+            "value": {
+              "type": ["object", "null"],
+              "required": ["supported"],
+              "properties": {
+                "supported": { "type": ["boolean", "null"] },
+                "types": { "type": ["array", "null"], "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+              },
+              "additionalProperties": false
+            },
+            "provenance": { "$ref": "#/$defs/provenance" },
+            "evidence": { "$ref": "#/$defs/evidence" }
+          },
+          "additionalProperties": false,
+          "allOf": [{ "$ref": "#/$defs/measuredNeedsEvidence" }]
+        },
+        "codec_profiles": {
+          "description": "Perfiles de codec que el dispositivo decodifica. REGLA: una lista no vacia afirma soporte y exige medido + evidencia. NO_COMPUTADO en este repo.",
+          "type": "object",
+          "required": ["value", "provenance"],
+          "properties": {
+            "value": { "type": ["array", "null"], "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+            "provenance": { "$ref": "#/$defs/provenance" },
+            "evidence": { "$ref": "#/$defs/evidence" }
+          },
+          "additionalProperties": false,
+          "allOf": [
+            { "$ref": "#/$defs/measuredNeedsEvidence" },
+            { "$ref": "#/$defs/encoderClaimNeedsMeasurement" }
+          ]
+        },
+        "thermal_state": {
+          "description": "Estado termico. El ENUM sale de canary_quality.js:35 (device.thermalState || 'unknown') y :39 (thermal !== 'severe' && thermal !== 'critical'), y de facts.example.json:2 ('nominal'). El schema solo admite esos 4 valores; el valor real del dispositivo es NO_COMPUTADO.",
+          "type": "object",
+          "required": ["value", "provenance"],
+          "properties": {
+            "value": { "type": ["string", "null"], "enum": ["nominal", "severe", "critical", "unknown", null] },
+            "provenance": { "$ref": "#/$defs/provenance" },
+            "evidence": { "$ref": "#/$defs/evidence" }
+          },
+          "additionalProperties": false,
+          "allOf": [{ "$ref": "#/$defs/measuredNeedsEvidence" }]
+        },
+        "battery": {
+          "description": "Bateria. NO_COMPUTADO en este repo (un TV box puede no tener bateria; declararlo, no inventarlo).",
+          "type": "object",
+          "required": ["value", "provenance"],
+          "properties": {
+            "value": {
+              "type": ["object", "null"],
+              "required": ["level_percent"],
+              "properties": {
+                "level_percent": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+                "charging": { "type": ["boolean", "null"] }
+              },
+              "additionalProperties": false
+            },
+            "provenance": { "$ref": "#/$defs/provenance" },
+            "evidence": { "$ref": "#/$defs/evidence" }
+          },
+          "additionalProperties": false,
+          "allOf": [{ "$ref": "#/$defs/measuredNeedsEvidence" }]
+        },
+        "decoder_perf": {
+          "description": "Techo medido del decoder. Medido: CONDICION_4:34 y :16 (size max=4096x4096; decoder HEVC maximo 4096x2160) e INFORME_FINAL_VERIFICACION_20261108.md:100.",
+          "type": "object",
+          "required": ["value", "provenance"],
+          "properties": {
+            "value": {
+              "type": ["object", "null"],
+              "required": ["max_decode_width", "max_decode_height"],
+              "properties": {
+                "max_decode_width": { "type": ["integer", "null"], "minimum": 1 },
+                "max_decode_height": { "type": ["integer", "null"], "minimum": 1 },
+                "fps": { "type": ["number", "null"], "exclusiveMinimum": 0 }
+              },
+              "additionalProperties": false
+            },
+            "provenance": { "$ref": "#/$defs/provenance" },
+            "evidence": { "$ref": "#/$defs/evidence" }
+          },
+          "additionalProperties": false,
+          "allOf": [{ "$ref": "#/$defs/measuredNeedsEvidence" }]
+        },
+        "rendered_frames": {
+          "description": "Fotogramas renderizados en la ventana medida. NO_COMPUTADO en este repo.",
+          "type": "object",
+          "required": ["value", "provenance"],
+          "properties": {
+            "value": { "type": ["integer", "null"], "minimum": 0 },
+            "provenance": { "$ref": "#/$defs/provenance" },
+            "evidence": { "$ref": "#/$defs/evidence" }
+          },
+          "additionalProperties": false,
+          "allOf": [{ "$ref": "#/$defs/measuredNeedsEvidence" }]
+        },
+        "dropped_frames": {
+          "description": "Fotogramas descartados en la ventana medida. NO_COMPUTADO en este repo.",
+          "type": "object",
+          "required": ["value", "provenance"],
+          "properties": {
+            "value": { "type": ["integer", "null"], "minimum": 0 },
+            "provenance": { "$ref": "#/$defs/provenance" },
+            "evidence": { "$ref": "#/$defs/evidence" }
+          },
+          "additionalProperties": false,
+          "allOf": [{ "$ref": "#/$defs/measuredNeedsEvidence" }]
+        },
+        "buffering_events": {
+          "description": "Eventos de buffering en la ventana medida. NO_COMPUTADO en este repo.",
+          "type": "object",
+          "required": ["value", "provenance"],
+          "properties": {
+            "value": { "type": ["integer", "null"], "minimum": 0 },
+            "provenance": { "$ref": "#/$defs/provenance" },
+            "evidence": { "$ref": "#/$defs/evidence" }
+          },
+          "additionalProperties": false,
+          "allOf": [{ "$ref": "#/$defs/measuredNeedsEvidence" }]
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "provenance": {
+      "description": "Procedencia OBLIGATORIA del dato. EL ENUM ES DE 4 VALORES CANONICOS EN INGLES. La redaccion en espanol se admite como ALIAS DE ENTRADA: la convierte el normalizador del consumidor ANTES de validar (tabla en provenance_alias_map). El schema NO valida 'medido': si llega sin normalizar, es invalido. La igualdad estricta contra provenance solo es segura contra el canonico.",
+      "type": "string",
+      "enum": ["measured", "declared", "inferred", "unavailable"]
+    },
+    "evidence": {
+      "description": "Artefacto que sostiene el dato. artifact debe ser una referencia verificable: fichero:linea, hash o comando con su salida. Un string vacio no es evidencia.",
+      "type": "object",
+      "required": ["artifact"],
+      "properties": {
+        "artifact": { "type": "string", "minLength": 3, "pattern": "\\S" },
+        "command": { "type": "string", "minLength": 1 },
+        "measured_at": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+      },
+      "additionalProperties": false
+    },
+    "measuredNeedsEvidence": {
+      "description": "Regla 1: provenance=measured exige evidence.",
+      "if": {
+        "required": ["provenance"],
+        "properties": { "provenance": { "enum": ["measured"] } }
+      },
+      "then": { "required": ["evidence"] }
+    },
+    "encoderClaimNeedsMeasurement": {
+      "description": "Regla 2: una lista de encoders/perfiles NO VACIA afirma soporte, y afirmar soporte sin medicion es INVALID. Exige provenance=measured y evidence. Una lista vacia con provenance=unavailable es valida: es la forma honesta de decir 'no medido'.",
+      "if": {
+        "required": ["value"],
+        "properties": { "value": { "type": "array", "minItems": 1 } }
+      },
+      "then": {
+        "required": ["evidence"],
+        "properties": { "provenance": { "enum": ["measured"] } }
+      }
+    }
+  }
+}

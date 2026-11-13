@@ -1,0 +1,133 @@
+{
+  "schema": "ape.canary.test-evidence.v1",
+  "generado": "2026-11-13T06:55:26.446Z",
+  "maquina": "Windows, node v24.12.0",
+  "metodo": "cada gate se ejecuta con node; el veredicto se toma del exit code, no de buscar PASS en el texto",
+  "lab_v24": {
+    "ruta": "artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json",
+    "sha256": "71307d9a6ce49cf4d384c6c894093e15011891306107b970de6768efff953e30"
+  },
+  "resumen": {
+    "total": 11,
+    "pasan": 11,
+    "fallan": 0,
+    "ausentes": 0
+  },
+  "gates": [
+    {
+      "id": "anti_degradation",
+      "gate": "tools/check_anti_degradation_policy.js",
+      "estado": "PASS",
+      "exit_code": 0,
+      "prueba": "Ninguna ruta degrada 4K a FHD/HD/SD, HEVC a H264, HDR a SDR ni recorta fps/bitrate",
+      "ultima_linea": "TOTAL=8 PASS=8 FAIL=0",
+      "lineas_salida": 12,
+      "sha256_gate": "59b0e9038d3a1b7715063f15ac6aef103f86f7a61bbd14cbe36e65f139f3fdaf"
+    },
+    {
+      "id": "crystal_4k",
+      "gate": "tools/check_crystal_4k_law.js",
+      "estado": "PASS",
+      "exit_code": 0,
+      "prueba": "Ley Crystal 4K: la mejora es obligatoria y se declara como declaracion, no como ejecucion",
+      "ultima_linea": "TOTAL=5 PASS=5 FAIL=0",
+      "lineas_salida": 6,
+      "sha256_gate": "736523cf1e8afb94d8ea56721d64f3ff6384c510d98a867b9a16f1a56f115e97"
+    },
+    {
+      "id": "crystal_6k",
+      "gate": "tools/check_crystal_6k_law.js",
+      "estado": "PASS",
+      "exit_code": 0,
+      "prueba": "Ley Crystal 6K: opt-in, nunca declarar 6K falso, nunca degradar 4K",
+      "ultima_linea": "TOTAL=6 PASS=6 FAIL=0",
+      "lineas_salida": 7,
+      "sha256_gate": "be663936c4194d527e28fc9e7a2c5c96d745507b6a420412fc48e0eb4d7b00ed"
+    },
+    {
+      "id": "display_cadence",
+      "gate": "tools/quality/test_display_cadence.js",
+      "estado": "PASS",
+      "exit_code": 0,
+      "prueba": "Display4K no pisa la cadencia elegida; discriminador de multiplo exacto con tolerancia 1e-4",
+      "ultima_linea": "22/22 PASS",
+      "lineas_salida": 1,
+      "sha256_gate": "53bd3789b87fb2f1ba02164a55d523c0bb02c1131cad522bd8cb46b8c62fe390"
+    },
+    {
+      "id": "variant_select",
+      "gate": "tools/quality/test_variant_select.js",
+      "estado": "PASS",
+      "exit_code": 0,
+      "prueba": "Seleccion de variante: reordena por area de RESOLUTION, nunca elimina ni reescribe atributos",
+      "ultima_linea": "37/37 PASS",
+      "lineas_salida": 1,
+      "sha256_gate": "a6c5aaba746f64140842557615670b5607ae2bcf92c919e667065f44f8ed5e5f"
+    },
+    {
+      "id": "caps_contract",
+      "gate": "tools/quality/test_caps_contract.js",
+      "estado": "PASS",
+      "exit_code": 0,
+      "prueba": "Contrato APK <-> soc_gate del VPS: ai_sr se reporta y el gate lo lee",
+      "ultima_linea": "15/15 PASS",
+      "lineas_salida": 1,
+      "sha256_gate": "f78d956b71b9b4f967795d6a87b6302b6293ed337b89c6e5e5673680d75affd1"
+    },
+    {
+      "id": "soc_vocabulary",
+      "gate": "tools/quality/check_soc_vocabulary.js",
+      "estado": "PASS",
+      "exit_code": 0,
+      "prueba": "El vocabulario de SoC es identico en los 10 sitios y 4 runtimes donde esta copiado",
+      "ultima_linea": "10/10 PASS",
+      "lineas_salida": 14,
+      "sha256_gate": "09d0895e634a9be78909c4f05e90ee805b2a3c60d3d6cd6b942cde2c73c07265"
+    },
+    {
+      "id": "soc_normalization",
+      "gate": "tools/quality/test_soc_normalization.js",
+      "estado": "PASS",
+      "exit_code": 0,
+      "prueba": "AMLS905Y4 -> amlogic: el SoC crudo del aparato pasa el gate canonico",
+      "ultima_linea": "31/31 PASS",
+      "lineas_salida": 12,
+      "sha256_gate": "af438492949067635a9993c79f9d9e881c102f35213e460e66725263d15a5857"
+    },
+    {
+      "id": "6k_source_honest",
+      "gate": "tools/quality/test_6k_source_honest.js",
+      "estado": "PASS",
+      "exit_code": 0,
+      "prueba": "El 6K emulado se calcula sobre la fuente MEDIDA; sin sonda declara UNKNOWN, nunca asume 1080p",
+      "ultima_linea": "TOTAL 17/17",
+      "lineas_salida": 23,
+      "sha256_gate": "716dbc1f8cd1df110d68fb5cf2d4ffc41fb3066265c72d14a95ede23e146c58f"
+    },
+    {
+      "id": "composition_policy",
+      "gate": "tools/quality/test_composition_policy.js",
+      "estado": "PASS",
+      "exit_code": 0,
+      "prueba": "Politica de composicion: allowlist, tope 1080p del firmware, excepcion de creacion solo para geometria",
+      "ultima_linea": "TOTAL 27/27",
+      "lineas_salida": 35,
+      "sha256_gate": "7efe67bf5d60966dde82f77575d5fdbc956dfc03da2e62a85014ad8ac647b813"
+    },
+    {
+      "id": "e2e_playlist_v24",
+      "gate": "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/rea-v24-e2e-playlist.js",
+      "estado": "PASS",
+      "exit_code": 0,
+      "prueba": "E2E del generador en tres regimenes: legacy, REA sin opt-in y REA con opt-in",
+      "ultima_linea": "artefacto (regimen B, el mas estricto): C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\docs\\audits\\playlist_rea_v24_sample.m3u8",
+      "lineas_salida": 31,
+      "sha256_gate": "a614e39bf996e230c8ca1ad30c7a5e271dce0582175622fdddac15e27eb21954"
+    }
+  ],
+  "limites": [
+    "Estos gates prueban LOGICA y CONTRATOS, no pixeles. Que esten verdes no significa que la imagen se vea mejor.",
+    "Ninguno de estos gates se ha ejecutado contra el aparato del operador: son estaticos, sobre el repositorio.",
+    "La ausencia de un gate BLOQUEADO no es un fallo del codigo; es un dato que falta, y se reporta como tal."
+  ]
+}

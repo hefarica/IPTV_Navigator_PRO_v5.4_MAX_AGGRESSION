@@ -1,0 +1,23 @@
+{
+  "schema": "ape.harness.apply.v1",
+  "generado": "2026-11-13T07:41:18.454Z",
+  "origen": "downloaded_list_4K.m3u8",
+  "salida": "h1.m3u8",
+  "lineas": {
+    "entrada": 2051453,
+    "salida": 2051456,
+    "anadidas": 9
+  },
+  "canales": 2754,
+  "sha256_cuerpo": "d38a7985dc1b4346080a90c2999d0617281163ac12ef5408986cef07a8203d57",
+  "bloques_anadidos": 9,
+  "ya_traia_harness": true,
+  "verificaciones": {
+    "V2_extinf": "OK",
+    "V3_rutas": "OK",
+    "V4_cuerpo": "OK",
+    "V5_bloques": "OK"
+  },
+  "atomicidad": "escrito a .tmp y renombrado solo tras pasar las verificaciones",
+  "nota": "el cuerpo (todo desde el primer #EXTINF) es IDENTICO byte a byte: solo se anadio cabecera"
+}

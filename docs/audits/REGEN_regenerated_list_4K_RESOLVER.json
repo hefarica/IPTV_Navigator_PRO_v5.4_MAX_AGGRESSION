@@ -1,0 +1,29 @@
+{
+  "schema": "ape.playlist.regen.v1",
+  "generado": "2026-11-13T07:30:45.272Z",
+  "entrada": "downloaded_list_4K.m3u8",
+  "salida": "regenerated_list_4K_RESOLVER.m3u8",
+  "bytes": {
+    "entrada": 220194640,
+    "salida": 222729172
+  },
+  "lineas": 2051453,
+  "canales": 2754,
+  "sustituciones": 2753,
+  "sin_resolver": 0,
+  "ejemplos": [
+    {
+      "de": "https://iptv-ape.duckdns.org/live/1.m3u8",
+      "a": "https://iptv-ape.duckdns.org/resolve_quality.php?ch=1&p=P3&mode=adaptive&list=22.2.0-FUSION-FANTASMA-NUCLEAR&bw=50500000&buf=37500&origin=nov202gg.xyz&sid=1&srv=bm92MjAyZ2cueHl6OjgwfDJibHR6bGw0cDJ8MHF0dWprcmphbA%3D%3D&ctx=eyJwIjoiUDMiLCJycyI6IjE5MjB4MTA4MCIsImJ3Ijo1MDUwMDAwMCwiYnIiOjI1MjUwLCJiZiI6Mzc1MDAsIm5jIjo0MDAwMCwiaGQiOjAsImNzIjoiQlQyMDIwIiwiY3AiOiJIWUJSSURfQVYxX0hFVkNfQVZDIiwidiI6IjI1IiwicmciOiJSRVNUTyBERUwgTVVORE8iLCJsZyI6InVuZCIsImN0IjoiREVQT1JURVMiLCJjbiI6IlJFU1RPIERFTCBNVU5ETyIsImNmIjozMywiZnAiOjEyMCwidHIiOiJITFMiLCJhdCI6MCwiY3UiOjAsImxsIjowLCJidCI6IiIsInNjIjoiZ2VuZXJhbCIsImNmMiI6IiIsIm14Ijo1MDAwLCJtZiI6ODAwLCJkdiI6OCwiYngiOjIwMDAwMCwiYjIiOjYwMDAwLCJkdCI6IlRWIiwic3IiOiIxOTIweDEwODAiLCJodyI6MSwiaWIiOjI1MjUwMDAwLCJicCI6IlVMIiwiY2QiOiJhdXRvIiwic2YiOjEsImFiIjo2NDAsImFjIjoiYWFjLGVhYzMiLCJwdCI6IlZMQyIsIm50Ijoid2lmaSIsInJjIjoxMCwiY3QyIjoyNTAwLCJ2YyI6ImF2MSxoZXZjLHZwOSxoMjY0IiwiZHIiOiJ3aWRldmluZSxwbGF5cmVhZHkiLCJuYzIiOjEyMDAwMCwiY2oiOjE1MDB9"
+    },
+    {
+      "de": "https://iptv-ape.duckdns.org/live/2.m3u8",
+      "a": "https://iptv-ape.duckdns.org/resolve_quality.php?ch=2&p=P3&mode=adaptive&list=22.2.0-FUSION-FANTASMA-NUCLEAR&bw=50500000&buf=37500&origin=nov202gg.xyz&sid=2&srv=bm92MjAyZ2cueHl6OjgwfDJibHR6bGw0cDJ8MHF0dWprcmphbA%3D%3D&ctx=eyJwIjoiUDMiLCJycyI6IjE5MjB4MTA4MCIsImJ3Ijo1MDUwMDAwMCwiYnIiOjI1MjUwLCJiZiI6Mzc1MDAsIm5jIjo0MDAwMCwiaGQiOjAsImNzIjoiQlQyMDIwIiwiY3AiOiJIWUJSSURfQVYxX0hFVkNfQVZDIiwidiI6IjI1IiwicmciOiJSRVNUTyBERUwgTVVORE8iLCJsZyI6InVuZCIsImN0IjoiREVQT1JURVMiLCJjbiI6IlJFU1RPIERFTCBNVU5ETyIsImNmIjozMywiZnAiOjEyMCwidHIiOiJITFMiLCJhdCI6MCwiY3UiOjAsImxsIjowLCJidCI6IiIsInNjIjoiZ2VuZXJhbCIsImNmMiI6IiIsIm14Ijo1MDAwLCJtZiI6ODAwLCJkdiI6OCwiYngiOjIwMDAwMCwiYjIiOjYwMDAwLCJkdCI6IlRWIiwic3IiOiIxOTIweDEwODAiLCJodyI6MSwiaWIiOjI1MjUwMDAwLCJicCI6IlVMIiwiY2QiOiJhdXRvIiwic2YiOjEsImFiIjo2NDAsImFjIjoiYWFjLGVhYzMiLCJwdCI6IlZMQyIsIm50Ijoid2lmaSIsInJjIjoxMCwiY3QyIjoyNTAwLCJ2YyI6ImF2MSxoZXZjLHZwOSxoMjY0IiwiZHIiOiJ3aWRldmluZSxwbGF5cmVhZHkiLCJuYzIiOjEyMDAwMCwiY2oiOjE1MDB9"
+    },
+    {
+      "de": "https://iptv-ape.duckdns.org/live/4.m3u8",
+      "a": "https://iptv-ape.duckdns.org/resolve_quality.php?ch=4&p=P3&mode=adaptive&list=22.2.0-FUSION-FANTASMA-NUCLEAR&bw=50500000&buf=37500&origin=nov202gg.xyz&sid=4&srv=bm92MjAyZ2cueHl6OjgwfDJibHR6bGw0cDJ8MHF0dWprcmphbA%3D%3D&ctx=eyJwIjoiUDMiLCJycyI6IjE5MjB4MTA4MCIsImJ3Ijo1MDUwMDAwMCwiYnIiOjI1MjUwLCJiZiI6Mzc1MDAsIm5jIjo0MDAwMCwiaGQiOjAsImNzIjoiQlQyMDIwIiwiY3AiOiJIWUJSSURfQVYxX0hFVkNfQVZDIiwidiI6IjI1IiwicmciOiJSRVNUTyBERUwgTVVORE8iLCJsZyI6InVuZCIsImN0IjoiREVQT1JURVMiLCJjbiI6IlJFU1RPIERFTCBNVU5ETyIsImNmIjozMywiZnAiOjEyMCwidHIiOiJITFMiLCJhdCI6MCwiY3UiOjAsImxsIjowLCJidCI6IiIsInNjIjoiZ2VuZXJhbCIsImNmMiI6IiIsIm14Ijo1MDAwLCJtZiI6ODAwLCJkdiI6OCwiYngiOjIwMDAwMCwiYjIiOjYwMDAwLCJkdCI6IlRWIiwic3IiOiIxOTIweDEwODAiLCJodyI6MSwiaWIiOjI1MjUwMDAwLCJicCI6IlVMIiwiY2QiOiJhdXRvIiwic2YiOjEsImFiIjo2NDAsImFjIjoiYWFjLGVhYzMiLCJwdCI6IlZMQyIsIm50Ijoid2lmaSIsInJjIjoxMCwiY3QyIjoyNTAwLCJ2YyI6ImF2MSxoZXZjLHZwOSxoMjY0IiwiZHIiOiJ3aWRldmluZSxwbGF5cmVhZHkiLCJuYzIiOjEyMDAwMCwiY2oiOjE1MDB9"
+    }
+  ],
+  "nota": "solo se sustituyo la linea de URL rota /live/N.{ext}; el resto del contenido se copio byte a byte"
+}

@@ -1,0 +1,1381 @@
+{
+  "schema": "ape.canary.lab_profiles_audit.v1",
+  "generated_at": "2026-11-11T08:52:52.704Z",
+  "generated_by": "canary-auditor / t32",
+  "method": "SOLO LECTURA sobre los JSON del LAB; medido con fs.statSync + sha256 + parse JSON en esta corrida",
+  "head": "472f7cc330e52dc2f7e3d16f6a451fd0b461949e",
+  "files": {
+    "A_CERTIFIED_DELIV": {
+      "path": "deliverables/LAB_2026-10-26/LAB_CALIBRATED_BULLETPROOF_CERTIFIED.json",
+      "bytes": 362871,
+      "sha256": "345783e33142791b23b4662d396c0c83c8051d77cd7c166dc21ef4990c093094",
+      "identical_to": [
+        "B_CERTIFIED_VALID",
+        "F_CERTIFIED_AUDIT"
+      ],
+      "version": "22.6.0-CERTIFIED-BULLETPROOF-2026-10-26",
+      "lab_version": "omega_v1_bulletproof_20261026",
+      "six_k_version": null,
+      "profiles": [
+        "P0",
+        "P1",
+        "P2",
+        "P3",
+        "P4",
+        "P5"
+      ],
+      "profiles_count": 6,
+      "top_level_keys": [
+        "lab_version",
+        "playlist_format",
+        "exported_at",
+        "profiles_calibrated",
+        "nivel1_directives",
+        "nivel3_per_layer",
+        "servers",
+        "evasion_pool",
+        "config_global",
+        "placeholders_map",
+        "scoring_metadata",
+        "omega_gap_plan",
+        "lab_schema_variant",
+        "version",
+        "bulletproof",
+        "synthesized_at",
+        "meta_per_profile",
+        "prisma_lab_sync_v20",
+        "dnr_calibration",
+        "placeholders_meta",
+        "certification_2026_10_26"
+      ]
+    },
+    "B_CERTIFIED_VALID": {
+      "path": "deliverables/VALIDACION_ENTREGA_2026-10-28/lab/LAB_CALIBRATED_BULLETPROOF_CERTIFIED.json",
+      "bytes": 362871,
+      "sha256": "345783e33142791b23b4662d396c0c83c8051d77cd7c166dc21ef4990c093094",
+      "identical_to": [
+        "A_CERTIFIED_DELIV",
+        "F_CERTIFIED_AUDIT"
+      ],
+      "version": "22.6.0-CERTIFIED-BULLETPROOF-2026-10-26",
+      "lab_version": "omega_v1_bulletproof_20261026",
+      "six_k_version": null,
+      "profiles": [
+        "P0",
+        "P1",
+        "P2",
+        "P3",
+        "P4",
+        "P5"
+      ],
+      "profiles_count": 6,
+      "top_level_keys": [
+        "lab_version",
+        "playlist_format",
+        "exported_at",
+        "profiles_calibrated",
+        "nivel1_directives",
+        "nivel3_per_layer",
+        "servers",
+        "evasion_pool",
+        "config_global",
+        "placeholders_map",
+        "scoring_metadata",
+        "omega_gap_plan",
+        "lab_schema_variant",
+        "version",
+        "bulletproof",
+        "synthesized_at",
+        "meta_per_profile",
+        "prisma_lab_sync_v20",
+        "dnr_calibration",
+        "placeholders_meta",
+        "certification_2026_10_26"
+      ]
+    },
+    "C_V23_FUSED": {
+      "path": "artifacts/LAB_CALIBRATED_FINAL_v23.0.0-FUSED.json",
+      "bytes": 332256,
+      "sha256": "59db06c8143c3445c6b0fe12c086e6529183afc72ccea23e2738755618f82711",
+      "identical_to": [],
+      "version": "22.6.0-CERTIFIED-BULLETPROOF-2026-10-26",
+      "lab_version": "omega_v1_bulletproof_20261026",
+      "six_k_version": null,
+      "profiles": [
+        "P0",
+        "P1",
+        "P2",
+        "P3",
+        "P4",
+        "P5"
+      ],
+      "profiles_count": 6,
+      "top_level_keys": [
+        "lab_version",
+        "playlist_format",
+        "exported_at",
+        "profiles_calibrated",
+        "nivel1_directives",
+        "nivel3_per_layer",
+        "servers",
+        "evasion_pool",
+        "config_global",
+        "placeholders_map",
+        "scoring_metadata",
+        "omega_gap_plan",
+        "lab_schema_variant",
+        "version",
+        "bulletproof",
+        "synthesized_at",
+        "meta_per_profile",
+        "prisma_lab_sync_v20",
+        "dnr_calibration",
+        "placeholders_meta",
+        "certification_2026_10_26",
+        "provenance_lab_final"
+      ]
+    },
+    "D_V24_6K": {
+      "path": "artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json",
+      "bytes": 586587,
+      "sha256": "71307d9a6ce49cf4d384c6c894093e15011891306107b970de6768efff953e30",
+      "identical_to": [],
+      "version": "23.1.0-6K-EMULATED",
+      "lab_version": "omega_v1_bulletproof_20261026",
+      "six_k_version": "6K-EMULATED-v1",
+      "profiles": [
+        "P0",
+        "P0.5",
+        "P1",
+        "P1.5",
+        "P2",
+        "P2.5",
+        "P3",
+        "P3.5",
+        "P4",
+        "P4.5",
+        "P5",
+        "P5.5"
+      ],
+      "profiles_count": 12,
+      "top_level_keys": [
+        "lab_version",
+        "playlist_format",
+        "exported_at",
+        "profiles_calibrated",
+        "nivel1_directives",
+        "nivel3_per_layer",
+        "servers",
+        "evasion_pool",
+        "config_global",
+        "placeholders_map",
+        "scoring_metadata",
+        "omega_gap_plan",
+        "lab_schema_variant",
+        "version",
+        "bulletproof",
+        "synthesized_at",
+        "meta_per_profile",
+        "prisma_lab_sync_v20",
+        "dnr_calibration",
+        "placeholders_meta",
+        "certification_2026_10_26",
+        "provenance_lab_final",
+        "six_k_version",
+        "emulated_6k",
+        "byterange_capability"
+      ]
+    },
+    "E_IMPORTADO": {
+      "path": "artifacts/LAB_CALIBRATED_IMPORTADO.json",
+      "bytes": 605082,
+      "sha256": "63385ad8d88537f445002b5021fc28ead947758b13ceed2789f2be5670e59f8e",
+      "identical_to": [],
+      "version": "23.1.0-6K-EMULATED",
+      "lab_version": "omega_v1_bulletproof_20261026",
+      "six_k_version": "6K-EMULATED-v1",
+      "profiles": [
+        "P0",
+        "P0.5",
+        "P1",
+        "P1.5",
+        "P2",
+        "P2.5",
+        "P3",
+        "P3.5",
+        "P4",
+        "P4.5",
+        "P5",
+        "P5.5",
+        "crystal_2k_lite",
+        "crystal_2k_max",
+        "crystal_2k_uhd",
+        "crystal_4k_lite",
+        "crystal_4k_max",
+        "crystal_4k_uhd",
+        "crystal_6k_lite",
+        "crystal_6k_max",
+        "crystal_6k_uhd",
+        "crystal_8k_lite",
+        "crystal_8k_max",
+        "crystal_8k_uhd"
+      ],
+      "profiles_count": 24,
+      "top_level_keys": [
+        "lab_version",
+        "playlist_format",
+        "exported_at",
+        "profiles_calibrated",
+        "nivel1_directives",
+        "nivel3_per_layer",
+        "servers",
+        "evasion_pool",
+        "config_global",
+        "placeholders_map",
+        "scoring_metadata",
+        "omega_gap_plan",
+        "lab_schema_variant",
+        "version",
+        "bulletproof",
+        "synthesized_at",
+        "meta_per_profile",
+        "prisma_lab_sync_v20",
+        "dnr_calibration",
+        "placeholders_meta",
+        "certification_2026_10_26",
+        "provenance_lab_final",
+        "six_k_version",
+        "emulated_6k",
+        "crystal_profiles_embedded"
+      ]
+    },
+    "F_CERTIFIED_AUDIT": {
+      "path": "audit_teams_REA/evidence/lab_master_22.6.0.CERTIFIED-BULLETPROOF-2026-10-26.json",
+      "bytes": 362871,
+      "sha256": "345783e33142791b23b4662d396c0c83c8051d77cd7c166dc21ef4990c093094",
+      "identical_to": [
+        "A_CERTIFIED_DELIV",
+        "B_CERTIFIED_VALID"
+      ],
+      "version": "22.6.0-CERTIFIED-BULLETPROOF-2026-10-26",
+      "lab_version": "omega_v1_bulletproof_20261026",
+      "six_k_version": null,
+      "profiles": [
+        "P0",
+        "P1",
+        "P2",
+        "P3",
+        "P4",
+        "P5"
+      ],
+      "profiles_count": 6,
+      "top_level_keys": [
+        "lab_version",
+        "playlist_format",
+        "exported_at",
+        "profiles_calibrated",
+        "nivel1_directives",
+        "nivel3_per_layer",
+        "servers",
+        "evasion_pool",
+        "config_global",
+        "placeholders_map",
+        "scoring_metadata",
+        "omega_gap_plan",
+        "lab_schema_variant",
+        "version",
+        "bulletproof",
+        "synthesized_at",
+        "meta_per_profile",
+        "prisma_lab_sync_v20",
+        "dnr_calibration",
+        "placeholders_meta",
+        "certification_2026_10_26"
+      ]
+    }
+  },
+  "byte_identical_groups": [
+    [
+      "deliverables/LAB_2026-10-26/LAB_CALIBRATED_BULLETPROOF_CERTIFIED.json",
+      "deliverables/VALIDACION_ENTREGA_2026-10-28/lab/LAB_CALIBRATED_BULLETPROOF_CERTIFIED.json",
+      "audit_teams_REA/evidence/lab_master_22.6.0.CERTIFIED-BULLETPROOF-2026-10-26.json"
+    ]
+  ],
+  "profile_identity_by_file": {
+    "A_CERTIFIED_DELIV": [
+      "P0",
+      "P1",
+      "P2",
+      "P3",
+      "P4",
+      "P5"
+    ],
+    "C_V23_FUSED": [
+      "P0",
+      "P1",
+      "P2",
+      "P3",
+      "P4",
+      "P5"
+    ],
+    "D_V24_6K": [
+      "P0",
+      "P0.5",
+      "P1",
+      "P1.5",
+      "P2",
+      "P2.5",
+      "P3",
+      "P3.5",
+      "P4",
+      "P4.5",
+      "P5",
+      "P5.5"
+    ],
+    "E_IMPORTADO": [
+      "P0",
+      "P0.5",
+      "P1",
+      "P1.5",
+      "P2",
+      "P2.5",
+      "P3",
+      "P3.5",
+      "P4",
+      "P4.5",
+      "P5",
+      "P5.5",
+      "crystal_2k_lite",
+      "crystal_2k_max",
+      "crystal_2k_uhd",
+      "crystal_4k_lite",
+      "crystal_4k_max",
+      "crystal_4k_uhd",
+      "crystal_6k_lite",
+      "crystal_6k_max",
+      "crystal_6k_uhd",
+      "crystal_8k_lite",
+      "crystal_8k_max",
+      "crystal_8k_uhd"
+    ]
+  },
+  "profiles_v24_detailed": [
+    {
+      "id": "P0",
+      "name": "8K Master",
+      "json_base": "profiles_calibrated[\"P0\"]",
+      "requested_resolution": {
+        "value": "7680x4320",
+        "path": "profiles_calibrated[\"P0\"].settings.resolution"
+      },
+      "top_resolution": null,
+      "source_resolution": null,
+      "display_requirement": null,
+      "processed": null,
+      "fps": {
+        "value": "30",
+        "path": "profiles_calibrated[\"P0\"].settings.fps|targetFps|target_framerate"
+      },
+      "codec": {
+        "value": "DVH1",
+        "full": "dvh1.08.06",
+        "path": "profiles_calibrated[\"P0\"].settings.codec|codec_primary"
+      },
+      "base_profile": null,
+      "is_emulated": null,
+      "declared_enhancement": null,
+      "emulation": null,
+      "bit_depth": {
+        "a": {
+          "value": 10,
+          "path": "profiles_calibrated[\"P0\"].settings.bit_depth"
+        },
+        "b": {
+          "value": "12",
+          "path": "profiles_calibrated[\"P0\"].settings.bitDepth"
+        }
+      }
+    },
+    {
+      "id": "P0.5",
+      "name": "6K Emulated (P0)",
+      "json_base": "profiles_calibrated[\"P0.5\"]",
+      "requested_resolution": {
+        "value": "5760x3240",
+        "path": "profiles_calibrated[\"P0.5\"].settings.resolution"
+      },
+      "top_resolution": {
+        "value": "5760x3240",
+        "path": "profiles_calibrated[\"P0.5\"].resolution"
+      },
+      "source_resolution": {
+        "value": "7680x4320",
+        "path": "profiles_calibrated[\"P0.5\"].source_handling.source_resolution"
+      },
+      "display_requirement": {
+        "min": "5760x3240",
+        "max": "7680x4320",
+        "path": "profiles_calibrated[\"P0.5\"].compatibility"
+      },
+      "processed": null,
+      "fps": {
+        "value": 60,
+        "path": "profiles_calibrated[\"P0.5\"].settings.fps|targetFps|target_framerate"
+      },
+      "codec": {
+        "value": "H265",
+        "full": "hvc1.2.4.L183.B0",
+        "path": "profiles_calibrated[\"P0.5\"].settings.codec|codec_primary"
+      },
+      "base_profile": {
+        "value": "P0",
+        "path": "profiles_calibrated[\"P0.5\"].base_profile"
+      },
+      "is_emulated": {
+        "value": true,
+        "path": "profiles_calibrated[\"P0.5\"].is_emulated"
+      },
+      "declared_enhancement": {
+        "value": true,
+        "path": "profiles_calibrated[\"P0.5\"].declared_enhancement"
+      },
+      "emulation": {
+        "apply": "device_vpp_declared",
+        "declared_not_applied_by_vps": true,
+        "scale_ratio": "0.75x",
+        "path": "profiles_calibrated[\"P0.5\"].emulation"
+      },
+      "bit_depth": {
+        "a": {
+          "value": 10,
+          "path": "profiles_calibrated[\"P0.5\"].settings.bit_depth"
+        },
+        "b": {
+          "value": "12",
+          "path": "profiles_calibrated[\"P0.5\"].settings.bitDepth"
+        }
+      }
+    },
+    {
+      "id": "P1",
+      "name": "4K UHD Pro",
+      "json_base": "profiles_calibrated[\"P1\"]",
+      "requested_resolution": {
+        "value": "3840x2160",
+        "path": "profiles_calibrated[\"P1\"].settings.resolution"
+      },
+      "top_resolution": null,
+      "source_resolution": null,
+      "display_requirement": null,
+      "processed": null,
+      "fps": {
+        "value": "60",
+        "path": "profiles_calibrated[\"P1\"].settings.fps|targetFps|target_framerate"
+      },
+      "codec": {
+        "value": "HVC1",
+        "full": "hvc1.2.4.L153.B0",
+        "path": "profiles_calibrated[\"P1\"].settings.codec|codec_primary"
+      },
+      "base_profile": null,
+      "is_emulated": null,
+      "declared_enhancement": null,
+      "emulation": null,
+      "bit_depth": {
+        "a": {
+          "value": "10",
+          "path": "profiles_calibrated[\"P1\"].settings.bit_depth"
+        },
+        "b": {
+          "value": "10",
+          "path": "profiles_calibrated[\"P1\"].settings.bitDepth"
+        }
+      }
+    },
+    {
+      "id": "P1.5",
+      "name": "6K Emulated (P1)",
+      "json_base": "profiles_calibrated[\"P1.5\"]",
+      "requested_resolution": {
+        "value": "5760x3240",
+        "path": "profiles_calibrated[\"P1.5\"].settings.resolution"
+      },
+      "top_resolution": {
+        "value": "5760x3240",
+        "path": "profiles_calibrated[\"P1.5\"].resolution"
+      },
+      "source_resolution": {
+        "value": "3840x2160",
+        "path": "profiles_calibrated[\"P1.5\"].source_handling.source_resolution"
+      },
+      "display_requirement": {
+        "min": "5760x3240",
+        "max": "7680x4320",
+        "path": "profiles_calibrated[\"P1.5\"].compatibility"
+      },
+      "processed": null,
+      "fps": {
+        "value": 60,
+        "path": "profiles_calibrated[\"P1.5\"].settings.fps|targetFps|target_framerate"
+      },
+      "codec": {
+        "value": "H265",
+        "full": "hvc1.2.4.L183.B0",
+        "path": "profiles_calibrated[\"P1.5\"].settings.codec|codec_primary"
+      },
+      "base_profile": {
+        "value": "P1",
+        "path": "profiles_calibrated[\"P1.5\"].base_profile"
+      },
+      "is_emulated": {
+        "value": true,
+        "path": "profiles_calibrated[\"P1.5\"].is_emulated"
+      },
+      "declared_enhancement": {
+        "value": true,
+        "path": "profiles_calibrated[\"P1.5\"].declared_enhancement"
+      },
+      "emulation": {
+        "apply": "device_vpp_declared",
+        "declared_not_applied_by_vps": true,
+        "scale_ratio": "1.50x",
+        "path": "profiles_calibrated[\"P1.5\"].emulation"
+      },
+      "bit_depth": {
+        "a": {
+          "value": 10,
+          "path": "profiles_calibrated[\"P1.5\"].settings.bit_depth"
+        },
+        "b": {
+          "value": "10",
+          "path": "profiles_calibrated[\"P1.5\"].settings.bitDepth"
+        }
+      }
+    },
+    {
+      "id": "P2",
+      "name": "4K Balanced",
+      "json_base": "profiles_calibrated[\"P2\"]",
+      "requested_resolution": {
+        "value": "3840x2160",
+        "path": "profiles_calibrated[\"P2\"].settings.resolution"
+      },
+      "top_resolution": null,
+      "source_resolution": null,
+      "display_requirement": null,
+      "processed": null,
+      "fps": {
+        "value": "30",
+        "path": "profiles_calibrated[\"P2\"].settings.fps|targetFps|target_framerate"
+      },
+      "codec": {
+        "value": "HVC1",
+        "full": "hvc1.2.4.L150.B0",
+        "path": "profiles_calibrated[\"P2\"].settings.codec|codec_primary"
+      },
+      "base_profile": null,
+      "is_emulated": null,
+      "declared_enhancement": null,
+      "emulation": null,
+      "bit_depth": {
+        "a": {
+          "value": "10",
+          "path": "profiles_calibrated[\"P2\"].settings.bit_depth"
+        },
+        "b": {
+          "value": "10",
+          "path": "profiles_calibrated[\"P2\"].settings.bitDepth"
+        }
+      }
+    },
+    {
+      "id": "P2.5",
+      "name": "6K Emulated (P2)",
+      "json_base": "profiles_calibrated[\"P2.5\"]",
+      "requested_resolution": {
+        "value": "5760x3240",
+        "path": "profiles_calibrated[\"P2.5\"].settings.resolution"
+      },
+      "top_resolution": {
+        "value": "5760x3240",
+        "path": "profiles_calibrated[\"P2.5\"].resolution"
+      },
+      "source_resolution": {
+        "value": "3840x2160",
+        "path": "profiles_calibrated[\"P2.5\"].source_handling.source_resolution"
+      },
+      "display_requirement": {
+        "min": "5760x3240",
+        "max": "7680x4320",
+        "path": "profiles_calibrated[\"P2.5\"].compatibility"
+      },
+      "processed": null,
+      "fps": {
+        "value": 60,
+        "path": "profiles_calibrated[\"P2.5\"].settings.fps|targetFps|target_framerate"
+      },
+      "codec": {
+        "value": "H265",
+        "full": "hvc1.2.4.L183.B0",
+        "path": "profiles_calibrated[\"P2.5\"].settings.codec|codec_primary"
+      },
+      "base_profile": {
+        "value": "P2",
+        "path": "profiles_calibrated[\"P2.5\"].base_profile"
+      },
+      "is_emulated": {
+        "value": true,
+        "path": "profiles_calibrated[\"P2.5\"].is_emulated"
+      },
+      "declared_enhancement": {
+        "value": true,
+        "path": "profiles_calibrated[\"P2.5\"].declared_enhancement"
+      },
+      "emulation": {
+        "apply": "device_vpp_declared",
+        "declared_not_applied_by_vps": true,
+        "scale_ratio": "1.50x",
+        "path": "profiles_calibrated[\"P2.5\"].emulation"
+      },
+      "bit_depth": {
+        "a": {
+          "value": 10,
+          "path": "profiles_calibrated[\"P2.5\"].settings.bit_depth"
+        },
+        "b": {
+          "value": "10",
+          "path": "profiles_calibrated[\"P2.5\"].settings.bitDepth"
+        }
+      }
+    },
+    {
+      "id": "P3",
+      "name": "FHD 1080p",
+      "json_base": "profiles_calibrated[\"P3\"]",
+      "requested_resolution": {
+        "value": "1920x1080",
+        "path": "profiles_calibrated[\"P3\"].settings.resolution"
+      },
+      "top_resolution": null,
+      "source_resolution": null,
+      "display_requirement": null,
+      "processed": null,
+      "fps": {
+        "value": "60",
+        "path": "profiles_calibrated[\"P3\"].settings.fps|targetFps|target_framerate"
+      },
+      "codec": {
+        "value": "HVC1",
+        "full": "hvc1.2.4.L123.B0",
+        "path": "profiles_calibrated[\"P3\"].settings.codec|codec_primary"
+      },
+      "base_profile": null,
+      "is_emulated": null,
+      "declared_enhancement": null,
+      "emulation": null,
+      "bit_depth": {
+        "a": {
+          "value": "10",
+          "path": "profiles_calibrated[\"P3\"].settings.bit_depth"
+        },
+        "b": {
+          "value": "8",
+          "path": "profiles_calibrated[\"P3\"].settings.bitDepth"
+        }
+      }
+    },
+    {
+      "id": "P3.5",
+      "name": "6K Emulated (P3)",
+      "json_base": "profiles_calibrated[\"P3.5\"]",
+      "requested_resolution": {
+        "value": "5760x3240",
+        "path": "profiles_calibrated[\"P3.5\"].settings.resolution"
+      },
+      "top_resolution": {
+        "value": "5760x3240",
+        "path": "profiles_calibrated[\"P3.5\"].resolution"
+      },
+      "source_resolution": {
+        "value": "1920x1080",
+        "path": "profiles_calibrated[\"P3.5\"].source_handling.source_resolution"
+      },
+      "display_requirement": {
+        "min": "5760x3240",
+        "max": "7680x4320",
+        "path": "profiles_calibrated[\"P3.5\"].compatibility"
+      },
+      "processed": null,
+      "fps": {
+        "value": 60,
+        "path": "profiles_calibrated[\"P3.5\"].settings.fps|targetFps|target_framerate"
+      },
+      "codec": {
+        "value": "H265",
+        "full": "hvc1.2.4.L183.B0",
+        "path": "profiles_calibrated[\"P3.5\"].settings.codec|codec_primary"
+      },
+      "base_profile": {
+        "value": "P3",
+        "path": "profiles_calibrated[\"P3.5\"].base_profile"
+      },
+      "is_emulated": {
+        "value": true,
+        "path": "profiles_calibrated[\"P3.5\"].is_emulated"
+      },
+      "declared_enhancement": {
+        "value": true,
+        "path": "profiles_calibrated[\"P3.5\"].declared_enhancement"
+      },
+      "emulation": {
+        "apply": "device_vpp_declared",
+        "declared_not_applied_by_vps": true,
+        "scale_ratio": "3.00x",
+        "path": "profiles_calibrated[\"P3.5\"].emulation"
+      },
+      "bit_depth": {
+        "a": {
+          "value": 10,
+          "path": "profiles_calibrated[\"P3.5\"].settings.bit_depth"
+        },
+        "b": {
+          "value": "8",
+          "path": "profiles_calibrated[\"P3.5\"].settings.bitDepth"
+        }
+      }
+    },
+    {
+      "id": "P4",
+      "name": "HD 720p",
+      "json_base": "profiles_calibrated[\"P4\"]",
+      "requested_resolution": {
+        "value": "1280x720",
+        "path": "profiles_calibrated[\"P4\"].settings.resolution"
+      },
+      "top_resolution": null,
+      "source_resolution": null,
+      "display_requirement": null,
+      "processed": null,
+      "fps": {
+        "value": "30",
+        "path": "profiles_calibrated[\"P4\"].settings.fps|targetFps|target_framerate"
+      },
+      "codec": {
+        "value": "HVC1",
+        "full": "hvc1.2.4.L93.B0",
+        "path": "profiles_calibrated[\"P4\"].settings.codec|codec_primary"
+      },
+      "base_profile": null,
+      "is_emulated": null,
+      "declared_enhancement": null,
+      "emulation": null,
+      "bit_depth": {
+        "a": {
+          "value": "8",
+          "path": "profiles_calibrated[\"P4\"].settings.bit_depth"
+        },
+        "b": {
+          "value": "8",
+          "path": "profiles_calibrated[\"P4\"].settings.bitDepth"
+        }
+      }
+    },
+    {
+      "id": "P4.5",
+      "name": "6K Emulated (P4)",
+      "json_base": "profiles_calibrated[\"P4.5\"]",
+      "requested_resolution": {
+        "value": "5760x3240",
+        "path": "profiles_calibrated[\"P4.5\"].settings.resolution"
+      },
+      "top_resolution": {
+        "value": "5760x3240",
+        "path": "profiles_calibrated[\"P4.5\"].resolution"
+      },
+      "source_resolution": {
+        "value": "1280x720",
+        "path": "profiles_calibrated[\"P4.5\"].source_handling.source_resolution"
+      },
+      "display_requirement": {
+        "min": "5760x3240",
+        "max": "7680x4320",
+        "path": "profiles_calibrated[\"P4.5\"].compatibility"
+      },
+      "processed": null,
+      "fps": {
+        "value": 60,
+        "path": "profiles_calibrated[\"P4.5\"].settings.fps|targetFps|target_framerate"
+      },
+      "codec": {
+        "value": "H265",
+        "full": "hvc1.2.4.L183.B0",
+        "path": "profiles_calibrated[\"P4.5\"].settings.codec|codec_primary"
+      },
+      "base_profile": {
+        "value": "P4",
+        "path": "profiles_calibrated[\"P4.5\"].base_profile"
+      },
+      "is_emulated": {
+        "value": true,
+        "path": "profiles_calibrated[\"P4.5\"].is_emulated"
+      },
+      "declared_enhancement": {
+        "value": true,
+        "path": "profiles_calibrated[\"P4.5\"].declared_enhancement"
+      },
+      "emulation": {
+        "apply": "device_vpp_declared",
+        "declared_not_applied_by_vps": true,
+        "scale_ratio": "4.50x",
+        "path": "profiles_calibrated[\"P4.5\"].emulation"
+      },
+      "bit_depth": {
+        "a": {
+          "value": 10,
+          "path": "profiles_calibrated[\"P4.5\"].settings.bit_depth"
+        },
+        "b": {
+          "value": "8",
+          "path": "profiles_calibrated[\"P4.5\"].settings.bitDepth"
+        }
+      }
+    },
+    {
+      "id": "P5",
+      "name": "SD 480p",
+      "json_base": "profiles_calibrated[\"P5\"]",
+      "requested_resolution": {
+        "value": "854x480",
+        "path": "profiles_calibrated[\"P5\"].settings.resolution"
+      },
+      "top_resolution": null,
+      "source_resolution": null,
+      "display_requirement": null,
+      "processed": null,
+      "fps": {
+        "value": "30",
+        "path": "profiles_calibrated[\"P5\"].settings.fps|targetFps|target_framerate"
+      },
+      "codec": {
+        "value": "AVC1",
+        "full": "avc1.42c01e",
+        "path": "profiles_calibrated[\"P5\"].settings.codec|codec_primary"
+      },
+      "base_profile": null,
+      "is_emulated": null,
+      "declared_enhancement": null,
+      "emulation": null,
+      "bit_depth": {
+        "a": {
+          "value": "8",
+          "path": "profiles_calibrated[\"P5\"].settings.bit_depth"
+        },
+        "b": {
+          "value": "8",
+          "path": "profiles_calibrated[\"P5\"].settings.bitDepth"
+        }
+      }
+    },
+    {
+      "id": "P5.5",
+      "name": "6K Emulated (P5)",
+      "json_base": "profiles_calibrated[\"P5.5\"]",
+      "requested_resolution": {
+        "value": "5760x3240",
+        "path": "profiles_calibrated[\"P5.5\"].settings.resolution"
+      },
+      "top_resolution": {
+        "value": "5760x3240",
+        "path": "profiles_calibrated[\"P5.5\"].resolution"
+      },
+      "source_resolution": {
+        "value": "854x480",
+        "path": "profiles_calibrated[\"P5.5\"].source_handling.source_resolution"
+      },
+      "display_requirement": {
+        "min": "5760x3240",
+        "max": "7680x4320",
+        "path": "profiles_calibrated[\"P5.5\"].compatibility"
+      },
+      "processed": null,
+      "fps": {
+        "value": 60,
+        "path": "profiles_calibrated[\"P5.5\"].settings.fps|targetFps|target_framerate"
+      },
+      "codec": {
+        "value": "H265",
+        "full": "hvc1.2.4.L183.B0",
+        "path": "profiles_calibrated[\"P5.5\"].settings.codec|codec_primary"
+      },
+      "base_profile": {
+        "value": "P5",
+        "path": "profiles_calibrated[\"P5.5\"].base_profile"
+      },
+      "is_emulated": {
+        "value": true,
+        "path": "profiles_calibrated[\"P5.5\"].is_emulated"
+      },
+      "declared_enhancement": {
+        "value": true,
+        "path": "profiles_calibrated[\"P5.5\"].declared_enhancement"
+      },
+      "emulation": {
+        "apply": "device_vpp_declared",
+        "declared_not_applied_by_vps": true,
+        "scale_ratio": "6.75x",
+        "path": "profiles_calibrated[\"P5.5\"].emulation"
+      },
+      "bit_depth": {
+        "a": {
+          "value": 10,
+          "path": "profiles_calibrated[\"P5.5\"].settings.bit_depth"
+        },
+        "b": {
+          "value": "8",
+          "path": "profiles_calibrated[\"P5.5\"].settings.bitDepth"
+        }
+      }
+    }
+  ],
+  "four_resolutions": [
+    {
+      "id": "P0",
+      "SOURCE": "NO_COMPUTADO",
+      "REQUESTED": {
+        "value": "7680x4320",
+        "path": "profiles_calibrated[\"P0\"].settings.resolution"
+      },
+      "PROCESSED": "NO_COMPUTADO",
+      "DISPLAY": "NO_COMPUTADO",
+      "REASON_SOURCE": "perfil base sin campo source_handling: el LAB no declara de que fuente sale P0..P5",
+      "REASON_PROCESSED": "el JSON no tiene ninguna clave processed/output/rendered (barrido /process|output|render|effective/ = 0); emulation.apply=\"device_vpp_declared\" y declared_not_applied_by_vps=true declaran que NO se aplica en el VPS",
+      "REASON_DISPLAY": "compatibility.min_display/max_display son REQUISITOS de display, no una resolucion de display medida; el JSON no mide display real"
+    },
+    {
+      "id": "P0.5",
+      "SOURCE": {
+        "value": "7680x4320",
+        "path": "profiles_calibrated[\"P0.5\"].source_handling.source_resolution"
+      },
+      "REQUESTED": {
+        "value": "5760x3240",
+        "path": "profiles_calibrated[\"P0.5\"].settings.resolution"
+      },
+      "PROCESSED": "NO_COMPUTADO",
+      "DISPLAY": "NO_COMPUTADO",
+      "REASON_SOURCE": "",
+      "REASON_PROCESSED": "el JSON no tiene ninguna clave processed/output/rendered (barrido /process|output|render|effective/ = 0); emulation.apply=\"device_vpp_declared\" y declared_not_applied_by_vps=true declaran que NO se aplica en el VPS",
+      "REASON_DISPLAY": "compatibility.min_display/max_display son REQUISITOS de display, no una resolucion de display medida; el JSON no mide display real"
+    },
+    {
+      "id": "P1",
+      "SOURCE": "NO_COMPUTADO",
+      "REQUESTED": {
+        "value": "3840x2160",
+        "path": "profiles_calibrated[\"P1\"].settings.resolution"
+      },
+      "PROCESSED": "NO_COMPUTADO",
+      "DISPLAY": "NO_COMPUTADO",
+      "REASON_SOURCE": "perfil base sin campo source_handling: el LAB no declara de que fuente sale P0..P5",
+      "REASON_PROCESSED": "el JSON no tiene ninguna clave processed/output/rendered (barrido /process|output|render|effective/ = 0); emulation.apply=\"device_vpp_declared\" y declared_not_applied_by_vps=true declaran que NO se aplica en el VPS",
+      "REASON_DISPLAY": "compatibility.min_display/max_display son REQUISITOS de display, no una resolucion de display medida; el JSON no mide display real"
+    },
+    {
+      "id": "P1.5",
+      "SOURCE": {
+        "value": "3840x2160",
+        "path": "profiles_calibrated[\"P1.5\"].source_handling.source_resolution"
+      },
+      "REQUESTED": {
+        "value": "5760x3240",
+        "path": "profiles_calibrated[\"P1.5\"].settings.resolution"
+      },
+      "PROCESSED": "NO_COMPUTADO",
+      "DISPLAY": "NO_COMPUTADO",
+      "REASON_SOURCE": "",
+      "REASON_PROCESSED": "el JSON no tiene ninguna clave processed/output/rendered (barrido /process|output|render|effective/ = 0); emulation.apply=\"device_vpp_declared\" y declared_not_applied_by_vps=true declaran que NO se aplica en el VPS",
+      "REASON_DISPLAY": "compatibility.min_display/max_display son REQUISITOS de display, no una resolucion de display medida; el JSON no mide display real"
+    },
+    {
+      "id": "P2",
+      "SOURCE": "NO_COMPUTADO",
+      "REQUESTED": {
+        "value": "3840x2160",
+        "path": "profiles_calibrated[\"P2\"].settings.resolution"
+      },
+      "PROCESSED": "NO_COMPUTADO",
+      "DISPLAY": "NO_COMPUTADO",
+      "REASON_SOURCE": "perfil base sin campo source_handling: el LAB no declara de que fuente sale P0..P5",
+      "REASON_PROCESSED": "el JSON no tiene ninguna clave processed/output/rendered (barrido /process|output|render|effective/ = 0); emulation.apply=\"device_vpp_declared\" y declared_not_applied_by_vps=true declaran que NO se aplica en el VPS",
+      "REASON_DISPLAY": "compatibility.min_display/max_display son REQUISITOS de display, no una resolucion de display medida; el JSON no mide display real"
+    },
+    {
+      "id": "P2.5",
+      "SOURCE": {
+        "value": "3840x2160",
+        "path": "profiles_calibrated[\"P2.5\"].source_handling.source_resolution"
+      },
+      "REQUESTED": {
+        "value": "5760x3240",
+        "path": "profiles_calibrated[\"P2.5\"].settings.resolution"
+      },
+      "PROCESSED": "NO_COMPUTADO",
+      "DISPLAY": "NO_COMPUTADO",
+      "REASON_SOURCE": "",
+      "REASON_PROCESSED": "el JSON no tiene ninguna clave processed/output/rendered (barrido /process|output|render|effective/ = 0); emulation.apply=\"device_vpp_declared\" y declared_not_applied_by_vps=true declaran que NO se aplica en el VPS",
+      "REASON_DISPLAY": "compatibility.min_display/max_display son REQUISITOS de display, no una resolucion de display medida; el JSON no mide display real"
+    },
+    {
+      "id": "P3",
+      "SOURCE": "NO_COMPUTADO",
+      "REQUESTED": {
+        "value": "1920x1080",
+        "path": "profiles_calibrated[\"P3\"].settings.resolution"
+      },
+      "PROCESSED": "NO_COMPUTADO",
+      "DISPLAY": "NO_COMPUTADO",
+      "REASON_SOURCE": "perfil base sin campo source_handling: el LAB no declara de que fuente sale P0..P5",
+      "REASON_PROCESSED": "el JSON no tiene ninguna clave processed/output/rendered (barrido /process|output|render|effective/ = 0); emulation.apply=\"device_vpp_declared\" y declared_not_applied_by_vps=true declaran que NO se aplica en el VPS",
+      "REASON_DISPLAY": "compatibility.min_display/max_display son REQUISITOS de display, no una resolucion de display medida; el JSON no mide display real"
+    },
+    {
+      "id": "P3.5",
+      "SOURCE": {
+        "value": "1920x1080",
+        "path": "profiles_calibrated[\"P3.5\"].source_handling.source_resolution"
+      },
+      "REQUESTED": {
+        "value": "5760x3240",
+        "path": "profiles_calibrated[\"P3.5\"].settings.resolution"
+      },
+      "PROCESSED": "NO_COMPUTADO",
+      "DISPLAY": "NO_COMPUTADO",
+      "REASON_SOURCE": "",
+      "REASON_PROCESSED": "el JSON no tiene ninguna clave processed/output/rendered (barrido /process|output|render|effective/ = 0); emulation.apply=\"device_vpp_declared\" y declared_not_applied_by_vps=true declaran que NO se aplica en el VPS",
+      "REASON_DISPLAY": "compatibility.min_display/max_display son REQUISITOS de display, no una resolucion de display medida; el JSON no mide display real"
+    },
+    {
+      "id": "P4",
+      "SOURCE": "NO_COMPUTADO",
+      "REQUESTED": {
+        "value": "1280x720",
+        "path": "profiles_calibrated[\"P4\"].settings.resolution"
+      },
+      "PROCESSED": "NO_COMPUTADO",
+      "DISPLAY": "NO_COMPUTADO",
+      "REASON_SOURCE": "perfil base sin campo source_handling: el LAB no declara de que fuente sale P0..P5",
+      "REASON_PROCESSED": "el JSON no tiene ninguna clave processed/output/rendered (barrido /process|output|render|effective/ = 0); emulation.apply=\"device_vpp_declared\" y declared_not_applied_by_vps=true declaran que NO se aplica en el VPS",
+      "REASON_DISPLAY": "compatibility.min_display/max_display son REQUISITOS de display, no una resolucion de display medida; el JSON no mide display real"
+    },
+    {
+      "id": "P4.5",
+      "SOURCE": {
+        "value": "1280x720",
+        "path": "profiles_calibrated[\"P4.5\"].source_handling.source_resolution"
+      },
+      "REQUESTED": {
+        "value": "5760x3240",
+        "path": "profiles_calibrated[\"P4.5\"].settings.resolution"
+      },
+      "PROCESSED": "NO_COMPUTADO",
+      "DISPLAY": "NO_COMPUTADO",
+      "REASON_SOURCE": "",
+      "REASON_PROCESSED": "el JSON no tiene ninguna clave processed/output/rendered (barrido /process|output|render|effective/ = 0); emulation.apply=\"device_vpp_declared\" y declared_not_applied_by_vps=true declaran que NO se aplica en el VPS",
+      "REASON_DISPLAY": "compatibility.min_display/max_display son REQUISITOS de display, no una resolucion de display medida; el JSON no mide display real"
+    },
+    {
+      "id": "P5",
+      "SOURCE": "NO_COMPUTADO",
+      "REQUESTED": {
+        "value": "854x480",
+        "path": "profiles_calibrated[\"P5\"].settings.resolution"
+      },
+      "PROCESSED": "NO_COMPUTADO",
+      "DISPLAY": "NO_COMPUTADO",
+      "REASON_SOURCE": "perfil base sin campo source_handling: el LAB no declara de que fuente sale P0..P5",
+      "REASON_PROCESSED": "el JSON no tiene ninguna clave processed/output/rendered (barrido /process|output|render|effective/ = 0); emulation.apply=\"device_vpp_declared\" y declared_not_applied_by_vps=true declaran que NO se aplica en el VPS",
+      "REASON_DISPLAY": "compatibility.min_display/max_display son REQUISITOS de display, no una resolucion de display medida; el JSON no mide display real"
+    },
+    {
+      "id": "P5.5",
+      "SOURCE": {
+        "value": "854x480",
+        "path": "profiles_calibrated[\"P5.5\"].source_handling.source_resolution"
+      },
+      "REQUESTED": {
+        "value": "5760x3240",
+        "path": "profiles_calibrated[\"P5.5\"].settings.resolution"
+      },
+      "PROCESSED": "NO_COMPUTADO",
+      "DISPLAY": "NO_COMPUTADO",
+      "REASON_SOURCE": "",
+      "REASON_PROCESSED": "el JSON no tiene ninguna clave processed/output/rendered (barrido /process|output|render|effective/ = 0); emulation.apply=\"device_vpp_declared\" y declared_not_applied_by_vps=true declaran que NO se aplica en el VPS",
+      "REASON_DISPLAY": "compatibility.min_display/max_display son REQUISITOS de display, no una resolucion de display medida; el JSON no mide display real"
+    }
+  ],
+  "inheritance": [
+    {
+      "child": "P0.5",
+      "parent": "P0",
+      "parent_field_path": "profiles_calibrated[\"P0.5\"].base_profile",
+      "parent_sha256": "NO_COMPUTADO",
+      "parent_sha256_reason": "el LAB no guarda un hash por perfil; solo hashea ficheros fuente en provenance_lab_final.sources. No se puede dar sha256 del padre sin inventarlo",
+      "parent_identity_in_file": {
+        "name": "8K Master",
+        "requested": "7680x4320"
+      }
+    },
+    {
+      "child": "P1.5",
+      "parent": "P1",
+      "parent_field_path": "profiles_calibrated[\"P1.5\"].base_profile",
+      "parent_sha256": "NO_COMPUTADO",
+      "parent_sha256_reason": "el LAB no guarda un hash por perfil; solo hashea ficheros fuente en provenance_lab_final.sources. No se puede dar sha256 del padre sin inventarlo",
+      "parent_identity_in_file": {
+        "name": "4K UHD Pro",
+        "requested": "3840x2160"
+      }
+    },
+    {
+      "child": "P2.5",
+      "parent": "P2",
+      "parent_field_path": "profiles_calibrated[\"P2.5\"].base_profile",
+      "parent_sha256": "NO_COMPUTADO",
+      "parent_sha256_reason": "el LAB no guarda un hash por perfil; solo hashea ficheros fuente en provenance_lab_final.sources. No se puede dar sha256 del padre sin inventarlo",
+      "parent_identity_in_file": {
+        "name": "4K Balanced",
+        "requested": "3840x2160"
+      }
+    },
+    {
+      "child": "P3.5",
+      "parent": "P3",
+      "parent_field_path": "profiles_calibrated[\"P3.5\"].base_profile",
+      "parent_sha256": "NO_COMPUTADO",
+      "parent_sha256_reason": "el LAB no guarda un hash por perfil; solo hashea ficheros fuente en provenance_lab_final.sources. No se puede dar sha256 del padre sin inventarlo",
+      "parent_identity_in_file": {
+        "name": "FHD 1080p",
+        "requested": "1920x1080"
+      }
+    },
+    {
+      "child": "P4.5",
+      "parent": "P4",
+      "parent_field_path": "profiles_calibrated[\"P4.5\"].base_profile",
+      "parent_sha256": "NO_COMPUTADO",
+      "parent_sha256_reason": "el LAB no guarda un hash por perfil; solo hashea ficheros fuente en provenance_lab_final.sources. No se puede dar sha256 del padre sin inventarlo",
+      "parent_identity_in_file": {
+        "name": "HD 720p",
+        "requested": "1280x720"
+      }
+    },
+    {
+      "child": "P5.5",
+      "parent": "P5",
+      "parent_field_path": "profiles_calibrated[\"P5.5\"].base_profile",
+      "parent_sha256": "NO_COMPUTADO",
+      "parent_sha256_reason": "el LAB no guarda un hash por perfil; solo hashea ficheros fuente en provenance_lab_final.sources. No se puede dar sha256 del padre sin inventarlo",
+      "parent_identity_in_file": {
+        "name": "SD 480p",
+        "requested": "854x480"
+      }
+    }
+  ],
+  "provenance_lab_final": {
+    "C_V23_FUSED": {
+      "built_at": "2026-11-05T19:04:02.132Z",
+      "built_by": "tools/lab/build_lab_final.js",
+      "base": "LAB_CALIBRATED_BULLETPROOF_20261026_015604.json",
+      "base_reason": "superset exacto: 5056 hojas vs 5004, cero hojas perdidas",
+      "sources": {
+        "crystal": {
+          "file": "LAB_CALIBRATED_BULLETPROOF_22.6.0-CRYSTAL-4K-UHD.json",
+          "sha256": "099a1707a2f1ae692ffcfede01165f21cd66656b786742ce8db518581a371fd4",
+          "bytes": 280065
+        },
+        "memc": {
+          "file": "LAB_CALIBRATED_BULLETPROOF_22.6.0-MEMC-TOTAL-8K120-DNR.json",
+          "sha256": "279e45960550a15927658ef3e082deb150e148dc0fb748de1d3a51d47b56f017",
+          "bytes": 423609
+        },
+        "certified": {
+          "file": "LAB_CALIBRATED_BULLETPROOF_20261026_015604.json",
+          "sha256": "345783e33142791b23b4662d396c0c83c8051d77cd7c166dc21ef4990c093094",
+          "bytes": 362871
+        }
+      },
+      "rescued": {
+        "atadenoise_in_video_filter": {
+          "from": "CRYSTAL / MEMC",
+          "profiles": 6,
+          "why": "filtro de reduccion de ruido temporal real; el CERTIFIED lo perdio al corregir el Excel"
+        },
+        "clock_synchro_one": {
+          "from": "CRYSTAL",
+          "profiles": 0,
+          "why": "con 1 el player resincroniza el reloj en directo: menos drift en sesiones largas"
+        }
+      },
+      "corrections_not_rescues": {
+        "c1_dv8_bit_depth_10": "1 perfiles: dvh1.08.06 es DV Profile 8.1, que es 10 bits por norma; declarar 12 era una etiqueta falsa, no una calidad perdida",
+        "c2_color_space_derivado": "6 campos rellenados en P3/P4/P5 derivados de color_primaries=1 (BT.709): transfer 1, matrix 1. NO se les puso 16/9, que seria declarar PQ sobre una fuente SDR",
+        "c3_chroma_unificado": "1 perfiles: settings y actor_injections ahora dicen lo mismo"
+      },
+      "refused": {
+        "fps_120": "CRYSTAL y MEMC declaran fps=120 en los 6 perfiles: imposible, y contradice el fps real de cada uno. El CERTIFIED lo corrigio a [30,60,30,60,30,30]",
+        "chroma_serial": "CRYSTAL y MEMC declaran chroma=168055555555556: es un serial de Excel, no un valor de croma. Corregido a 4:2:0"
+      },
+      "pending": [
+        "P2: settings.resolution=3840x2160 pero X-APE-RESOLUTION empieza en 2560x1440. La cascada no alcanza la resolucion del perfil. Requiere decision: es deliberado (ahorro de ancho de banda) o arrastre de error"
+      ],
+      "honest_limits": [
+        "Este fichero NO garantiza 0 cortes ni 0 freeze: declara intenciones, no contiene telemetria de sesiones",
+        "No se ha validado contra un player real",
+        "No sustituye al export APE_ALL_PROFILES_*.json, que aporta guarantees_10, error_decision_tree y buffer_aggression_policy, ausentes aqui"
+      ]
+    },
+    "D_V24_6K": {
+      "built_at": "2026-11-06T00:34:50.094Z",
+      "built_by": "tools/lab/build_lab_final.js",
+      "base": "LAB_CALIBRATED_BULLETPROOF_20261026_015604.json",
+      "base_reason": "superset exacto: 5056 hojas vs 5004, cero hojas perdidas",
+      "sources": {
+        "crystal": {
+          "file": "LAB_CALIBRATED_BULLETPROOF_22.6.0-CRYSTAL-4K-UHD.json",
+          "sha256": "099a1707a2f1ae692ffcfede01165f21cd66656b786742ce8db518581a371fd4",
+          "bytes": 280065
+        },
+        "memc": {
+          "file": "LAB_CALIBRATED_BULLETPROOF_22.6.0-MEMC-TOTAL-8K120-DNR.json",
+          "sha256": "279e45960550a15927658ef3e082deb150e148dc0fb748de1d3a51d47b56f017",
+          "bytes": 423609
+        },
+        "certified": {
+          "file": "LAB_CALIBRATED_BULLETPROOF_20261026_015604.json",
+          "sha256": "345783e33142791b23b4662d396c0c83c8051d77cd7c166dc21ef4990c093094",
+          "bytes": 362871
+        }
+      },
+      "rescued": {
+        "atadenoise_in_video_filter": {
+          "from": "CRYSTAL / MEMC",
+          "profiles": 6,
+          "why": "filtro de reduccion de ruido temporal real; el CERTIFIED lo perdio al corregir el Excel"
+        },
+        "clock_synchro_one": {
+          "from": "CRYSTAL",
+          "profiles": 0,
+          "why": "con 1 el player resincroniza el reloj en directo: menos drift en sesiones largas"
+        }
+      },
+      "corrections_not_rescues": {
+        "c1_dv8_bit_depth_10": "1 perfiles: dvh1.08.06 es DV Profile 8.1, que es 10 bits por norma; declarar 12 era una etiqueta falsa, no una calidad perdida",
+        "c2_color_space_derivado": "6 campos rellenados en P3/P4/P5 derivados de color_primaries=1 (BT.709): transfer 1, matrix 1. NO se les puso 16/9, que seria declarar PQ sobre una fuente SDR",
+        "c3_chroma_unificado": "1 perfiles: settings y actor_injections ahora dicen lo mismo"
+      },
+      "refused": {
+        "fps_120": "CRYSTAL y MEMC declaran fps=120 en los 6 perfiles: imposible, y contradice el fps real de cada uno. El CERTIFIED lo corrigio a [30,60,30,60,30,30]",
+        "chroma_serial": "CRYSTAL y MEMC declaran chroma=168055555555556: es un serial de Excel, no un valor de croma. Corregido a 4:2:0"
+      },
+      "pending": [
+        "P2: settings.resolution=3840x2160 pero X-APE-RESOLUTION empieza en 2560x1440. La cascada no alcanza la resolucion del perfil. Requiere decision: es deliberado (ahorro de ancho de banda) o arrastre de error"
+      ],
+      "honest_limits": [
+        "Este fichero NO garantiza 0 cortes ni 0 freeze: declara intenciones, no contiene telemetria de sesiones",
+        "No se ha validado contra un player real",
+        "No sustituye al export APE_ALL_PROFILES_*.json, que aporta guarantees_10, error_decision_tree y buffer_aggression_policy, ausentes aqui"
+      ],
+      "base_file": "artifacts/LAB_CALIBRATED_FINAL_v23.0.0-FUSED.json",
+      "base_sha256": "59db06c8143c3445c6b0fe12c086e6529183afc72ccea23e2738755618f82711",
+      "change": "añadidas las seis variantes 6K emuladas; P0-P5 sin tocar",
+      "added_profiles": [
+        "P0.5",
+        "P1.5",
+        "P2.5",
+        "P3.5",
+        "P4.5",
+        "P5.5"
+      ]
+    }
+  },
+  "six_k_audit": {
+    "claim_1": {
+      "text": "el nombre de fichero dice v24.0.0-6K mientras el nombre interno es 23.1.0-6K-EMULATED",
+      "veredicto": "SOPORTADO",
+      "evidencia": [
+        {
+          "field": "version",
+          "value": "23.1.0-6K-EMULATED",
+          "path": "version"
+        },
+        {
+          "field": "six_k_version",
+          "value": "6K-EMULATED-v1",
+          "path": "six_k_version"
+        },
+        {
+          "field": "nombre de fichero",
+          "value": "LAB_CALIBRATED_FINAL_v24.0.0-6K.json"
+        }
+      ]
+    },
+    "claim_2": {
+      "text": "conviven DOS geometrias distintas para 6K en el LAB: 5790x3240 y 6144x3456",
+      "veredicto": "NO_SOPORTADO",
+      "evidencia": {
+        "ocurrencias_en_D_V24_6K": {
+          "3240": 63,
+          "3456": 0,
+          "4320": 27,
+          "5760": 67,
+          "5790": 0,
+          "6144": 0,
+          "7680": 27
+        },
+        "geometria_unica_declarada": {
+          "path": "emulated_6k.target_resolution",
+          "value": "5760x3240"
+        },
+        "paths_con_5760x3240": 69,
+        "donde_si_aparecen_los_dos_numeros": [
+          "artifacts/ape-omega-integracion/bundle/index.js:1307 (prosa de un plugin: \"5790x3240 y 6144x3456 son geometrias distintas\")",
+          ".agents/skills/iptv-ape-apk-vps-contract-alignment/SKILL.md:324 (\"El JIT legado del VPS es OTRO dominio: su modo opt-in es 6144x3456, distinto del 5760x3240\")",
+          ".agent-teams/canary-jit-20261111/team.json:3998,4016 (el propio enunciado de la tarea)"
+        ],
+        "razon_del_veredicto": "ninguno de los dos numeros existe en ningun JSON del LAB: 5790=0 y 6144=0 y 3456=0. La geometria 6K del LAB es UNA: 5760x3240. El 6144x3456 pertenece al dominio del JIT legado del VPS segun la skill, no al LAB. El 5790 no aparece en ningun artefacto de datos: es un typo por 5760."
+      }
+    },
+    "veredicto_etiqueta": {
+      "valor": "HONESTA_CON_AMBIGUEDAD_NOMINAL",
+      "razon": "el JSON declara emulacion en 5 campos (declared_enhancement, is_emulated, quality=6K_EMULATED, emulated_6k.truth, emulation.declared_not_applied_by_vps) y nunca dice que la fuente sea 6K; la ambiguedad es que \"6K\" sin geometria no es un estandar (DCI 6144x3240 vs UHD-5760x3240), y el JSON la resuelve fijando 5760x3240 en N paths",
+      "no_es_falsa_porque": [
+        "emulated_6k.truth = \"DECLARED_ENHANCEMENT — nunca se declara la fuente como 6K real\"",
+        "emulation.declared_not_applied_by_vps = true",
+        "perfil P0.5.description declara \"nunca como fuente real\""
+      ],
+      "aritmetica_verificada": {
+        "target": "5760x3240",
+        "pixel_count": 18662400,
+        "pixel_count_calculado": 18662400,
+        "coincide": true,
+        "vs_4k_ratio_declarado": 2.25,
+        "vs_4k_calculado": 2.25,
+        "vs_8k_ratio_declarado": 0.5625,
+        "vs_8k_calculado": 0.5625
+      },
+      "downsample_075": {
+        "source_declarado": "7680x4320",
+        "resultado_075": "5760x3240",
+        "coincide_con_target": true
+      }
+    }
+  },
+  "no_computado": [
+    "sha256 del perfil PADRE en la herencia: el LAB no guarda hashes por perfil",
+    "PROCESSED resolution de cualquier perfil: no existe clave que la declare",
+    "DISPLAY resolution real: compatibility.min_display/max_display son requisitos, no medidas",
+    "SOURCE resolution de P0..P5: solo los perfiles derivados tienen source_handling",
+    "si los ficheros fuente citados en provenance_lab_final existen en disco: los 3 dan 0 copias con ese nombre exacto",
+    "aplicacion real de la emulacion 6K en un device: no hay dispositivo ni telemetria"
+  ]
+}

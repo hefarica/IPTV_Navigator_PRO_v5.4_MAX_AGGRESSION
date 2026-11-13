@@ -1,0 +1,42 @@
+{
+  "schema": "ape.sao.artifact-test.v1",
+  "generado": "2026-11-13T07:08:10.864Z",
+  "bitrates": [
+    4000,
+    800
+  ],
+  "filas": [
+    {
+      "kbps": 4000,
+      "sao_0": {
+        "hf_plano": 1.5569716014897579,
+        "hf_detalle": 1.82745849609375,
+        "bytes": 1391708
+      },
+      "sao_1": {
+        "hf_plano": 1.5164882060831781,
+        "hf_detalle": 1.7887890625,
+        "bytes": 1390740
+      }
+    },
+    {
+      "kbps": 800,
+      "sao_0": {
+        "hf_plano": 1.4318261173184357,
+        "hf_detalle": 1.7244677734375,
+        "bytes": 278415
+      },
+      "sao_1": {
+        "hf_plano": 1.4360936530105524,
+        "hf_detalle": 1.70686279296875,
+        "bytes": 279120
+      }
+    }
+  ],
+  "conclusion": "SAO sobre-suaviza de forma medible: un detector tiene sentido, y la metrica es HF en zonas de BAJO contraste (no en el cuadro completo).",
+  "no_computado": [
+    "No se leen los parametros SAO del bitstream: no se distingue BO de EO ni su intensidad por bloque.",
+    "SAO actua en bucle en el ENCODER; el efecto medido es el resultado en la imagen decodificada, no el parametro.",
+    "Una sola fuente de contenido: otra escena podria dar otro porcentaje."
+  ]
+}

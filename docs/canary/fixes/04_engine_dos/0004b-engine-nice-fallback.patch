@@ -1,0 +1,28 @@
+diff --git a/tools/lab/ape-jit/server.js b/tools/lab/ape-jit/server.js
+index b71cfd0..628ccd9 100644
+--- a/tools/lab/ape-jit/server.js
++++ b/tools/lab/ape-jit/server.js
+@@ -28,6 +28,14 @@ const OUT_ROOT = process.env.OUT_ROOT || '/dev/shm/ape-jit';
+  * configurable por entorno: IDLE_MS=30000 lo devuelve al comportamiento anterior. */
+ const IDLE_MS = Number(process.env.IDLE_MS || 90000);
+ 
++/* [FIX nice 2026-11-12] `spawn('nice', ...)` resolvia por PATH: si `nice` no existe
++ * (Windows, contenedor minimo, imagen sin coreutils) el ENOENT del spawn no decia si
++ * faltaba nice, ffmpeg o el cwd. Mismo patron ya medido en el espejo B
++ * (vps/ape-jit/server.js:26-27): binario absoluto si existe, y si no hay nice se lanza
++ * ffmpeg DIRECTAMENTE con los args sin el prefijo `-n 19`. */
++const NICE_BIN = fs.existsSync('/usr/bin/nice') ? '/usr/bin/nice' : '';
++const FFMPEG_BIN = fs.existsSync('/usr/bin/ffmpeg') ? '/usr/bin/ffmpeg' : 'ffmpeg';
++
+ /* ═══════════════════════════════════════════════════════════════════════════
+  * MODULO DE IMAGEN — configuracion en caliente
+  *
+@@ -4862,7 +4870,7 @@ async function start(id, spec, sdr, sdr720) {
+     log('START_ABORT', id, 'slot ocupado, no se abre una segunda conexion');
+     return;
+   }
+-  const child = spawn('nice', ['-n', '19', 'ffmpeg', ...args], {
++  const child = spawn(NICE_BIN || FFMPEG_BIN, NICE_BIN ? ['-n', '19', FFMPEG_BIN, ...args] : args, {
+     cwd: dir,
+     detached: false,
+     stdio: ['ignore', 'ignore', 'pipe'],

@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://iptv-ape.local/contracts/canary_policy_schema.json",
+  "title": "ape.canary.quality.v1 — politica canonica de calidad de Canary",
+  "$comment": "Espejo machine-checkable de canary/canary_quality.js (ORDER/EXACT + encoder + safety). El ORDEN es parte del contrato: se fija con prefixItems const, no con una lista de ids sueltos. Los 4 campos de reference_encoder son los que lee canary_quality.js:23-27; el objeto admite claves extra igual que el validador Node, que solo compara esos 4.",
+  "type": "object",
+  "required": [
+    "schema",
+    "authority",
+    "policy_id",
+    "revision",
+    "chain",
+    "reference_encoder",
+    "compatibility",
+    "safety"
+  ],
+  "properties": {
+    "schema": {
+      "description": "Identificador de esquema. Fuente: quality-policy.json:2 y canary_quality.js:5 (VALID_SCHEMA).",
+      "const": "ape.canary.quality.v1"
+    },
+    "authority": {
+      "description": "Canary es la autoridad unica de receta. Fuente: quality-policy.json:3 y canary_quality.js:18.",
+      "const": "canary"
+    },
+    "policy_id": {
+      "description": "Identificador estable de la politica. Fuente: quality-policy.json:4.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "revision": {
+      "description": "Revision monotonica de la politica. Fuente: quality-policy.json:5.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "chain": {
+      "description": "8 etapas en ORDEN EXACTO. Fuente: quality-policy.json:6-15 y canary_quality.js:6-12 (ORDER/EXACT). Cambiar el orden o el filtro rompe la paridad: canary_quality.js:21 lanza CANARY_PARITY_CHANGED.",
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "prefixItems": [
+        {
+          "type": "object",
+          "required": ["id", "filter"],
+          "properties": {
+            "id": { "const": "deblock" },
+            "filter": { "const": "deblock" },
+            "note": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "required": ["id", "filter"],
+          "properties": {
+            "id": { "const": "dering" },
+            "filter": {
+              "description": "Sustituto declarado de dering: ffmpeg no tiene filtro 'dering' (verificado: ffmpeg -h filter=dering -> Unknown filter). Fuente del sustituto: quality-policy.json:8 y canary_quality.js:8.",
+              "const": "smartblur=lr=1.5:ls=-0.5"
+            },
+            "note": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "required": ["id", "filter"],
+          "properties": {
+            "id": { "const": "chroma" },
+            "filter": { "const": "format=yuv444p" },
+            "note": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "required": ["id", "filter"],
+          "properties": {
+            "id": { "const": "upscale" },
+            "filter": { "const": "scale=3840:2160:flags=lanczos" },
+            "note": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "required": ["id", "filter"],
+          "properties": {
+            "id": { "const": "grain" },
+            "filter": { "const": "noise=alls=8:allf=t" },
+            "note": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "required": ["id", "filter"],
+          "properties": {
+            "id": { "const": "sharpen" },
+            "filter": { "const": "unsharp=5:5:0.8:3:3:0.4" },
+            "note": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "required": ["id", "filter"],
+          "properties": {
+            "id": { "const": "grade" },
+            "filter": { "const": "eq=contrast=1.05:brightness=0.02:saturation=1.05" },
+            "note": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "required": ["id", "filter"],
+          "properties": {
+            "id": { "const": "output" },
+            "filter": { "const": "format=yuv420p" },
+            "note": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": true
+        }
+      ],
+      "items": false
+    },
+    "reference_encoder": {
+      "description": "Los 4 campos que canary_quality.js:23-27 compara y que disparan CANARY_ENCODER_CHANGED. El objeto admite claves extra porque el validador Node tambien las tolera.",
+      "type": "object",
+      "required": ["video_codec", "preset", "tune", "x265_params"],
+      "properties": {
+        "video_codec": { "const": "libx265" },
+        "preset": { "const": "ultrafast" },
+        "tune": { "const": "zerolatency" },
+        "x265_params": {
+          "description": "Solo los 2 parametros que la politica declara. Fuente: quality-policy.json:16.",
+          "const": "pools=1:frame-threads=1"
+        }
+      },
+      "additionalProperties": true
+    },
+    "reference_encoder_emitted": {
+      "description": "OPCIONAL — bloque que expresa lo que el script REAL emite y la politica NO declara: 5 x265-params extra, rate control y GOP. Fuente de los valores reales: vps/bin/ape-visual-emulate.sh:112-114 y _vps_stage/canary/ape-visual-emulate.sh:60-62. AUSENTE en el quality-policy.json entregado: esa ausencia es la carencia declarada (ver docs/audits/SCHEMAS_20261111.md), no un valor inventado.",
+      "type": "object",
+      "required": ["x265_params", "rate_control", "gop"],
+      "properties": {
+        "x265_params": {
+          "description": "Los 5 parametros que el script anade a los 2 de la politica.",
+          "type": "string",
+          "pattern": "keyint=\\d+:min-keyint=\\d+:scenecut=0:bframes=0:rc-lookahead=0"
+        },
+        "rate_control": {
+          "type": "object",
+          "required": ["b_v", "maxrate", "bufsize"],
+          "properties": {
+            "b_v": { "$ref": "#/$defs/rate" },
+            "maxrate": { "$ref": "#/$defs/rate" },
+            "bufsize": { "$ref": "#/$defs/rate" }
+          },
+          "additionalProperties": false
+        },
+        "gop": {
+          "type": "object",
+          "required": ["g", "keyint_min", "sc_threshold"],
+          "properties": {
+            "g": { "type": "integer", "minimum": 1 },
+            "keyint_min": { "type": "integer", "minimum": 1 },
+            "sc_threshold": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": true
+    },
+    "reference_experiment_only": {
+      "description": "Marca de que el experimento es aislado y no es produccion. Fuente: quality-policy.json:17.",
+      "type": "object",
+      "properties": {
+        "fps": { "type": "number", "exclusiveMinimum": 0 },
+        "seconds": { "type": "number", "exclusiveMinimum": 0 },
+        "audio": { "type": "string", "minLength": 1 },
+        "hls_time": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "compatibility": {
+      "description": "Limites de compatibilidad declarados. Fuente: quality-policy.json:18.",
+      "type": "object",
+      "required": ["max_source_transfer", "source_aspect_warning"],
+      "properties": {
+        "max_source_transfer": { "type": "string", "minLength": 1 },
+        "source_aspect_warning": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "safety": {
+      "description": "Candados de seguridad. production_auto_enable debe ser false: fuente quality-policy.json:19 y canary_quality.js:29, que lanza CANARY_AUTO_ENABLE_FORBIDDEN si no lo es.",
+      "type": "object",
+      "required": ["production_auto_enable"],
+      "properties": {
+        "production_auto_enable": { "const": false },
+        "do_not_advertise_realtime": { "type": "boolean" },
+        "never_replace_existing_playlists": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "rate": {
+      "description": "Tasa estilo ffmpeg: entero con sufijo opcional k/M/G. Forma observada: 25M, 32M, 64M.",
+      "type": "string",
+      "pattern": "^[0-9]+[kKmMgG]?$"
+    }
+  }
+}

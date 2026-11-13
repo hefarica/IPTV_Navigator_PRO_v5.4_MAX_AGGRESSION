@@ -1,0 +1,25 @@
+diff --git a/_vps_stage/deploy/dry-run.sh b/_vps_stage/deploy/dry-run.sh
+index 09c4122..52d84c4 100644
+--- a/_vps_stage/deploy/dry-run.sh
++++ b/_vps_stage/deploy/dry-run.sh
+@@ -5,6 +5,20 @@ c_hdr "DRY-RUN · $VPS_HOST · $(date -u +%FT%TZ) · (no se escribe nada)"
+ 
+ dests="$(manifest_rows | cut -f2 | tr '\n' ' ')"
+ remote="$(rsh "for f in $dests; do if [ -f \"\$f\" ]; then printf '%s\t%s\t%s\t%s\n' \"\$(sha256sum \"\$f\" | cut -d' ' -f1)\" \"\$(stat -c %s \"\$f\")\" \"\$(stat -c %y \"\$f\" | tr ' ' '_')\" \"\$f\"; else printf 'AUSENTE\t-\t-\t%s\n' \"\$f\"; fi; done")"
++# [D-5] Un dry-run que no distingue "VPS caido" de "VPS vacio" miente: con el VPS
++# inalcanzable rsh devuelve 255, `remote` queda vacio y TODO se lee como NUEVO.
++# Se mira el exit ANTES de interpretar nada y se aborta con codigo propio.
++rc=$?
++if [ "$rc" -ne 0 ]; then
++  case "$rc" in
++    255) c_bad "   RED: no se pudo conectar por SSH a $SSH_TARGET (rc=255)"
++         c_bad "   DRY-RUN ABORTADO: no se ha leido NADA del VPS; esto NO significa que el VPS este vacio."
++         exit 4 ;;
++    *)   c_bad "   COMANDO: SSH conecto pero el comando remoto fallo (rc=$rc)"
++         c_bad "   DRY-RUN ABORTADO: no se puede comparar; no se interpreta como 'todo nuevo'."
++         exit 5 ;;
++  esac
++fi
+ printf '%s\n' "$remote" > "$SNAP_DIR/dryrun_remote_hashes_${STAMP}.txt"
+ 
+ printf '\n%-9s %-10s %-9s %s\n' "ESTADO" "TAMANO" "HASH" "DESTINO ← ORIGEN"

@@ -1,0 +1,31 @@
+{
+  "schema": "ape.playlist.servability.v1",
+  "generado": "2026-11-13T07:30:54.210Z",
+  "lista": "regenerated_list_4K_RESOLVER.m3u8",
+  "urls_totales": 2753,
+  "urls_invalidas": 0,
+  "clases": [
+    {
+      "clase": "https://iptv-ape.duckdns.org/resolve_quality.php",
+      "estado": "VIVA",
+      "urls_en_la_lista": 2753,
+      "probadas": 3,
+      "responden": 3,
+      "codigos_http": [
+        200
+      ],
+      "tasa_fallo_pct": 0,
+      "muestra": "https://iptv-ape.duckdns.org/resolve_quality.php?ch=1&p=P3&mode=adaptive&list=22.2.0-FUSION-FANTASMA-NUCLEAR&bw=50500000&buf=37500&origin=nov202gg.xyz&sid=1&srv=bm92MjAyZ2cueHl6OjgwfDJibHR6bGw0cDJ8MHF0dWprcmphbA%3D%3D&ctx=eyJwIjoiUDMiLCJycyI6IjE5MjB4MTA4MCIsImJ3Ijo1MDUwMDAwMCwiYnIiOjI1MjUwLCJiZiI6Mzc1MDAsIm5jIjo0MDAwMCwiaGQiOjAsImNzIjoiQlQyMDIwIiwiY3AiOiJIWUJSSURfQVYxX0hFVkNfQVZDIiwidiI6IjI1IiwicmciOiJSRVNUTyBERUwgTVVORE8iLCJsZyI6InVuZCIsImN0IjoiREVQT1JURVMiLCJjbiI6IlJFU1RPIERFTCBNVU5ETyIsImNmIjozMywiZnAiOjEyMCwidHIiOiJITFMiLCJhdCI6MCwiY3UiOjAsImxsIjowLCJidCI6IiIsInNjIjoiZ2VuZXJhbCIsImNmMiI6IiIsIm14Ijo1MDAwLCJtZiI6ODAwLCJkdiI6OCwiYngiOjIwMDAwMCwiYjIiOjYwMDAwLCJkdCI6IlRWIiwic3IiOiIxOTIweDEwODAiLCJodyI6MSwiaWIiOjI1MjUwMDAwLCJicCI6IlVMIiwiY2QiOiJhdXRvIiwic2YiOjEsImFiIjo2NDAsImFjIjoiYWFjLGVhYzMiLCJwdCI6IlZMQyIsIm50Ijoid2lmaSIsInJjIjoxMCwiY3QyIjoyNTAwLCJ2YyI6ImF2MSxoZXZjLHZwOSxoMjY0IiwiZHIiOiJ3aWRldmluZSxwbGF5cmVhZHkiLCJuYzIiOjEyMDAwMCwiY2oiOjE1MDB9"
+    }
+  ],
+  "muestras_por_clase": 3,
+  "veredicto": "PASA",
+  "resumen": {
+    "clases": 1,
+    "vivas": 1,
+    "muertas": 0,
+    "no_computadas": 0,
+    "urls_en_clases_muertas": 0
+  },
+  "motivo": "todas las clases con muestras responden (1 viva(s))"
+}

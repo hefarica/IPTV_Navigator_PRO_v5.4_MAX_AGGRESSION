@@ -1,0 +1,27 @@
+diff --git a/_vps_stage/deploy/validate.sh b/_vps_stage/deploy/validate.sh
+index 47a76e5..8adf8f9 100644
+--- a/_vps_stage/deploy/validate.sh
++++ b/_vps_stage/deploy/validate.sh
+@@ -6,6 +6,22 @@
+ #   · .conf -> se valida de verdad con `nginx -t` en deploy.sh (nginx no acepta stdin)
+ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+ c_hdr "VALIDACIÓN · $(date -u +%FT%TZ)"
++# [D-5] Sonda de conectividad UNA sola vez, ANTES de validar fichero a fichero.
++# Sin esto, un VPS inalcanzable hacia que cada .lua/.php se contara como FALLA de
++# sintaxis y el deploy abortara con exit 3 (numero de "fallos"): red confundida
++# con codigo roto.
++rsh 'true' >/dev/null 2>&1
++probe=$?
++if [ "$probe" -ne 0 ]; then
++  case "$probe" in
++    255) c_bad "   RED: no se pudo conectar por SSH a $SSH_TARGET (rc=255)"
++         c_bad "   NO SE PUDO VALIDAR: 0 ficheros comprobados. NO es un error de sintaxis."
++         exit 6 ;;
++    *)   c_bad "   COMANDO: SSH conecto pero el comando remoto fallo (rc=$probe)"
++         c_bad "   NO SE PUDO VALIDAR: 0 ficheros comprobados. NO es un error de sintaxis."
++         exit 7 ;;
++  esac
++fi
+ bad=0; okn=0; skip=0
+ while IFS=$'\t' read -r src dst mode owner note; do
+   lf="$REPO_ROOT/$src"

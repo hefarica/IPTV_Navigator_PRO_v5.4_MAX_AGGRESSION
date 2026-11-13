@@ -1,0 +1,31 @@
+{
+  "schema": "ape.playlist.servability.v1",
+  "generado": "2026-11-13T07:58:30.757Z",
+  "lista": "APE_LISTA_HARNESS.m3u8",
+  "urls_totales": 21224,
+  "urls_invalidas": 0,
+  "clases": [
+    {
+      "clase": "https://iptv-ape.duckdns.org/pulse/{n}.{ext}",
+      "estado": "VIVA",
+      "urls_en_la_lista": 21224,
+      "probadas": 2,
+      "responden": 2,
+      "codigos_http": [
+        200
+      ],
+      "tasa_fallo_pct": 0,
+      "muestra": "https://iptv-ape.duckdns.org/pulse/1.m3u8?u=http%3A%2F%2Fevestv.wuitf.com%2Flive%2F2RHAVYWB%2FSDXH4MYV%2F1.m3u8&d=eyJ0IjoiZ2VuZXJpYyIsInMiOiJ1bmtub3duIiwiciI6MjA0OCwidyI6MTkyMCwiaCI6MTA4MCwiZiI6MzAsImhkciI6InNkciIsInAiOiJQMyJ9&p=P3&n=%E2%9C%A6%E2%97%8F%E2%9C%A6%7C+FHD+-+BEIN+SPORTS+FHD+%7C%E2%9C%A6%E2%97%8F%E2%9C%A6+%5BEVEST%5D&id=1&s=4a543669e54a0bfa&v=9.3.0&logo=https%3A%2F%2Flo1.in%2Fbss%2Fbs.png&fp=8a866c12&m=cartridge&l=APE_LISTA_1794100720046"
+    }
+  ],
+  "muestras_por_clase": 2,
+  "veredicto": "PASA",
+  "resumen": {
+    "clases": 1,
+    "vivas": 1,
+    "muertas": 0,
+    "no_computadas": 0,
+    "urls_en_clases_muertas": 0
+  },
+  "motivo": "todas las clases con muestras responden (1 viva(s))"
+}

@@ -1,6 +1,6 @@
 {
   "schema": "ape.playlist.servability.v1",
-  "generado": "2026-11-13T07:27:41.302Z",
+  "generado": "2026-11-13T07:59:51.173Z",
   "lista": "downloaded_list_4K.m3u8",
   "urls_totales": 2753,
   "urls_invalidas": 0,
@@ -9,8 +9,8 @@
       "clase": "https://iptv-ape.duckdns.org/live/{n}.{ext}",
       "estado": "MUERTA",
       "urls_en_la_lista": 2753,
-      "probadas": 3,
-      "responden": 3,
+      "probadas": 2,
+      "responden": 2,
       "codigos_http": [
         404
       ],
@@ -18,7 +18,7 @@
       "muestra": "https://iptv-ape.duckdns.org/live/1.m3u8"
     }
   ],
-  "muestras_por_clase": 3,
+  "muestras_por_clase": 2,
   "veredicto": "FALLA",
   "resumen": {
     "clases": 1,

@@ -1,0 +1,75 @@
+{
+  "schema": "ape.hevc.max-quality-search.v1",
+  "generado": "2026-11-13T07:05:51.637Z",
+  "fuente": "WhatsApp Video 2026-11-13 at 1.01.22 AM.mp4",
+  "crf": 16,
+  "referencia": {
+    "perfil": {
+      "codec_name": "h264",
+      "profile": "Baseline",
+      "width": "1024",
+      "height": "576",
+      "pix_fmt": "yuv420p",
+      "color_range": "tv",
+      "color_transfer": "bt709",
+      "color_primaries": "bt709",
+      "bit_rate": "1310045"
+    },
+    "hf": 1.81517822265625,
+    "niveles": 170
+  },
+  "variantes": [
+    {
+      "id": "H264_8BIT_REF",
+      "desc": "H.264 High 8 bits (lo que hay hoy)",
+      "codec": "h264",
+      "profile": "High",
+      "pix_fmt": "yuv420p",
+      "bytes": 1895319,
+      "kbps": 3791,
+      "hf": 1.80385009765625,
+      "niveles": 168
+    },
+    {
+      "id": "HEVC_MAIN10",
+      "desc": "HEVC Main10 4:2:0 10 bits (maximo decodificable por TV/box)",
+      "codec": "hevc",
+      "profile": "Main 10",
+      "pix_fmt": "yuv420p10le",
+      "bytes": 2130584,
+      "kbps": 4261,
+      "hf": 1.78419677734375,
+      "niveles": 169
+    },
+    {
+      "id": "HEVC_444_10",
+      "desc": "HEVC Main444 4:4:4 10 bits (maximo absoluto; solo ruta JIT/VPS)",
+      "codec": "hevc",
+      "profile": "Rext",
+      "pix_fmt": "yuv444p10le",
+      "bytes": 2042243,
+      "kbps": 4084,
+      "hf": 1.74727294921875,
+      "niveles": 168
+    }
+  ],
+  "metricas": {
+    "hf": "media de |Y - desenfoque(Y)| sobre la region de detalle. Validada: monotona con bitrate, control negativo 0,04 %.",
+    "niveles_luma": "niveles distintos de luma en la region de cesped, comparados en 8 bits. Mas niveles = menos banding."
+  },
+  "no_computado": [
+    "No se ha medido la decodificacion en el ONN: estos ficheros no se reprodujeron en el aparato.",
+    "Los 10 bits solo evitan banding si el DECODIFICADOR y el DISPLAY los respetan; el ONN tiene panel 8 bits y composicion 1080p.",
+    "HEVC_444_10 no lo decodifica ningun consumidor: es material para la ruta JIT/VPS, no para el reproductor."
+  ],
+  "comparacion": {
+    "h264_kbps": 3791,
+    "hevc_kbps": 4261,
+    "ahorro_bitrate_pct": -12.4,
+    "h264_hf": 1.80385009765625,
+    "hevc_hf": 1.78419677734375,
+    "delta_hf_pct": -1.1,
+    "h264_niveles": 168,
+    "hevc_niveles": 169
+  }
+}

@@ -1,6 +1,6 @@
 {
   "schema": "ape.canary.rea_loop.state.v1",
-  "updated_at_utc": "2026-11-12T06:39:36Z",
+  "updated_at_utc": "2026-11-12T07:29:07Z",
   "root": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION",
   "limits": {
     "MAX_REMEDIATION_CYCLES": 12,
@@ -10,8 +10,8 @@
   "consecutive_deploy_failures": 0,
   "previous_state_schema": "ape.canary.rea_loop.state.v1",
   "last_healthy": {
-    "run_id": "run-1794465569987",
-    "finished_at_utc": "2026-11-12T06:39:36Z",
+    "run_id": "run-1794468546927",
+    "finished_at_utc": "2026-11-12T07:29:07Z",
     "gates": [
       {
         "id": "G1",
@@ -52,8 +52,8 @@
     ]
   },
   "history": {
-    "total_runs": 7,
-    "healthy_runs": 7,
+    "total_runs": 15,
+    "healthy_runs": 15,
     "blocked_runs": 0,
     "failed_runs": 0
   },
@@ -1081,6 +1081,1174 @@
           "known_preexisting": null,
           "observations": [],
           "output_excerpt": "…[recortado 4566 chars]…\n       0\n  EXT_X               1520       1520       0\n  OTROS                  1          1       0\n  TOTAL TAGS          2078       2078       0\n  MULTICONJUNTO     cdf03f4e598e33b8  cdf03f4e598e33b8  IDENTICO\n\n──────────────────────────────────────────────────────────────\nRESULTADO: 32 PASS · 0 FAIL · 32 comprobaciones\nTMP de la corrida: C:\\Users\\HFRC\\AppData\\Local\\Temp\\ape-adapter-test-NSp0cq\n"
+        }
+      ]
+    },
+    {
+      "run_id": "run-1794465747621",
+      "started_at_utc": "2026-11-12T06:42:27Z",
+      "finished_at_utc": "2026-11-12T06:42:28Z",
+      "cycles_requested": 1,
+      "cycles_used": 1,
+      "result": "HEALTHY",
+      "exit_code": 0,
+      "gates": [
+        {
+          "id": "G1",
+          "name": "anti_degradation_policy",
+          "command": "node tools/check_anti_degradation_policy.js",
+          "attempts": 3,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 1,
+              "duration_ms": 115,
+              "timed_out": false
+            },
+            {
+              "attempt": 2,
+              "exit_code": 1,
+              "duration_ms": 85,
+              "timed_out": false
+            },
+            {
+              "attempt": 3,
+              "exit_code": 1,
+              "duration_ms": 76,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 1,
+          "duration_ms": 276,
+          "result": "KNOWN_PREEXISTING",
+          "known_preexisting": {
+            "id": "KP1",
+            "reason": "Falso positivo preexistente: el gate marca IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js (el motor B, que no despliega) y no tools/lab/ape-jit/server.js. Declarado por el capitan en el encargo; NO se arregla aqui."
+          },
+          "observations": [],
+          "output_excerpt": "PASS law exists\nPASS law forbids 4K→FHD\nPASS contract mandatory\nPASS contract forbids fallback\nPASS contract allows JIT copy\nPASS AGENTS references law\nPASS JIT escaneado (código, no solo doctrina) · 3 de 3 implementaciones presentes\nFAIL sin degradacion NUEVA en el codigo JIT · tools/lab/ape-jit/server.js :: stereo_locked 0 -> 3\n  [DEGRADA] vps_jit/server.js  fps_locked=2 stereo_locked=3 downscale_2k=0 scale_small=2 audio_passthrough=0\n  [DEGRADA] IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js  fps_locked=2 stereo_locked=3 downscale_2k=2 scale_small=2 audio_passthrough=0\n  [CUMPLE] tools/lab/ape-jit/server.js  fps_locked=0 stereo_locked=3 downscale_2k=0 scale_small=0 audio_passthrough=1\n\nTOTAL=8 PASS=7 FAIL=1\n"
+        },
+        {
+          "id": "G2",
+          "name": "crystal_4k_law",
+          "command": "node tools/check_crystal_4k_law.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 84,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 84,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "PASS crystal law exists\nPASS enhancement allowed\nPASS upscale rule\nPASS downscale forbidden\nPASS AGENTS references crystal law\n\nTOTAL=5 PASS=5 FAIL=0\n"
+        },
+        {
+          "id": "G3",
+          "name": "crystal_6k_law",
+          "command": "node tools/check_crystal_6k_law.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 80,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 80,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "PASS 6K law exists\nPASS 6K target\nPASS all technique families\nPASS opt-in not default\nPASS downscale forbidden\nPASS AGENTS references 6K law\n\nTOTAL=6 PASS=6 FAIL=0\n"
+        },
+        {
+          "id": "G4",
+          "name": "canary_jit_contract",
+          "command": "node tools/quality/test_canary_jit_contract.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 158,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 158,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 8929 chars]…\nCT/E_REQUIRED_FIELD_MISSING | sin guarda: ACCEPT/OK_APPLIED_MEASURED]\n\n-- resumen --\n  fixtures: 55/55 PASS  (FAIL 0)\n  coherencia del contrato: PASS  (27/27 checks)\n  campos load-bearing: 10/10 PASS  (FAIL 0)  redundantes declarados: output.level=REDUNDANTE_COVERED_BY:E_LEVEL_RESOLUTION_IMPOSSIBLE\n  aceptados: 5 | envenenados rechazados: 50\n  total: 92/92 comprobaciones | fallos: 0\n  RESULT=PASS\n"
+        },
+        {
+          "id": "G5",
+          "name": "schemas",
+          "command": "node tools/quality/test_schemas.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 144,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 144,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 5656 chars]…\nel subconjunto: 0\n  quality-policy.json sha256 antes:  9845aa5da438213d86b1e58fdb8c5e7c081395e0de9798d23689a2dd8b86fc65\n  quality-policy.json sha256 despues: 9845aa5da438213d86b1e58fdb8c5e7c081395e0de9798d23689a2dd8b86fc65\n  PASS  la politica entregada NO se ha modificado  [pin=9845aa5da438213d...]\n\n  politica: EVALUADA | casos de esquema: 23 | PASS 23 | FAIL 0 | NO_COMPUTADO-skip 0 | RESULT=PASS\n"
+        },
+        {
+          "id": "G6",
+          "name": "playlist_adapter",
+          "command": "node tools/quality/test_playlist_adapter.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 436,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 436,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 4566 chars]…\n       0\n  EXT_X               1520       1520       0\n  OTROS                  1          1       0\n  TOTAL TAGS          2078       2078       0\n  MULTICONJUNTO     cdf03f4e598e33b8  cdf03f4e598e33b8  IDENTICO\n\n──────────────────────────────────────────────────────────────\nRESULTADO: 32 PASS · 0 FAIL · 32 comprobaciones\nTMP de la corrida: C:\\Users\\HFRC\\AppData\\Local\\Temp\\ape-adapter-test-mGdm61\n"
+        }
+      ]
+    },
+    {
+      "run_id": "run-1794466465816",
+      "started_at_utc": "2026-11-12T06:54:25Z",
+      "finished_at_utc": "2026-11-12T06:54:26Z",
+      "cycles_requested": 1,
+      "cycles_used": 1,
+      "result": "HEALTHY",
+      "exit_code": 0,
+      "gates": [
+        {
+          "id": "G1",
+          "name": "anti_degradation_policy",
+          "command": "node tools/check_anti_degradation_policy.js",
+          "attempts": 3,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 1,
+              "duration_ms": 99,
+              "timed_out": false
+            },
+            {
+              "attempt": 2,
+              "exit_code": 1,
+              "duration_ms": 82,
+              "timed_out": false
+            },
+            {
+              "attempt": 3,
+              "exit_code": 1,
+              "duration_ms": 79,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 1,
+          "duration_ms": 260,
+          "result": "KNOWN_PREEXISTING",
+          "known_preexisting": {
+            "id": "KP1",
+            "reason": "Falso positivo preexistente: el gate marca IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js (el motor B, que no despliega) y no tools/lab/ape-jit/server.js. Declarado por el capitan en el encargo; NO se arregla aqui."
+          },
+          "observations": [],
+          "output_excerpt": "PASS law exists\nPASS law forbids 4K→FHD\nPASS contract mandatory\nPASS contract forbids fallback\nPASS contract allows JIT copy\nPASS AGENTS references law\nPASS JIT escaneado (código, no solo doctrina) · 3 de 3 implementaciones presentes\nFAIL sin degradacion NUEVA en el codigo JIT · tools/lab/ape-jit/server.js :: stereo_locked 0 -> 3\n  [DEGRADA] vps_jit/server.js  fps_locked=2 stereo_locked=3 downscale_2k=0 scale_small=2 audio_passthrough=0\n  [DEGRADA] IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js  fps_locked=2 stereo_locked=3 downscale_2k=2 scale_small=2 audio_passthrough=0\n  [CUMPLE] tools/lab/ape-jit/server.js  fps_locked=0 stereo_locked=3 downscale_2k=0 scale_small=0 audio_passthrough=1\n\nTOTAL=8 PASS=7 FAIL=1\n"
+        },
+        {
+          "id": "G2",
+          "name": "crystal_4k_law",
+          "command": "node tools/check_crystal_4k_law.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 70,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 70,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "PASS crystal law exists\nPASS enhancement allowed\nPASS upscale rule\nPASS downscale forbidden\nPASS AGENTS references crystal law\n\nTOTAL=5 PASS=5 FAIL=0\n"
+        },
+        {
+          "id": "G3",
+          "name": "crystal_6k_law",
+          "command": "node tools/check_crystal_6k_law.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 85,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 85,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "PASS 6K law exists\nPASS 6K target\nPASS all technique families\nPASS opt-in not default\nPASS downscale forbidden\nPASS AGENTS references 6K law\n\nTOTAL=6 PASS=6 FAIL=0\n"
+        },
+        {
+          "id": "G4",
+          "name": "canary_jit_contract",
+          "command": "node tools/quality/test_canary_jit_contract.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 149,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 149,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 8929 chars]…\nCT/E_REQUIRED_FIELD_MISSING | sin guarda: ACCEPT/OK_APPLIED_MEASURED]\n\n-- resumen --\n  fixtures: 55/55 PASS  (FAIL 0)\n  coherencia del contrato: PASS  (27/27 checks)\n  campos load-bearing: 10/10 PASS  (FAIL 0)  redundantes declarados: output.level=REDUNDANTE_COVERED_BY:E_LEVEL_RESOLUTION_IMPOSSIBLE\n  aceptados: 5 | envenenados rechazados: 50\n  total: 92/92 comprobaciones | fallos: 0\n  RESULT=PASS\n"
+        },
+        {
+          "id": "G5",
+          "name": "schemas",
+          "command": "node tools/quality/test_schemas.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 86,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 86,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 5656 chars]…\nel subconjunto: 0\n  quality-policy.json sha256 antes:  9845aa5da438213d86b1e58fdb8c5e7c081395e0de9798d23689a2dd8b86fc65\n  quality-policy.json sha256 despues: 9845aa5da438213d86b1e58fdb8c5e7c081395e0de9798d23689a2dd8b86fc65\n  PASS  la politica entregada NO se ha modificado  [pin=9845aa5da438213d...]\n\n  politica: EVALUADA | casos de esquema: 23 | PASS 23 | FAIL 0 | NO_COMPUTADO-skip 0 | RESULT=PASS\n"
+        },
+        {
+          "id": "G6",
+          "name": "playlist_adapter",
+          "command": "node tools/quality/test_playlist_adapter.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 361,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 361,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 4566 chars]…\n       0\n  EXT_X               1520       1520       0\n  OTROS                  1          1       0\n  TOTAL TAGS          2078       2078       0\n  MULTICONJUNTO     cdf03f4e598e33b8  cdf03f4e598e33b8  IDENTICO\n\n──────────────────────────────────────────────────────────────\nRESULTADO: 32 PASS · 0 FAIL · 32 comprobaciones\nTMP de la corrida: C:\\Users\\HFRC\\AppData\\Local\\Temp\\ape-adapter-test-lnwJh9\n"
+        }
+      ]
+    },
+    {
+      "run_id": "run-1794466664240",
+      "started_at_utc": "2026-11-12T06:57:44Z",
+      "finished_at_utc": "2026-11-12T06:57:45Z",
+      "cycles_requested": 1,
+      "cycles_used": 1,
+      "result": "HEALTHY",
+      "exit_code": 0,
+      "gates": [
+        {
+          "id": "G1",
+          "name": "anti_degradation_policy",
+          "command": "node tools/check_anti_degradation_policy.js",
+          "attempts": 3,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 1,
+              "duration_ms": 95,
+              "timed_out": false
+            },
+            {
+              "attempt": 2,
+              "exit_code": 1,
+              "duration_ms": 80,
+              "timed_out": false
+            },
+            {
+              "attempt": 3,
+              "exit_code": 1,
+              "duration_ms": 94,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 1,
+          "duration_ms": 269,
+          "result": "KNOWN_PREEXISTING",
+          "known_preexisting": {
+            "id": "KP1",
+            "reason": "Falso positivo preexistente: el gate marca IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js (el motor B, que no despliega) y no tools/lab/ape-jit/server.js. Declarado por el capitan en el encargo; NO se arregla aqui."
+          },
+          "observations": [],
+          "output_excerpt": "PASS law exists\nPASS law forbids 4K→FHD\nPASS contract mandatory\nPASS contract forbids fallback\nPASS contract allows JIT copy\nPASS AGENTS references law\nPASS JIT escaneado (código, no solo doctrina) · 3 de 3 implementaciones presentes\nFAIL sin degradacion NUEVA en el codigo JIT · tools/lab/ape-jit/server.js :: stereo_locked 0 -> 3\n  [DEGRADA] vps_jit/server.js  fps_locked=2 stereo_locked=3 downscale_2k=0 scale_small=2 audio_passthrough=0\n  [DEGRADA] IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js  fps_locked=2 stereo_locked=3 downscale_2k=2 scale_small=2 audio_passthrough=0\n  [CUMPLE] tools/lab/ape-jit/server.js  fps_locked=0 stereo_locked=3 downscale_2k=0 scale_small=0 audio_passthrough=1\n\nTOTAL=8 PASS=7 FAIL=1\n"
+        },
+        {
+          "id": "G2",
+          "name": "crystal_4k_law",
+          "command": "node tools/check_crystal_4k_law.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 80,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 80,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "PASS crystal law exists\nPASS enhancement allowed\nPASS upscale rule\nPASS downscale forbidden\nPASS AGENTS references crystal law\n\nTOTAL=5 PASS=5 FAIL=0\n"
+        },
+        {
+          "id": "G3",
+          "name": "crystal_6k_law",
+          "command": "node tools/check_crystal_6k_law.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 84,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 84,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "PASS 6K law exists\nPASS 6K target\nPASS all technique families\nPASS opt-in not default\nPASS downscale forbidden\nPASS AGENTS references 6K law\n\nTOTAL=6 PASS=6 FAIL=0\n"
+        },
+        {
+          "id": "G4",
+          "name": "canary_jit_contract",
+          "command": "node tools/quality/test_canary_jit_contract.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 144,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 144,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 8929 chars]…\nCT/E_REQUIRED_FIELD_MISSING | sin guarda: ACCEPT/OK_APPLIED_MEASURED]\n\n-- resumen --\n  fixtures: 55/55 PASS  (FAIL 0)\n  coherencia del contrato: PASS  (27/27 checks)\n  campos load-bearing: 10/10 PASS  (FAIL 0)  redundantes declarados: output.level=REDUNDANTE_COVERED_BY:E_LEVEL_RESOLUTION_IMPOSSIBLE\n  aceptados: 5 | envenenados rechazados: 50\n  total: 92/92 comprobaciones | fallos: 0\n  RESULT=PASS\n"
+        },
+        {
+          "id": "G5",
+          "name": "schemas",
+          "command": "node tools/quality/test_schemas.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 89,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 89,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 5656 chars]…\nel subconjunto: 0\n  quality-policy.json sha256 antes:  9845aa5da438213d86b1e58fdb8c5e7c081395e0de9798d23689a2dd8b86fc65\n  quality-policy.json sha256 despues: 9845aa5da438213d86b1e58fdb8c5e7c081395e0de9798d23689a2dd8b86fc65\n  PASS  la politica entregada NO se ha modificado  [pin=9845aa5da438213d...]\n\n  politica: EVALUADA | casos de esquema: 23 | PASS 23 | FAIL 0 | NO_COMPUTADO-skip 0 | RESULT=PASS\n"
+        },
+        {
+          "id": "G6",
+          "name": "playlist_adapter",
+          "command": "node tools/quality/test_playlist_adapter.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 490,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 490,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 4566 chars]…\n       0\n  EXT_X               1520       1520       0\n  OTROS                  1          1       0\n  TOTAL TAGS          2078       2078       0\n  MULTICONJUNTO     cdf03f4e598e33b8  cdf03f4e598e33b8  IDENTICO\n\n──────────────────────────────────────────────────────────────\nRESULTADO: 32 PASS · 0 FAIL · 32 comprobaciones\nTMP de la corrida: C:\\Users\\HFRC\\AppData\\Local\\Temp\\ape-adapter-test-NlSumb\n"
+        }
+      ]
+    },
+    {
+      "run_id": "run-1794467268635",
+      "started_at_utc": "2026-11-12T07:07:48Z",
+      "finished_at_utc": "2026-11-12T07:07:55Z",
+      "cycles_requested": 1,
+      "cycles_used": 1,
+      "result": "HEALTHY",
+      "exit_code": 0,
+      "gates": [
+        {
+          "id": "G1",
+          "name": "anti_degradation_policy",
+          "command": "node tools/check_anti_degradation_policy.js",
+          "attempts": 3,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 1,
+              "duration_ms": 81,
+              "timed_out": false
+            },
+            {
+              "attempt": 2,
+              "exit_code": 1,
+              "duration_ms": 86,
+              "timed_out": false
+            },
+            {
+              "attempt": 3,
+              "exit_code": 1,
+              "duration_ms": 129,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 1,
+          "duration_ms": 296,
+          "result": "KNOWN_PREEXISTING",
+          "known_preexisting": {
+            "id": "KP1",
+            "reason": "Falso positivo preexistente: el gate marca IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js (el motor B, que no despliega) y no tools/lab/ape-jit/server.js. Declarado por el capitan en el encargo; NO se arregla aqui."
+          },
+          "observations": [],
+          "output_excerpt": "PASS law exists\nPASS law forbids 4K→FHD\nPASS contract mandatory\nPASS contract forbids fallback\nPASS contract allows JIT copy\nPASS AGENTS references law\nPASS JIT escaneado (código, no solo doctrina) · 3 de 3 implementaciones presentes\nFAIL sin degradacion NUEVA en el codigo JIT · tools/lab/ape-jit/server.js :: stereo_locked 0 -> 3\n  [DEGRADA] vps_jit/server.js  fps_locked=2 stereo_locked=3 downscale_2k=0 scale_small=2 audio_passthrough=0\n  [DEGRADA] IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js  fps_locked=2 stereo_locked=3 downscale_2k=2 scale_small=2 audio_passthrough=0\n  [CUMPLE] tools/lab/ape-jit/server.js  fps_locked=0 stereo_locked=3 downscale_2k=0 scale_small=0 audio_passthrough=1\n\nTOTAL=8 PASS=7 FAIL=1\n"
+        },
+        {
+          "id": "G2",
+          "name": "crystal_4k_law",
+          "command": "node tools/check_crystal_4k_law.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 152,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 152,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "PASS crystal law exists\nPASS enhancement allowed\nPASS upscale rule\nPASS downscale forbidden\nPASS AGENTS references crystal law\n\nTOTAL=5 PASS=5 FAIL=0\n"
+        },
+        {
+          "id": "G3",
+          "name": "crystal_6k_law",
+          "command": "node tools/check_crystal_6k_law.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 177,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 177,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "PASS 6K law exists\nPASS 6K target\nPASS all technique families\nPASS opt-in not default\nPASS downscale forbidden\nPASS AGENTS references 6K law\n\nTOTAL=6 PASS=6 FAIL=0\n"
+        },
+        {
+          "id": "G4",
+          "name": "canary_jit_contract",
+          "command": "node tools/quality/test_canary_jit_contract.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 2251,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 2251,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 8929 chars]…\nCT/E_REQUIRED_FIELD_MISSING | sin guarda: ACCEPT/OK_APPLIED_MEASURED]\n\n-- resumen --\n  fixtures: 55/55 PASS  (FAIL 0)\n  coherencia del contrato: PASS  (27/27 checks)\n  campos load-bearing: 10/10 PASS  (FAIL 0)  redundantes declarados: output.level=REDUNDANTE_COVERED_BY:E_LEVEL_RESOLUTION_IMPOSSIBLE\n  aceptados: 5 | envenenados rechazados: 50\n  total: 92/92 comprobaciones | fallos: 0\n  RESULT=PASS\n"
+        },
+        {
+          "id": "G5",
+          "name": "schemas",
+          "command": "node tools/quality/test_schemas.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 640,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 640,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 5656 chars]…\nel subconjunto: 0\n  quality-policy.json sha256 antes:  9845aa5da438213d86b1e58fdb8c5e7c081395e0de9798d23689a2dd8b86fc65\n  quality-policy.json sha256 despues: 9845aa5da438213d86b1e58fdb8c5e7c081395e0de9798d23689a2dd8b86fc65\n  PASS  la politica entregada NO se ha modificado  [pin=9845aa5da438213d...]\n\n  politica: EVALUADA | casos de esquema: 23 | PASS 23 | FAIL 0 | NO_COMPUTADO-skip 0 | RESULT=PASS\n"
+        },
+        {
+          "id": "G6",
+          "name": "playlist_adapter",
+          "command": "node tools/quality/test_playlist_adapter.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 3162,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 3162,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 4566 chars]…\n       0\n  EXT_X               1520       1520       0\n  OTROS                  1          1       0\n  TOTAL TAGS          2078       2078       0\n  MULTICONJUNTO     cdf03f4e598e33b8  cdf03f4e598e33b8  IDENTICO\n\n──────────────────────────────────────────────────────────────\nRESULTADO: 32 PASS · 0 FAIL · 32 comprobaciones\nTMP de la corrida: C:\\Users\\HFRC\\AppData\\Local\\Temp\\ape-adapter-test-LIBBa1\n"
+        }
+      ]
+    },
+    {
+      "run_id": "run-1794467696332",
+      "started_at_utc": "2026-11-12T07:14:56Z",
+      "finished_at_utc": "2026-11-12T07:14:57Z",
+      "cycles_requested": 1,
+      "cycles_used": 1,
+      "result": "HEALTHY",
+      "exit_code": 0,
+      "gates": [
+        {
+          "id": "G1",
+          "name": "anti_degradation_policy",
+          "command": "node tools/check_anti_degradation_policy.js",
+          "attempts": 3,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 1,
+              "duration_ms": 119,
+              "timed_out": false
+            },
+            {
+              "attempt": 2,
+              "exit_code": 1,
+              "duration_ms": 109,
+              "timed_out": false
+            },
+            {
+              "attempt": 3,
+              "exit_code": 1,
+              "duration_ms": 94,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 1,
+          "duration_ms": 322,
+          "result": "KNOWN_PREEXISTING",
+          "known_preexisting": {
+            "id": "KP1",
+            "reason": "Falso positivo preexistente: el gate marca IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js (el motor B, que no despliega) y no tools/lab/ape-jit/server.js. Declarado por el capitan en el encargo; NO se arregla aqui."
+          },
+          "observations": [],
+          "output_excerpt": "PASS law exists\nPASS law forbids 4K→FHD\nPASS contract mandatory\nPASS contract forbids fallback\nPASS contract allows JIT copy\nPASS AGENTS references law\nPASS JIT escaneado (código, no solo doctrina) · 3 de 3 implementaciones presentes\nFAIL sin degradacion NUEVA en el codigo JIT · tools/lab/ape-jit/server.js :: stereo_locked 0 -> 3\n  [DEGRADA] vps_jit/server.js  fps_locked=2 stereo_locked=3 downscale_2k=0 scale_small=2 audio_passthrough=0\n  [DEGRADA] IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js  fps_locked=2 stereo_locked=3 downscale_2k=2 scale_small=2 audio_passthrough=0\n  [CUMPLE] tools/lab/ape-jit/server.js  fps_locked=0 stereo_locked=3 downscale_2k=0 scale_small=0 audio_passthrough=1\n\nTOTAL=8 PASS=7 FAIL=1\n"
+        },
+        {
+          "id": "G2",
+          "name": "crystal_4k_law",
+          "command": "node tools/check_crystal_4k_law.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 107,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 107,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "PASS crystal law exists\nPASS enhancement allowed\nPASS upscale rule\nPASS downscale forbidden\nPASS AGENTS references crystal law\n\nTOTAL=5 PASS=5 FAIL=0\n"
+        },
+        {
+          "id": "G3",
+          "name": "crystal_6k_law",
+          "command": "node tools/check_crystal_6k_law.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 102,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 102,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "PASS 6K law exists\nPASS 6K target\nPASS all technique families\nPASS opt-in not default\nPASS downscale forbidden\nPASS AGENTS references 6K law\n\nTOTAL=6 PASS=6 FAIL=0\n"
+        },
+        {
+          "id": "G4",
+          "name": "canary_jit_contract",
+          "command": "node tools/quality/test_canary_jit_contract.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 152,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 152,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 8929 chars]…\nCT/E_REQUIRED_FIELD_MISSING | sin guarda: ACCEPT/OK_APPLIED_MEASURED]\n\n-- resumen --\n  fixtures: 55/55 PASS  (FAIL 0)\n  coherencia del contrato: PASS  (27/27 checks)\n  campos load-bearing: 10/10 PASS  (FAIL 0)  redundantes declarados: output.level=REDUNDANTE_COVERED_BY:E_LEVEL_RESOLUTION_IMPOSSIBLE\n  aceptados: 5 | envenenados rechazados: 50\n  total: 92/92 comprobaciones | fallos: 0\n  RESULT=PASS\n"
+        },
+        {
+          "id": "G5",
+          "name": "schemas",
+          "command": "node tools/quality/test_schemas.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 102,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 102,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 5656 chars]…\nel subconjunto: 0\n  quality-policy.json sha256 antes:  9845aa5da438213d86b1e58fdb8c5e7c081395e0de9798d23689a2dd8b86fc65\n  quality-policy.json sha256 despues: 9845aa5da438213d86b1e58fdb8c5e7c081395e0de9798d23689a2dd8b86fc65\n  PASS  la politica entregada NO se ha modificado  [pin=9845aa5da438213d...]\n\n  politica: EVALUADA | casos de esquema: 23 | PASS 23 | FAIL 0 | NO_COMPUTADO-skip 0 | RESULT=PASS\n"
+        },
+        {
+          "id": "G6",
+          "name": "playlist_adapter",
+          "command": "node tools/quality/test_playlist_adapter.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 390,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 390,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 4566 chars]…\n       0\n  EXT_X               1520       1520       0\n  OTROS                  1          1       0\n  TOTAL TAGS          2078       2078       0\n  MULTICONJUNTO     cdf03f4e598e33b8  cdf03f4e598e33b8  IDENTICO\n\n──────────────────────────────────────────────────────────────\nRESULTADO: 32 PASS · 0 FAIL · 32 comprobaciones\nTMP de la corrida: C:\\Users\\HFRC\\AppData\\Local\\Temp\\ape-adapter-test-cE3S16\n"
+        }
+      ]
+    },
+    {
+      "run_id": "run-1794467901465",
+      "started_at_utc": "2026-11-12T07:18:21Z",
+      "finished_at_utc": "2026-11-12T07:18:22Z",
+      "cycles_requested": 1,
+      "cycles_used": 1,
+      "result": "HEALTHY",
+      "exit_code": 0,
+      "gates": [
+        {
+          "id": "G1",
+          "name": "anti_degradation_policy",
+          "command": "node tools/check_anti_degradation_policy.js",
+          "attempts": 3,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 1,
+              "duration_ms": 76,
+              "timed_out": false
+            },
+            {
+              "attempt": 2,
+              "exit_code": 1,
+              "duration_ms": 71,
+              "timed_out": false
+            },
+            {
+              "attempt": 3,
+              "exit_code": 1,
+              "duration_ms": 79,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 1,
+          "duration_ms": 226,
+          "result": "KNOWN_PREEXISTING",
+          "known_preexisting": {
+            "id": "KP1",
+            "reason": "Falso positivo preexistente: el gate marca IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js (el motor B, que no despliega) y no tools/lab/ape-jit/server.js. Declarado por el capitan en el encargo; NO se arregla aqui."
+          },
+          "observations": [],
+          "output_excerpt": "PASS law exists\nPASS law forbids 4K→FHD\nPASS contract mandatory\nPASS contract forbids fallback\nPASS contract allows JIT copy\nPASS AGENTS references law\nPASS JIT escaneado (código, no solo doctrina) · 3 de 3 implementaciones presentes\nFAIL sin degradacion NUEVA en el codigo JIT · tools/lab/ape-jit/server.js :: stereo_locked 0 -> 3\n  [DEGRADA] vps_jit/server.js  fps_locked=2 stereo_locked=3 downscale_2k=0 scale_small=2 audio_passthrough=0\n  [DEGRADA] IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js  fps_locked=2 stereo_locked=3 downscale_2k=2 scale_small=2 audio_passthrough=0\n  [CUMPLE] tools/lab/ape-jit/server.js  fps_locked=0 stereo_locked=3 downscale_2k=0 scale_small=0 audio_passthrough=1\n\nTOTAL=8 PASS=7 FAIL=1\n"
+        },
+        {
+          "id": "G2",
+          "name": "crystal_4k_law",
+          "command": "node tools/check_crystal_4k_law.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 93,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 93,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "PASS crystal law exists\nPASS enhancement allowed\nPASS upscale rule\nPASS downscale forbidden\nPASS AGENTS references crystal law\n\nTOTAL=5 PASS=5 FAIL=0\n"
+        },
+        {
+          "id": "G3",
+          "name": "crystal_6k_law",
+          "command": "node tools/check_crystal_6k_law.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 80,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 80,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "PASS 6K law exists\nPASS 6K target\nPASS all technique families\nPASS opt-in not default\nPASS downscale forbidden\nPASS AGENTS references 6K law\n\nTOTAL=6 PASS=6 FAIL=0\n"
+        },
+        {
+          "id": "G4",
+          "name": "canary_jit_contract",
+          "command": "node tools/quality/test_canary_jit_contract.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 139,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 139,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 8929 chars]…\nCT/E_REQUIRED_FIELD_MISSING | sin guarda: ACCEPT/OK_APPLIED_MEASURED]\n\n-- resumen --\n  fixtures: 55/55 PASS  (FAIL 0)\n  coherencia del contrato: PASS  (27/27 checks)\n  campos load-bearing: 10/10 PASS  (FAIL 0)  redundantes declarados: output.level=REDUNDANTE_COVERED_BY:E_LEVEL_RESOLUTION_IMPOSSIBLE\n  aceptados: 5 | envenenados rechazados: 50\n  total: 92/92 comprobaciones | fallos: 0\n  RESULT=PASS\n"
+        },
+        {
+          "id": "G5",
+          "name": "schemas",
+          "command": "node tools/quality/test_schemas.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 103,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 103,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 5656 chars]…\nel subconjunto: 0\n  quality-policy.json sha256 antes:  9845aa5da438213d86b1e58fdb8c5e7c081395e0de9798d23689a2dd8b86fc65\n  quality-policy.json sha256 despues: 9845aa5da438213d86b1e58fdb8c5e7c081395e0de9798d23689a2dd8b86fc65\n  PASS  la politica entregada NO se ha modificado  [pin=9845aa5da438213d...]\n\n  politica: EVALUADA | casos de esquema: 23 | PASS 23 | FAIL 0 | NO_COMPUTADO-skip 0 | RESULT=PASS\n"
+        },
+        {
+          "id": "G6",
+          "name": "playlist_adapter",
+          "command": "node tools/quality/test_playlist_adapter.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 451,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 451,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 4566 chars]…\n       0\n  EXT_X               1520       1520       0\n  OTROS                  1          1       0\n  TOTAL TAGS          2078       2078       0\n  MULTICONJUNTO     cdf03f4e598e33b8  cdf03f4e598e33b8  IDENTICO\n\n──────────────────────────────────────────────────────────────\nRESULTADO: 32 PASS · 0 FAIL · 32 comprobaciones\nTMP de la corrida: C:\\Users\\HFRC\\AppData\\Local\\Temp\\ape-adapter-test-8ekQTJ\n"
+        }
+      ]
+    },
+    {
+      "run_id": "run-1794467981981",
+      "started_at_utc": "2026-11-12T07:19:41Z",
+      "finished_at_utc": "2026-11-12T07:19:47Z",
+      "cycles_requested": 1,
+      "cycles_used": 1,
+      "result": "HEALTHY",
+      "exit_code": 0,
+      "gates": [
+        {
+          "id": "G1",
+          "name": "anti_degradation_policy",
+          "command": "node tools/check_anti_degradation_policy.js",
+          "attempts": 3,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 1,
+              "duration_ms": 397,
+              "timed_out": false
+            },
+            {
+              "attempt": 2,
+              "exit_code": 1,
+              "duration_ms": 355,
+              "timed_out": false
+            },
+            {
+              "attempt": 3,
+              "exit_code": 1,
+              "duration_ms": 383,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 1,
+          "duration_ms": 1135,
+          "result": "KNOWN_PREEXISTING",
+          "known_preexisting": {
+            "id": "KP1",
+            "reason": "Falso positivo preexistente: el gate marca IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js (el motor B, que no despliega) y no tools/lab/ape-jit/server.js. Declarado por el capitan en el encargo; NO se arregla aqui."
+          },
+          "observations": [],
+          "output_excerpt": "PASS law exists\nPASS law forbids 4K→FHD\nPASS contract mandatory\nPASS contract forbids fallback\nPASS contract allows JIT copy\nPASS AGENTS references law\nPASS JIT escaneado (código, no solo doctrina) · 3 de 3 implementaciones presentes\nFAIL sin degradacion NUEVA en el codigo JIT · tools/lab/ape-jit/server.js :: stereo_locked 0 -> 3\n  [DEGRADA] vps_jit/server.js  fps_locked=2 stereo_locked=3 downscale_2k=0 scale_small=2 audio_passthrough=0\n  [DEGRADA] IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js  fps_locked=2 stereo_locked=3 downscale_2k=2 scale_small=2 audio_passthrough=0\n  [CUMPLE] tools/lab/ape-jit/server.js  fps_locked=0 stereo_locked=3 downscale_2k=0 scale_small=0 audio_passthrough=1\n\nTOTAL=8 PASS=7 FAIL=1\n"
+        },
+        {
+          "id": "G2",
+          "name": "crystal_4k_law",
+          "command": "node tools/check_crystal_4k_law.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 452,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 452,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "PASS crystal law exists\nPASS enhancement allowed\nPASS upscale rule\nPASS downscale forbidden\nPASS AGENTS references crystal law\n\nTOTAL=5 PASS=5 FAIL=0\n"
+        },
+        {
+          "id": "G3",
+          "name": "crystal_6k_law",
+          "command": "node tools/check_crystal_6k_law.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 339,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 339,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "PASS 6K law exists\nPASS 6K target\nPASS all technique families\nPASS opt-in not default\nPASS downscale forbidden\nPASS AGENTS references 6K law\n\nTOTAL=6 PASS=6 FAIL=0\n"
+        },
+        {
+          "id": "G4",
+          "name": "canary_jit_contract",
+          "command": "node tools/quality/test_canary_jit_contract.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 803,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 803,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 8929 chars]…\nCT/E_REQUIRED_FIELD_MISSING | sin guarda: ACCEPT/OK_APPLIED_MEASURED]\n\n-- resumen --\n  fixtures: 55/55 PASS  (FAIL 0)\n  coherencia del contrato: PASS  (27/27 checks)\n  campos load-bearing: 10/10 PASS  (FAIL 0)  redundantes declarados: output.level=REDUNDANTE_COVERED_BY:E_LEVEL_RESOLUTION_IMPOSSIBLE\n  aceptados: 5 | envenenados rechazados: 50\n  total: 92/92 comprobaciones | fallos: 0\n  RESULT=PASS\n"
+        },
+        {
+          "id": "G5",
+          "name": "schemas",
+          "command": "node tools/quality/test_schemas.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 336,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 336,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 5656 chars]…\nel subconjunto: 0\n  quality-policy.json sha256 antes:  9845aa5da438213d86b1e58fdb8c5e7c081395e0de9798d23689a2dd8b86fc65\n  quality-policy.json sha256 despues: 9845aa5da438213d86b1e58fdb8c5e7c081395e0de9798d23689a2dd8b86fc65\n  PASS  la politica entregada NO se ha modificado  [pin=9845aa5da438213d...]\n\n  politica: EVALUADA | casos de esquema: 23 | PASS 23 | FAIL 0 | NO_COMPUTADO-skip 0 | RESULT=PASS\n"
+        },
+        {
+          "id": "G6",
+          "name": "playlist_adapter",
+          "command": "node tools/quality/test_playlist_adapter.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 1957,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 1957,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 4566 chars]…\n       0\n  EXT_X               1520       1520       0\n  OTROS                  1          1       0\n  TOTAL TAGS          2078       2078       0\n  MULTICONJUNTO     cdf03f4e598e33b8  cdf03f4e598e33b8  IDENTICO\n\n──────────────────────────────────────────────────────────────\nRESULTADO: 32 PASS · 0 FAIL · 32 comprobaciones\nTMP de la corrida: C:\\Users\\HFRC\\AppData\\Local\\Temp\\ape-adapter-test-dw6uc6\n"
+        }
+      ]
+    },
+    {
+      "run_id": "run-1794468546927",
+      "started_at_utc": "2026-11-12T07:29:06Z",
+      "finished_at_utc": "2026-11-12T07:29:07Z",
+      "cycles_requested": 1,
+      "cycles_used": 1,
+      "result": "HEALTHY",
+      "exit_code": 0,
+      "gates": [
+        {
+          "id": "G1",
+          "name": "anti_degradation_policy",
+          "command": "node tools/check_anti_degradation_policy.js",
+          "attempts": 3,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 1,
+              "duration_ms": 105,
+              "timed_out": false
+            },
+            {
+              "attempt": 2,
+              "exit_code": 1,
+              "duration_ms": 80,
+              "timed_out": false
+            },
+            {
+              "attempt": 3,
+              "exit_code": 1,
+              "duration_ms": 79,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 1,
+          "duration_ms": 264,
+          "result": "KNOWN_PREEXISTING",
+          "known_preexisting": {
+            "id": "KP1",
+            "reason": "Falso positivo preexistente: el gate marca IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js (el motor B, que no despliega) y no tools/lab/ape-jit/server.js. Declarado por el capitan en el encargo; NO se arregla aqui."
+          },
+          "observations": [],
+          "output_excerpt": "PASS law exists\nPASS law forbids 4K→FHD\nPASS contract mandatory\nPASS contract forbids fallback\nPASS contract allows JIT copy\nPASS AGENTS references law\nPASS JIT escaneado (código, no solo doctrina) · 3 de 3 implementaciones presentes\nFAIL sin degradacion NUEVA en el codigo JIT · tools/lab/ape-jit/server.js :: stereo_locked 0 -> 3\n  [DEGRADA] vps_jit/server.js  fps_locked=2 stereo_locked=3 downscale_2k=0 scale_small=2 audio_passthrough=0\n  [DEGRADA] IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js  fps_locked=2 stereo_locked=3 downscale_2k=2 scale_small=2 audio_passthrough=0\n  [CUMPLE] tools/lab/ape-jit/server.js  fps_locked=0 stereo_locked=3 downscale_2k=0 scale_small=0 audio_passthrough=1\n\nTOTAL=8 PASS=7 FAIL=1\n"
+        },
+        {
+          "id": "G2",
+          "name": "crystal_4k_law",
+          "command": "node tools/check_crystal_4k_law.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 78,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 78,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "PASS crystal law exists\nPASS enhancement allowed\nPASS upscale rule\nPASS downscale forbidden\nPASS AGENTS references crystal law\n\nTOTAL=5 PASS=5 FAIL=0\n"
+        },
+        {
+          "id": "G3",
+          "name": "crystal_6k_law",
+          "command": "node tools/check_crystal_6k_law.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 73,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 73,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "PASS 6K law exists\nPASS 6K target\nPASS all technique families\nPASS opt-in not default\nPASS downscale forbidden\nPASS AGENTS references 6K law\n\nTOTAL=6 PASS=6 FAIL=0\n"
+        },
+        {
+          "id": "G4",
+          "name": "canary_jit_contract",
+          "command": "node tools/quality/test_canary_jit_contract.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 142,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 142,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 8929 chars]…\nCT/E_REQUIRED_FIELD_MISSING | sin guarda: ACCEPT/OK_APPLIED_MEASURED]\n\n-- resumen --\n  fixtures: 55/55 PASS  (FAIL 0)\n  coherencia del contrato: PASS  (27/27 checks)\n  campos load-bearing: 10/10 PASS  (FAIL 0)  redundantes declarados: output.level=REDUNDANTE_COVERED_BY:E_LEVEL_RESOLUTION_IMPOSSIBLE\n  aceptados: 5 | envenenados rechazados: 50\n  total: 92/92 comprobaciones | fallos: 0\n  RESULT=PASS\n"
+        },
+        {
+          "id": "G5",
+          "name": "schemas",
+          "command": "node tools/quality/test_schemas.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 89,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 89,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 5656 chars]…\nel subconjunto: 0\n  quality-policy.json sha256 antes:  9845aa5da438213d86b1e58fdb8c5e7c081395e0de9798d23689a2dd8b86fc65\n  quality-policy.json sha256 despues: 9845aa5da438213d86b1e58fdb8c5e7c081395e0de9798d23689a2dd8b86fc65\n  PASS  la politica entregada NO se ha modificado  [pin=9845aa5da438213d...]\n\n  politica: EVALUADA | casos de esquema: 23 | PASS 23 | FAIL 0 | NO_COMPUTADO-skip 0 | RESULT=PASS\n"
+        },
+        {
+          "id": "G6",
+          "name": "playlist_adapter",
+          "command": "node tools/quality/test_playlist_adapter.js",
+          "attempts": 1,
+          "attempt_log": [
+            {
+              "attempt": 1,
+              "exit_code": 0,
+              "duration_ms": 373,
+              "timed_out": false
+            }
+          ],
+          "exit_code": 0,
+          "duration_ms": 373,
+          "result": "PASS",
+          "known_preexisting": null,
+          "observations": [],
+          "output_excerpt": "…[recortado 4566 chars]…\n       0\n  EXT_X               1520       1520       0\n  OTROS                  1          1       0\n  TOTAL TAGS          2078       2078       0\n  MULTICONJUNTO     cdf03f4e598e33b8  cdf03f4e598e33b8  IDENTICO\n\n──────────────────────────────────────────────────────────────\nRESULTADO: 32 PASS · 0 FAIL · 32 comprobaciones\nTMP de la corrida: C:\\Users\\HFRC\\AppData\\Local\\Temp\\ape-adapter-test-82Wz9o\n"
         }
       ]
     }

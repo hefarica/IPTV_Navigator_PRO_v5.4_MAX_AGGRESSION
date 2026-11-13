@@ -1,0 +1,69 @@
+diff --git a/_vps_stage/deploy/preflight.sh b/_vps_stage/deploy/preflight.sh
+index 979d7bb..40b95f3 100644
+--- a/_vps_stage/deploy/preflight.sh
++++ b/_vps_stage/deploy/preflight.sh
+@@ -18,27 +18,62 @@ else
+ fi
+ 
+ c_hdr "2 · manifiesto: origen local + destino remoto"
+-dests="$(manifest_rows | cut -f2 | tr '\n' ' ')"
++# [D-5] El manifiesto ES el contrato del deploy. Si no se puede leer, no hay nada
++# que comprobar y el preflight tiene que bloquear. Antes: manifest_rows imprimia
++# FATAL, la tuberia seguia con dests vacio y el script acababa en "PRE-FLIGHT OK".
++if ! rows="$(manifest_rows)"; then
++  c_bad "   BLOQUEO: manifiesto ausente o ilegible ($MANIFEST)"
++  fails=$((fails+1))
++  rows=""
++fi
++dests="$(printf '%s\n' "$rows" | cut -f2 | tr '\n' ' ')"
+ remote_hashes="$(rsh "for f in $dests; do if [ -f \"\$f\" ]; then printf '%s  %s\n' \"\$(sha256sum \"\$f\" | cut -d' ' -f1)\" \"\$f\"; else printf 'AUSENTE  %s\n' \"\$f\"; fi; done" 2>/dev/null)"
+ n=0
++# [D-5] Estado de los chequeos por fila. APE_PREFLIGHT_STRICT=1 promueve a
++# bloqueo el AUSENTE-LOCAL; por defecto sigue siendo solo aviso, como hasta hoy.
++strict_origins="${APE_PREFLIGHT_STRICT:-0}"
++seen_dsts=" "
+ while IFS=$'\t' read -r src dst mode owner note; do
+   n=$((n+1))
++  # [D-5] Chequeos que DEBEN bloquear (antes no incrementaban nada):
++  if [ -z "${src:-}" ] || [ -z "${dst:-}" ]; then
++    c_bad "   [$n] BLOQUEO: fila del manifiesto sin origen o sin destino"
++    fails=$((fails+1))
++    continue
++  fi
++  case "$dst" in
++    /*) ;;
++    *)  c_bad "   [$n] BLOQUEO: destino no absoluto: $dst"
++        fails=$((fails+1)) ;;
++  esac
++  case "$seen_dsts" in
++    *" $dst "*) c_bad "   [$n] BLOQUEO: destino duplicado en el manifiesto: $dst"
++                fails=$((fails+1)) ;;
++    *)          seen_dsts="$seen_dsts$dst " ;;
++  esac
+   if [ ! -f "$REPO_ROOT/$src" ]; then
+     c_warn "   [$n] AUSENTE-LOCAL  $src  →  $dst   ($note)"
+     warns=$((warns+1))
++    if [ "$strict_origins" = "1" ]; then
++      c_bad "   [$n] BLOQUEO (APE_PREFLIGHT_STRICT=1): el origen no existe en el repo"
++      fails=$((fails+1))
++    fi
+   else
+     printf '   [%d] OK-LOCAL       %s (%s B)  →  %s\n' "$n" "$src" "$(wc -c < "$REPO_ROOT/$src")" "$dst"
+   fi
+   rh="$(printf '%s\n' "$remote_hashes" | awk -v d="$dst" '$2==d{print $1}')"
+   [ -z "$rh" ] && rh="(no listado)"
+   printf '        destino-remoto: %s\n' "$rh"
+-done < <(manifest_rows)
++done < <( if [ -n "$rows" ]; then printf '%s\n' "$rows"; fi )
+ 
+ c_hdr "3 · estado base del servidor (para el rollback)"
+ rsh 'echo "   nginx -t:"; nginx -t 2>&1 | sed "s/^/     /"; echo "   disco:"; df -h / | tail -1 | sed "s/^/     /"; echo "   cert:"; for c in $(nginx -T 2>/dev/null | grep -E "^ *ssl_certificate " | sed "s/^ *ssl_certificate *//;s/;.*//" | sort -u); do openssl x509 -in "$c" -noout -enddate 2>/dev/null | sed "s/^/     /"; done; echo "   backups previos:"; ls -1 /var/backups/ape-deploy 2>/dev/null | tail -5 | sed "s/^/     /" || echo "     (ninguno)"'
+ 
+ c_hdr "RESUMEN PRE-FLIGHT"
+ printf '   orígenes ausentes en local : %d (no se desplegarán)\n' "$warns"
++if [ "$strict_origins" = "1" ]; then
++  printf '   STRICT                     : esos ausentes YA cuentan en "bloqueos"\n'
++fi
+ printf '   bloqueos                   : %d\n' "$fails"
+ [ "$fails" -eq 0 ] && c_ok "   PRE-FLIGHT OK — nada se ha modificado en el VPS" || c_bad "   PRE-FLIGHT CON BLOQUEOS"
+ exit "$fails"
