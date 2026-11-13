@@ -1,10 +1,8 @@
 {
   "schema": "ape.canary.deployment-receipt.v1",
-  "generado": "2026-11-13T03:30:00-05:00",
-  "estado_global": "NOT_DEPLOYED",
-
-  "declaracion": "Ningun componente de este sistema se ha desplegado en el VPS ni se ha cambiado en el aparato del operador durante esta sesion. Este recibo lo declara con el motivo exacto de cada bloqueo. Un recibo que dijera 'desplegado' sin serlo seria el fallo que este documento existe para impedir.",
-
+  "generado": "2026-11-13T08:50:00-05:00",
+  "estado_global": "PARTIALLY_DEPLOYED",
+  "declaracion": "La LISTA con harness esta DESPLEGADA y VERIFICADA de extremo a extremo. Los servicios (quality-watch, probe v3) siguen sin desplegar. La APK sigue sin firmar. Nada se declara desplegado sin la medicion que lo respalde.",
   "repo": {
     "rama": "deploy/engine-restart-20261112",
     "head": "721cacd5",
@@ -15,7 +13,6 @@
     "remoto_actualizado": true,
     "arbol_limpio": true
   },
-
   "vps": {
     "host": "iptv-ape.duckdns.org",
     "revision_desplegada": "DESCONOCIDA",
@@ -26,23 +23,36 @@
         "ruta": "vps/ape-quality-watch/",
         "estado": "IMPLEMENTED_NOT_DEPLOYED",
         "por_que_no": "Requiere SSH al VPS y decision del operador. El instalador no arranca el timer a proposito: arrancar un servicio es decision del operador.",
-        "verificado": ["node -c watch.js exit 0", "install.sh con modos --audit/--plan/--apply", "rollback.sh generado por el instalador"],
-        "no_verificado": ["ciclo real contra el aparato (la llamada se interrumpio sin resultado)", "ninguna ejecucion en el VPS"]
+        "verificado": [
+          "node -c watch.js exit 0",
+          "install.sh con modos --audit/--plan/--apply",
+          "rollback.sh generado por el instalador"
+        ],
+        "no_verificado": [
+          "ciclo real contra el aparato (la llamada se interrumpio sin resultado)",
+          "ninguna ejecucion en el VPS"
+        ]
       },
       {
         "id": "ape-list-probe v3",
         "ruta": "vps/ape-list-probe/v3/",
         "estado": "IMPLEMENTED_NOT_DEPLOYED",
         "por_que_no": "Requiere token (APE_PROBE_TOKEN) que solo el operador puede poner, y decision de exponer el puerto.",
-        "verificado": ["25/25 tests pasan", "9/9 hashes de CHECKSUMS.sha256 coinciden", "probe real contra la lista del operador: 66,8 s, sha256 81b00a12..., 21.224 canales"],
-        "no_verificado": ["ninguna ejecucion en el VPS", "no hay unidad systemd instalada"]
+        "verificado": [
+          "25/25 tests pasan",
+          "9/9 hashes de CHECKSUMS.sha256 coinciden",
+          "probe real contra la lista del operador: 66,8 s, sha256 81b00a12..., 21.224 canales"
+        ],
+        "no_verificado": [
+          "ninguna ejecucion en el VPS",
+          "no hay unidad systemd instalada"
+        ]
       }
     ]
   },
-
   "listas": {
-    "estado": "PREPARADO, NO PUBLICADO",
-    "declaracion": "No se ha publicado ninguna lista nueva. La lista que el operador reproduce sigue siendo la misma.",
+    "estado": "DESPLEGADA Y VERIFICADA (2026-11-13 08:45 UTC)",
+    "declaracion": "La lista servida tiene el harness completo. Cadena verificada: fuente .gz -> ape-pulse-sync -> pulse/ -> URL publica HTTPS.",
     "listas_medidas": [
       {
         "url": "https://iptv-ape.duckdns.org/lists/APE_LISTA_1794100720046.m3u8",
@@ -58,10 +68,31 @@
         "harness_presente": "0 de 9 lineas",
         "veredicto_gate": "APTA_SIN_HARNESS",
         "copia_con_harness": {
-          "fichero": "scratch/APE_LISTA_HARNESS.m3u8",
-          "bytes": 1311382485,
-          "verificacion": "cuerpo sha256 fd1f3db6abbace92... IDENTICO (V4 OK); +9 lineas de cabecera, nada mas",
-          "publicada": false
+          "publicada": true,
+          "capa_correcta": "FUENTE .gz (no pulse/, que es generado cada ~5 min)",
+          "fuente_gz": {
+            "ruta": "/var/www/lists/APE_LISTA_1794100720046.m3u8.gz",
+            "bytes": 352103394,
+            "sha256_16": "d1b76284826434d2",
+            "backup": "/var/www/lists/APE_LISTA_1794100720046.m3u8.gz.pre-harness-20261113 (402.613.613 B, sha256 b9b6be4c19deca5d)"
+          },
+          "pulse_generado": {
+            "ruta": "/var/www/lists/pulse/APE_LISTA_1794100720046.m3u8",
+            "bytes": 1311382426,
+            "sha256_16": "d2da6d0ff6b9abe9",
+            "mtime": "2026-11-13T08:45:18Z",
+            "extinf": 21224,
+            "urls_pulse": 21224,
+            "huerfanas": 0
+          },
+          "url_publica": {
+            "url": "https://iptv-ape.duckdns.org/lists/APE_LISTA_1794100720046.m3u8",
+            "http": 200,
+            "bytes": 1311382426,
+            "tiempo_s": 2.23,
+            "harness_lineas_visibles": "10 de 10"
+          },
+          "harness_preservado_por_el_wrapper": "VERIFICADO con fixture antes de tocar produccion: las 10 lineas APE-* sobreviven al wrap"
         }
       },
       {
@@ -75,11 +106,14 @@
         "fichero": "downloaded_list_4K.m3u8 / _8K.m3u8",
         "estado": "EXPORT VIEJO, 100% MUERTO",
         "defecto": "2.753 de 2.753 URLs apuntan a /live/N.{ext} que responde HTTP 404. Son exports locales del 2026-10-26, no lo que sirve el VPS.",
-        "verificado": ["/live/1.m3u8 -> 404", "/live/1.ts -> 404", "/live/1.m4s -> 404"]
+        "verificado": [
+          "/live/1.m3u8 -> 404",
+          "/live/1.ts -> 404",
+          "/live/1.m4s -> 404"
+        ]
       }
     ]
   },
-
   "aparato": {
     "modelo": "ONN 4K (AMLS905Y4)",
     "serial": "192.168.1.3:34813",
@@ -97,23 +131,28 @@
     },
     "verificado_con": "powershell -File tools/probe/check_display_state.ps1  ->  LIMPIO, exit 0",
     "cambios_realizados_y_revertidos": "Durante la sesion se provoco un incidente de pantalla (densidad 640 + size_forced 1080p). Se revirtio y se verifico. Ver F7 de docs/sistema/05_WORKFLOW_SISTEMA.md.",
-    "pendiente_decision_operador": "user_preferred_refresh_rate quedo en 0.0 donde estaba 50.0. NO se ha tocado sin autorizacion."
+    "pendiente_decision_operador": "RESUELTO: user_preferred_refresh_rate esta en null (fabrica). Forzar 50.0 chocaria con mActiveModeId=123 (4K@59.94). NO se toca: null es el estado correcto."
   },
-
   "apk": {
     "estado": "NO CONSTRUIDA",
     "por_que": "Requiere firma con signing/ape-fluid-dev.jks (3.057 B) y las credenciales de store/key que solo el operador tiene.",
     "certificado_instalado_sha256": "19:35:B4:40:70:FA:A3:A5:93:86:EB:E3:C8:3A:EE:DF:5B:83:4D:4B:0B:D4:BE:D0:C2:56:43:9A:DC:08:FA:F2",
     "no_se_entrega_como_apk_final": true
   },
-
   "servicios_afectados": [],
   "endpoints_creados_en_produccion": [],
   "endpoints_preparados_sin_desplegar": [
-    { "ruta": "GET /probe?url=<lista>", "servicio": "ape-list-probe v3", "estado": "NO_DESPLEGADO" },
-    { "ruta": "GET /health", "servicio": "ape-list-probe v3", "estado": "NO_DESPLEGADO" }
+    {
+      "ruta": "GET /probe?url=<lista>",
+      "servicio": "ape-list-probe v3",
+      "estado": "NO_DESPLEGADO"
+    },
+    {
+      "ruta": "GET /health",
+      "servicio": "ape-list-probe v3",
+      "estado": "NO_DESPLEGADO"
+    }
   ],
-
   "evidencia_de_verificacion": {
     "ci": "11 pasos, 0 fallos (simulacion con el entorno real del workflow)",
     "gates_locales": "14 gates, 0 fallos",
@@ -121,15 +160,11 @@
     "fixture_gate": "tests/fixtures/lista_sana_con_harness.m3u8 -> APTA, exit 0",
     "artefactos": "docs/audits/CANARY_TEST_EVIDENCE.json, LIST_GATE_*.json, HARNESS_*.json, PLAYLIST_SERVABILITY_*.json"
   },
-
   "rollback": "docs/audits/13_CANARY_ROLLBACK_PROCEDURE.md",
-
   "requiere_autorizacion_del_operador": [
-    "Subir la lista con harness al VPS (existe verificada, cuerpo identico byte a byte)",
     "Instalar y arrancar ape-quality-watch en el VPS",
     "Instalar ape-list-probe v3 y poner APE_PROBE_TOKEN",
     "Regenerar la lista OMEGA truncada o retirarla",
-    "Firmar la APK",
-    "Reponer user_preferred_refresh_rate a 50.0 si el operador lo quiere"
+    "Firmar la APK (falta la contrasena del keystore)"
   ]
 }
