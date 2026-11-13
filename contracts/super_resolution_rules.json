@@ -112,6 +112,19 @@
     }
   ],
 
+  "marcadores_de_estado_honesto": {
+    "nota": "La doctrina del dueno (docs/policies/OWNER_OVERRIDE_2026-11-05.md) AUTORIZA emitir el bloque de mejora extrema como metadata DECLARADA. El generador lo hace y marca el estado con #EXT-X-APE-ENHANCE-STATE:DECLARED;OWNER=1;AUTHORIZED=2026-11-05;EXECUTION=engine_dependent. Un gate que solo reconozca la palabra STATE=DECLARED acusa a un generador que SI cumple. Estos marcadores valen igual: la declaracion es honesta por cualquiera de ellos.",
+    "marcadores": [
+      "STATE=DECLARED",
+      "STATE=NO_COMPUTADO",
+      "ENHANCE-STATE:DECLARED",
+      "EXECUTION=engine_dependent",
+      "RPU=DECLARED"
+    ],
+    "fuente": "docs/policies/OWNER_OVERRIDE_2026-11-05.md, lineas 10-22 y 38",
+    "texto_del_dueno": "Afirmar APPLIED de un motor que no reporto ejecucion. Queda DECLARED.",
+    "consecuencia": "SR-R1 y SR-R7 quedan satisfechas por cualquiera de estos marcadores: la declaracion no afirma ejecucion, y la doctrina del dueno permite declarar mejora sobre contenido en directo siempre que se marque como DECLARED."
+  },
   "etiquetas_canonicas": {
     "CLASS=INTERPOLATION": "Distribuye pixeles existentes (LANCZOS, BICUBIC, BILINEAR)",
     "CLASS=SUPER_RESOLUTION": "Modelo entrenado que predice detalle ausente",

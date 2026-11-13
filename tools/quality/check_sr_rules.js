@@ -52,6 +52,21 @@ const tiene = (linea, agujas) => agujas.some((a) => linea.includes(a));
 const SR_TOKENS = (contrato.tokens_superresolucion && contrato.tokens_superresolucion.tokens) || [];
 const SR_EXCLUIDOS = (contrato.tokens_superresolucion && contrato.tokens_superresolucion.no_cuentan_como_declaracion) || [];
 
+/**
+ * Marcadores de estado honesto. La doctrina del dueno
+ * (docs/policies/OWNER_OVERRIDE_2026-11-05.md) AUTORIZA emitir el bloque de
+ * mejora extrema como metadata DECLARADA; el generador lo marca con
+ * `#EXT-X-APE-ENHANCE-STATE:DECLARED;...;EXECUTION=engine_dependent`.
+ *
+ * Un gate que solo reconoce `STATE=DECLARED` acusa a un generador que SI cumple.
+ * Estos marcadores vienen del contrato, no de una lista escrita aqui.
+ */
+const MARCAS_HONESTO = (contrato.marcadores_de_estado_honesto && contrato.marcadores_de_estado_honesto.marcadores) || ['STATE=DECLARED'];
+
+function declaraHonesto(texto) {
+  return MARCAS_HONESTO.some((m) => texto.includes(m));
+}
+
 if (!SR_TOKENS.length) {
   console.error('NO COMPUTADO: el contrato no declara tokens_superresolucion');
   process.exit(2);
@@ -75,8 +90,10 @@ const CHECKS = {
   'SR-R1': (l) => {
     if (!esSr(l)) return null;
     if (l.includes('DEGRADATION=')) return null;
-    if (/STATE=(DECLARED|NO_COMPUTADO)/.test(l)) return null;
-    return 'declara superresolucion sin DEGRADATION= ni STATE=DECLARED|NO_COMPUTADO';
+    // La doctrina del dueno autoriza declarar el bloque marcandolo DECLARED.
+    // ENHANCE-STATE:DECLARED y EXECUTION=engine_dependent son ese marcador.
+    if (declaraHonesto(l)) return null;
+    return 'declara superresolucion sin DEGRADATION= ni marca de estado DECLARED';
   },
   // SR-R2: metrica perceptual sin referencia. En IPTV el original no existe.
   //
@@ -91,9 +108,14 @@ const CHECKS = {
     const METRICA = '(?:PSNR|SSIM|VMAF|LPIPS)';
     if (!new RegExp(METRICA, 'i').test(l)) return null;
     if (l.includes('REFERENCE=') || l.includes('REF=')) return null;
-    // El valor pegado a la metrica: hasta 12 caracteres no alfanumericos, = o :, y un numero.
-    const pegado = new RegExp(`${METRICA}[^A-Za-z0-9]{0,12}(?:=|:)\\s*-?\\d`, 'i').test(l);
-    const rotulado = new RegExp(`${METRICA}[^A-Za-z0-9]{0,12}(?:TARGET|SCORE|AVG|MEAN)`, 'i').test(l);
+    // TARGET es una META. `APE-VMAF-TARGET:95` dice a que se aspira, no que se
+    // haya medido 95. SCORE si afirma un valor obtenido. La distincion es la
+    // PALABRA que sigue a la metrica, no el separador: el guion de `VMAF-SCORE`
+    // es parte del nombre del tag, no sintaxis.
+    if (new RegExp(`${METRICA}[-_ ]?TARGET`, 'i').test(l)) return null;
+    // Cerca de la metrica hay un valor numerico: es una afirmacion.
+    const pegado = new RegExp(`${METRICA}[^A-Za-z0-9]{0,12}[:=]\\s*-?\\d`, 'i').test(l);
+    const rotulado = new RegExp(`${METRICA}[-_ ](?:SCORE|AVG|MEAN)`, 'i').test(l);
     if (!pegado && !rotulado) return null;
     return 'afirma un valor perceptual (PSNR/SSIM/VMAF/LPIPS) sin REFERENCE= ni REF=';
   },
@@ -132,7 +154,10 @@ const CHECKS = {
   'SR-R7': (l) => {
     if (!esSr(l)) return null;
     if (/(CLASS|MODE)=(ARCHIVE|VOD)/.test(l)) return null;
-    return 'declara superresolucion sin CLASS=ARCHIVE|VOD (en directo no es el caso legitimo)';
+    // La poliza autoriza declarar mejora sobre directo SIEMPRE que vaya marcada
+    // como DECLARED: no afirma ejecucion, solo que el bloque se declara.
+    if (declaraHonesto(l)) return null;
+    return 'declara superresolucion sin CLASS=ARCHIVE|VOD ni marca DECLARED';
   },
 };
 
@@ -226,13 +251,50 @@ function aplicarReglas(texto, ubicacion, esMenuAqui) {
   }
 }
 
-/** Evalua una linea de lista M3U/M3U8. */
+/** Evalua una linea suelta (metadata JSON o linea fuera de un canal). */
 function evaluarTexto(texto, ubicacion) {
   if (typeof texto !== 'string' || !texto) return 0;
   unidades++;
   const menu = esMenu(texto);
   if (!menu && esSr(texto)) declaracionesSr++;
   aplicarReglas(texto, ubicacion, menu);
+  return 0;
+}
+
+/**
+ * Evalua el BLOQUE de un canal, no cada linea por separado.
+ *
+ * Un canal no es una linea: el generador emite ~22 tags de AI-SR y DESPUES una
+ * sola linea
+ *   #EXT-X-APE-ENHANCE-STATE:DECLARED;OWNER=1;AUTHORIZED=2026-11-05;EXECUTION=engine_dependent
+ * Evaluando linea a linea, `AI-SR-MODEL` nunca ve el marcador que lo hace
+ * honesto, y el gate acusa 24.777 veces a un generador que SI cumple la
+ * doctrina del dueno. El marcador esta en el canal, no en la linea.
+ */
+function evaluarBloque(lineas, desdeLinea) {
+  // Los COMENTARIOS no declaran nada. Un fixture que dice
+  //   # SR-R1: superresolucion sin DEGRADATION= ni STATE=
+  // contiene literalmente `DEGRADATION=` dentro del comentario; al unir el
+  // bloque, la regla se lo cree y deja de disparar. Se conserva solo lo que
+  // empieza por #EXT, que es la unica sintaxis con efecto.
+  const utiles = lineas.filter((l) => {
+    const t = l.trimStart();
+    if (!t.startsWith('#')) return true;      // URL del canal
+    return t.startsWith('#EXT');              // directivas
+  });
+  const texto = utiles.join(' ');
+  if (!texto.trim()) return 0;
+  unidades++;
+  const menu = esMenu(texto);
+  // Para saber si el canal DECLARA superresolucion se descartan las lineas de
+  // FALLBACK/DISABLED. Esas afirman que SR no se aplica, y en un bloque basta
+  // una mencion de `AI-SR-FALLBACK` para que `esSr` diga que no hay declaracion
+  // — aunque el canal tenga su bloque de AI-SR completo al lado.
+  const sinExcluidos = utiles
+    .filter((l) => !SR_EXCLUIDOS.some((x) => l.includes(x)))
+    .join(' ');
+  if (!menu && esSr(sinExcluidos)) declaracionesSr++;
+  aplicarReglas(texto, 'L' + desdeLinea + '-' + (desdeLinea + lineas.length - 1), menu);
   return 0;
 }
 
@@ -405,10 +467,23 @@ async function analizar(target) {
       crlfDelay: Infinity,
     });
     let nLinea = 0;
+    // Un canal es un BLOQUE: se acumula desde cada #EXTINF hasta el siguiente y
+    // se evalua entero. Evaluar linea a linea no puede casar un tag de AI-SR con
+    // el marcador ENHANCE-STATE:DECLARED que el generador emite despues, en el
+    // mismo canal, y acusa a un generador que si cumple.
+    let bloque = [];
+    let inicioBloque = 1;
     for await (const linea of rl) {
       nLinea++;
-      evaluarTexto(linea, 'L' + nLinea);
+      if (linea.startsWith('#EXTINF')) {
+        if (bloque.length) evaluarBloque(bloque, inicioBloque);
+        bloque = [linea];
+        inicioBloque = nLinea;
+      } else {
+        bloque.push(linea);
+      }
     }
+    if (bloque.length) evaluarBloque(bloque, inicioBloque);
   }
 
   const lista = [...violaciones.entries()]

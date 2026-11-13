@@ -64,7 +64,7 @@ ok('SOURCE cruzado -> queda conforme', cCruz.ok === true);
 
 // --- 4. Lo que NO se completa solo ----------------------------------------
 // Quitar una metrica falsa es una decision editorial, no un sufijo.
-const metrica = '#EXT-X-APE-VMAF-TARGET:95.0';
+const metrica = '#EXT-X-APE-VMAF-SCORE:95.0';
 const vMet = validarDeclaracion(metrica);
 ok('metrica sin referencia -> la caza R2', vMet.violaciones.some((v) => v.id === 'SR-R2'));
 const cMet = completarDeclaracion(metrica);

@@ -11,7 +11,7 @@
       "rol": "SOURCE"
     },
     "metricas": {
-      "etiqueta": "APE-VMAF-TARGET:95.0"
+      "etiqueta": "APE-VMAF-SCORE:95.0"
     },
     "escalado": {
       "etiqueta": "APE-AI-SR-UPSCALE:LANCZOS",

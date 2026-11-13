@@ -8,7 +8,7 @@
 # SR-R1: superresolucion sin DEGRADATION= ni STATE=
 #EXT-X-APE-AI-SR:MODEL=ESRGAN-4x,ENABLED=true
 # SR-R2: metrica perceptual con valor afirmado y sin referencia
-#EXT-X-APE-VMAF-TARGET:95.0
+#EXT-X-APE-VMAF-SCORE:95.0
 # SR-R3: detalle sintetizado etiquetado como fuente
 #EXT-X-APE-MODEL-ORIGIN:CLASS=SOURCE,MODEL=RealESRGAN
 # SR-R4: interpolacion etiquetada como superresolucion
