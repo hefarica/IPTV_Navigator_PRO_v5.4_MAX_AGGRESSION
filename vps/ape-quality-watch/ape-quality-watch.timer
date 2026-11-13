@@ -1,0 +1,16 @@
+[Unit]
+Description=APE Quality Watch — disparo periódico
+Documentation=file:///opt/ape-quality-watch/PLACEMENT.md
+
+[Timer]
+# Cada minuto. El servicio corre UN ciclo y sale, así que un fallo
+# nunca deja un proceso colgado: el siguiente disparo lo reintenta.
+OnBootSec=90s
+OnUnitActiveSec=60s
+AccuracySec=5s
+# Si el sistema estuvo apagado, no se acumulan ejecuciones perdidas.
+Persistent=false
+Unit=ape-quality-watch.service
+
+[Install]
+WantedBy=timers.target

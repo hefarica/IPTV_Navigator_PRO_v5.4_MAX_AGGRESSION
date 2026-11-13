@@ -1,0 +1,62 @@
+[Unit]
+Description=APE Quality Watch — vigilancia de estado del pipeline (solo lectura)
+Documentation=file:///opt/ape-quality-watch/PLACEMENT.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ape-quality
+Group=ape-quality
+WorkingDirectory=/opt/ape-quality-watch
+Environment=APE_LEDGER=/var/lib/ape-quality-watch/ledger.jsonl
+Environment=APE_INTERVAL_MS=60000
+Environment=APE_CYCLES=1
+Environment=APE_TIMEOUT_MS=15000
+Environment=APE_FAIL_LIMIT=3
+# APE_DEVICE, APE_PUSH_URL y APE_PUSH_TOKEN se cargan del EnvironmentFile,
+# que NO viaja en el repo (contiene el token).
+EnvironmentFile=-/etc/ape-quality-watch/env
+ExecStart=/usr/bin/node /opt/ape-quality-watch/watch.js
+
+# ── DUREZA ───────────────────────────────────────────────────────────────────
+# Privilegios minimos: no root, sin nuevas capacidades, sin escalada.
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateUsers=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# Sistema de ficheros: todo de solo lectura salvo el ledger.
+ReadWritePaths=/var/lib/ape-quality-watch
+PrivateTmp=true
+PrivateDevices=false
+# PrivateDevices=false es DELIBERADO: el servicio habla con adb por red,
+# pero necesita /proc para que el cliente adb funcione.
+
+# Techo de recursos: si se desmadra, el kernel lo mata y el timer relanza.
+MemoryMax=256M
+CPUQuota=20%
+TasksMax=32
+
+# Codigos de salida: 0 y 2 son normales (fin de ciclo / config invalida).
+# Cualquier otro se reintenta con limite.
+Restart=no
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target
