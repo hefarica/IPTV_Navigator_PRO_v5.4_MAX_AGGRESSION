@@ -300,7 +300,33 @@ function evaluarBloque(lineas, desdeLinea) {
   const texto = utiles.join(' ');
   if (!texto.trim()) return 0;
   unidades++;
-  const menu = esMenu(texto);
+  /* [FIX 2026-11-14 · FALSO NEGATIVO MEDIDO]
+   *
+   * `esMenu` se calculaba sobre el BLOQUE ENTERO (aqui: 1054 lineas unidas, 62 KB).
+   * Un canal real contiene 34 lineas con forma de menu:
+   *     #EXTVLCOPT:codec=hevc,dvhe,av1,h264
+   *     #EXTVLCOPT:audio-language=spa,eng,por
+   *     #EXT-X-APE-CODEC-PRIORITY:hvc1,avc1,av01
+   *     #KODIPROP:inputstream.adaptive.audio_language_preference=spa,eng,por
+   * UNA sola de ellas ponia menu=true para el canal entero, y entonces:
+   *   - declaracionesSr NO se incrementaba
+   *   - aplicarReglas SALTABA SR-R1/R3/R4/R5/R7 (REGLAS_SOLO_DECLARACION)
+   * El gate respondia "declaraciones: 0 · Sin fallos" sobre un canal que declara
+   * AI-SR y viola SR-R4 y SR-R5.
+   *
+   * PRUEBA (control negativo ejecutado): el MISMO bloque con las 34 lineas de menu
+   * retiradas pasa a "declaraciones: 1" y "2 regla(s) violada(s)" con exit=1.
+   * Es decir: el gate no estaba evaluando el canal, estaba evaluando sus menus.
+   *
+   * El menu debe decidirse sobre LA LINEA QUE DECLARA SR. Un menu de idiomas o de
+   * codecs no convierte en menu la declaracion de superresolucion que vive al lado.
+   * Si el bloque no tiene ninguna linea SR, se conserva el comportamiento anterior
+   * (el bloque puede ser un menu de otras cosas y las reglas de declaracion no
+   * aplican porque no hay declaracion). */
+  const lineasSr = utiles.filter((l) => tiene(l, SR_TOKENS) && !tiene(l, SR_EXCLUIDOS));
+  const menu = lineasSr.length > 0
+    ? lineasSr.every((l) => esMenu(l))
+    : esMenu(texto);
   // Para saber si el canal DECLARA superresolucion se descartan las lineas de
   // FALLBACK/DISABLED. Esas afirman que SR no se aplica, y en un bloque basta
   // una mencion de `AI-SR-FALLBACK` para que `esSr` diga que no hay declaracion
