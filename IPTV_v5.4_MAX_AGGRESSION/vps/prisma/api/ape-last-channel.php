@@ -35,7 +35,7 @@ header('Access-Control-Allow-Origin: *');
 
 $log     = getenv('APE_ACCESS_LOG')        ?: '/var/log/nginx/playlist_access.log';
 $idx     = getenv('APE_CHANNEL_INDEX')     ?: '/var/www/html/prisma/db/channel_index.json';
-$cacheF  = getenv('APE_RESOLUTION_CACHE')  ?: '/var/lib/ape/resolution_cache.json';
+$cacheF  = getenv('APE_RESOLUTION_CACHE')  ?: '/var/www/html/prisma/db/resolution_cache.json';
 $ffprobe = getenv('APE_FFPROBE')           ?: '/usr/bin/ffprobe';
 $ua      = 'OTT Navigator/1.7.3.3';
 
