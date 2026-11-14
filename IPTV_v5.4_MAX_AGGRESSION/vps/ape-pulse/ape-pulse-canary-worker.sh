@@ -83,6 +83,36 @@ if ! flock -n 9; then
   exit 0
 fi
 
+# ── 1b. PURGA DE COLA CADUCADA — ANTES DE LA PUERTA ───────────────────────
+# [FIX 2026-11-14] La purga TTL vivia DENTRO del bucle de procesado (mas abajo),
+# es decir DESPUES de la puerta del proveedor. Pero la puerta deniega casi
+# siempre que el operador esta viendo la tele (reason=player_active), y en ese
+# caso el worker hacia `exit 0` SIN LLEGAR NUNCA A LA PURGA.
+#
+# Consecuencia medida: /var/lib/ara/canary/queue acumulo 95 tickets, el mas
+# viejo con 14 horas (02:01), todos con mas de MAX_TTL=120 s. Como el
+# DirectoryNotEmpty del .path seguia siendo cierto, el path disparaba el worker
+# sin parar: 20 arranques en una hora. Cada arranque volvia a denegar en la
+# puerta y volvia a dejar los tickets, asi que la cola no bajaba nunca.
+#
+# La purga no necesita la puerta: un ticket caducado no se va a reproducir jamas,
+# se mire como se mire. Purgar primero es correcto y no viola el orden
+# reproductor > canary > JIT, porque no arranca nada.
+#
+# Esto rompe el bucle por el lado bueno: con la cola vacia, DirectoryNotEmpty
+# deja de ser cierto y el .path deja de disparar.
+if [ -d "$QUEUE" ]; then
+  shopt -s nullglob
+  for f in "$QUEUE"/*.json; do
+    now=$(date +%s)
+    mt=$(stat -c%Y "$f" 2>/dev/null || echo 0)
+    age=$(( now - mt ))
+    if [ "$age" -gt "$MAX_TTL" ]; then
+      rm -f "$f" && log "purga previa: descarta cola vieja ($age s)"
+    fi
+  done
+fi
+
 # ── 2. LA DECISION ─────────────────────────────────────────────────────────
 # Una sola llamada decide. El orden reproductor > canary > JIT vive dentro de
 # provider_gate_decide, no aqui.
