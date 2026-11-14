@@ -10,18 +10,32 @@
 #   leeria 200 MB de 1,3 GB y produciria una lista truncada. El timer espera a
 #   que el generador termine. Es menos inmediato y mucho mas seguro.
 #
-# POR QUE 15 MINUTOS:
-#   Las listas se suben a mano desde la app, no en rafaga. 15 minutos es de sobra
-#   y evita que el cableador compita con la reproduccion por CPU o por disco.
-Description=APE cablear automatico de listas (timer cada 15 min)
+# [FIX 2026-11-14] OnUnitActiveSec NO se reprograma en este caso.
+#   Con la version anterior (`OnBootSec=5min` + `OnUnitActiveSec=15min`) el
+#   timer se disparo UNA vez a las 17:06:34 y quedo con:
+#       NextElapseUSecMonotonic=infinity
+#   Result=success, pero sin proxima ejecucion. El servicio es Type=oneshot con
+#   SuccessExitStatus=0 3; tras la primera pasada el ciclo se queda sin ancla y
+#   el timer no vuelve a programarse. Medido con systemctl list-timers:
+#       NEXT  LEFT  LAST  PASSED  UNIT
+#       -     -     17:06:34  54s ago  ape-cablear-auto.timer
+#   Es decir: la ruta automatica habria funcionado exactamente UNA vez.
+#
+#   `OnCalendar` no depende del estado del servicio: es una expresion de reloj,
+#   la evalues quien la evalue. Cada cuarto de hora en punto. Es el mecanismo
+#   correcto para "esto tiene que pasar siempre, pase lo que pase con el unit".
+Description=APE cablear automatico de listas (cada 15 min, OnCalendar)
 Documentation=file:/opt/ape-pulse/ape-cablear-auto.sh
 
 [Timer]
-OnBootSec=5min
-OnUnitActiveSec=15min
+# Cada 15 minutos: :00, :15, :30, :45 de cada hora.
+OnCalendar=*:0/15
+# Si el VPS estaba apagado a la hora del tick, al volver corre una vez.
+# (El cableador es idempotente, asi que recuperar un tick atrasado es inofensivo.)
+Persistent=true
 AccuracySec=1min
+RandomizedDelaySec=30
 Unit=ape-cablear-auto.service
-Persistent=false
 
 [Install]
 WantedBy=timers.target
