@@ -31,7 +31,21 @@ local ok, _ = pcall(function()
     if not dict then return end  -- shared dict not declared → silently skip
 
     -- ── Identify request type from URI ──
-    local uri = ngx.var.uri or ""
+    -- [FIX 2026-11-14 · LA CAUSA DE FONDO] Se usaba `ngx.var.uri`, que es la URI
+    -- YA REESCRITA. Este server reescribe TODO el trafico de reproduccion:
+    --     location ^~ /pulse/ { rewrite ^/pulse/[^/]+\.m3u8$ /prisma/api/pulse.php last; }
+    --     location ^~ /seg/   { rewrite ^/seg/.+$            /prisma/api/pulse.php last; }
+    -- Asi que en la fase log_by_lua `ngx.var.uri` valia "/prisma/api/pulse.php"
+    -- para el 100% del trafico: no acababa en .m3u8, no empezaba por /seg/, y el
+    -- `return` de la linea siguiente descartaba TODA la peticion. El observer no
+    -- estaba midiendo mal: NO ESTABA VIENDO NADA. Explica por que las filas de
+    -- server_side_qoe_metrics solo tenian counts sueltos y channel_id=unknown
+    -- aunque el codigo de extraccion fuese correcto (verificado aparte en Lua 5.1:
+    -- el token /seg/ decodifica a .../1312008_290.ts y el patron saca 1312008).
+    --
+    -- `ngx.var.request_uri` conserva la URI ORIGINAL de la peticion (antes del
+    -- rewrite), que es la que trae la identidad del canal. Se le quita el query.
+    local uri = (ngx.var.request_uri or ""):match("^[^?]*") or ""
     local is_manifest = uri:match("%.m3u8$") ~= nil
     -- [FIX 2026-11-14] `/seg/<b64url>` NO acaba en .ts/.m4s: es el proxy de
     -- segmentos de este sistema. Sin esta rama el observer devolvia en la linea
