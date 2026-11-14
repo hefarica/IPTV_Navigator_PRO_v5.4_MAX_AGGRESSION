@@ -874,7 +874,19 @@ jobs:
           echo "--- cablear-cola.timer: $(systemctl is-active ape-cablear-cola.timer 2>/dev/null || echo unknown)"
           # El arbol de la cola lo crea el primer encolado (validacion 14 del core), pero lo
           # dejamos hecho para que el .path no dependa de ese orden.
-          install -d -m 0775 /var/lib/ape/cablear/{cola,tomados,hechos,fallidos,staging} 2>&1 || true
+          # [2026-11-14] LA COLA TIENE QUE SER ESCRIBIBLE POR www-data.
+          # Medido por t63 en produccion: el POST devolvia
+          #   HTTP 500 E_COLA_NO_ESCRIBIBLE "no se pudo crear el directorio de la cola"
+          # porque /var/lib/ape/cablear quedaba drwxr-xr-x root:root y php-fpm corre
+          # como www-data (ni dueno ni en el grupo root). El endpoint falla CERRADO a
+          # proposito (no crea un ticket que quedaria en queued eterno), asi que el
+          # defecto era del despliegue, no del codigo.
+          # -o/-g crean los directorios ya con el dueno correcto; el chown -R cubre el
+          # caso de que ya existieran de un deploy anterior como root.
+          install -d -m 0775 -o www-data -g www-data /var/lib/ape/cablear 2>&1 || true
+          install -d -m 0775 -o www-data -g www-data /var/lib/ape/cablear/{cola,tomados,hechos,fallidos,staging} 2>&1 || true
+          chown -R www-data:www-data /var/lib/ape/cablear 2>&1 || true
+          echo "--- cola: $(ls -ld /var/lib/ape/cablear 2>/dev/null | awk '{print $1, $3":"$4}')"
           sudo -n systemctl enable --now ape-cablear-auto.timer 2>&1 || true
           echo "--- cablear-auto.timer: $(systemctl is-active ape-cablear-auto.timer 2>/dev/null || echo unknown)"
           sudo -n systemctl daemon-reload 2>&1 || true
