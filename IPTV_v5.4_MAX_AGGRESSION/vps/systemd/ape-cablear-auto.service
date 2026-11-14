@@ -1,0 +1,38 @@
+[Unit]
+# [2026-11-14] Cableador automatico de listas.
+#
+# Pedido del operador: "desarrollar una ruta idempotente, polimorfica, isomorfa
+# para que se pueda reproducir TODAS las listas que genere el IPTV Navigator".
+#
+# Este servicio corre el cableador: busca en /var/www/html/lists/ las listas que
+# no tengan su _CABLEADA y las genera. Asi cualquier lista nueva que suba el
+# generador queda cableada sin intervencion.
+#
+# DEPENDE DE DISCO, no solo de tiempo: el script aborta si quedan menos de
+# 3000 MB libres (APE_MIN_FREE_MB). Cablear duplica el tamano de cada lista y
+# llenar el disco tumbaria nginx. Es preferible no tener la version cableada.
+#
+# Nota sobre el estado actual: el VPS quedo al 88 % tras cablear la lista de
+# 21.224 canales. Por eso el umbral esta alto y por eso el timer NO corre cada
+# minuto: 15 minutos es de sobra para una lista que se sube a mano.
+Description=APE cablear automatico de listas (idempotente, polimorfico, isomorfo)
+Documentation=file:/opt/ape-pulse/ape-cablear-auto.sh
+ConditionPathExists=/opt/ape-pulse/ape-cablear-auto.sh
+ConditionPathExists=/opt/ape-pulse/ape-cablear-lista.php
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/opt/ape-pulse/ape-cablear-auto.sh
+TimeoutStartSec=1800
+Nice=10
+IOSchedulingClass=idle
+IOSchedulingPriority=7
+StandardOutput=journal
+StandardError=journal
+
+# El script sale con 3 cuando se salta algo por disco. Eso NO es un fallo del
+# servicio: es una decision deliberada. systemd no debe marcarlo como failed
+# (un oneshot con exit != 0 queda failed y ensucia el estado del sistema).
+SuccessExitStatus=0 3

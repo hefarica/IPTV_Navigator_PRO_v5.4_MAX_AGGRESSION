@@ -71,3 +71,7 @@ IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/prisma_telemetry_full.lua	/etc/nginx/lua/
 IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/quality_realtime.lua	/etc/nginx/lua/quality_realtime.lua	644	www-data:www-data	[2026-11-14] content_by_lua_file exigido por prisma-floor-lock; sin el, nginx -t falla
 IPTV_v5.4_MAX_AGGRESSION/vps/systemd/ape-pulse-canary.path	/etc/systemd/system/ape-pulse-canary.path	644	root:root	[2026-11-14] path que vigila la cola de zapping; TriggerLimit + StartLimit para que no muera en bucle
 IPTV_v5.4_MAX_AGGRESSION/vps/systemd/ape-pulse-canary.service	/etc/systemd/system/ape-pulse-canary.service	644	root:root	[2026-11-14] worker one-shot del canary; TriggerLimit + StartLimit para que no muera en bucle
+IPTV_v5.4_MAX_AGGRESSION/vps/bin/ape-cablear-auto.sh	/opt/ape-pulse/ape-cablear-auto.sh	755	root:root	[2026-11-14] cableador automatico: busca listas sin _CABLEADA y las genera (idempotente, guardia de disco)
+tools/ops/ape-cablear-lista.php	/opt/ape-pulse/ape-cablear-lista.php	644	root:root	[2026-11-14] cableador PHP de una pasada: 21.224 canales en 24 s; urlencoded, corta el pipe
+IPTV_v5.4_MAX_AGGRESSION/vps/systemd/ape-cablear-auto.service	/etc/systemd/system/ape-cablear-auto.service	644	root:root	[2026-11-14] servicio oneshot del cableador; SuccessExitStatus=0 3 (el 3 es skip por disco)
+IPTV_v5.4_MAX_AGGRESSION/vps/systemd/ape-cablear-auto.timer	/etc/systemd/system/ape-cablear-auto.timer	644	root:root	[2026-11-14] timer 15 min; NO .path para no leer la lista a medio escribir

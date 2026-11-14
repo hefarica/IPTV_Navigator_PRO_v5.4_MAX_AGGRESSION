@@ -865,6 +865,10 @@ jobs:
             exit 1
           fi
           echo "--- worker canary: OK ejecutable ($(ls -l /opt/ape-pulse/ape-pulse-canary-worker.sh | awk '{print $1, $5}'))"
+          # [2026-11-14] Cableador automatico de listas: habilitar el timer.
+          # Idempotente: enable --now no falla si ya estaba.
+          sudo -n systemctl enable --now ape-cablear-auto.timer 2>&1 || true
+          echo "--- cablear-auto.timer: $(systemctl is-active ape-cablear-auto.timer 2>/dev/null || echo unknown)"
           sudo -n systemctl daemon-reload 2>&1 || true
           PATH_PREV=$(systemctl is-failed ape-pulse-canary.path 2>/dev/null || echo unknown)
           echo "--- canary.path antes: $PATH_PREV"

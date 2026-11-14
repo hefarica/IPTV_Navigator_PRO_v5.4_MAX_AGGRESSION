@@ -1,0 +1,27 @@
+[Unit]
+# [2026-11-14] Timer del cableador automatico de listas.
+#
+# Cada 15 minutos mira si hay una lista nueva sin su version _CABLEADA y la
+# genera. Idempotente: si ya existe y es mas nueva que la fuente, no hace nada.
+#
+# POR QUE TIMER Y NO `.path`:
+#   Un `.path` con PathModified sobre /var/www/html/lists/ dispararia EN CUANTO
+#   empieza la escritura de la lista, con el fichero a medias. El cableador
+#   leeria 200 MB de 1,3 GB y produciria una lista truncada. El timer espera a
+#   que el generador termine. Es menos inmediato y mucho mas seguro.
+#
+# POR QUE 15 MINUTOS:
+#   Las listas se suben a mano desde la app, no en rafaga. 15 minutos es de sobra
+#   y evita que el cableador compita con la reproduccion por CPU o por disco.
+Description=APE cablear automatico de listas (timer cada 15 min)
+Documentation=file:/opt/ape-pulse/ape-cablear-auto.sh
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+AccuracySec=1min
+Unit=ape-cablear-auto.service
+Persistent=false
+
+[Install]
+WantedBy=timers.target
