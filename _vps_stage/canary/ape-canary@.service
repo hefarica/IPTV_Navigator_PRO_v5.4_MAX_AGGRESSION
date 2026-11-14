@@ -4,6 +4,8 @@ Documentation=file:/etc/ara/skills/SKILLS.md
 After=network-online.target
 Wants=network-online.target
 ConditionPathExists=/etc/ara/skills/SKILLS.md
+StartLimitIntervalSec=600
+StartLimitBurst=3
 
 [Service]
 Type=simple
@@ -15,7 +17,10 @@ ExecStart=/usr/local/bin/ape-visual-emulate.sh %i
 TimeoutStartSec=60
 TimeoutStopSec=30
 RuntimeMaxSec=300
-Restart=no
+# [2026-11-13] "nunca se caiga": si falla, se reintenta con backoff y un techo
+# de 3 intentos en 10 min, para no entrar en tormenta de reinicios.
+Restart=on-failure
+RestartSec=10
 KillMode=control-group
 CPUQuota=40%
 MemoryMax=1G
