@@ -6357,24 +6357,44 @@ const server = http.createServer((req, res) => {
     st._path = file;
     const who = playerForm(req.headers['user-agent']);
     const form = who.form;
-    const shimPort = Number(u.searchParams.get('port') || SHIM_PORT);
-    if (form === 'proxy' && !(shimPort > 0 && shimPort < 65536)) {
-      /* Fail-closed: una lista proxy sin puerto del OttShim no se sirve "a
-       * medias". Es la misma doctrina que ya aplica /playlist-shim.m3u8. */
-      res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8', 'X-APE-Form': 'proxy', 'X-APE-Form-Reason': 'shim-port-ausente' });
-      return res.end('forma proxy: falta APE_SHIM_PORT (o ?port=<puerto del ottshim>)');
-    }
+    /* [2026-11-14 · DECISION MEDIDA]
+     *
+     * La lista que genera el Navigator YA VIENE CABLEADA POR EL SISTEMA. Medido
+     * sobre APE_LISTA_1794100720046.m3u8, canal 1:
+     *
+     *   https://iptv-ape.duckdns.org/pulse/1.m3u8?u=<proveedor>&d=<device>
+     *
+     * Y pulse.php hace la polimorfia por User-Agent. Medido con 5 UAs reales:
+     *   VLC           -> mode=cartridge;dialect=vlc;zapping=1;canary=1
+     *   Kodi          -> mode=cartridge;dialect=kodi;zapping=1;canary=1
+     *   OTT Navigator -> mode=proxy;zapping=1;cache=miss;kind=media
+     *   TiviMate      -> mode=proxy;zapping=1;cache=hit;kind=media
+     *   sin UA        -> mode=proxy;stale=1;upstream_code=0
+     *
+     * Por tanto esta ruta NO reescribe URLs. Reescribirlas al loopback del
+     * OttShim era doble cableado y, ademas, roto: el shim corre EN EL DEVICE,
+     * asi que un `127.0.0.1:<puerto>` publicado en una lista de 21.224 canales
+     * lo resuelve CADA CLIENTE contra si mismo. Publicar eso son 21.224 cuelgues.
+     *
+     * Lo que la ruta aporta, y que la lista no tiene, son TRES cosas:
+     *   1. idempotencia  ETag estable + 304 sin abrir el fichero
+     *   2. isomorfismo   cualquier <lista>.m3u8 del directorio, sin hardcodear
+     *   3. streaming     createReadStream, nunca readFileSync de 1,3 GB
+     * Y nada mas. Se sirve VERBATIM en ambas formas: es la misma doctrina
+     * SHIELDED (no transformar URLs de canales). */
     const sha = listSha256(st);
-    const etag = listEtag(sha, form === 'proxy' ? 'proxy-' + shimPort : form);
+    const etag = listEtag(sha, 'verbatim');
     res.setHeader('ETag', etag);
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
     res.setHeader('X-APE-Form', form);
+    res.setHeader('X-APE-Served', 'verbatim');
     res.setHeader('X-APE-Player-Class', who.player_class);
     res.setHeader('X-APE-Form-Reason', who.reason);
     res.setHeader('X-APE-Wiring-Version', WIRING_VERSION);
     res.setHeader('X-APE-Source-Sha256', sha);
     res.setHeader('X-APE-List-Id', id);
+    res.setHeader('X-APE-Channel-Wiring', 'in-list:pulse.php-by-ua');
     res.setHeader('Vary', 'User-Agent');
     /* Revalidacion condicional ANTES de abrir nada: un 304 no lee 1,3 GB. */
     const inm = String(req.headers['if-none-match'] || '').trim();
@@ -6386,29 +6406,16 @@ const server = http.createServer((req, res) => {
       }
     }
     if (req.method === 'HEAD') {
-      if (form === 'cartridge') res.setHeader('Content-Length', String(st.size));
+      res.setHeader('Content-Length', String(st.size));
       res.writeHead(200);
       return res.end();
     }
-    /* Forma cartucho: VERBATIM y sin transformacion — se sirve el fichero tal
-     * cual (Content-Length conocido, cero trabajo por linea). Forma proxy:
-     * reescritura linea a linea -> chunked. */
-    const rs = fs.createReadStream(file, { highWaterMark: 64 * 1024 });
-    if (form === 'cartridge') {
-      res.setHeader('Content-Length', String(st.size));
-      res.writeHead(200);
-      rs.on('error', () => { try { res.destroy(); } catch (_) { } });
-      req.on('close', () => { try { rs.destroy(); } catch (_) { } });
-      rs.pipe(res);
-      return;
-    }
+    res.setHeader('Content-Length', String(st.size));
     res.writeHead(200);
-    const shaped = rs.pipe(makeLineTransform(makeShimWirer(shimPort)));
-    shaped.pipe(res);
-    const bail = () => { try { rs.destroy(); } catch (_) { } try { shaped.destroy(); } catch (_) { } try { res.destroy(); } catch (_) { } };
-    rs.on('error', bail);
-    shaped.on('error', bail);
+    const rs = fs.createReadStream(file, { highWaterMark: 64 * 1024 });
+    rs.on('error', () => { try { res.destroy(); } catch (_) { } });
     req.on('close', () => { try { rs.destroy(); } catch (_) { } });
+    rs.pipe(res);
     return;
   }
   if (u.pathname === '/capabilities.json') {
