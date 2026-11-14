@@ -258,12 +258,39 @@ class AgentService : Service() {
                             if (!badgeShown) {
                                 badgeShown = true
                                 try {
+                                    // [2026-11-14] Nombre del canal REAL.
+                                    //
+                                    // OTT no publica MediaSession, asi que `titulo` casi
+                                    // siempre viene null ("canal=sin titulo" en el log).
+                                    // El VPS SI sabe que /pulse/<id> se acaba de pedir:
+                                    // /prisma/api/ape-last-channel.php lo traduce con el
+                                    // indice de la lista (21.224 canales, 993 KB).
+                                    // Se intenta primero la sesion (si existe, es mas
+                                    // exacta) y si no, el VPS. Si ninguno responde, el
+                                    // badge sale sin nombre: no se inventa.
+                                    var nombre = titulo
+                                    if (nombre.isNullOrBlank()) {
+                                        nombre = try {
+                                            val url = java.net.URL(
+                                                cfg.vpsBase.trimEnd('/') +
+                                                    "/prisma/api/ape-last-channel.php"
+                                            )
+                                            val body = url.readText(Charsets.UTF_8)
+                                            org.json.JSONObject(body)
+                                                .optString("name", "")
+                                                .trim()
+                                                .takeIf { it.isNotEmpty() }
+                                        } catch (t: Throwable) {
+                                            Log.w(TAG, "nombre de canal: ${t.message}")
+                                            null
+                                        }
+                                    }
                                     startActivity(
                                         Intent(this@AgentService, UpscaleBadgeActivity::class.java)
-                                            .putExtra("channel", titulo)
+                                            .putExtra("channel", nombre)
                                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                     )
-                                    Log.i(TAG, "badge de upscaling mostrado sobre OTT canal=${titulo ?: "sin titulo"}")
+                                    Log.i(TAG, "badge de upscaling mostrado sobre OTT canal=${nombre ?: "sin titulo"}")
                                 } catch (t: Throwable) {
                                     Log.w(TAG, "badge OTT: ${t.message}")
                                 }
