@@ -131,16 +131,33 @@ class UpscaleBadgeActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (intent?.getBooleanExtra("hide", false) == true) {
-            removeBadge()
+        // [FIX 2026-11-14] finish() SIEMPRE, en finally.
+        //
+        // MEDIDO: con OTT reproduciendo (audio=1) el badge aparecio 3 veces y el foco
+        // termino en `com.ape.crystalagent/.UpscaleBadgeActivity`. Una Activity
+        // transparente en primer plano LE ROBA EL FOCO A OTT: el player se pausa y se
+        // queda en "Buffering: 0%". Si ademas showBadge() lanzaba algo, el finish() de
+        // abajo no se ejecutaba y la Activity se quedaba abierta indefinidamente.
+        //
+        // El overlay NO necesita la Activity: se cuelga del WindowManager con
+        // TYPE_APPLICATION_OVERLAY y sobrevive al finish(). La Activity es solo el
+        // disparador; debe desaparecer de inmediato.
+        try {
+            if (intent?.getBooleanExtra("hide", false) == true) {
+                removeBadge()
+                return
+            }
+            val input = intent?.getStringExtra("input")?.trim()
+            // [2026-11-14] canal que OTT esta reproduciendo, tomado de su MediaMetadata.
+            val canal = intent?.getStringExtra("channel")?.trim()
+            showBadge(input, canal)
+        } catch (t: Throwable) {
+            android.util.Log.w(TAG, "badge fallo: ${t.message}")
+        } finally {
+            // Se cierra SIEMPRE. Si el overlay se monto, sigue vivo; si no, no queda
+            // ninguna ventana robando el foco.
             finish()
-            return
         }
-        val input = intent?.getStringExtra("input")?.trim()
-        // [2026-11-14] canal que OTT esta reproduciendo, tomado de su MediaMetadata.
-        val canal = intent?.getStringExtra("channel")?.trim()
-        showBadge(input, canal)
-        finish()
     }
 
     private fun dp(v: Int): Int =
