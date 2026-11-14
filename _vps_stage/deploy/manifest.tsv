@@ -60,3 +60,8 @@ tools/lab/ape-jit/server.js	/opt/ape-jit/server.js	644	root:root	motor JIT: reso
 IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/pulse.php	/var/www/html/prisma/api/pulse.php	644	www-data:www-data	pulse polimorfico (php-fpm recarga solo, sin reinicio)
 vps/bin/ape-pulse-canary-worker.sh	/opt/ape-pulse/ape-pulse-canary-worker.sh	755	root:root	worker del canary con guarda jit_busy [OJO: lo invoca el timer, toma el fichero nuevo en el proximo ciclo]
 IPTV_v5.4_MAX_AGGRESSION/vps/nginx/snippets/url2-cartridge.conf	/etc/nginx/snippets/url2-cartridge.conf	644	root:root	location /pulse/ /pulse-lists/ /lists/ y /seg/ (proxy de segmentos 2026-11-14)
+IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/qoe_server_side_observer.lua	/etc/nginx/lua/qoe_server_side_observer.lua	644	www-data:www-data	[2026-11-14] observer QoE server-side (log_by_lua); escribe en ngx.shared.qoe_metrics
+IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/qoe_flush_worker.lua	/etc/nginx/lua/qoe_flush_worker.lua	644	www-data:www-data	[2026-11-14] flush del dict al PHP cada 60 s; encadenado desde reactor_tick con pcall
+IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/reactor_tick.lua	/etc/nginx/lua/reactor_tick.lua	644	www-data:www-data	[2026-11-14] init_worker de la cadena; ya encadena qoe_flush_worker con pcall
+IPTV_v5.4_MAX_AGGRESSION/vps/nginx/conf.d/prisma-floor-lock.conf	/etc/nginx/conf.d/prisma-floor-lock.conf	644	root:root	[2026-11-14] declara init_worker_by_lua_file reactor_tick.lua; NUNCA estuvo en el manifiesto
+IPTV_v5.4_MAX_AGGRESSION/vps/nginx/sites-enabled-default.conf	/etc/nginx/sites-enabled/default	644	root:root	[2026-11-14] bypass /prisma/api/qoe-flush.php (mata el 302 que ahogaba el flush)
