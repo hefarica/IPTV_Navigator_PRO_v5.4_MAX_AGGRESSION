@@ -33,7 +33,13 @@ local ok, _ = pcall(function()
     -- ── Identify request type from URI ──
     local uri = ngx.var.uri or ""
     local is_manifest = uri:match("%.m3u8$") ~= nil
-    local is_segment = uri:match("%.ts$") ~= nil or uri:match("%.m4s$") ~= nil
+    -- [FIX 2026-11-14] `/seg/<b64url>` NO acaba en .ts/.m4s: es el proxy de
+    -- segmentos de este sistema. Sin esta rama el observer devolvia en la linea
+    -- siguiente y NUNCA veia el 99,9% del trafico de video. Medido: con 608
+    -- peticiones a /seg/ en 3 minutos, la tabla solo tenia filas con
+    -- channel_id=unknown y request_count de 1 y 5.
+    local is_segment_proxy = uri:match("^/seg/") ~= nil
+    local is_segment = (uri:match("%.ts$") ~= nil) or (uri:match("%.m4s$") ~= nil) or is_segment_proxy
     if not (is_manifest or is_segment) then return end
 
     -- ── Extract session key (client IP + UA hash) ──
@@ -44,11 +50,34 @@ local ok, _ = pcall(function()
     local session_key = client_ip .. "|" .. ua_short
 
     -- ── Extract channel_id from URI ──
-    -- Xtream pattern: /live/USER/PASS/STREAMID.m3u8 or /STREAMID/HASH.ts
-    local channel_id = uri:match("/live/[^/]+/[^/]+/(%d+)%.m3u8") or
-                       uri:match("/(%d+)/[^/]+%.ts") or
-                       uri:match("/(%d+)/[^/]+%.m4s") or
-                       "unknown"
+    -- [FIX 2026-11-14] Los patrones de abajo eran SOLO de Xtream
+    -- (/live/USER/PASS/ID.m3u8 y /ID/HASH.ts). Este sistema no usa esa forma:
+    --   manifest -> /pulse/<id>.m3u8?u=...&d=...
+    --   segmento -> /seg/<b64url(URL del proveedor)>
+    -- Con los patrones viejos el 100% del trafico caia en "unknown", asi que
+    -- request_count subia pero vst/bitrate/rebuffer quedaban imposibles de
+    -- atribuir a un canal. Medido en server_side_qoe_metrics: channel_id=unknown
+    -- en las dos primeras filas que el modulo llego a escribir.
+    local channel_id = uri:match("^/pulse/(%d+)%.m3u8$")
+    if not channel_id then
+        channel_id = uri:match("/live/[^/]+/[^/]+/(%d+)%.m3u8") or
+                     uri:match("/(%d+)/[^/]+%.ts") or
+                     uri:match("/(%d+)/[^/]+%.m4s")
+    end
+    -- /seg/<b64url>: el id del canal viaja DENTRO del token, porque el token es
+    -- la URL del segmento en base64url:  .../hls/<hash>/1312008_190.ts
+    if not channel_id and is_segment_proxy then
+        local tok = uri:sub(6)
+        tok = tok:gsub("%-", "+"):gsub("_", "/")
+        local pad = #tok % 4
+        if pad == 2 then tok = tok .. "==" elseif pad == 3 then tok = tok .. "=" end
+        local dec = ngx.decode_base64(tok)
+        if dec then
+            -- primer intento: el patron real <id>_<seq>.ts
+            channel_id = dec:match("/(%d+)_%d+%.ts") or dec:match("/(%d+)%.[a-z0-9]+$")
+        end
+    end
+    if not channel_id then channel_id = "unknown" end
 
     -- ── Timing data ──
     local now_ms = math.floor(ngx.now() * 1000)
