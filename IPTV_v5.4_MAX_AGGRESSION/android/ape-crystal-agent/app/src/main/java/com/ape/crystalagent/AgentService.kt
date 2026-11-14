@@ -199,7 +199,23 @@ class AgentService : Service() {
                         )
                         val ses = msm?.getActiveSessions(comp)
                             ?.firstOrNull { it.packageName == ottPkg }
-                        val playing = ses?.playbackState?.state == PlaybackState.STATE_PLAYING
+                        // [FIX 2026-11-14] TAMBIEN BUFFERING Y CONNECTING.
+                        //
+                        // Medido en el zapeo real: OTT abre "PPV| FORMULA 1 UHD [EVEST]"
+                        // (tvg-id 1223445, 4K HDR10) y se queda en "Buffering: 0%" varios
+                        // segundos. La causa NO es un fallo: cada segmento de ese canal
+                        // pesa 14.234.608 B (medido, con sync 0x47 valido) y el primer
+                        // segmento tarda en bajar por WiFi.
+                        //
+                        // Con la condicion anterior (solo STATE_PLAYING), el badge no
+                        // aparecia justo cuando el operador mas lo necesita: al zapear.
+                        // Ahora aparece en cuanto OTT esta enganchando el canal, que es
+                        // informacion util (y honesta: el badge dice la resolucion, no
+                        // "reproduciendo").
+                        val st = ses?.playbackState?.state
+                        val playing = st == PlaybackState.STATE_PLAYING ||
+                            st == PlaybackState.STATE_BUFFERING ||
+                            st == PlaybackState.STATE_CONNECTING
                         if (playing) {
                             if (!ShimBridge.running) {
                                 Log.w(TAG, "OTT reproduciendo y shim caido -> relanzo")
