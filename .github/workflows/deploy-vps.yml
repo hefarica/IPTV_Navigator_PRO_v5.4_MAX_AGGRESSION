@@ -883,6 +883,16 @@ jobs:
           # defecto era del despliegue, no del codigo.
           # -o/-g crean los directorios ya con el dueno correcto; el chown -R cubre el
           # caso de que ya existieran de un deploy anterior como root.
+          # [2026-11-14] EL PADRE BLOQUEABA A www-data. Medido:
+          #   /var/lib/ape        = drwxr-x--- (0750) apevisual:apevisual  <- sin o+x
+          #   /var/lib/ape/cablear= drwxrwxr-x (0775) www-data:www-data    <- ya correcto
+          # Sin el bit x en el padre, is_dir("/var/lib/ape/cablear") devuelve FALSE
+          # para www-data AUNQUE el directorio exista y sea suyo: no puede atravesar.
+          # Probado en un clon del arbol: padre 0700 -> is_dir=0 is_writable=0;
+          # padre 0751 -> is_dir=1 is_writable=1. Se da SOLO traversal (x), no
+          # lectura del listado (r): minimo privilegio. Solo list_cablear_core.php
+          # usa /var/lib/ape, asi que el cambio no afecta a ningun otro servicio.
+          chmod 0751 /var/lib/ape 2>&1 || true
           install -d -m 0775 -o www-data -g www-data /var/lib/ape/cablear 2>&1 || true
           install -d -m 0775 -o www-data -g www-data /var/lib/ape/cablear/{cola,tomados,hechos,fallidos,staging} 2>&1 || true
           chown -R www-data:www-data /var/lib/ape/cablear 2>&1 || true
