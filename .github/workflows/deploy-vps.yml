@@ -868,6 +868,13 @@ jobs:
           # [2026-11-14] Cableador automatico de listas: habilitar el timer.
           # Idempotente: enable --now no falla si ya estaba.
           # [2026-11-14] Panel de cableado: .path (dispara en <1 s) + .timer (red de seguridad).
+          # [2026-11-14] Publicar el enlace que sirven las 2 rutas del menu del agente
+          # (/jit/playlist-calidad.m3u8 y playlist-resolver.m3u8). Elige la _CABLEADA
+          # con el NUMERO de lista mas alto, no la de mtime mas reciente: cablear una
+          # historica de prueba la volveria "la mas nueva" por fecha y el menu serviria
+          # la lista equivocada.
+          bash /opt/ape-pulse/ape-jit-latest.sh 2>&1 || echo "--- aviso: ape-jit-latest fallo (revisar arriba)"
+          echo "--- ape_jit_latest -> $(readlink /var/www/html/lists/ape_jit_latest.m3u8 2>/dev/null | xargs -r basename)"
           sudo -n systemctl enable --now ape-cablear-cola.path 2>&1 || true
           sudo -n systemctl enable --now ape-cablear-cola.timer 2>&1 || true
           echo "--- cablear-cola.path: $(systemctl is-active ape-cablear-cola.path 2>/dev/null || echo unknown)"
