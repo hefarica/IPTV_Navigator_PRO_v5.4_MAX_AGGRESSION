@@ -24,6 +24,13 @@ class SettingsApplier(ctx: Context) {
     // [perf] evita reescribir el mismo valor cada ciclo SSE de 3 s.
     private val lastWritten = HashMap<String, String>()
 
+    // [FIX 2026-11-14] Ultimo valor de geometria RECHAZADO por clave. El VPS reenvia el
+    // mismo device_settings en cada ciclo; sin esto el rechazo de display_size_forced
+    // 3840x2160 se logueaba en cada pasada (medido: 42 lineas en la ventana) y parecia
+    // un reintento en bucle cuando en realidad el rechazo es correcto y unico.
+    // ConcurrentHashMap porque apply() puede llegar desde el hilo del SSE.
+    private val geometriaRechazada = java.util.concurrent.ConcurrentHashMap<String, String>()
+
     /** Resultado por fila: lo que se aplicó y lo que no (para el ack `/sync`, sin inventar). */
     data class ApplyReport(val applied: List<String>, val rejected: List<String>)
 
@@ -194,11 +201,25 @@ class SettingsApplier(ctx: Context) {
                     // la llamada. Se devuelve false y NO se toca la lista de rechazados, que es
                     // local de applyDetailed: intentarlo desde aqui no compila. Ese fue
                     // exactamente el error de la primera version de este cambio.
-                    Log.w(TAG, "RECHAZADO $ns/$k=$v — excede el tope de composicion 1920x1080 " +
-                        "impuesto por ro.surface_flinger.max_graphics_height; el panel puede estar " +
-                        "en 4K pero la composicion no. Valor no aplicado.")
+                    //
+                    // [FIX 2026-11-14] LOG UNA VEZ POR VALOR, NO POR PASADA.
+                    // El VPS reenvia el mismo device_settings en cada ciclo y la app lo
+                    // rechaza cada vez: medido, "42 rechazos en la ventana de log" con el
+                    // mismo 3840x2160. El rechazo es CORRECTO (el SoC no compone a 4K:
+                    // ro.surface_flinger.max_graphics_width=1920 es de build e inmutable),
+                    // pero inundaba el log y hacia parecer que el agente "reintenta algo
+                    // imposible" en bucle. Se registra la primera vez que aparece el valor y
+                    // se calla mientras siga siendo el mismo; si cambia, se vuelve a avisar.
+                    if (geometriaRechazada.put(k, v) != v) {
+                        Log.w(TAG, "RECHAZADO $ns/$k=$v — excede el tope de composicion " +
+                            "1920x1080 impuesto por ro.surface_flinger.max_graphics_height; " +
+                            "el panel puede estar en 4K pero la composicion no. Valor no " +
+                            "aplicado. (se avisa UNA vez por valor, no en cada pasada)")
+                    }
                     return false
                 }
+                // Si el valor pasa a ser valido, se olvida el rechazo anterior.
+                geometriaRechazada.remove(k)
             }
             try {
                 val r = when (ns) {
