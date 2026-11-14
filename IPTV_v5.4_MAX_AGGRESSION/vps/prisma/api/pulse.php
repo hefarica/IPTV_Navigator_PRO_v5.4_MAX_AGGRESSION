@@ -680,11 +680,44 @@ if ($mode === 'proxy') {
                 }
                 // [HARDENING] NUNCA 302: un 302 a un upstream roto hacía que el
                 // player parseara JSON/HTML y abortara con "unexpected type".
-                // Al player sólo le llega un manifest o un 502 con motivo.
+                // Al player sólo le llega un manifest o un codigo con motivo.
+                //
+                // [FIX 2026-11-14] AQUI ESTABA `http_response_code(502)` FIJO.
+                //
+                // MEDIDO: playlist_access.log acumulo 302 respuestas 502 en 14 h,
+                // todas de /pulse. El cuerpo JSON ya decia la verdad
+                // (`code` => $code, el codigo REAL del upstream), pero el status
+                // HTTP era 502 siempre. Ejemplo real del canal 1099862:
+                //   body : {"ok":false,"error":"upstream_not_playlist",
+                //           "why":"cuerpo vacio","code":407}
+                //   status: 502
+                // El upstream directo devolvia 407 (Proxy Authentication Required):
+                // el proveedor rechaza ese canal, no es un fallo nuestro.
+                //
+                // POR QUE IMPORTA:
+                //   - 502 dice "el servidor fallo, reintenta" -> el player insiste
+                //     contra un canal que el proveedor no va a servir nunca.
+                //   - 407 dice "el proveedor rechaza" -> el player puede saltar.
+                //   - En los logs, 302 falsos 502 escondian la distribucion real:
+                //     los 4xx del proveedor se contaban como 5xx del servidor.
+                //   - El QoE server-side separa err4xx de err5xx; con el 502 fijo,
+                //     todo caia como err5xx y el diagnostico mentia.
+                //
+                // El cambio es SOLO del status: el cuerpo no se toca. Si `$code`
+                // no es un codigo HTTP de error valido (0, 200, un valor raro),
+                // se queda 502, que es el fallback correcto para "no se pudo
+                // determinar".
+                //
+                // [NOTA] Los tres header() de abajo se conservan TAL CUAL. En el
+                // primer intento de este parche se perdieron al reemplazar el
+                // bloque; detectado antes de commitear y restaurado. El
+                // X-APE-Pulse es el que permite diagnosticar desde el cliente
+                // (modo, motivo y codigo) sin mirar el log del servidor.
                 header('Content-Type: application/json; charset=utf-8');
                 header('X-APE-Pulse: logged;mode=proxy;upstream_not_playlist;kind=' . $kind . ';code=' . $code);
                 header('Cache-Control: no-store, no-cache, must-revalidate');
-                http_response_code(502);
+                $httpOut = ($code >= 400 && $code <= 599) ? (int) $code : 502;
+                http_response_code($httpOut);
                 echo json_encode([
                     'ok'     => false,
                     'error'  => 'upstream_not_playlist',
