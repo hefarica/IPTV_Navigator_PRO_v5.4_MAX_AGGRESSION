@@ -11,10 +11,10 @@
  *   MediaMetadata y la app no puede saber que canal estas viendo.
  *
  *   Pero el VPS SI lo sabe: cada manifest que el player pide entra por
- *   /pulse/<id> y deja linea en el access log.
+ *   /pulse/<id> y deja linea en playlist_access.log (formato ape_playlist).
  *
  * COMO LO SACA
- *   1) Lee la COLA del access log (ultimos ~200 KB) y toma el ultimo GET /pulse/<id>.
+ *   1) Lee la COLA de playlist_access.log (ultimos ~200 KB) y toma el ultimo GET /pulse/<id>.
  *      No carga el log entero: el fichero crece sin limite.
  *   2) Traduce el id con channel_index.json, pre-generado desde la lista por
  *      ape-channel-index.sh. NO se recorre el .m3u8 de 1,3 GB por peticion
@@ -31,7 +31,7 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Access-Control-Allow-Origin: *');
 
-$log = getenv('APE_ACCESS_LOG') ?: '/var/log/nginx/access.log';
+$log = getenv('APE_ACCESS_LOG') ?: '/var/log/nginx/playlist_access.log';
 $idx = getenv('APE_CHANNEL_INDEX') ?: '/var/www/html/prisma/db/channel_index.json';
 
 $id = null;
