@@ -67,6 +67,105 @@ function pulse_clean(string $s, int $max): string
     return substr($s, 0, $max);
 }
 
+function pulse_b64url_encode(string $raw): string
+{
+    return rtrim(strtr(base64_encode($raw), '+/', '-_'), '=');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * PROXY DE SEGMENTOS — /seg/<b64url>
+ *
+ * POR QUE EXISTE, MEDIDO 2026-11-14 (no es teoria):
+ *   Canal 1312008 (SKY SPORTS). El manifest llega por el VPS con 200 y el cache
+ *   acierta (`x-ape-pulse: ...cache=hit`). Pero cada segmento apunta a
+ *       http://103.252.221.159:80/hls/<hash>/1312008_NNN.ts
+ *   y desde el DEVICE ese puerto esta CERRADO:
+ *       ping 103.252.221.159 -> 2/2 recibidos, 0% loss, rtt 202 ms
+ *       puerto 80            -> CERRADO
+ *   Resultado en pantalla:  "Buffering: 0%"  y fondo negro.
+ *
+ *   Desde el VPS el MISMO segmento responde:
+ *       http=200  bytes=13.130.672  ttfb=0.254 s
+ *
+ *   O sea: el VPS SI alcanza el video; el device NO. La unica pieza que falta es
+ *   que el VPS lo sirva.
+ *
+ * POR QUE EL CANDADO EXISTIA: sites-enabled-default.conf:42 bloquea
+ *   `/cdn/.*\.(ts|m4s|mp4)$ -> 404` porque el gateway del /cdn/ REESCRIBIA el
+ *   cuerpo y corrompia el binario ("corrupto por el rebase", texto literal en el
+ *   conf). El candado no estaba mal: estaba protegiendo de una implementacion
+ *   que transformaba bytes de video.
+ *
+ * ESTE HANDLER NO TRANSFORMA NADA. Lee bytes del proveedor y los escribe tal
+ * cual (`CURLOPT_RETURNTRANSFER=false`, se escribe directo al output). No hay
+ * rebase, no hay filtro, no hay recompress. Byte a byte.
+ *
+ * SEGURIDAD: allowlist de esquema http/https, se rechaza cualquier host privado
+ * (la misma lista que ya usa nginx para /cdn/), tope de tamano y timeout corto.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+function ape_seg_is_private_host(string $host): bool
+{
+    $host = strtolower(trim($host, '[]'));
+    if ($host === '' || $host === 'localhost' || $host === '::1') { return true; }
+    if (preg_match('/^(127\.|0\.0\.0\.0$|10\.|192\.168\.|169\.254\.)/', $host)) { return true; }
+    if (preg_match('/^172\.(1[6-9]|2[0-9]|3[01])\./', $host)) { return true; }
+    return false;
+}
+
+function ape_seg_serve(): void
+{
+    $path = (string)(parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?? '');
+    $tok = substr($path, 5); /* despues de "/seg/" */
+    if ($tok === '') { http_response_code(400); header('Content-Type: text/plain'); echo 'falta token'; return; }
+    $url = pulse_b64url_decode($tok);
+    if ($url === null || !preg_match('#^https?://#i', $url)) {
+        http_response_code(400); header('Content-Type: text/plain'); echo 'token invalido'; return;
+    }
+    $parts = parse_url($url);
+    if (!is_array($parts) || empty($parts['host']) || ape_seg_is_private_host($parts['host'])) {
+        http_response_code(403); header('Content-Type: text/plain'); echo 'host no permitido'; return;
+    }
+    if (!function_exists('curl_init')) {
+        http_response_code(500); header('Content-Type: text/plain'); echo 'curl ausente'; return;
+    }
+    /* El UA del player no sirve para el proveedor de segmentos: se usa el mismo
+     * que ya usa ape_pulse_fetch() para el manifest, que es el que el proveedor
+     * acepta (medido: UA real -> 302/200, UA de curl -> 461). */
+    $ua = 'OTT Navigator/1.7.3.3 (Linux;Android 12) ExoPlayerLib/2.19.1';
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_HTTPGET        => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS      => 6,
+        CURLOPT_CONNECTTIMEOUT => 4,
+        CURLOPT_TIMEOUT        => 20,
+        CURLOPT_SSL_VERIFYPEER => false, /* mismo criterio que el resto de pulse */
+        CURLOPT_SSL_VERIFYHOST => 0,
+        CURLOPT_USERAGENT      => $ua,
+        CURLOPT_HTTPHEADER     => ['Accept: */*', 'Accept-Encoding: identity'],
+        CURLOPT_RETURNTRANSFER => false, /* STREAM DIRECTO: cero copia en memoria */
+    ]);
+    /* Cabeceras ANTES de que curl empiece a escribir el cuerpo. */
+    header('Content-Type: video/mp2t');
+    header('Cache-Control: public, max-age=60, immutable');
+    header('X-APE-Seg: served;raw=1');
+    if (ob_get_level() > 0) { @ob_end_flush(); }
+    $ok = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    if ($ok === false || $code >= 400) {
+        /* Si ya se enviaron cabeceras no se puede corregir el status; se registra. */
+        error_log('ape_seg_fail code=' . $code . ' url=' . substr($url, 0, 160));
+    }
+    curl_close($ch);
+}
+
+/* ── 0 · Router: /seg/ ANTES que nada. No toca la logica de /pulse/. ───────── */
+$apePathEarly = (string)(parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?? '');
+if (strncmp($apePathEarly, '/seg/', 5) === 0) {
+    ape_seg_serve();
+    exit;
+}
+
 // ── 1 · Recibir (el autobús llegó) ────────────────────────────────────────────
 $u  = isset($_GET['u']) ? (string)$_GET['u'] : '';
 // [ID] Las listas envueltas mandan `id=<canal>`; los tests/curl mandan `c=<canal>`.
@@ -230,6 +329,44 @@ function ape_pulse_norm_upstream(string $u): string
 }
 
 /** Absolutiza las URIs de una playlist (segmentos y variantes) contra su URL efectiva. */
+/**
+ * Enruta los SEGMENTOS del media playlist por el proxy /seg/ del propio VPS.
+ *
+ * POR QUE: medido 2026-11-14 — el device NO alcanza el puerto 80 del host de
+ * segmentos (`103.252.221.159:80` CERRADO desde el ONN, ping OK a 202 ms) y el
+ * VPS SI (`http=200 bytes=13.130.672 ttfb=0.254s`). Sin esto la pantalla queda
+ * en "Buffering: 0%". Ver el bloque PROXY DE SEGMENTOS mas arriba.
+ *
+ * SE USA URL RELATIVA (`/seg/<b64url>`): el player la resuelve contra el propio
+ * manifest, que ya vive en https://iptv-ape.duckdns.org/pulse/... Asi NO se
+ * hardcodea el host publico en el codigo.
+ *
+ * NO TOCA:
+ *   - tags (todo lo que empieza por '#'), incluidos #EXT-X-MAP y #EXT-X-KEY:
+ *     si algun dia hace falta enrutar la clave, sera una decision explicita y
+ *     con su propio handler, no un efecto colateral de este bucle.
+ *   - variables {$...} de EXT-X-DEFINE
+ *   - lineas que ya vienen envueltas en /seg/
+ */
+function ape_pulse_route_segments(string $body): string
+{
+    $lines = preg_split('/\r?\n/', $body);
+    if (!is_array($lines)) { return $body; }
+    $n = count($lines);
+    $routed = 0;
+    for ($i = 0; $i < $n; $i++) {
+        $t = trim($lines[$i]);
+        if ($t === '' || $t[0] === '#' || strpos($t, '{$') !== false) { continue; }
+        if (!preg_match('#^https?://#i', $t)) { continue; }
+        if (strpos($t, '/seg/') !== false) { continue; }
+        $lines[$i] = '/seg/' . pulse_b64url_encode($t);
+        $routed++;
+    }
+    /* Si el cuerpo no era un media playlist con segmentos, se devuelve intacto. */
+    if ($routed === 0) { return $body; }
+    return implode("\n", $lines);
+}
+
 function ape_pulse_absolutize(string $raw, string $eff): string
 {
     $pu = parse_url($eff);
@@ -494,7 +631,11 @@ if ($mode === 'proxy') {
                     list($mraw, $mcode, $meff) = ape_pulse_fetch($variant, $uaPulse);
                     $mcls = ape_pulse_classify($mraw);
                     if ($mcode === 200 && $mcls['kind'] === 'media') {
-                        $body = ape_pulse_absolutize($mraw, $meff);
+                        /* Enrutado de segmentos por /seg/ — ver ape_pulse_route_segments().
+                         * Aqui el cuerpo YA es media playlist (el master se resolvio a
+                         * variante arriba), asi que route_segments actua sobre segmentos
+                         * y no sobre variantes. */
+                        $body = ape_pulse_route_segments(ape_pulse_absolutize($mraw, $meff));
                         $kind = 'media';
                     } else {
                         $ok = false;
@@ -505,7 +646,9 @@ if ($mode === 'proxy') {
                     $code = 502;
                 }
             } elseif ($ok) {
-                $body = ape_pulse_absolutize($raw, $eff);
+                /* Aqui $kind solo puede ser 'media': si hubiera sido master, habria
+                 * entrado por la rama de arriba. Enrutado de segmentos por /seg/. */
+                $body = ape_pulse_route_segments(ape_pulse_absolutize($raw, $eff));
             }
 
             if ($ok) {
