@@ -51,7 +51,26 @@ local function flush_callback(premature)
 
         for _, k in ipairs(keys) do
             local prefix, chId = k:match("^([a-z]+):(.+)$")
-            if not chId then goto continue end
+            -- [FIX 2026-11-14] Lua 5.1 NO TIENE `goto`.
+            --
+            -- El fichero usaba el idioma de Lua 5.2:
+            --     if not chId then goto continue end
+            --     ...
+            --     ::continue::
+            -- y el VPS corre Lua 5.1.5 (luac -p lo demostro):
+            --     luac: _t.lua:54: '=' expected near 'continue'
+            -- El parser lee `goto continue` como una asignacion y espera `=`.
+            --
+            -- Consecuencia medida: el job 3 del deploy abortaba con
+            -- "FALLA qoe_flush_worker.lua (luac -p)" y "VALIDACION CON FALLOS",
+            -- asi que el modulo QoE NUNCA pudo desplegarse por CI/CD. No era un
+            -- problema del manifiesto ni del observer: era una palabra reservada
+            -- que no existe en la version de Lua que corre en produccion.
+            --
+            -- Se sustituye por el idioma equivalente de 5.1: envolver el cuerpo
+            -- en `if chId then ... end`. `break` dentro de un bucle tambien
+            -- habria servido, pero cambiar el flujo es mas arriesgado que anidar.
+            if chId then
 
             if prefix == "vst" then
                 local v = tonumber(dict:get(k)) or 0
@@ -130,7 +149,7 @@ local function flush_callback(premature)
                 local r = per_channel[chId] or {}; r.latcnt = (r.latcnt or 0) + (tonumber(dict:get(k)) or 0); per_channel[chId] = r
                 table.insert(keys_to_delete, k)
             end
-            ::continue::
+            end  -- [FIX 2026-11-14] cierra `if chId then` (sustituye a ::continue::)
         end
 
         -- ── Build flush payload ──
