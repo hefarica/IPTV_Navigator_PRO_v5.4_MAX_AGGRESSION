@@ -58,7 +58,7 @@ _vps_stage/canary/ape-canary@.service	/etc/systemd/system/ape-canary@.service	64
 # tumbar produccion, y esa decision es del operador.
 tools/lab/ape-jit/server.js	/opt/ape-jit/server.js	644	root:root	motor JIT: resolver, playlist, guard de capacidad [OJO: necesita systemctl restart ape-jit, deploy.sh NO lo hace]
 IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/pulse.php	/var/www/html/prisma/api/pulse.php	644	www-data:www-data	pulse polimorfico (php-fpm recarga solo, sin reinicio)
-vps/bin/ape-pulse-canary-worker.sh	/opt/ape-pulse/ape-pulse-canary-worker.sh	755	root:root	worker del canary con guarda jit_busy [OJO: lo invoca el timer, toma el fichero nuevo en el proximo ciclo]
+vps/ape-pulse/ape-pulse-canary-worker.sh	/opt/ape-pulse/ape-pulse-canary-worker.sh	755	root:root	worker del canary con guarda jit_busy [OJO: lo invoca el timer, toma el fichero nuevo en el proximo ciclo]
 IPTV_v5.4_MAX_AGGRESSION/vps/nginx/snippets/url2-cartridge.conf	/etc/nginx/snippets/url2-cartridge.conf	644	root:root	location /pulse/ /pulse-lists/ /lists/ y /seg/ (proxy de segmentos 2026-11-14)
 IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/qoe_server_side_observer.lua	/etc/nginx/lua/qoe_server_side_observer.lua	644	www-data:www-data	[2026-11-14] observer QoE server-side (log_by_lua); escribe en ngx.shared.qoe_metrics
 IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/qoe_flush_worker.lua	/etc/nginx/lua/qoe_flush_worker.lua	644	www-data:www-data	[2026-11-14] flush del dict al PHP cada 60 s; encadenado desde reactor_tick con pcall

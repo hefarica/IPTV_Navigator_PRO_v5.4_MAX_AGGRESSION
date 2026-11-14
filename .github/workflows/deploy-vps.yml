@@ -836,6 +836,35 @@ jobs:
           # El TriggerLimit del .path y el StartLimit del .service (subidos en
           # este mismo commit) impiden que vuelva al bucle caliente que lo mato.
           # ═══════════════════════════════════════════════════════════════════
+          # ═══════════════════════════════════════════════════════════════════
+          # [2026-11-14] EL BIT +x — CAUSA RAIZ DE LAS 12 HORAS MUERTAS
+          #
+          #   ape-pulse-canary.service: Main process exited, code=exited, status=203/EXEC
+          #   /opt/ape-pulse/ape-pulse-canary-worker.sh: Permission denied
+          #
+          # El manifiesto declara 755 en su columna de modo, pero el deploy NO
+          # aplica esa columna: copia el fichero y punto. En git estaba en
+          # 100644, asi que en el VPS quedaba -rw-r--r-- (NO ejecutable).
+          #
+          # Cadena completa del fallo:
+          #   worker no ejecutable -> systemd 203/EXEC -> la cola NO se vacia ->
+          #   el .path redispara en bucle -> agota el StartLimit -> queda failed
+          #   PARA SIEMPRE (un .path en failed no se rearma solo).
+          #
+          # Medido: 94 tickets acumulados en /var/lib/ara/canary/queue, cero
+          # procesados, path en failed desde 2026-11-14 01:51:53 UTC.
+          #
+          # Se arregla desde los dos lados:
+          #   - git: el fichero pasa a 100755 (git update-index --chmod=+x)
+          #   - deploy: este chmod explicito, para que un checkout sin permisos
+          #     no vuelva a dejar el modulo muerto.
+          # ═══════════════════════════════════════════════════════════════════
+          chmod 755 /opt/ape-pulse/ape-pulse-canary-worker.sh 2>&1 || true
+          if [ ! -x /opt/ape-pulse/ape-pulse-canary-worker.sh ]; then
+            echo "::error::el worker del canary sigue sin bit +x tras chmod"
+            exit 1
+          fi
+          echo "--- worker canary: OK ejecutable ($(ls -l /opt/ape-pulse/ape-pulse-canary-worker.sh | awk '{print $1, $5}'))"
           sudo -n systemctl daemon-reload 2>&1 || true
           PATH_PREV=$(systemctl is-failed ape-pulse-canary.path 2>/dev/null || echo unknown)
           echo "--- canary.path antes: $PATH_PREV"
