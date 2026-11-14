@@ -873,6 +873,11 @@ jobs:
           # con el NUMERO de lista mas alto, no la de mtime mas reciente: cablear una
           # historica de prueba la volveria "la mas nueva" por fecha y el menu serviria
           # la lista equivocada.
+          # [2026-11-14] Indice id -> nombre de los canales, para que el badge del agente
+          # sepa QUE canal esta viendo (OTT no publica MediaSession). Se regenera en
+          # cada deploy para que siga a la _CABLEADA mas reciente.
+          bash /opt/ape-pulse/ape-channel-index.sh 2>&1 || echo "--- aviso: ape-channel-index fallo"
+          echo "--- channel_index: $(stat -c%s /var/www/html/prisma/db/channel_index.json 2>/dev/null || echo ausente) B"
           bash /opt/ape-pulse/ape-jit-latest.sh 2>&1 || echo "--- aviso: ape-jit-latest fallo (revisar arriba)"
           echo "--- ape_jit_latest -> $(readlink /var/www/html/lists/ape_jit_latest.m3u8 2>/dev/null | xargs -r basename)"
           # [2026-11-14] Vigilante de MODULOS cada 60 s. Prueba cada modulo por HTTP
