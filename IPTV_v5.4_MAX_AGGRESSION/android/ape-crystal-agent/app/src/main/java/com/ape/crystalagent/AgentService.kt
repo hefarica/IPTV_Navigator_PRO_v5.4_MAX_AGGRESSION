@@ -115,6 +115,20 @@ class AgentService : Service() {
                     if (codec.isNotEmpty() || res.isNotEmpty()) {
                         qoe.reportQualityChange(codec.ifEmpty { "unknown" }, res.ifEmpty { "unknown" })
                     }
+                    // [2026-11-14] Puente al badge: la ENTRADA que el VPS declara.
+                    //
+                    // Hasta hoy esta resolucion se usaba SOLO para QoE y el badge se
+                    // dibujaba con BadgeOverlay.show(ctx, null, nombre) -> "entrada: N/D"
+                    // para siempre. El operador pidio ver "de que resolucion a cual de
+                    // salida va la imagen". Se guarda aqui y el ticker la pasa al badge.
+                    //
+                    // Fail-honest: si el VPS no manda resolution_hint (vacio), NO se
+                    // limpia lo que hubiera de un canal anterior si es reciente; se
+                    // guarda solo cuando hay valor.
+                    if (res.isNotEmpty()) {
+                        AraStatus.sourceResolution = res
+                        AraStatus.sourceResolutionAt = System.currentTimeMillis()
+                    }
                 } catch (t: Throwable) { Log.w(TAG, "callback SSE falló: ${t.message}") }
             }
             qoe.start(scope)          // VUELTA C2: heartbeat/liveness → ara_heartbeats
@@ -269,28 +283,75 @@ class AgentService : Service() {
                                     // exacta) y si no, el VPS. Si ninguno responde, el
                                     // badge sale sin nombre: no se inventa.
                                     var nombre = titulo
-                                    if (nombre.isNullOrBlank()) {
+                                    // [2026-11-14] Del MISMO endpoint sale tambien la
+                                    // resolucion de ENTRADA, medida por el VPS con
+                                    // ffprobe sobre un segmento real del canal.
+                                    //
+                                    // POR QUE AQUI Y NO DEL SSE: el `resolution_hint` del
+                                    // SSE es circular (el agente lo manda al VPS y el VPS
+                                    // lo devuelve) y, como ARA no reproduce -usar su
+                                    // player esta prohibido-, llega vacio. ffprobe en el
+                                    // VPS es la unica medida real posible sin root.
+                                    //
+                                    // Fail-honest: si el endpoint devuelve resolution=null
+                                    // (canal bloqueado, timeout, sin cache), se queda en
+                                    // N/D. No se estima nunca.
+                                    var entradaVps: String? = null
+                                    if (nombre.isNullOrBlank() || entradaVps == null) {
                                         nombre = try {
                                             val url = java.net.URL(
                                                 cfg.vpsBase.trimEnd('/') +
                                                     "/prisma/api/ape-last-channel.php"
                                             )
                                             val body = url.readText(Charsets.UTF_8)
-                                            org.json.JSONObject(body)
-                                                .optString("name", "")
+                                            val jo = org.json.JSONObject(body)
+                                            jo.optString("resolution", "")
                                                 .trim()
-                                                .takeIf { it.isNotEmpty() }
+                                                .takeIf { it.matches(Regex("^\\d{3,4}x\\d{3,4}$")) }
+                                                ?.let { entradaVps = it }
+                                            jo.optString("name", "")
+                                                .trim()
+                                                .takeIf { it.isNotEmpty() } ?: nombre
                                         } catch (t: Throwable) {
                                             Log.w(TAG, "nombre de canal: ${t.message}")
-                                            null
+                                            nombre
                                         }
                                     }
-                                    startActivity(
-                                        Intent(this@AgentService, UpscaleBadgeActivity::class.java)
-                                            .putExtra("channel", nombre)
-                                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    )
-                                    Log.i(TAG, "badge de upscaling mostrado sobre OTT canal=${nombre ?: "sin titulo"}")
+                                    if (entradaVps != null) {
+                                        AraStatus.sourceResolution = entradaVps!!
+                                        AraStatus.sourceResolutionAt = System.currentTimeMillis()
+                                    }
+                                    // [FIX 2026-11-14 t68] SIN Activity en el camino de la
+                                    // reproduccion.
+                                    //
+                                    // Antes: startActivity(UpscaleBadgeActivity). MEDIDO en el
+                                    // device: tras ese startActivity el foco no se quedaba en el
+                                    // badge sino en com.ape.crystalagent/.MainActivity (la raiz
+                                    // de la tarea del ARA) y OTT se pausaba en "Buffering: 0%".
+                                    // Es exactamente lo que el operador describio: "me salta y
+                                    // me lleva al menu del ARA".
+                                    //
+                                    // Ahora: BadgeOverlay monta el TextView con
+                                    // WindowManager.addView(TYPE_APPLICATION_OVERLAY) desde este
+                                    // mismo proceso. Sin Activity no hay tarea ni robo de foco.
+                                    // Fail-honest: si addView falla (sin SYSTEM_ALERT_WINDOW),
+                                    // BadgeOverlay lo registra y el agente sigue.
+                                    // [2026-11-14] ENTRADA al badge.
+                                    //
+                                    // Antes se pasaba `null` y el badge decia SIEMPRE
+                                    // "entrada: N/D". La resolucion de entrada la declara el
+                                    // VPS (resolution_hint del SSE / source.resolution del
+                                    // /sync) y se guarda en AraStatus.sourceResolution.
+                                    //
+                                    // Se descarta si es vieja (>10 min): un canal zapeado hace
+                                    // media hora no describe lo que se ve ahora, y decir una
+                                    // entrada caducada seria inventar. En ese caso el badge
+                                    // vuelve a "N/D", que es la verdad.
+                                    val ahora = System.currentTimeMillis()
+                                    val entrada = AraStatus.sourceResolution
+                                        .takeIf { it.isNotBlank() && ahora - AraStatus.sourceResolutionAt < 600_000L }
+                                    BadgeOverlay.show(this@AgentService, entrada, nombre)
+                                    Log.i(TAG, "badge de upscaling sobre OTT canal=${nombre ?: "sin titulo"} entrada=${entrada ?: "N/D"} (overlay sin Activity)")
                                 } catch (t: Throwable) {
                                     Log.w(TAG, "badge OTT: ${t.message}")
                                 }
@@ -298,12 +359,9 @@ class AgentService : Service() {
                         } else if (badgeShown) {
                             badgeShown = false
                             try {
-                                startActivity(
-                                    Intent(this@AgentService, UpscaleBadgeActivity::class.java)
-                                        .putExtra("hide", true)
-                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                )
-                                Log.i(TAG, "OTT parado -> badge retirado")
+                                // [FIX 2026-11-14 t68] retirada sin Activity (mismo motivo).
+                                BadgeOverlay.hide(this@AgentService)
+                                Log.i(TAG, "OTT parado -> badge retirado (overlay sin Activity)")
                             } catch (_: Throwable) {
                             }
                         }

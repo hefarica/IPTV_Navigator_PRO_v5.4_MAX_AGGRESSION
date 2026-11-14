@@ -57,6 +57,27 @@ object AraStatus {
     @Volatile var display4k: Boolean? = null
     @Volatile var displayMode: String = ""
 
+    // ── ENTRADA real del canal (para el badge de upscaling) ──────────────────
+    /**
+     * Resolución de ENTRADA del canal que el operador está viendo, tal como la
+     * declara el VPS. Vacío = no se sabe (el badge dirá "entrada: N/D").
+     *
+     * POR QUÉ EXISTE (2026-11-14)
+     *   El badge mostraba SIEMPRE "entrada: N/D" porque AgentService llamaba a
+     *   BadgeOverlay.show(ctx, null, nombre): le pasaba null como entrada. La
+     *   resolución SÍ llegaba (campo `resolution_hint` del SSE y `source.resolution`
+     *   del /sync) pero solo se usaba para el QoE, no para el badge.
+     *
+     *   Este campo es el puente. Sin él, el badge dice la salida pero nunca de dónde
+     *   viene la imagen, que es justo lo que pidió el operador:
+     *     "aparezca un aviso de upscaling de que resolución a cuál de salida está
+     *      llevando la imagen, si real o simulada"
+     *
+     * NO SE INVENTA: si nadie lo llenó, se queda vacío y el badge dice N/D.
+     */
+    @Volatile var sourceResolution: String = ""
+    @Volatile var sourceResolutionAt: Long = 0L
+
     // ── Homologación de presets de lista ─────────────────────────────────────
     @Volatile var lastPresetCount: Int = 0
     @Volatile var lastPresetLocal: Int = 0
