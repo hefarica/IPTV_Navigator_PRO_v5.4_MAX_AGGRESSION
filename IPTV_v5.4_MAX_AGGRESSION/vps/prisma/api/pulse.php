@@ -510,7 +510,18 @@ if ($mode === 'proxy') {
 
             if ($ok) {
                 if (function_exists('apcu_store')) {
-                    apcu_store($plKey, ['body' => $body, 'kind' => $kind], 2);
+                    /* [2026-11-14] TTL 2 s -> 8 s. MEDIDO:
+                 *   targetduration del proveedor = 11 s · segmentos de ~10 s
+                 *   el reproductor recarga el manifest cada ~5 s (10-13 recargas/min)
+                 *   con TTL de 2 s, CADA recarga era un MISS -> una conexion al
+                 *   proveedor -> y a esa cadencia el proveedor devuelve 461 -> 502.
+                 * Forense t53: 75,2 % de los 502 son del proveedor, y pulse.php
+                 * (P2) abre la conexion SIN pasar por el gate.
+                 * TTL 8 s cubre la recarga con margen y sigue por debajo del
+                 * targetduration (11 s): nunca se sirve un manifest caducado.
+                 * Tope fisico: si alguien baja el targetduration por debajo de 10 s,
+                 * este valor debe bajarse con el. No es "cuanto mas mejor". */
+                apcu_store($plKey, ['body' => $body, 'kind' => $kind], 8);
                     apcu_store($goodKey, ['body' => $body], 60);
                 }
             } else {

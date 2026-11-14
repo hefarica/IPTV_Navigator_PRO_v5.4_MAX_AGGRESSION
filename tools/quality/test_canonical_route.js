@@ -161,7 +161,10 @@ check('T1', 'IDEMPOTENCIA: dos GET = mismos bytes y ETag; If-None-Match -> 304 v
   assert(a.headers.etag === b.headers.etag, 'ETag distinto entre GET: ' + a.headers.etag + ' vs ' + b.headers.etag);
   assert(a.bytes === b.bytes, 'tamano distinto: ' + a.bytes + ' vs ' + b.bytes);
   const etag = a.headers.etag;
-  assert(/^"[0-9a-f]{32}-ape-wire-1-cartridge"$/.test(etag), 'ETag no derivado de sha256+version+forma: ' + etag);
+  /* [2026-11-14] La forma ya NO es cartridge|proxy: la ruta sirve VERBATIM siempre y
+   * la polimorfia la hace pulse.php sobre las URLs de la lista. El ETag lleva la
+   * forma 'verbatim' para que quede declarado en la cabecera, no para distinguir. */
+  assert(/^"[0-9a-f]{32}-ape-wire-1-verbatim"$/.test(etag), 'ETag no derivado de sha256+version+forma: ' + etag);
   const c = await getStreamed('/lists/APE_LISTA_1794100720046.m3u8', { 'User-Agent': UA_VLC, 'If-None-Match': etag });
   assert(c.status === 304, 'If-None-Match no dio 304, dio ' + c.status);
   assert(c.bytes === 0, 'el 304 trajo cuerpo (' + c.bytes + ' B)');
@@ -170,37 +173,40 @@ check('T1', 'IDEMPOTENCIA: dos GET = mismos bytes y ETag; If-None-Match -> 304 v
   return 'sha256=' + a.sha256.slice(0, 16) + '… en los 2 GET · ETag=' + etag + ' · 304 con 0 B';
 });
 
-check('T2', 'POLIMORFISMO: mismo path con UA VLC vs UA OTT -> dos formas validas', async () => {
+check('T2', 'POLIMORFISMO: la ruta sirve VERBATIM y declara que el polimorfismo esta en la lista', async () => {
   const vlc = await getBuffered('/lists/APE_LISTA_1794100720046.m3u8', { 'User-Agent': UA_VLC });
   const ott = await getBuffered('/lists/APE_LISTA_1794100720046.m3u8', { 'User-Agent': UA_OTT });
   assert(vlc.status === 200 && ott.status === 200, 'status ' + vlc.status + '/' + ott.status);
+  /* [2026-11-14 · DECISION MEDIDA]
+   * La ruta NO reescribe URLs. Medido sobre la lista real del operador: cada canal
+   * ya apunta a https://iptv-ape.duckdns.org/pulse/<id>.m3u8?u=<proveedor>&d=<device>
+   * y pulse.php hace la polimorfia por User-Agent:
+   *   VLC -> mode=cartridge;dialect=vlc   OTT -> mode=proxy
+   * Por tanto el polimorfismo EXISTE, pero vive en la lista y en pulse.php, no aqui.
+   * Reescribir al loopback del OttShim era doble cableado y roto: el shim corre EN EL
+   * DEVICE, asi que 127.0.0.1 en una lista publicada lo resuelve cada cliente contra
+   * si mismo. Lo que se verifica aqui es lo que la ruta SI aporta. */
   const shaV = sha256(vlc.buf), shaO = sha256(ott.buf);
-  assert(shaV !== shaO, 'LAS DOS FORMAS SON IDENTICAS: el polimorfismo no existe');
+  assert(shaV === shaO, 'la ruta sirve bytes distintos por UA: no es verbatim (' + shaV.slice(0, 12) + ' vs ' + shaO.slice(0, 12) + ')');
+  const src = fs.readFileSync(path.join(LISTS, 'APE_LISTA_1794100720046.m3u8'));
+  assert(shaV === sha256(src), 'la respuesta no es verbatim (sha distinto del fuente)');
+  /* Ambas formas declaran ser verbatim y de donde viene el cableado. */
+  for (const r of [vlc, ott]) {
+    assert(r.headers['x-ape-served'] === 'verbatim', 'x-ape-served=' + r.headers['x-ape-served']);
+    assert(r.headers['x-ape-channel-wiring'] === 'in-list:pulse.php-by-ua', 'x-ape-channel-wiring=' + r.headers['x-ape-channel-wiring']);
+  }
+  /* La forma se sigue REPORTANDO por UA: el dato no se pierde, solo no se usa para reescribir. */
   assert(vlc.headers['x-ape-form'] === 'cartridge', 'forma VLC=' + vlc.headers['x-ape-form']);
   assert(ott.headers['x-ape-form'] === 'proxy', 'forma OTT=' + ott.headers['x-ape-form']);
-  /* cartucho = VERBATIM: mismo sha que el fichero fuente */
-  const src = fs.readFileSync(path.join(LISTS, 'APE_LISTA_1794100720046.m3u8'));
-  assert(shaV === sha256(src), 'la forma cartucho NO es verbatim (sha distinto del fuente)');
-  /* proxy = todas las URLs envueltas, cero URLs crudas, mismo numero de canales */
-  const linesV = vlc.text.split('\n').filter(Boolean);
-  const linesO = ott.text.split('\n').filter(Boolean);
-  assert(linesV.length === linesO.length, 'el proxy cambio el numero de lineas: ' + linesV.length + ' vs ' + linesO.length);
-  const extV = linesV.filter((l) => l.startsWith('#EXTINF')).length;
-  const extO = linesO.filter((l) => l.startsWith('#EXTINF')).length;
-  assert(extV === extO, '#EXTINF distinto: ' + extV + ' vs ' + extO);
-  const metaV = linesV.filter((l) => l.startsWith('#EXT-X-APE-')).length;
-  const metaO = linesO.filter((l) => l.startsWith('#EXT-X-APE-')).length;
-  assert(metaV === metaO, 'la metadata APE no se preservo: ' + metaV + ' vs ' + metaO);
-  const urlsO = linesO.filter((l) => !l.startsWith('#'));
-  const raw = urlsO.filter((l) => !/^http:\/\/127\.0\.0\.1:8899\/source\.m3u8\?id=/.test(l));
-  assert(raw.length === 0, raw.length + ' URLs crudas sin envolver en la forma proxy');
-  const one = urlsO[0];
-  const wrapped = new URL(one);
-  assert(wrapped.searchParams.get('url').startsWith('http://provider.example'), 'la URL original no viaja verbatim en url=');
+  /* Y la prueba de que el cableado YA esta en la lista: cada URL de canal es /pulse/<id>. */
+  const urls = vlc.text.split('\n').filter((l) => l && !l.startsWith('#'));
+  assert(urls.length > 0, 'la lista no tiene URLs de canal');
+  const pulse = urls.filter((l) => /\/pulse\/[0-9]+\.m3u8\?u=/.test(l));
+  assert(pulse.length === urls.length, 'solo ' + pulse.length + ' de ' + urls.length + ' URLs van cableadas por /pulse/');
+  const ext = vlc.text.split('\n').filter((l) => l.startsWith('#EXTINF')).length;
+  const meta = vlc.text.split('\n').filter((l) => l.startsWith('#EXT-X-APE-')).length;
   STATE.shaProxy = shaO;
-  return 'cartucho ' + shaV.slice(0, 16) + '… (' + vlc.buf.length + ' B, verbatim) · proxy ' + shaO.slice(0, 16) +
-    '… (' + ott.buf.length + ' B) · ' + extV + ' canales en ambas · ' + urlsO.length + ' URLs envueltas, 0 crudas · ' +
-    'metadata APE ' + metaV + '=' + metaO + ' · 1a URL proxy: ' + one.slice(0, 96) + '…';
+  return 'verbatim en las 2 formas (sha=' + shaV.slice(0, 12) + '…) · ' + urls.length + ' URLs cableadas por /pulse/ · ' + ext + ' #EXTINF · ' + meta + ' #EXT-X-APE intactas';
 });
 
 check('T3', 'ISOMORFISMO: la misma lista con otro nombre -> misma estructura, id de la ruta', async () => {
