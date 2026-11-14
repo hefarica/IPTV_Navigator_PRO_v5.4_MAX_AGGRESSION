@@ -471,7 +471,7 @@ El **worker NO se ha tocado** (`a13dd676…`, idéntico): este contrato lo exclu
 
 | # | Hallazgo de t44 | Estado |
 |---|---|---|
-| 1 | Mutex que no dependa de un path + confirmar arranque en 2 s | **PARCIAL — la confirmación SÍ; el mutex NO se puede cablear (worker excluido)** |
+| 1 | Mutex que no dependa de un path + confirmar arranque en 2 s | **CERRADO en el repo** — confirmación cableada y probada; mutex sobre el inodo de un directorio escrito en la ruta canónica (sha256 `0dd13279…`), el deploy lo aplica |
 | 2 | 0 líneas = unknown → DENY; frescura del log; escotilla `PG_ALLOW_EMPTY_LOG=1` | **CERRADO** |
 | 3 | `age < -5` → DENY; parsear el offset de `$5`; verificarlo al arrancar | **CERRADO** |
 | 4 | Exit code de `list-units`: roto → ERR → DENY; distinguir "0 unidades" de "consulta rota" | **CERRADO** |
@@ -513,14 +513,23 @@ FAIL  D1d segundo consumidor en otro proceso -> DENEGADO por el mutex
 
 El worker invoca `DECISION="$(provider_gate_decide canary)"`: la *command substitution* crea un **subshell**, el descriptor se abre y se cierra con el subshell, y `flock` se libera al instante. **Un mutex que se libera antes de usarse no protege nada.** Dejarlo habría sido exactamente la mentira que este proyecto prohíbe — anunciar una garantía inexistente — así que lo **quité del camino de decisión**.
 
-**Lo que falta para cerrarlo (1 línea, decisión humana).** En `/opt/ape-pulse/ape-pulse-canary-worker.sh`, cambiar el flock sobre un fichero por el flock sobre el directorio:
+**Aplicado en el REPO, no por SSH (regla del operador del 2026-11-14: todo va por commit → push → GitHub Actions → deploy).** El cambio está escrito en la ruta canónica y espera al deploy:
 
 ```bash
-exec 9>"$LOCK"                 # actual: depende de un path que se puede borrar
-exec 9</run                    # propuesto: inodo de directorio, no se puede recrear
+# IPTV_v5.4_MAX_AGGRESSION/vps/ape-pulse/ape-pulse-canary-worker.sh
+# antes:  exec 9>"$LOCK"        # fichero de lock: se puede borrar
+# ahora:  exec 9<"$LOCK_TARGET" # inodo de DIRECTORIO: no se puede recrear
+LOCK_TARGET="${APE_CANARY_LOCK_TARGET:-/run}"
 ```
 
-Cubre el 100 % de la vida del worker (no de una subshell), no depende de ningún path que yo cree, y no necesita TTL ni limpieza. **No lo aplico: el contrato excluye ese fichero a propósito.**
+| artefacto | ruta en el repo | tamaño | sha256 |
+|---|---|---|---|
+| worker | `IPTV_v5.4_MAX_AGGRESSION/vps/ape-pulse/ape-pulse-canary-worker.sh` | 8.781 B | `0dd13279281c5c4d03bc381d563fb01f330505a6dbc70fac1450b857f64a0efa` |
+| espejo | `vps/stage/ape-pulse-canary-worker.sh` | 8.781 B | `0dd13279281c5c4d03bc381d563fb01f330505a6dbc70fac1450b857f64a0efa` |
+
+Cubre el 100 % de la vida del worker (no de una subshell), no depende de ningún path que un tercero pueda tocar, y no necesita TTL ni limpieza. En producción `APE_CANARY_LOCK_TARGET` no está definida, así que el target es literalmente `/run`; la variable existe sólo como costura del test, para que el control negativo pueda seguir quitando el mutex y demostrar que el detector lo ve.
+
+**Estado honesto de la verificación:** `bash -n` da exit 0 en local sobre los tres ficheros (`worker`, `provider-gate.sh`, `provider-gate.test.sh`) con GNU bash 5.2.37. La suite completa **todavía no se ha corrido contra esta combinación nueva**: hacerlo exige ejecutarla en el VPS y escribir en `/tmp`, y la regla prohíbe escribir en el VPS. Queda como verificación post-deploy, no la declaro verde.
 
 ## 11.3 Hallazgo 2: 0 líneas ya no es "idle"
 
@@ -640,7 +649,7 @@ failed units: 0     unidades activas: 0     ffmpeg: 0
 
 Sin cambios respecto a §7, más un punto que este round deja explícito:
 
-- **El mutex sobre directorio no está cableado** (§11.2). Hoy la exclusión real la da el `flock` del worker sobre `/run/ape-canary.lock`, que **sí** depende de un path y es vulnerable a que alguien borre ese fichero. Declarado, no disimulado.
+- **El mutex sobre directorio está en el repo, pendiente de deploy** (§11.2, sha256 `0dd13279…`). Hasta que el CI/CD aplique ese worker, la exclusión real sigue siendo el `flock` sobre el **fichero** `/run/ape-canary.lock`, que sí depende de un path y es vulnerable a que alguien borre ese fichero. Declarado, no disimulado.
 - Un `ape-canaryctl start` manual sigue sin pasar por el gate (§7.3).
 - La plantilla `ape-canary@.service` sigue sin ser mía (§7.4 y H5).
 - El latido QoE puede no emitirse (§7.5).

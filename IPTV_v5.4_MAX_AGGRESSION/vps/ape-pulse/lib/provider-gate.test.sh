@@ -197,15 +197,19 @@ GOT_OWNERS=0
 run_workers() {
   local libdir="$1" lockmode="$2" label="$3" n="${4:-3}" i LOCKF
   pg_mutex_release 2>/dev/null || true
+  # El lock del worker es flock sobre el INODO DE UN DIRECTORIO (no un fichero).
+  # 'same' = un solo directorio compartido (exclusion real entre los 3);
+  # 'unique' = un directorio por worker (mutex QUITADO, para el control negativo).
+  mkdir -p "$T/lockshared"
   for i in $(seq 1 "$n"); do
-    LOCKF="$T/ape-canary.lock"
-    [ "$lockmode" = "unique" ] && LOCKF="$T/ape-canary.$i.lock"
+    LOCKF="$T/lockshared"
+    if [ "$lockmode" = "unique" ]; then LOCKF="$T/lock$i"; mkdir -p "$LOCKF"; fi
     ( APE_PULSE_LIB="$libdir" \
       APE_CANARY_QUEUE="$T/queue" \
       APE_CANARY_ALLOW="$T/allowed_hosts.txt" \
       APE_CANARY_CTL="$T/bin/ape-canaryctl" \
       APE_CANARY_LOG="$T/logs/worker.$i.log" \
-      APE_CANARY_LOCK="$LOCKF" \
+      APE_CANARY_LOCK_TARGET="$LOCKF" \
       APE_CANARY_WAIT_MAX=25 \
       bash "$WORKER" ) &
   done
@@ -396,7 +400,7 @@ export APE_FAKE_RESTART=1
 queue_ticket dddd4444; queue_ticket eeee5555
 ( APE_PULSE_LIB="$HERE" APE_CANARY_QUEUE="$T/queue" \
   APE_CANARY_ALLOW="$T/allowed_hosts.txt" APE_CANARY_CTL="$T/bin/ape-canaryctl" \
-  APE_CANARY_LOG="$T/logs/worker.restart.log" APE_CANARY_LOCK="$T/ape-canary.lock" \
+  APE_CANARY_LOG="$T/logs/worker.restart.log" APE_CANARY_LOCK_TARGET="$T/lockshared" \
   APE_CANARY_WAIT_MAX=25 bash "$WORKER" )
 RC=$?
 T1="$(date +%s%N)"
@@ -460,7 +464,7 @@ write_zap 12
 queue_ticket zzzz9999
 ( APE_PULSE_LIB="$HERE" APE_CANARY_QUEUE="$T/queue" \
   APE_CANARY_ALLOW="$T/allowed_hosts.txt" APE_CANARY_CTL="$T/bin/ape-canaryctl" \
-  APE_CANARY_LOG="$T/logs/worker.zap.log" APE_CANARY_LOCK="$T/ape-canary.lock" \
+  APE_CANARY_LOG="$T/logs/worker.zap.log" APE_CANARY_LOCK_TARGET="$T/lockshared" \
   APE_CANARY_WAIT_MAX=25 bash "$WORKER" )
 RCF=$?
 NS="$(grep -c '^S ' "$T/events.log" 2>/dev/null || true)"; NS="${NS:-0}"

@@ -46,7 +46,6 @@ QUEUE="${APE_CANARY_QUEUE:-/var/lib/ara/canary/queue}"
 ALLOW="${APE_CANARY_ALLOW:-/etc/ara/canary/allowed_hosts.txt}"
 CTL="${APE_CANARY_CTL:-/usr/local/bin/ape-canaryctl}"
 LOG="${APE_CANARY_LOG:-/var/log/ara/canary.log}"
-LOCK="${APE_CANARY_LOCK:-/run/ape-canary.lock}"
 LIBDIR="${APE_PULSE_LIB:-/opt/ape-pulse/lib}"
 MAX_TTL=120
 SECONDS_SAMPLE="${APE_CANARY_SECONDS:-6}"
@@ -70,9 +69,17 @@ fi
 # atomico. Ocho workers evaluaron el grep antes de que el primero arrancase su
 # unidad y se apilaron 8 ffmpeg contra un proveedor que da UNA conexion.
 # Ahora: flock -n. El segundo sale en el acto, sin esperar y sin acumular.
-exec 9>"$LOCK" || { log "skip: no puedo abrir el lock $LOCK"; exit 0; }
+#
+# [2026-11-14 · t45] El lock va sobre el INODO DE UN DIRECTORIO del sistema, no
+# sobre un fichero. Un fichero de lock se puede borrar: si alguien lo borra
+# mientras un worker lo tiene, el siguiente lo RECREA y bloquea un inodo
+# DISTINTO, con lo que los dos se creen duenos y vuelven los dos canarios. El
+# inodo de /run no se puede borrar ni recrear, asi que la exclusion no depende
+# de ningun path que un tercero pueda tocar. Se libera solo al morir el proceso.
+LOCK_TARGET="${APE_CANARY_LOCK_TARGET:-/run}"
+exec 9<"$LOCK_TARGET" || { log "skip: no puedo abrir el lock $LOCK_TARGET"; exit 0; }
 if ! flock -n 9; then
-  log "skip: otro worker tiene el lock $LOCK (un solo propietario)"
+  log "skip: otro worker tiene el lock de $LOCK_TARGET (un solo propietario)"
   exit 0
 fi
 
