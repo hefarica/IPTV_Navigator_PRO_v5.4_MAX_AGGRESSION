@@ -68,8 +68,16 @@ class LoopbackProxy(private val policy: AbrPolicy) {
     private val client = OkHttpClient.Builder()
         .followRedirects(true)
         .followSslRedirects(true)
-        .connectTimeout(4, TimeUnit.SECONDS)
-        .readTimeout(8, TimeUnit.SECONDS)
+        // [FIX 2026-11-14] Timeouts para CATALOGOS, no solo para un canal.
+        // Con 4 s de conexion y 8 s de lectura, traer la lista cableada del operador
+        // (1.298.222.092 B) desde el VPS por WiFi no terminaba: medido, el GET
+        // /source.m3u8 devolvia 0 bytes. El shim esta pensado para un canal, pero el
+        // operador lo apunta al catalogo, y el catalogo pesa mas.
+        // 10 s / 40 s cubre el catalogo sin volver perezosa la reproduccion de un
+        // canal (que responde en decimas). El passthrough de 2 MB de la funcion
+        // playlist evita ademas que el Rewriter se coma el tiempo.
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(40, TimeUnit.SECONDS)
         .connectionPool(ConnectionPool(8, 30, TimeUnit.SECONDS))
         .build()
 
@@ -244,13 +252,74 @@ class LoopbackProxy(private val policy: AbrPolicy) {
         resp.use {
             policy.qoe.onHttpStatus(it.code)
             if (it.code >= 400) policy.qoe.onHttpError(it.code, target)
+            val type = it.header("Content-Type") ?: "application/vnd.apple.mpegurl"
+            // [FIX 2026-11-14 v2] CATALOGO = STREAMING DIRECTO, sin materializar.
+            //
+            // v1 comparaba `body.length` DESPUES de `body.string()`. No servia de nada:
+            // string() ya habia cargado los 1.298.222.092 B en heap antes de comparar,
+            // y en un device de 4 GB eso acaba en OOM o en un GC que no deja escribir
+            // ni un byte al cliente. Medido despues de v1: 70 s y 0 bytes (antes de v1
+            // eran 83 s y 0 bytes con el Rewriter). Cambiar el umbral no arreglaba
+            // nada porque el dano ya estaba hecho al llamar a string().
+            //
+            // v2 mira Content-Length ANTES de tocar el body y, si es grande, copia
+            // upstream -> socket en trozos de 64 KB. Nunca hay 1,2 GB en memoria.
+            // El catalogo no se reescribe: ya viene cableado por /pulse/.
+            // v3: TAMBIEN streaming cuando el tamano es DESCONOCIDO.
+            //
+            // nginx sirve el catalogo con gzip_static / chunked y entonces
+            // contentLength() devuelve -1. Con la condicion `len > 2_000_000` ese -1
+            // daba FALSE y el codigo seguia al body.string(): otra vez 1,2 GB en heap
+            // y otra vez 60 s con 0 bytes al cliente. Medido.
+            //
+            // Regla correcta: solo se materializa cuando el tamano es CONOCIDO y
+            // pequeno. Sabido grande o DESCONOCIDO -> streaming. Un HLS de un canal
+            // declara su Content-Length (kilobytes); un catalogo detras de gzip, no.
+            val len = it.body?.contentLength() ?: -1L
+            if (len < 0L || len > 2_000_000L) {
+                streamThrough(c, it, type, len)
+                return
+            }
             val body = it.body?.string() ?: return text(c, "empty", "text/plain", 502)
             val base = it.request.url
             val out = Rewriter(policy, ::map).rewrite(body, base)
-            val type = it.header("Content-Type") ?: "application/vnd.apple.mpegurl"
             recordPlaylist(body, base)
             text(c, out, type)
         }
+    }
+
+    /**
+     * Copia el body upstream al socket del player en trozos de 64 KB, sin cargarlo.
+     *
+     * Es lo que permite al shim servir un catalogo de 1.298.222.092 B en un device de
+     * 4 GB de RAM. Con `body.string()` el proceso se queda sin memoria antes de poder
+     * escribir nada: medido, el cliente recibia 0 bytes a los 70 s.
+     *
+     * No reescribe: un catalogo multi-canal ya viene cableado por /pulse/ y no hay nada
+     * que mapear por segmento. El valor del shim (fijar variante, mapear segmentos) se
+     * aplica en las playlists pequenas, que si pasan por el Rewriter.
+     */
+    private fun streamThrough(c: Socket, resp: Response, type: String, len: Long) {
+        val o = c.getOutputStream()
+        val head = "HTTP/1.1 200 X\r\nContent-Type: $type\r\n" +
+            (if (len > 0) "Content-Length: $len\r\n" else "") +
+            "Connection: close\r\n\r\n"
+        o.write(head.toByteArray())
+        val ins = resp.body?.byteStream()
+        if (ins == null) {
+            o.flush()
+            return
+        }
+        ins.use { src ->
+            val buf = ByteArray(64 * 1024)
+            while (true) {
+                val n = src.read(buf)
+                if (n <= 0) break
+                o.write(buf, 0, n)
+            }
+        }
+        o.flush()
+        mediaServed++
     }
 
     private fun segment(c: Socket, req: Req, target: String?) {

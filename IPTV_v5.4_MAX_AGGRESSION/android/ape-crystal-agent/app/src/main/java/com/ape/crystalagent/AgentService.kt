@@ -1,8 +1,11 @@
 package com.ape.crystalagent
 
 import android.app.*
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.media.session.MediaSessionManager
+import android.media.session.PlaybackState
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -115,7 +118,127 @@ class AgentService : Service() {
             qoe.start(scope)          // VUELTA C2: heartbeat/liveness → ara_heartbeats
             selfUpdate.start(scope)   // auto-update desde /ara/version + /ara/agent.apk
             syncLoop.start(scope)     // /sync (D3): 30 s, offline-first, backoff y fail-closed
+
+            // ═══════════════════════════════════════════════════════════════════
+            // [2026-11-14] AUTO-ARRANQUE DEL SHIM
+            //
+            // PEDIDO DEL OPERADOR, textual:
+            //   "se logre que el OTTSHIM NUNCA MUERA Y ESTA CONECTADO SIEMPRE E
+            //    INMEDIATAMENTE EL ARA ESTE EN FUNCIONAMIENTO"
+            //
+            // Este es el enganche exacto. `AgentService` ya se auto-arranca por tres
+            // vias independientes: START_STICKY (el sistema lo recrea), BootReceiver
+            // (tras reboot) y onTaskRemoved (re-arranque al cerrar la tarea). El shim
+            // NO tenia ninguna: solo el boton de la UI. Colgandolo de aqui, arranca
+            // con ARA, en el boot y tras cada reinicio del agente.
+            //
+            // LA FUENTE: el CATALOGO DE CALIDAD del VPS (/jit/playlist-calidad.m3u8).
+            // Esa ruta daba 404 hasta hoy (proxy al motor 3099 sin catalogos
+            // generados); ahora nginx la sirve desde el enlace ape_jit_latest.m3u8,
+            // que apunta a la lista cableada con todos los canales por /pulse/.
+            //
+            // IDEMPOTENTE Y FAIL-OPEN:
+            //   - Si el shim ya estaba arrancado, ProxyService solo actualiza la
+            //     fuente; no abre un segundo socket.
+            //   - Si falla, se loguea y ARA sigue: un fallo del proxy NUNCA debe
+            //     tumbar el agente. El boton "PARAR SHIM" de la UI sigue mandando:
+            //     el operador puede pararlo y este bloque no lo contradice (solo
+            //     actua al arrancar el servicio).
+            // ═══════════════════════════════════════════════════════════════════
+            try {
+                ShimBridge.start(
+                    this,
+                    "https://iptv-ape.duckdns.org/jit/playlist-calidad.m3u8",
+                    null,
+                    0
+                )
+                Log.i(TAG, "shim auto-arrancado con el catalogo de calidad del JIT")
+            } catch (t: Throwable) {
+                Log.w(TAG, "shim auto-arranque fallo (ARA sigue): ${t.message}")
+            }
             Log.i(TAG, "FULL SYSTEM START dev=${cfg.deviceId} vps=${cfg.vpsBase} token=${if (cfg.hasToken()) "set" else "MISSING"} syncKey=${if (cfg.hasSyncKey()) "set" else "MISSING"} sync=${if (cfg.syncEnabled) "on" else "off"}")
+
+            // ═══════════════════════════════════════════════════════════════════
+            // [2026-11-14] OTT NAVIGATOR ES LA SEÑAL DE ARRANQUE DEL SISTEMA
+            //
+            // PEDIDO DEL OPERADOR, textual:
+            //   "haz que cuando se ingrese al OTT NAVIGATOR todo el sistema arranque
+            //    solo con todo activo entregando la maxima calidad de imagen con un
+            //    pequeno logo en el overlay de OTT NAVIGATOR que existe"
+            //
+            // COMO SE DETECTA OTT SIN ROOT NI ACCESIBILIDAD:
+            //   SessionTap (dev.venice.ottshim.SessionTap) ya es el
+            //   NotificationListenerService de este APK y su TARGET es
+            //   studio.scillarium.ottnavigator. Con su ComponentName se puede pedir
+            //   MediaSessionManager.getActiveSessions y leer el PlaybackState real del
+            //   reproductor. No se adivina por primer plano ni por package: se mira si
+            //   OTT esta REPRODUCIENDO (STATE_PLAYING), que es la senal correcta.
+            //
+            // QUE SE HACE CUANDO OTT REPRODUCE:
+            //   1) si el shim no corre, se relanza (esto es el "todo activo");
+            //   2) se muestra el badge de upscaling sobre OTT (entrada -> salida);
+            //   3) los settings de maxima calidad ya los aplica SettingsApplier desde
+            //      el SSE del VPS + la base local; no se reaplican aqui para no pisar
+            //      contadores ni provocar rechazos en bucle.
+            // Cuando OTT deja de reproducir, el badge se retira.
+            //
+            // FAIL-OPEN: cualquier fallo (permiso de sesion revocado, badge sin
+            // SYSTEM_ALERT_WINDOW, media session vacia) se registra y NO tumba nada.
+            // El hilo es IO, con sleep de 5 s: no compite con la reproduccion.
+            // ═══════════════════════════════════════════════════════════════════
+            scope.launch(Dispatchers.IO) {
+                val ottPkg = "studio.scillarium.ottnavigator"
+                var badgeShown = false
+                while (true) {
+                    try {
+                        Thread.sleep(5_000)
+                        val msm = getSystemService(MediaSessionManager::class.java)
+                        val comp = ComponentName(
+                            this@AgentService,
+                            dev.venice.ottshim.SessionTap::class.java
+                        )
+                        val ses = msm?.getActiveSessions(comp)
+                            ?.firstOrNull { it.packageName == ottPkg }
+                        val playing = ses?.playbackState?.state == PlaybackState.STATE_PLAYING
+                        if (playing) {
+                            if (!ShimBridge.running) {
+                                Log.w(TAG, "OTT reproduciendo y shim caido -> relanzo")
+                                ShimBridge.start(
+                                    this@AgentService,
+                                    "https://iptv-ape.duckdns.org/jit/playlist-calidad.m3u8",
+                                    null,
+                                    0
+                                )
+                            }
+                            if (!badgeShown) {
+                                badgeShown = true
+                                try {
+                                    startActivity(
+                                        Intent(this@AgentService, UpscaleBadgeActivity::class.java)
+                                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    )
+                                    Log.i(TAG, "badge de upscaling mostrado sobre OTT")
+                                } catch (t: Throwable) {
+                                    Log.w(TAG, "badge OTT: ${t.message}")
+                                }
+                            }
+                        } else if (badgeShown) {
+                            badgeShown = false
+                            try {
+                                startActivity(
+                                    Intent(this@AgentService, UpscaleBadgeActivity::class.java)
+                                        .putExtra("hide", true)
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                )
+                                Log.i(TAG, "OTT parado -> badge retirado")
+                            } catch (_: Throwable) {
+                            }
+                        }
+                    } catch (t: Throwable) {
+                        Log.w(TAG, "ticker OTT: ${t.message}")
+                    }
+                }
+            }
         } catch (t: Throwable) {
             Log.e(TAG, "inicialización de módulos falló; app sigue local", t)
             AraStatus.serviceRunning = false
