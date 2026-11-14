@@ -28,6 +28,36 @@ if ngx.worker.id() ~= 0 then return end
 local function flush_callback(premature)
     if premature then return end
 
+    -- ═══════════════════════════════════════════════════════════════════════
+    -- [FIX 2026-11-14] REPROGRAMAR PRIMERO, ANTES DE CUALQUIER `return`.
+    --
+    -- El `ngx.timer.at(FLUSH_INTERVAL_S, flush_callback)` estaba al FINAL del
+    -- callback, y el callback tiene SEIS `return` tempranos:
+    --     L33  if not dict then return end
+    --     L36  if not keys or #keys == 0 then return end    <<< el asesino
+    --     L177 if #metrics == 0 ... then return end
+    --     L191 if not body then return end
+    --     L197 if not connected then return end
+    -- Cualquiera de ellos cortaba la cadena del timer PARA SIEMPRE. El timer
+    -- no se rearma solo: si el callback sale sin reprogramar, no hay proximo
+    -- flush nunca.
+    --
+    -- MEDIDO: el flush corrio a las 15:08:29 (tras el reload del deploy), envio
+    -- las claves que habia, las borro, y a las 15:09 el dict estaba VACIO ->
+    -- `#keys == 0` -> return -> cadena muerta. A las 15:11 se sirvieron tres
+    -- segmentos (12,8 MB + 10,8 MB + 17,8 MB) y la tabla NO recibio ni una fila.
+    -- El dict vacio es el estado NORMAL entre zaps, asi que el modulo moria
+    -- solo en cuanto el operador dejaba de ver la tele unos segundos.
+    --
+    -- Reprogramar arriba hace que cualquier salida temprana sea inofensiva:
+    -- el proximo ciclo vuelve a intentarlo en 60 s, que es exactamente lo que
+    -- se quiere de un latido.
+    -- ═══════════════════════════════════════════════════════════════════════
+    local ok_rs, err_rs = ngx.timer.at(FLUSH_INTERVAL_S, flush_callback)
+    if not ok_rs then
+        ngx.log(ngx.ERR, "[qoe_flush] no se pudo reprogramar el timer: ", err_rs)
+    end
+
     local ok, err = pcall(function()
         local dict = ngx.shared.qoe_metrics
         if not dict then return end
@@ -211,8 +241,11 @@ local function flush_callback(premature)
         end
     end)
 
-    -- Schedule next flush
-    ngx.timer.at(FLUSH_INTERVAL_S, flush_callback)
+    -- [FIX 2026-11-14] El `ngx.timer.at(FLUSH_INTERVAL_S, flush_callback)` que
+    -- estaba aqui se movio al PRINCIPIO del callback. Si se dejara tambien aqui,
+    -- cada ciclo crearia DOS timers (uno del principio, otro del final) y el
+    -- numero de flushes por minuto se duplicaria en cada vuelta: crecimiento
+    -- exponencial de timers hasta agotar el worker. Solo puede haber uno.
 
     if not ok then
         ngx.log(ngx.WARN, "[qoe_flush] silent error: ", err)
