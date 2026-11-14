@@ -86,3 +86,5 @@ IPTV_v5.4_MAX_AGGRESSION/vps/bin/ape-cablear-queue-worker.test.sh	/opt/ape-pulse
 IPTV_v5.4_MAX_AGGRESSION/vps/systemd/ape-cablear-cola.path	/etc/systemd/system/ape-cablear-cola.path	644	root:root	[2026-11-14] dispara el worker en <1 s al aparecer un ticket; MakeDirectory solo de cola/
 IPTV_v5.4_MAX_AGGRESSION/vps/systemd/ape-cablear-cola.service	/etc/systemd/system/ape-cablear-cola.service	644	root:root	[2026-11-14] oneshot del worker con flock singleton
 IPTV_v5.4_MAX_AGGRESSION/vps/systemd/ape-cablear-cola.timer	/etc/systemd/system/ape-cablear-cola.timer	644	root:root	[2026-11-14] red de seguridad: recoge un ticket que el .path hubiera perdido
+IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/list-cablear-panel.js	/var/www/html/js/ape-v9/list-cablear-panel.js	644	www-data:www-data	[2026-11-14] panel de integracion de listas: desplegable con las 5 reales + publicar marcado. 32.245 B sha b725d0f6
+IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html	/var/www/html/index-v4.html	644	www-data:www-data	[2026-11-14] +1 linea: <script src="js/ape-v9/list-cablear-panel.js?v=20261114-cablear1">. El VPS tenia 0934fc14 (identico al repo sin el include), asi que no revierte nada
