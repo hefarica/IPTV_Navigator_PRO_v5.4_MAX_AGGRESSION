@@ -125,11 +125,20 @@ $devRaw = pulse_b64url_decode($dB);
 if ($devRaw !== null && strlen($devRaw) <= 768) {
     $dev = json_decode($devRaw, true);
     if (is_array($dev)) {
+        // El player envia claves CORTAS (t,s,r,w,h,f,hdr,p). La version
+        // anterior solo leia soc/max_h/buffer_ms/player, que NO existen en ese
+        // payload: los cuatro campos se perdian en TODOS los pulsos. Medido
+        // 2026-11-13: 17.639 pulsos con device vacio salvo 21.
+        // Se aceptan las dos formas para no romper a quien ya mande la larga.
         $device = [
-            'soc'       => pulse_clean((string)($dev['soc'] ?? ''), 24),
-            'max_h'     => (int)($dev['max_h'] ?? 0),
+            'soc'       => pulse_clean((string)($dev['soc']   ?? $dev['s'] ?? ''), 24),
+            'max_h'     => (int)($dev['max_h']   ?? $dev['h'] ?? 0),
+            'max_w'     => (int)($dev['max_w']   ?? $dev['w'] ?? 0),
+            'fps'       => (int)($dev['fps']     ?? $dev['f'] ?? 0),
+            'hdr'       => pulse_clean((string)($dev['hdr'] ?? ''), 12),
+            'profile'   => pulse_clean((string)($dev['p']   ?? ''), 8),
             'buffer_ms' => (int)($dev['buffer_ms'] ?? 0),
-            'player'    => pulse_clean((string)($dev['player'] ?? ''), 32),
+            'player'    => pulse_clean((string)($dev['player'] ?? $dev['t'] ?? ''), 32),
         ];
     }
 }
@@ -466,9 +475,15 @@ if ($mode === 'proxy') {
             // cuando limita el ritmo del egress; se recupera en segundos. El codigo no estaba
             // en la lista, asi que un hipo de 2 s se servia al player como 502 permanente.
             // 429 y 408 son el mismo fenomeno con otro nombre.
-            if (($code === 0 || $code >= 500 || $code === 513 || $code === 461 || $code === 429 || $code === 408)) {
-                usleep($code === 461 ? 400000 : 250000);
+            if (($code === 0 || $code >= 500 || $code === 513 || $code === 461 || $code === 429 || $code === 408 || $code === 302)) {
+                usleep($code === 461 ? 400000 : ($code === 302 ? 150000 : 250000));
                 list($raw, $code, $eff) = ape_pulse_fetch($uNorm, $uaPulse);
+                // [2026-11-14] El token del 302 ROTA: medido 200,302,302 en tres
+                // intentos del mismo canal. Un tercer intento suele converger.
+                if ($code === 302) {
+                    usleep(200000);
+                    list($raw, $code, $eff) = ape_pulse_fetch($uNorm, $uaPulse);
+                }
             }
             $cls  = ape_pulse_classify($raw);
             $kind = ($cls['kind'] === 'master' || $cls['kind'] === 'media') ? $cls['kind'] : 'noplaylist';

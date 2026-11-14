@@ -1,0 +1,15 @@
+[Unit]
+Description=APE canary: dispara el worker en cuanto cae un ticket de zap
+Documentation=man:systemd.path(5)
+# El timer de 20 s se queda como red de seguridad; esto es el disparo inmediato.
+
+[Path]
+# pulse.php crea un fichero .lock por canal al encolar; el directorio cambia.
+PathModified=/var/lib/ara/canary/queue
+# Si el directorio no existe aun, esperar sin fallar.
+DirectoryNotEmpty=/var/lib/ara/canary/queue
+Unit=ape-pulse-canary.service
+MakeDirectory=yes
+
+[Install]
+WantedBy=paths.target

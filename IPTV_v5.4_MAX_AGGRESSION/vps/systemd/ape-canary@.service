@@ -1,0 +1,41 @@
+[Unit]
+Description=ARA canary visual 4K (un canal) — %i
+Documentation=file:/etc/ara/skills/SKILLS.md
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/ara/skills/SKILLS.md
+StartLimitIntervalSec=600
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+EnvironmentFile=/etc/ara/canary/%i.env
+ExecStartPre=/usr/local/bin/ara-skill check --for-canary
+ExecStart=/usr/local/bin/ape-visual-emulate.sh %i
+TimeoutStartSec=60
+TimeoutStopSec=30
+RuntimeMaxSec=300
+# [2026-11-13] "nunca se caiga": si falla, se reintenta con backoff y un techo
+# de 3 intentos en 10 min, para no entrar en tormenta de reinicios.
+Restart=on-failure
+RestartSec=10
+KillMode=control-group
+CPUQuota=40%
+MemoryMax=1G
+IOWeight=10
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/ara/canary
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+
