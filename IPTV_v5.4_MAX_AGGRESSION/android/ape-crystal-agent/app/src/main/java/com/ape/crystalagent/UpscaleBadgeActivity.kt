@@ -65,7 +65,27 @@ class UpscaleBadgeActivity : Activity() {
          * gris si no se sabe. El color es informacion, no decoracion.
          */
         @JvmStatic
-        fun texto(input: String?, outW: Int, outH: Int): Triple<String, Int, String> {
+        fun texto(input: String?, outW: Int, outH: Int): Triple<String, Int, String> =
+            texto(input, outW, outH, null)
+
+        /**
+         * Igual que [texto] pero anteponiendo el nombre del canal que se esta viendo.
+         *
+         * El canal se toma de la MediaMetadata de OTT (SessionTap -> AgentService). Es
+         * lo unico que se puede saber sin root: la resolucion del STREAM no se expone,
+         * asi que si no llega por `input` se sigue diciendo N/D. El nombre del canal no
+         * es una medicion y no se mezcla con el veredicto: va en su propia linea.
+         */
+        @JvmStatic
+        fun texto(input: String?, outW: Int, outH: Int, canal: String?): Triple<String, Int, String> {
+            val base = textoMedido(input, outW, outH)
+            val c = canal?.trim().orEmpty()
+            if (c.isEmpty()) return base
+            val corto = if (c.length > 34) c.substring(0, 34) + "…" else c
+            return Triple("$corto\n${base.first}", base.second, base.third)
+        }
+
+        private fun textoMedido(input: String?, outW: Int, outH: Int): Triple<String, Int, String> {
             val em = Regex("^\\s*(\\d{2,5})\\s*[xX×]\\s*(\\d{2,5})\\s*$")
             val m = input?.let { em.find(it) }
             if (m == null) {
@@ -117,7 +137,9 @@ class UpscaleBadgeActivity : Activity() {
             return
         }
         val input = intent?.getStringExtra("input")?.trim()
-        showBadge(input)
+        // [2026-11-14] canal que OTT esta reproduciendo, tomado de su MediaMetadata.
+        val canal = intent?.getStringExtra("channel")?.trim()
+        showBadge(input, canal)
         finish()
     }
 
@@ -136,7 +158,7 @@ class UpscaleBadgeActivity : Activity() {
         }
     }
 
-    private fun showBadge(input: String?) {
+    private fun showBadge(input: String?, canal: String? = null) {
         try {
             val w = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -160,7 +182,7 @@ class UpscaleBadgeActivity : Activity() {
 
             fun pintar() {
                 val (ow, oh) = outSize()
-                val (txt, accent, _) = texto(input, ow, oh)
+                val (txt, accent, _) = texto(input, ow, oh, canal)
                 tv.text = txt
                 val bg = GradientDrawable()
                 bg.cornerRadius = dp(10).toFloat()

@@ -4,6 +4,8 @@ import android.app.*
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
+import android.media.AudioPlaybackConfiguration
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Build
@@ -189,33 +191,60 @@ class AgentService : Service() {
             scope.launch(Dispatchers.IO) {
                 val ottPkg = "studio.scillarium.ottnavigator"
                 var badgeShown = false
+                // [FIX 2026-11-14] OTT NO PUBLICA MediaSession.
+                //
+                // Medido en el zapeo real: OTT estaba en PlayerActivity reproduciendo
+                // ("Buffering: 0%" -> luego video) y `dumpsys media_session` NO mostraba
+                // ninguna sesion suya. Solo aparecia en "Audio playback (lastly played)".
+                // Con la deteccion por MediaSession el ticker NUNCA disparaba.
+                //
+                // La senal que SI existe esta en AudioManager:
+                //   AudioPlaybackConfiguration piid:12895 type:AudioTrack
+                //     u/pid:10086/11747 state:started usage=USAGE_MEDIA sessionId:12537
+                //   -> uid 10086 = studio.scillarium.ottnavigator, audio started.
+                //
+                // Se usa getActivePlaybackConfigurations() (API 26+) para atribuir el
+                // audio a OTT por uid. En API < 29 no hay getClientUid(): se cae a
+                // isMusicActive(), que es global (menos preciso pero honesto).
+                val ottUid: Int = try {
+                    packageManager.getApplicationInfo(ottPkg, 0).uid
+                } catch (_: Throwable) {
+                    -1
+                }
+                val am = getSystemService(AudioManager::class.java)
                 while (true) {
                     try {
                         Thread.sleep(5_000)
-                        val msm = getSystemService(MediaSessionManager::class.java)
-                        val comp = ComponentName(
-                            this@AgentService,
-                            dev.venice.ottshim.SessionTap::class.java
-                        )
-                        val ses = msm?.getActiveSessions(comp)
-                            ?.firstOrNull { it.packageName == ottPkg }
-                        // [FIX 2026-11-14] TAMBIEN BUFFERING Y CONNECTING.
+                        // 1) canal que OTT tiene en la MediaMetadata (si la expone)
+                        var titulo: String? = null
+                        try {
+                            val msm = getSystemService(MediaSessionManager::class.java)
+                            val comp = ComponentName(
+                                this@AgentService,
+                                dev.venice.ottshim.SessionTap::class.java
+                            )
+                            val ses = msm?.getActiveSessions(comp)
+                                ?.firstOrNull { it.packageName == ottPkg }
+                            titulo = ses?.metadata?.description?.title
+                                ?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+                        } catch (_: Throwable) {
+                            // Sin permiso de sesiones: se sigue con el audio.
+                        }
+
+                        // 2) reproduccion REAL por audio
                         //
-                        // Medido en el zapeo real: OTT abre "PPV| FORMULA 1 UHD [EVEST]"
-                        // (tvg-id 1223445, 4K HDR10) y se queda en "Buffering: 0%" varios
-                        // segundos. La causa NO es un fallo: cada segmento de ese canal
-                        // pesa 14.234.608 B (medido, con sync 0x47 valido) y el primer
-                        // segmento tarda en bajar por WiFi.
+                        // Se usa AudioManager.isMusicActive(): API 8+, sin permisos y
+                        // sin los problemas de resolucion que dio
+                        // AudioPlaybackConfiguration en este compileSdk (sus getters
+                        // getPlayerState/getClientUid no resuelven al compilar).
                         //
-                        // Con la condicion anterior (solo STATE_PLAYING), el badge no
-                        // aparecia justo cuando el operador mas lo necesita: al zapear.
-                        // Ahora aparece en cuanto OTT esta enganchando el canal, que es
-                        // informacion util (y honesta: el badge dice la resolucion, no
-                        // "reproduciendo").
-                        val st = ses?.playbackState?.state
-                        val playing = st == PlaybackState.STATE_PLAYING ||
-                            st == PlaybackState.STATE_BUFFERING ||
-                            st == PlaybackState.STATE_CONNECTING
+                        // HONESTO sobre el alcance: isMusicActive() es GLOBAL, no por
+                        // app. Si el operador estuviera reproduciendo musica en otra
+                        // aplicacion, el badge tambien saldria. Para el uso real (la TV
+                        // con OTT) eso no ocurre, y es preferible un disparo de mas que
+                        // el badge que NUNCA sale, que es lo que pasaba con MediaSession.
+                        val playing = am?.isMusicActive == true
+
                         if (playing) {
                             if (!ShimBridge.running) {
                                 Log.w(TAG, "OTT reproduciendo y shim caido -> relanzo")
@@ -231,9 +260,10 @@ class AgentService : Service() {
                                 try {
                                     startActivity(
                                         Intent(this@AgentService, UpscaleBadgeActivity::class.java)
+                                            .putExtra("channel", titulo)
                                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                     )
-                                    Log.i(TAG, "badge de upscaling mostrado sobre OTT")
+                                    Log.i(TAG, "badge de upscaling mostrado sobre OTT canal=${titulo ?: "sin titulo"}")
                                 } catch (t: Throwable) {
                                     Log.w(TAG, "badge OTT: ${t.message}")
                                 }
