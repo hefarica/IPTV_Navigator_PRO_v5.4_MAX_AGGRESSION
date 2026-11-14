@@ -7,7 +7,7 @@
 # Ahora: flock -n. El segundo sale en el acto, sin esperar y sin acumular.
 exec 9>/run/ape-canary.lock
 if ! flock -n 9; then
-  echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) worker: skip (ya hay uno con el lock)" >> /var/log/ape-canary.log 2>/dev/null || true
+  echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) worker: skip (ya hay uno con el lock)" >> "${LOG:-/var/log/ara/canary.log}" 2>/dev/null || true
   exit 0
 fi
 
@@ -54,10 +54,13 @@ fi
 PLAYER_WINDOW="${APE_CANARY_PLAYER_WINDOW:-180}"
 PLEG=/var/log/nginx/playlist_access.log
 if [ -r "$PLEG" ]; then
-  ULT=$(tail -n 400 "$PLEG" 2>/dev/null | awk '/\/pulse\// && /z=1/ {print $4}' | tail -n 1)
+  # El campo $4 del log viene como "[14/Nov/2026:01:28:37" CON corchete.
+  # Se sanea AQUI, una sola vez. Antes se saneaba una variable muerta (ISO)
+  # y el corchete sobrevivia hasta FDIA -> 'date -d' recibia "2026-11-[14 ..."
+  # -> EPOCA=0 -> el guard NUNCA disparaba. Bug medido por canary-auditor (t40 §11).
+  ULT=$(tail -n 400 "$PLEG" 2>/dev/null | awk '/\/pulse\// && /z=1/ {print $4}' | tail -n 1 | tr -d '[]')
   if [ -n "$ULT" ]; then
     # $4 es [dd/Mmm/aaaa:HH:MM:SS -- convertir a epoch
-    ISO=$(printf '%s' "$ULT" | tr -d '[]' | sed 's~\([0-9][0-9]\/\)\([A-Za-z][a-z][a-z]\)\/\([0-9]\{4\}\):\1~\3-XX-\1 \1~')
         MES=$(printf '%s' "$ULT" | cut -d/ -f2)
     case "$MES" in
       Jan) MESNUM=01;; Feb) MESNUM=02;; Mar) MESNUM=03;; Apr) MESNUM=04;;
@@ -69,6 +72,10 @@ if [ -r "$PLEG" ]; then
     FANO=$(printf '%s' "$ULT" | cut -d/ -f3 | cut -d: -f1)
     FHMS=$(printf '%s' "$ULT" | cut -d: -f2-4)
     EPOCA=$(date -u -d "$FANO-$MESNUM-$FDIA $FHMS" +%s 2>/dev/null || echo 0)
+    # Fail-VISIBLE: un parseo roto NO puede parecer "no paso nada".
+    if [ "$MESNUM" = "00" ] || [ "$EPOCA" -le 0 ]; then
+      log "PRIORIDAD: fecha no parseada en '$ULT' (MESNUM=$MESNUM EPOCA=$EPOCA) — GUARD INACTIVO"
+    fi
 
     AHORA=$(date -u +%s)
     if [ "$EPOCA" -gt 0 ] && [ $((AHORA - EPOCA)) -lt "$PLAYER_WINDOW" ]; then
