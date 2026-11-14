@@ -67,7 +67,15 @@ object Display4K {
             // Preferir un modo 4K que case con alguna cadencia de contenido (múltiplo exacto).
             // Entre los que casan, el mayor refresco; si ninguno casa, el mayor refresco (como antes).
             val conCadenciaExacta = candidatos.filter { m ->
-                CONTENT_RATES.any { c -> esMultiploExacto(m.refreshRate, c) }
+                // [FIX 2026-11-14] `m.refreshRate` es Float (Display.Mode) y
+                // `esMultiploExacto` pide Double, igual que CONTENT_RATES
+                // (doubleArrayOf). Sin el .toDouble() el modulo NO COMPILABA:
+                //   e: Display4K.kt:70:59 Type mismatch: inferred type is Float
+                //      but Double was expected
+                // Estaba roto antes de tocar nada (git: sin cambios, ultimo
+                // commit 6f6ea8c9). Lo encontro el build del badge. Se corrige
+                // aqui porque sin compilar no hay APK ni overlay ni nada.
+                CONTENT_RATES.any { c -> esMultiploExacto(m.refreshRate.toDouble(), c) }
             }
             val best = (if (conCadenciaExacta.isNotEmpty()) conCadenciaExacta else candidatos)
                 .maxByOrNull { it.refreshRate }

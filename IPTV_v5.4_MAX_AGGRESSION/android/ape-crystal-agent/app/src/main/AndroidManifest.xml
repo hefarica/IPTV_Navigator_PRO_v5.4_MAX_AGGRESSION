@@ -53,6 +53,35 @@
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
             android:launchMode="singleTask" />
 
+        <!-- [2026-11-14] BADGE DE UPSCALING EN EL OVERLAY.
+             Pedido textual del operador: "necesito que en el overlay, coloques un
+             logo de upscaling para saber que esta funcionando".
+
+             AISLADO A PROPOSITO: es una Activity nueva, no un cambio en
+             MainActivity ni en el PlayerActivity. Si este badge causa cualquier
+             problema en el televisor, se borra esta entrada del manifest y todo
+             lo demas sigue exactamente igual.
+
+             Sin icono propio (como JitLinkActivity): vive DENTRO de
+             com.ape.crystalagent, no aparece como segunda app.
+
+             exported="true" para poder dispararlo desde el PC sin navegar el
+             menu del televisor. Los comandos van en el README del badge, no
+             aqui: un comentario XML NO puede contener dos guiones seguidos, y
+             escribirlos fue lo que rompio este manifest en el primer intento.
+             En resumen: se lanza con am start sobre la clase, con extras
+             opcionales "label" (texto) y "hide" (booleano) para esconderlo.
+
+             noHistory + excludeFromRecents: la Activity no tiene UI propia (la
+             ventana del badge vive en el WindowManager), asi que no debe quedar
+             en el historial ni en recientes despues de finish(). -->
+        <activity
+            android:name=".UpscaleBadgeActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.NoDisplay" />
+
         <!-- 657: receptor de REPRODUCTOR EXTERNO (fusion REA).
              Es la actividad que aparece en el selector de Android cuando OTT
              Navigator o TiviMate hacen "Abrir en reproductor externo".
