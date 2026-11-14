@@ -875,6 +875,16 @@ jobs:
           # la lista equivocada.
           bash /opt/ape-pulse/ape-jit-latest.sh 2>&1 || echo "--- aviso: ape-jit-latest fallo (revisar arriba)"
           echo "--- ape_jit_latest -> $(readlink /var/www/html/lists/ape_jit_latest.m3u8 2>/dev/null | xargs -r basename)"
+          # [2026-11-14] Vigilante de MODULOS cada 60 s. Prueba cada modulo por HTTP
+          # real (no `systemctl is-active`: medido, ape-jit estaba "running" y /jit/
+          # daba 404) y reinicia lo que falle. Nice=10 + idle: no compite con el video.
+          sudo -n systemctl daemon-reload 2>&1 || true
+          sudo -n systemctl enable --now ape-module-watchdog.timer 2>&1 || echo "--- aviso: timer del vigilante no habilitado"
+          # Una pasada inmediata para dejar el primer veredicto en el journal.
+          sudo -n systemctl start ape-module-watchdog.service 2>&1 || true
+          echo "--- module-watchdog: $(sudo -n systemctl is-active ape-module-watchdog.timer 2>/dev/null || echo inactivo)"
+          cat /var/lib/ape/module-watchdog.json 2>/dev/null | head -c 1200 || echo "--- aviso: sin estado aun"
+          echo ""
           sudo -n systemctl enable --now ape-cablear-cola.path 2>&1 || true
           sudo -n systemctl enable --now ape-cablear-cola.timer 2>&1 || true
           echo "--- cablear-cola.path: $(systemctl is-active ape-cablear-cola.path 2>/dev/null || echo unknown)"

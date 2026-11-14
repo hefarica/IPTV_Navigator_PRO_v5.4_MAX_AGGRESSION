@@ -1,0 +1,26 @@
+[Unit]
+# ═══════════════════════════════════════════════════════════════════════════════
+# ape-module-watchdog.timer — cada 60 s, para siempre.
+#
+# OnBootSec=90s: deja arrancar nginx/php/jit antes de la primera pasada. Si
+#   corre antes, marcaria todo en rojo por una condicion que se resuelve sola.
+# OnUnitActiveSec=60s: se reprograma DESPUES de cada pasada, no en paralelo. Si
+#   una pasada tarda 20 s, la siguiente empieza a los 60 s de haber TERMINADO.
+#   Asi nunca se solapan dos watchdogs.
+# AccuracySec=5s: precision suficiente sin despertar la CPU cada segundo.
+# Persistent=false: no queremos que un reinicio del VPS dispare pasadas atrasadas.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[Unit]
+Description=APE module watchdog cada 60 s
+Documentation=file:/opt/ape-pulse/ape-module-watchdog.sh
+
+[Timer]
+OnBootSec=90s
+OnUnitActiveSec=60s
+AccuracySec=5s
+Persistent=false
+Unit=ape-module-watchdog.service
+
+[Install]
+WantedBy=timers.target

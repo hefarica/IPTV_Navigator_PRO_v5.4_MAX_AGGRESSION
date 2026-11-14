@@ -1,0 +1,34 @@
+[Unit]
+# ═══════════════════════════════════════════════════════════════════════════════
+# ape-module-watchdog.service — PRUEBA cada modulo y reinicia lo que falle.
+#
+# Nace del pedido del operador:
+#   "haz un workflow para que corra siempre, nunca se caiga y despierte en cada
+#    zapping en segundo plano, sin generar lacks, ni freezeos"
+#   "una vive convencido que el sistema está funcionando correctamente cuando
+#    está a medias o se caen de manera inadvertida los servicios"
+#
+# POR QUE Type=oneshot Y NO un demonio con bucle:
+#   Un bucle propio necesita su propio watchdog (quien vigila al vigilante).
+#   Con systemd + timer, si el script se cuelga, systemd lo mata por timeout y el
+#   timer lo vuelve a lanzar. No hay estado que se corrompa entre pasadas.
+#
+# POR QUE Nice=10 + IOSchedulingClass=idle:
+#   Este script hace 5 peticiones HTTP cortas. Si coinciden con un zap, no deben
+#   robarle CPU ni I/O al nginx que sirve el video. Prioridad baja explícita.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[Unit]
+Description=APE module watchdog (health REAL por HTTP, reinicia lo que falle)
+Documentation=file:/opt/ape-pulse/ape-module-watchdog.sh
+After=network-online.target nginx.service php8.3-fpm.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/ape-pulse/ape-module-watchdog.sh
+TimeoutStartSec=120
+Nice=10
+IOSchedulingClass=idle
+StandardOutput=journal
+StandardError=journal
