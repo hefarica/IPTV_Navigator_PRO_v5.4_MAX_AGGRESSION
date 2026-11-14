@@ -12856,7 +12856,60 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
         if (_resolverUrlWithProvider) {
             lines.push(`#EXT-X-APE-RESOLVER-URL:${_resolverUrlWithProvider}`);
         }
-        lines.push(`${finalUrl}`);
+
+        // ── CABLEADO NATIVO A /pulse/ ─────────────────────────────────────────
+        // [2026-11-14] Pedido textual del operador:
+        //   "ESTA ES LA MALDITA URL QUE DEBES VER COMO HACES PARA QUE SEA
+        //    CABLEADA POR TODO EL SISTEMA"
+        //
+        // MEDIDO: la lista que el generador producia tenia /pulse/ = 0 en 21.224
+        // canales. El endpoint funcionaba (200 con video real) pero NINGUN
+        // componente construia una URL hacia el, asi que el reproductor iba
+        // directo al proveedor: sin QoE, sin canary, sin single-slot, y con la
+        // declaracion VIDEO-RANGE del STREAM-INF sin que nadie la viera.
+        //
+        // QUE HACE: envuelve la URL del canal para que el video pase por el VPS.
+        //   http://proveedor/live/USER/PASS/123.m3u8
+        //     -> https://iptv-ape.duckdns.org/pulse/123.m3u8?u=<urlencoded>&d=<dev>
+        //
+        // TRES REGLAS, las mismas del cableador de servidor (ya probadas):
+        //   1) `u=` va URLENCODED, NO base64. pulse.php:214 exige que empiece por
+        //      http(s); base64 devuelve 400 "u no es http(s)".
+        //   2) se corta en el PRIMER `|` (headers pegados tipo Kodi). Codificar
+        //      la linea entera da 400. Los headers no se pierden: el canal ya
+        //      lleva su #EXTHTTP.
+        //   3) IDEMPOTENTE: si la URL ya pasa por /pulse/, se devuelve tal cual.
+        //
+        // ROLLBACK: window.APE_PULSE_WRAP = false desactiva el envoltorio sin
+        // tocar codigo. Con el flag en false la lista vuelve a salir directa al
+        // proveedor, exactamente como antes de este cambio.
+        const _apePulseWrap = (rawUrl) => {
+            try {
+                if (typeof window !== 'undefined' && window.APE_PULSE_WRAP === false) return rawUrl;
+                let u = String(rawUrl == null ? '' : rawUrl).trim();
+                if (!/^https?:\/\//i.test(u)) return rawUrl;
+                if (u.indexOf('/pulse/') !== -1) return u;   // idempotente
+                const base = (typeof window !== 'undefined' && window.APE_PULSE_BASE)
+                    ? String(window.APE_PULSE_BASE).replace(/\/+$/, '')
+                    : 'https://iptv-ape.duckdns.org';
+                // corta en el pipe de headers
+                const pipe = u.indexOf('|');
+                if (pipe !== -1) u = u.slice(0, pipe);
+                if (u.indexOf(base) === 0) return rawUrl;
+                // id: /live/USER/PASS/<id>.m3u8 | /<id>.m3u8 | /<id>.ts | /<id>.mp4
+                let m = u.match(/\/live\/[^/]+\/[^/]+\/(\d+)\.(?:m3u8|ts|mp4)/i)
+                    || u.match(/\/(\d+)\.(?:m3u8|ts|mp4)(?:[?#].*)?$/i);
+                if (!m) return rawUrl;   // sin id no se puede cablear: se deja como estaba
+                const id = m[1];
+                const dev = (typeof window !== 'undefined' && window.APE_DEVICE_B64)
+                    ? String(window.APE_DEVICE_B64)
+                    : 'eyJ0IjoiZ2VuZXJpYyIsInMiOiJ1bmtub3duIiwiciI6MjA0OCwidyI6MTkyMCwiaCI6MTA4MCwiZiI6MzB9';
+                return `${base}/pulse/${id}.m3u8?u=${encodeURIComponent(u)}&d=${dev}`;
+            } catch (_eWrap) {
+                return rawUrl;   // fail-open: si algo falla, la lista sale como antes
+            }
+        };
+        lines.push(`${_apePulseWrap(finalUrl)}`);
 
         // ── PLACEHOLDER RESOLVER FINAL (global, sobre TODA la salida) ─────────
         // Captura placeholders {config.X}, {profile.X}, {evasion.X} que escapan
