@@ -6,159 +6,204 @@ import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.hardware.display.DisplayManager
 import android.os.Bundle
 import android.util.TypedValue
+import android.view.Display
 import android.view.Gravity
 import android.view.WindowManager
 import android.widget.TextView
 
 /**
- * Badge de upscaling en el overlay.
+ * Badge de upscaling DINAMICO en el overlay.
  *
- * PEDIDO DEL OPERADOR (textual): "necesito que en el overlay, coloques un logo de
- * upscaling para saber que esta funcionando". Este es ese badge.
+ * PEDIDO DEL OPERADOR (textual):
+ *   "Necesito que al reproducir en OTT (siempre tiene que ser por alli), aparezca un
+ *    aviso de upscaling de que resolucion a cual de salida esta llevando la imagen,
+ *    si real o simulada"
  *
- * QUE ES Y QUE NO ES (truth-guard, para no repetir la doctrina de mentir):
- *   - ES una etiqueta que confirma que el APE Crystal Agent esta vivo y aplicando
- *     su pipeline en este dispositivo. Nada mas.
- *   - NO es prueba de que el VPP del SoC este escalando pixeles. Esa prueba es
- *     externa al APK: se mide en el VPS (QoE) y en el display (dataspace,
- *     displayFrame). El badge dice "el agente corre", no "el pixel se movio".
- *   - NO afirma 8K ni 6K ni un motor concreto. Si en el futuro se quiere que
- *     muestre el motor activo (ESRGAN/CAR-CNN/LCEVC), se le pasa por Intent
- *     extra y se pinta; mientras no se sepa, no se inventa.
+ * QUE MUESTRA
+ *   <entrada> → <salida>
+ *   REAL (nativa)  |  SIMULADA (upscale ×N)  |  REDUCIDA  |  entrada N/D
  *
- * POR QUE UNA ACTIVITY APARTE Y NO UN CAMBIO EN MainActivity:
- *   Aislar el riesgo. MainActivity es el punto de entrada en produccion; este
- *   badge es cosmético. Una Activity nueva se puede borrar del manifest sin
- *   tocar una sola linea del flujo real. El agente sigue funcionando igual si
- *   este fichero desaparece.
+ * DE DONDE SALE CADA DATO, Y DE DONDE NO
+ *   SALIDA : DisplayManager → el modo ACTIVO del display. Medido, siempre disponible.
+ *            En el ONN 4K hoy: id=185 → 3840x2160 @ 59.94.
+ *   ENTRADA: la del stream en reproduccion. NO se puede leer desde otra app sin root
+ *            (dumpsys media.player da Permission Denial). Se recibe por el extra
+ *            `input`, y quien la sepa la pasa: el agente tras sondear el manifest del
+ *            canal, o el VPS por SSE.
+ *   SI NO SE SABE, SE DICE "N/D" — NUNCA SE INVENTA. Es la misma regla del panel del
+ *   agente: no repetir la leyenda cuando no hay medicion. Un badge que dice "SIMULADA"
+ *   sin saber la entrada seria exactamente el problema que el operador denuncio.
  *
- * TRIGGER (desde el PC, sin tocar la UI del televisor):
+ * POR QUE SIGUE SIENDO UNA ACTIVITY APARTE
+ *   MainActivity es el punto de entrada en produccion; este badge es cosmetico. Si se
+ *   borra del manifest, el agente sigue funcionando igual.
+ *
+ * TRIGGER (desde el PC, sin tocar la UI del televisor)
  *   adb shell am start -n com.ape.crystalagent/.UpscaleBadgeActivity
- *   adb shell am start -n com.ape.crystalagent/.UpscaleBadgeActivity --es label "AI-SR 4K"
+ *   adb shell am start -n com.ape.crystalagent/.UpscaleBadgeActivity --es input "1920x1080"
+ *   adb shell am start -n com.ape.crystalagent/.UpscaleBadgeActivity --es input "3840x2160"
  *   adb shell am start -n com.ape.crystalagent/.UpscaleBadgeActivity --ez hide true
  *
- * PERMISO: necesita SYSTEM_ALERT_WINDOW (ya declarado en el manifest) y el appop
- * concedido. Se concede con:
+ * PERMISO: SYSTEM_ALERT_WINDOW (ya declarado) y el appop concedido:
  *   adb shell appops set com.ape.crystalagent SYSTEM_ALERT_WINDOW allow
- * Si el appop no esta, el badge hace fail-honest: NO revienta, termina y deja un
- * log; el agente sigue vivo.
+ * Si falta, el badge hace fail-honest: no revienta, termina y deja un log.
  */
 class UpscaleBadgeActivity : Activity() {
 
     companion object {
         private const val TAG = "ARA-UpscaleBadge"
+        private var badge: TextView? = null
+        private var wm: WindowManager? = null
+        private var ticker: Runnable? = null
 
         /**
-         * Referencia estatica: la ventana se cuelga del WindowManager del sistema,
-         * no de la Activity, asi que sobrevive al finish() y se puede quitar
-         * desde una segunda invocacion. Sin esto habria que reiniciar la app para
-         * esconderlo.
+         * Formatea el texto del badge a partir de la entrada (opcional) y el display.
+         * Devuelve tambien el color de acento: verde si es real, ambar si es simulada,
+         * gris si no se sabe. El color es informacion, no decoracion.
          */
-        @Volatile
-        private var badge: TextView? = null
-
-        @Volatile
-        private var wm: WindowManager? = null
+        @JvmStatic
+        fun texto(input: String?, outW: Int, outH: Int): Triple<String, Int, String> {
+            val em = Regex("^\\s*(\\d{2,5})\\s*[xX×]\\s*(\\d{2,5})\\s*$")
+            val m = input?.let { em.find(it) }
+            if (m == null) {
+                // Sin entrada no se puede afirmar nada sobre el escalado.
+                return Triple(
+                    "$outW×$outH · salida nativa\nentrada: N/D",
+                    Color.parseColor("#94A3B8"),
+                    "N/D"
+                )
+            }
+            val iw = m.groupValues[1].toIntOrNull() ?: 0
+            val ih = m.groupValues[2].toIntOrNull() ?: 0
+            if (iw <= 0 || ih <= 0) {
+                return Triple("$outW×$outH · salida nativa\nentrada: N/D", Color.parseColor("#94A3B8"), "N/D")
+            }
+            val inTxt = "$iw×$ih"
+            val outTxt = "$outW×$outH"
+            return when {
+                iw == outW && ih == outH -> Triple(
+                    "$inTxt → $outTxt\nREAL (nativa)",
+                    Color.parseColor("#22C55E"),   // verde
+                    "REAL"
+                )
+                outW > iw || outH > ih -> {
+                    val fx = if (iw > 0) outW.toDouble() / iw else 0.0
+                    val fy = if (ih > 0) outH.toDouble() / ih else 0.0
+                    val f = maxOf(fx, fy)
+                    val fTxt = if (f >= 1.05) String.format("×%.2f", f) else ""
+                    Triple(
+                        "$inTxt → $outTxt\nSIMULADA (upscale $fTxt)".trim(),
+                        Color.parseColor("#F59E0B"),  // ambar
+                        "SIMULADA"
+                    )
+                }
+                else -> Triple(
+                    "$inTxt → $outTxt\nREDUCIDA (downscale)",
+                    Color.parseColor("#EF4444"),      // rojo: esto NO se debe hacer
+                    "REDUCIDA"
+                )
+            }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val hide = intent?.getBooleanExtra("hide", false) ?: false
-        val label = intent?.getStringExtra("label") ?: "UPSCALING"
-
-        if (hide) {
-            remove()
+        if (intent?.getBooleanExtra("hide", false) == true) {
+            removeBadge()
             finish()
             return
         }
-
-        show(label)
-        // La Activity no tiene UI propia: el badge vive en una ventana aparte.
-        // Se cierra en el acto para no robar el foco al reproductor.
+        val input = intent?.getStringExtra("input")?.trim()
+        showBadge(input)
         finish()
     }
 
-    private fun show(text: String) {
-        // Idempotente: si ya hay badge, primero se quita para no apilar ventanas.
-        remove()
+    private fun dp(v: Int): Int =
+        TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics).toInt()
 
-        val context: Context = applicationContext
-        val manager = context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
-        if (manager == null) {
-            android.util.Log.w(TAG, "sin WindowManager: no se pinta el badge")
-            return
+    /** El modo ACTIVO del display: la resolucion de SALIDA real. */
+    private fun outSize(): Pair<Int, Int> {
+        return try {
+            val dm = getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager
+            val d = dm?.getDisplay(Display.DEFAULT_DISPLAY)
+            val m = d?.mode
+            if (m != null) Pair(m.physicalWidth, m.physicalHeight) else Pair(0, 0)
+        } catch (t: Throwable) {
+            Pair(0, 0)
         }
+    }
 
-        val density = resources.displayMetrics.density
-        fun dp(v: Int) = (v * density).toInt()
-
-        val tv = TextView(context).apply {
-            this.text = text
-            setTextColor(Color.WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            letterSpacing = 0.08f
-
-            // Fondo redondeado semitransparente: legible sobre 4K HDR sin tapar
-            // imagen. Azul APE (#00AAFF) al 80 %.
-            val bg = GradientDrawable().apply {
-                setColor(Color.parseColor("#CC00AAFF"))
-                cornerRadius = dp(6).toFloat()
-            }
-            background = bg
-            setPadding(dp(18), dp(8), dp(18), dp(8))
-
-            // Sin tocar: el operador no debe pulsar el badge por accidente.
-            isClickable = false
-            isFocusable = false
-        }
-
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            // Esquina superior derecha: fuera del centro de la imagen y fuera de
-            // la zona donde OTT Navigator pone su barra de informacion.
-            gravity = Gravity.TOP or Gravity.END
-            x = dp(28)
-            y = dp(28)
-        }
-
-        // Fail-honest: si el appop no esta concedido, addView lanza y aqui se
-        // captura. El badge no aparece, pero el agente NO se cae.
-        val added = runCatching { manager.addView(tv, params) }.isSuccess
-        if (!added) {
-            android.util.Log.w(
-                TAG,
-                "no se pudo pintar el badge: falta SYSTEM_ALERT_WINDOW " +
-                    "(adb shell appops set com.ape.crystalagent SYSTEM_ALERT_WINDOW allow)"
+    private fun showBadge(input: String?) {
+        try {
+            val w = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                PixelFormat.TRANSLUCENT
             )
-            return
+            w.gravity = Gravity.TOP or Gravity.END
+            w.x = dp(28)
+            w.y = dp(28)
+
+            val tv = badge ?: TextView(this).apply {
+                setTextColor(Color.WHITE)
+                setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
+                typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+                setPadding(dp(12), dp(8), dp(12), dp(8))
+            }
+
+            fun pintar() {
+                val (ow, oh) = outSize()
+                val (txt, accent, _) = texto(input, ow, oh)
+                tv.text = txt
+                val bg = GradientDrawable()
+                bg.cornerRadius = dp(10).toFloat()
+                bg.setColor(Color.parseColor("#CC0B1220"))   // fondo azul muy oscuro, 80%
+                bg.setStroke(dp(2), accent)                   // el borde dice el veredicto
+                tv.background = bg
+            }
+            pintar()
+
+            wm?.removeView(tv)
+            val wmgr = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+            wmgr.addView(tv, w)
+            wm = wmgr
+            badge = tv
+
+            // El modo del display puede cambiar (zapping, cambio de canal). Se refresca
+            // cada 2 s mientras el proceso viva; el coste es leer un campo.
+            ticker?.let { t -> android.os.Handler(mainLooper).removeCallbacks(t) }
+            val h = android.os.Handler(mainLooper)
+            val t = object : Runnable {
+                override fun run() {
+                    try { pintar() } catch (_: Throwable) { }
+                    h.postDelayed(this, 2000L)
+                }
+            }
+            ticker = t
+            h.postDelayed(t, 2000L)
+        } catch (t: Throwable) {
+            // Fail-honest: sin SYSTEM_ALERT_WINDOW no se pinta y no se rompe nada.
+            android.util.Log.w(TAG, "badge no mostrado: ${t.message}")
         }
-
-        badge = tv
-        wm = manager
-        android.util.Log.i(TAG, "badge visible: $text")
     }
 
-    private fun remove() {
-        val v = badge ?: return
-        val manager = wm
-        runCatching { manager?.removeView(v) }
-        badge = null
-        wm = null
-        android.util.Log.i(TAG, "badge retirado")
+    private fun removeBadge() {
+        try {
+            ticker?.let { t -> android.os.Handler(mainLooper).removeCallbacks(t) }
+            ticker = null
+            badge?.let { v -> wm?.removeView(v) }
+        } catch (t: Throwable) {
+            android.util.Log.w(TAG, "remove: ${t.message}")
+        } finally {
+            badge = null
+            wm = null
+        }
     }
-
-    // La ventana NO se retira en onDestroy a proposito: el badge debe sobrevivir
-    // a la Activity para quedarse mientras el operador ve la tele. Se retira con
-    // --ez hide true o al force-stop del paquete.
 }
