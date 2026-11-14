@@ -67,8 +67,45 @@ FREE_MB=$(df -Pm "$LISTS" 2>/dev/null | awk 'NR==2 {print $4}')
 
 hechos=0; saltados=0; fallos=0
 
-# Itera las listas de canal (no las variantes que este script crea).
-for src in "$LISTS"/*.m3u8; do
+# ── SOLO LA LISTA MAS RECIENTE ───────────────────────────────────────────────
+# [FIX 2026-11-14] La primera version cableaba TODAS las listas del directorio.
+# Consecuencia medida: cinco variantes _CABLEADA y el disco al 92 % (3,0 GB).
+# Se limpiaron a mano las de listas viejas... y el siguiente tick las habria
+# RECREADO, porque el bucle no distinguia "la lista que el operador usa" de
+# "listas historicas que ya nadie mira".
+#
+# Cablear duplica el tamano de la lista (1,3 GB -> 1,24 GB de salida + 336 MB
+# de .gz). Con 21.224 canales por lista, tres listas historicas son 3,4 GB. El
+# VPS tiene 38 GB y ya estaba al 88 %.
+#
+# Por eso ahora se cablea UNA sola: la mas reciente. Es la que el generador
+# acaba de subir y la que el reproductor tiene cargada. Las anteriores quedan
+# en su forma original (directas al proveedor) sin duplicar espacio.
+#
+# Si algun dia hace falta cablear una historica concreta, se corre a mano:
+#   bash /opt/ape-pulse/ape-cablear-auto.sh --todas
+TODAS=0
+[ "${1:-}" = "--todas" ] && TODAS=1
+
+candidatas=()
+if [ "$TODAS" -eq 1 ]; then
+  for src in "$LISTS"/*.m3u8; do
+    [ -e "$src" ] || continue
+    case "$(basename "$src")" in *_CABLEADA.m3u8|*_SHIELDED.m3u8) continue ;; esac
+    candidatas+=("$src")
+  done
+else
+  # La mas reciente por mtime, ignorando las variantes que crea este script.
+  LATEST=""
+  for src in "$LISTS"/*.m3u8; do
+    [ -e "$src" ] || continue
+    case "$(basename "$src")" in *_CABLEADA.m3u8|*_SHIELDED.m3u8) continue ;; esac
+    if [ -z "$LATEST" ] || [ "$src" -nt "$LATEST" ]; then LATEST="$src"; fi
+  done
+  [ -n "$LATEST" ] && candidatas+=("$LATEST")
+fi
+
+for src in "${candidatas[@]:-}"; do
   [ -e "$src" ] || continue
   base=$(basename "$src")
 
