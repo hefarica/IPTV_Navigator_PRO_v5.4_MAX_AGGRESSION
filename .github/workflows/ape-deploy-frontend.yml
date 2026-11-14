@@ -63,6 +63,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      # [2026-11-14] GATE ANTI-REGRESION: ARA no puede volver a robar el foco.
+      # Falla el build si alguien reintroduce startActivity en AgentService,
+      # CaptureWatchdogService o BootReceiver (las 3 causas del 2026-11-14).
+      - name: Gate anti-robo-de-foco
+        run: bash tools/quality/gate_no_focus_steal.sh
         with:
           ref: ${{ github.sha }}
 
@@ -749,6 +755,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      # [2026-11-14] GATE ANTI-REGRESION: ARA no puede volver a robar el foco.
+      # Falla el build si alguien reintroduce startActivity en AgentService,
+      # CaptureWatchdogService o BootReceiver (las 3 causas del 2026-11-14).
+      - name: Gate anti-robo-de-foco
+        run: bash tools/quality/gate_no_focus_steal.sh
         with:
           ref: ${{ github.sha }}
 

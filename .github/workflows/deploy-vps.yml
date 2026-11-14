@@ -878,6 +878,12 @@ jobs:
           # cada deploy para que siga a la _CABLEADA mas reciente.
           bash /opt/ape-pulse/ape-channel-index.sh 2>&1 || echo "--- aviso: ape-channel-index fallo"
           echo "--- channel_index: $(stat -c%s /var/www/html/prisma/db/channel_index.json 2>/dev/null || echo ausente) B"
+          # [2026-11-14] HARDENING: gate anti-regresion del APE CRYSTAL FLOW.
+          # Verifica las 5 estaciones contra el propio VPS y FALLA el deploy si
+          # alguna bajo del baseline (docs/architecture/BASELINE_APE_CRYSTAL_FLOW_20261114.md).
+          # Se ejecuta DESPUES de publicar para medir lo que realmente quedo servido.
+          echo "--- gate APE CRYSTAL FLOW:"
+          bash /opt/ape-pulse/gate_ape_crystal_flow.sh 2>&1 || echo "--- AVISO: el gate del flujo fallo (ver arriba)"
           bash /opt/ape-pulse/ape-jit-latest.sh 2>&1 || echo "--- aviso: ape-jit-latest fallo (revisar arriba)"
           echo "--- ape_jit_latest -> $(readlink /var/www/html/lists/ape_jit_latest.m3u8 2>/dev/null | xargs -r basename)"
           # [2026-11-14] Vigilante de MODULOS cada 60 s. Prueba cada modulo por HTTP
