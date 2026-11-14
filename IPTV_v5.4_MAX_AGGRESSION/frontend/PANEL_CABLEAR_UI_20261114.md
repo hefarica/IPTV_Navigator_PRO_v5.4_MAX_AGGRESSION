@@ -129,7 +129,7 @@ Consola: `window.APE_CABLEAR` expone `encolar()`, `consultarTicket(t)`, `consult
 | Item | Estado |
 |---|---|
 | Probado en navegador real | **NO** — no hay navegador en el entorno; se exige `node -c` + prueba manual documentada |
-| Endpoint de listado de `/lists/` | **NO existe** ni en el contrato ni en t60 → el `<datalist>` solo ofrece el historial local del navegador. **No se inventó una ruta** |
+| Endpoint de listado de `/lists/` | **En t61 NO existía** (ni en el contrato ni en t60) → el `<datalist>` solo ofrecía historial local y **no se inventó una ruta**. **Resuelto en t65**: lo construye t64 (`/prisma/api/cablear-listas.php`) y el panel lo consume — ver la sección de reparación al final |
 | `?ultimos=N` | Implementación confirmada: `{ok,count,tickets[]}`. Se lee esa forma (y array plano por si cambia) |
 | Auth | `X-APE-Key` se envía **solo** si existe `window.APE_CABLEAR_KEY`/localStorage. Si el VPS define `APE_CABLEAR_KEY` y la página no la expone → **401** con motivo literal (comportamiento correcto, no oculto) |
 | `device` | Opcional: se envía solo si `window.APE_DEVICE_ID` casa `^[A-Za-z0-9_-]{16,512}$`; si no, se omite y el backend aplica su default. **Ojo:** si se envía mal, el backend tiene `E_DEVICE_INVALIDO` (400) |
@@ -166,3 +166,75 @@ El panel es autocontenido: sin su `<script>`, la UI queda exactamente como estab
 ---
 
 *Implementado el 2026-11-14. No se tocó el generador, ni el backend, ni el VPS, ni `.github/`, ni `contracts/`. Sin deploy.*
+
+---
+
+# REPARACIÓN t65 — desplegable de listas reales + `publicar` marcado (2026-11-14)
+
+**Motivo:** el panel de t61 no servía al caso de uso del operador en dos puntos, los dos bloqueantes:
+
+| Defecto | Qué pasaba | Reparación |
+|---|---|---|
+| **F-PANEL-01** | No había lista que elegir: el operador tenía que **escribir el nombre a ciegas** | **Desplegable** con las listas reales de `/lists/`, alimentado por el endpoint de t64 |
+| **F-PANEL-02** | `publicar` venía **desmarcado** → `url_cableada = null` (invariante I3) → cableaba y **no recibía ninguna URL** para cargar en el reproductor | `publicar` **MARCADO por defecto**, etiqueta explícita y **aviso en claro** si se desmarca |
+
+## Endpoint consumido (t64) — verificado, no inventado
+
+```
+GET /prisma/api/cablear-listas.php?limite=200      (opcional X-APE-Key)
+fichero: IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/cablear-listas.php
+         10.017 B · sha256 fa23cf1f5718bd3717f41a936f09e444f193f2fec74e8b3c2d3190ac429b356c
+respuesta: { ok, count, total, truncado, generado, base, listas:[...], auth }
+por lista: { nombre, bytes, bytes_gz, bytes_descomprimidos, mtime, mtime_epoch, canales,
+             canales_motivo, sha256, sha256_motivo, url, tiene_cableada, url_cableada,
+             cableada_bytes, cableada_mtime, cableada_mas_nueva, estado }
+orden: mtime descendente -> la PRIMERA es la más reciente (se etiqueta como tal)
+```
+
+**Cada opción del desplegable muestra:** `nombre · tamaño · fecha · nº de canales · estado de cableado`.
+El estado de cableado usa `tiene_cableada` y `cableada_mas_nueva`:
+`YA CABLEADA (al día)` / `ya cableada (la fuente es más nueva)` / `sin cablear`.
+La primera opción va etiquetada `← la más reciente` para que el operador vea cuál es y **elija otra**.
+La opción por defecto es el placeholder vacío: **no se preselecciona la más reciente**.
+
+## Comportamiento nuevo
+
+1. Al abrir el panel se llama a `cargarListas()` y se puebla el `<select>`.
+2. `listaElegida()`: manda el desplegable; si está vacío, cae al campo manual (`<details>` de respaldo).
+3. **`publicar` viene `checked`** con la etiqueta *"Publicar: dejar la lista accesible para cargarla en
+   el reproductor (necesario para obtener la URL)"*.
+4. Si se **desmarca**, aparece el aviso: *"Sin publicar: el trabajo quedará solo en staging y **NO
+   habrá URL cargable** (url_cableada = null por diseño, invariante I3)"*. En vivo, en el `change`.
+5. Si el listado falla (endpoint sin desplegar, 404, 401…), se muestra el **motivo literal**
+   (`motivoLiteral`) y el campo manual queda operativo: **degradación honesta, no pantalla rota**.
+6. Los errores del backend siguen soportando **las dos formas** (plana `{error:'E_CODE',motivo}` de t60
+   y anidada `{error:{codigo,motivo}}` del contrato) — sin regresión respecto a t61.
+
+## Prueba manual documentada (no ejecutada: no hay navegador en este entorno)
+
+```text
+1. Desplegar el JS (CABLEAR_PANEL_DEPLOY_ENTRY.md §1) y el endpoint PHP (§2).
+2. Abrir index-v4.html y desplegar "🔌 Integración de listas — cablear UNA lista concreta".
+3. El desplegable lista N listas con fecha/tamaño/canales y su estado de cableado;
+   la primera lleva "← la más reciente".
+4. ELEGIR UNA HISTÓRICA (no la primera) -> el campo manual se sincroniza con el nombre elegido.
+5. "Publicar" debe estar MARCADO. Pulsar "Cablear".
+6. Esperado: queued -> running -> done, y en done aparece "URL cableada" (no nula) + botón Copiar;
+   la URL debe acabar en /lists/<nombre>_CABLEADA.m3u8.
+7. Desmarcar "Publicar" y repetir: aparece el aviso de que NO habrá URL, y en done url_cableada
+   será null con el aviso de invariante I3.
+8. Consola: APE_CABLEAR.cargarListas() / APE_CABLEAR.listaElegida() / APE_CABLEAR.endpoints.listas
+```
+
+## Verificación de esta reparación
+
+| Comprobación | Resultado |
+|---|---|
+| `node -c list-cablear-panel.js` | **exit 0** |
+| Tokens de F-PANEL-01/02 (14 comprobaciones) | **14/14** |
+| Errores en dos formas (plana + anidada) | **sí**, sin regresión |
+| HTML aditivo | **6 insertions / 0 deletions** (commit `8263987d`, `git show --numstat`) |
+| Generador / backend / worker | **no tocados** |
+
+**Estado:** reparado en el repo, **NO desplegado**.
+

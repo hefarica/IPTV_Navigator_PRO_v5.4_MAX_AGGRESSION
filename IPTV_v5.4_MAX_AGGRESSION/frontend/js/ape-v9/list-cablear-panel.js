@@ -37,6 +37,9 @@
   var TERMINALES = { done: 1, failed: 1, skipped_disk: 1, expired: 1 };
   var URL_ENCOLAR = '/prisma/api/cablear.php';
   var URL_ESTADO = '/prisma/api/cablear-estado.php';
+  // Endpoint de listado de /lists/ implementado en t64 (cablear-listas.php).
+  // La ruta se toma del backend real; este panel no la inventa.
+  var URL_LISTAS = '/prisma/api/cablear-listas.php';
 
   var _timer = null;
   var _ticketActual = null;
@@ -118,19 +121,31 @@
       '#ape-cablear-panel .cb-url code{background:#0b0b0b;border:1px solid #333;border-radius:6px;padding:6px 8px;font-size:12px;word-break:break-all}' +
       '</style>' +
       '<div class="cb-row">' +
-      '  <input id="ape-cablear-lista" type="text" list="ape-cablear-listas" maxlength="2048" spellcheck="false" ' +
-      '         placeholder="nombre de una lista de /lists/ (p.ej. APE_LISTA_1794100720046.m3u8) o URL http(s)" />' +
-      '  <datalist id="ape-cablear-listas"></datalist>' +
+      '  <select id="ape-cablear-select" style="flex:1 1 560px;min-width:280px;padding:9px 11px;border-radius:8px;border:1px solid #3a3a3a;background:#141414;color:#f2f2f2;font-size:14px">' +
+      '    <option value="">— cargando listas de /lists/ … —</option>' +
+      '  </select>' +
+      '  <button id="ape-cablear-refresh" type="button" title="Volver a leer /lists/">Refrescar listas</button>' +
       '  <button id="ape-cablear-go" class="cb-primary" type="button">Cablear</button>' +
       '  <button id="ape-cablear-last" type="button" title="Reengancha el último trabajo (GET ?ultimos=10)">Último trabajo</button>' +
       '</div>' +
-      '<div class="cb-hint">Se cablea EXACTAMENTE la lista que escribas aquí (no la más reciente). ' +
-      'Las URLs externas solo pasan si el host está en la allowlist del VPS; si no, el servidor responde E_HOST_NO_PERMITIDO y se muestra tal cual.</div>' +
+      '<div id="ape-cablear-listas-info" class="cb-hint">leyendo /lists/ …</div>' +
+      '<details id="ape-cablear-manual" style="margin:6px 0">' +
+      '  <summary class="cb-hint" style="cursor:pointer">… o escribir a mano un nombre / URL (respaldo)</summary>' +
+      '  <div class="cb-row" style="margin-top:6px">' +
+      '    <input id="ape-cablear-lista" type="text" list="ape-cablear-listas" maxlength="2048" spellcheck="false" ' +
+      '           placeholder="nombre de /lists/ (p.ej. APE_LISTA_1794100720046.m3u8) o URL http(s)" />' +
+      '    <datalist id="ape-cablear-listas"></datalist>' +
+      '  </div>' +
+      '</details>' +
+      '<div class="cb-hint">Se cablea EXACTAMENTE la lista elegida — <b>no</b> “la más reciente”: el desplegable lista TODAS las de /lists/ con fecha, tamaño y si ya están cableadas.</div>' +
       '<div class="cb-row" style="margin-top:4px">' +
       '  <label class="cb-hint" style="display:flex;gap:7px;align-items:center;cursor:pointer">' +
-      '    <input id="ape-cablear-publicar" type="checkbox" />' +
-      '    publicar (deja el fichero en /lists/ y devuelve url_cableada; sin marcar, queda en staging y la URL es null)' +
+      '    <input id="ape-cablear-publicar" type="checkbox" checked />' +
+      '    <span><b>Publicar</b>: dejar la lista accesible para cargarla en el reproductor (necesario para obtener la URL)</span>' +
       '  </label>' +
+      '</div>' +
+      '<div id="ape-cablear-pub-warn" class="cb-hint cb-warn" style="display:none">' +
+      '  Sin publicar: el trabajo quedará solo en <b>staging</b> y <b>NO habrá URL cargable</b> (url_cableada = null por diseño, invariante I3 del backend).' +
       '</div>' +
 
       '<div id="ape-cablear-estado-card" class="cb-card" style="display:none">' +
@@ -376,12 +391,88 @@
     });
   }
 
+  // ── Listado real de /lists/ (endpoint de t64: /prisma/api/cablear-listas.php) ──
+  // Forma de respuesta: { ok:true, count, total, truncado, base, listas:[ {nombre, bytes,
+  //   bytes_gz, bytes_descomprimidos, mtime, mtime_epoch, canales, sha256, url,
+  //   tiene_cableada, url_cableada, cableada_bytes, cableada_mtime, cableada_mas_nueva, estado} ] }
+  // Ordenadas por mtime descendente: la PRIMERA es la más reciente (se etiqueta como tal),
+  // pero se puede elegir cualquiera.
+  function fmtFecha(iso) {
+    if (!iso) return '';
+    return String(iso).replace('T', ' ').replace('Z', '').slice(0, 16);
+  }
+
+  function etiquetaLista(it, esPrimera) {
+    var p = [];
+    p.push(String(it.nombre || ''));
+    if (typeof it.bytes === 'number') p.push(bytes(it.bytes));
+    var f = fmtFecha(it.mtime);
+    if (f) p.push(f);
+    if (typeof it.canales === 'number' && it.canales > 0) p.push(it.canales + ' canales');
+    if (it.tiene_cableada) {
+      p.push(it.cableada_mas_nueva ? 'YA CABLEADA (al día)' : 'ya cableada (la fuente es más nueva)');
+    } else {
+      p.push('sin cablear');
+    }
+    if (esPrimera) p.push('← la más reciente');
+    return p.join(' · ');
+  }
+
+  function cargarListas() {
+    var sel = document.getElementById('ape-cablear-select');
+    var info = document.getElementById('ape-cablear-listas-info');
+    if (!sel) return;
+    var h = { 'Cache-Control': 'no-store' };
+    var k = clave(); if (k) h['X-APE-Key'] = k;
+    if (info) { info.className = 'cb-hint'; info.textContent = 'leyendo /lists/ …'; }
+    pedir(abs(URL_LISTAS) + '?limite=200', { method: 'GET', cache: 'no-store', headers: h }, function (res) {
+      var j = res && res.json;
+      if (!j || j.ok !== true || !(j.listas instanceof Array)) {
+        // Sin listado se dice el motivo LITERAL y se deja el campo manual como respaldo.
+        sel.innerHTML = '<option value="">— no se pudo leer /lists/ —</option>';
+        if (info) {
+          info.className = 'cb-hint cb-bad';
+          info.textContent = 'no se pudo leer /lists/ (' + motivoLiteral(res) + '). Usa «escribir a mano» como respaldo.';
+        }
+        return;
+      }
+      var html = '<option value="">— elige UNA lista (' + j.count + ' de ' + (j.total || j.count) + ') —</option>';
+      for (var i = 0; i < j.listas.length; i++) {
+        var it = j.listas[i] || {};
+        if (!it.nombre) continue;
+        html += '<option value="' + esc(it.nombre) + '">' + esc(etiquetaLista(it, i === 0)) + '</option>';
+      }
+      sel.innerHTML = html;
+      if (info) {
+        info.className = 'cb-hint';
+        info.textContent = (j.total || j.count) + ' listas en /lists/' +
+          (j.truncado ? ' (mostrando ' + j.count + ': hay más, usa el campo manual para una concreta)' : '') +
+          '. Ordenadas por fecha; la primera es la más reciente — elige la que quieras, no tiene que ser esa.';
+      }
+    });
+  }
+
+  // Lista efectiva: manda el desplegable; si está vacío, el campo manual (respaldo).
+  function listaElegida() {
+    var sel = document.getElementById('ape-cablear-select');
+    var v = sel ? String(sel.value || '').trim() : '';
+    if (v) return v;
+    var inp = document.getElementById('ape-cablear-lista');
+    return inp ? String(inp.value || '').trim() : '';
+  }
+
+  // Aviso claro cuando se desmarca publicar (entonces NO habrá URL cargable).
+  function avisoPublicar() {
+    var chk = document.getElementById('ape-cablear-publicar');
+    var w = document.getElementById('ape-cablear-pub-warn');
+    if (w) w.style.display = (chk && chk.checked) ? 'none' : '';
+  }
+
   // ── Encolar ────────────────────────────────────────────────────────────────
   function encolar(forzar) {
-    var inp = document.getElementById('ape-cablear-lista');
-    var lista = inp ? String(inp.value || '').trim() : '';
+    var lista = listaElegida();
     if (!lista) {
-      pintarEstado({ http: 0, json: { estado: 'failed', error: { codigo: 'E_LISTA_REQUERIDA', motivo: 'escribe el nombre de la lista o la URL antes de cablear' } } });
+      pintarEstado({ http: 0, json: { estado: 'failed', error: 'E_LISTA_REQUERIDA', motivo: 'elige una lista del desplegable (o escríbela a mano) antes de cablear' } });
       return;
     }
     var btn = document.getElementById('ape-cablear-go');
@@ -488,7 +579,25 @@
       pararPoll(); borrarTicket(); _ticketActual = null; _ultimo = null;
       show('ape-cablear-estado-card', false);
       var i2 = document.getElementById('ape-cablear-lista'); if (i2) i2.value = '';
+      var s2 = document.getElementById('ape-cablear-select'); if (s2) s2.value = '';
     });
+
+    // Desplegable de listas reales (endpoint de t64) + respaldo manual.
+    var sel = document.getElementById('ape-cablear-select');
+    if (sel) sel.addEventListener('change', function () {
+      if (sel.value) { var i3 = document.getElementById('ape-cablear-lista'); if (i3) i3.value = sel.value; }
+    });
+    var rf = document.getElementById('ape-cablear-refresh');
+    if (rf) rf.addEventListener('click', cargarListas);
+
+    // publicar viene MARCADO por defecto: el operador quiere que la lista pase por el
+    // sistema y para eso necesita la URL. Si lo desmarca, se avisa en claro.
+    var pc = document.getElementById('ape-cablear-publicar');
+    if (pc) pc.addEventListener('change', avisoPublicar);
+    avisoPublicar();
+
+    // Cargar el listado real nada más abrir el panel.
+    cargarListas();
 
     // Reenganche tras recargar (regla del contrato): si hay ticket guardado, ?ticket=.
     // El ticket NO se escribe en el campo lista: son cosas distintas.
@@ -507,8 +616,10 @@
     encolar: encolar,
     consultarTicket: consultarTicket,
     consultarUltimos: consultarUltimos,
+    cargarListas: cargarListas,
+    listaElegida: listaElegida,
     estadoActual: function () { return _ultimo; },
     ticketKey: TICKET_KEY,
-    endpoints: { encolar: URL_ENCOLAR, estado: URL_ESTADO }
+    endpoints: { encolar: URL_ENCOLAR, estado: URL_ESTADO, listas: URL_LISTAS }
   };
 })();
