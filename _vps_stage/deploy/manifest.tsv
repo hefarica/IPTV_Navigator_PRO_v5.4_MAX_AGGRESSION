@@ -69,3 +69,5 @@ IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/sentinel_telemetry_api.lua	/etc/nginx/lua
 IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/bandwidth_reactor_api.lua	/etc/nginx/lua/bandwidth_reactor_api.lua	644	www-data:www-data	[2026-11-14] content_by_lua_file exigido por prisma-floor-lock; sin el, nginx -t falla
 IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/prisma_telemetry_full.lua	/etc/nginx/lua/prisma_telemetry_full.lua	644	www-data:www-data	[2026-11-14] content_by_lua_file exigido por prisma-floor-lock; sin el, nginx -t falla
 IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/quality_realtime.lua	/etc/nginx/lua/quality_realtime.lua	644	www-data:www-data	[2026-11-14] content_by_lua_file exigido por prisma-floor-lock; sin el, nginx -t falla
+IPTV_v5.4_MAX_AGGRESSION/vps/systemd/ape-pulse-canary.path	/etc/systemd/system/ape-pulse-canary.path	644	root:root	[2026-11-14] path que vigila la cola de zapping; TriggerLimit + StartLimit para que no muera en bucle
+IPTV_v5.4_MAX_AGGRESSION/vps/systemd/ape-pulse-canary.service	/etc/systemd/system/ape-pulse-canary.service	644	root:root	[2026-11-14] worker one-shot del canary; TriggerLimit + StartLimit para que no muera en bucle

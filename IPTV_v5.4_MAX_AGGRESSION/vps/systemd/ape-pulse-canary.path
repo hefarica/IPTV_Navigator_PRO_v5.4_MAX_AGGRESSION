@@ -1,6 +1,17 @@
 [Unit]
 Description=APE canary: dispara el worker en cuanto cae un ticket de zap
 Documentation=man:systemd.path(5)
+# [FIX 2026-11-14] LIMITE DE DISPARO. Medido: el path disparaba el servicio en
+# cuanto DirectoryNotEmpty era cierto. Si el worker no VACIA la cola antes de
+# terminar, el path redispara en el acto -> bucle caliente -> el SERVICIO toca
+# su StartLimit (5 arranques en 10 s) -> el path queda 'failed' con
+# unit-start-limit-hit. Un .path en failed NO SE REARMA SOLO: systemd deja de
+# vigilarlo. Resultado medido: 12 horas muerto, 0 artefactos nuevos.
+#   2026-11-14 01:51:53 UTC -> Failed with result 'unit-start-limit-hit'
+# Con TriggerLimit el path se autolimita a 5 disparos por minuto y no puede
+# entrar en bucle; el primer disparo legitimo sigue siendo inmediato.
+TriggerLimitIntervalSec=60
+TriggerLimitBurst=5
 # El timer de 20 s se queda como red de seguridad; esto es el disparo inmediato.
 
 [Path]

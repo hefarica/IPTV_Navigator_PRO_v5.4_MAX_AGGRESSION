@@ -812,6 +812,45 @@ jobs:
           if [ "$GOT" != "$SHA_PIN" ]; then
             echo "::error::el motor en disco ($GOT) no es el pineado ($SHA_PIN)"; exit 1
           fi
+
+          # ═══════════════════════════════════════════════════════════════════
+          # [2026-11-14] CANARY: daemon-reload + reset-failed + REARME.
+          #
+          # Dos defectos medidos, los dos en este mismo bloque:
+          #
+          # A) El deploy copia /etc/systemd/system/ape-pulse-canary.{path,service}
+          #    pero NUNCA hace `daemon-reload`: systemd no relee los ficheros y
+          #    los cambios no se aplican. Copiar no es instalar.
+          #
+          # B) Mas grave: `ape-pulse-canary.timer` se DETIENE arriba (linea del
+          #    TIMER_PREV) y NUNCA se vuelve a arrancar. Cada deploy dejaba el
+          #    canary sin su red de seguridad de 20 s, y si ademas el .path
+          #    estaba en 'failed', el modulo quedaba completamente muerto hasta
+          #    que alguien lo mirase a mano.
+          #
+          # C) Un `.path` en 'failed' (unit-start-limit-hit) NO SE REARMA SOLO:
+          #    systemd deja de vigilarlo para siempre. Medido: 12 horas en
+          #    failed, 0 artefactos nuevos, y el deploy seguia dando success.
+          #    Hay que hacer `reset-failed` de forma explicita.
+          #
+          # El TriggerLimit del .path y el StartLimit del .service (subidos en
+          # este mismo commit) impiden que vuelva al bucle caliente que lo mato.
+          # ═══════════════════════════════════════════════════════════════════
+          sudo -n systemctl daemon-reload 2>&1 || true
+          PATH_PREV=$(systemctl is-failed ape-pulse-canary.path 2>/dev/null || echo unknown)
+          echo "--- canary.path antes: $PATH_PREV"
+          sudo -n systemctl reset-failed ape-pulse-canary.path 2>/dev/null || true
+          sudo -n systemctl reset-failed ape-pulse-canary.service 2>/dev/null || true
+          sudo -n systemctl start ape-pulse-canary.path 2>&1 || true
+          sleep 2
+          PATH_ST=$(systemctl is-active ape-pulse-canary.path 2>/dev/null || echo unknown)
+          echo "--- canary.path despues: $PATH_ST"
+          if [ "$TIMER_PREV" = "active" ]; then
+            sudo -n systemctl start ape-pulse-canary.timer 2>&1 || true
+            echo "--- timer REARMADO (estaba activo antes del deploy y el bloque de arriba lo paro)"
+          fi
+          QN=$(ls /var/lib/ara/canary/queue 2>/dev/null | wc -l)
+          echo "--- canary: path=$PATH_ST timer=$(systemctl is-active ape-pulse-canary.timer 2>/dev/null || echo inactive) cola=$QN"
           echo "MOTOR_ARRIBA estado=$ST listeners=${N:-0} health=$CODE sha=$GOT timer=$TIMER_PREV"
           APE_EOF
 

@@ -2,6 +2,14 @@
 Description=APE pulse canary worker — dispara el canary one-shot desde la cola de zapping
 Documentation=file:/opt/ape-pulse/ape-pulse-canary-worker.sh
 ConditionPathExists=/opt/ape-pulse/ape-pulse-canary-worker.sh
+# [FIX 2026-11-14] Los limites por defecto eran StartLimitBurst=5 en 10 s. El
+# path puede disparar varias veces legitimamente (un zap por canal), y 5 en 10 s
+# es demasiado estrecho: cualquier racha de zapping lo mata. Se amplia a 10 en
+# 60 s, que sigue cortando un bucle real (un bucle hace >1/s) pero tolera una
+# sesion normal de zapping. El TriggerLimit del .path es la primera barrera;
+# esto es la segunda.
+StartLimitIntervalSec=60
+StartLimitBurst=10
 
 [Service]
 Type=oneshot
