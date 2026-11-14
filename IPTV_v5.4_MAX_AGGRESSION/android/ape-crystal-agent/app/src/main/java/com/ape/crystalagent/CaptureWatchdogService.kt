@@ -142,15 +142,23 @@ class CaptureWatchdogService : Service() {
             val now = System.currentTimeMillis()
             if (now - lastPromptAt < 30_000L) return
             lastPromptAt = now
-            Log.i(TAG, "player=$pkg capture_off; requesting consent")
-            try {
-                ctx.startActivity(
-                    Intent(ctx, ScreenCaptureActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                )
-            } catch (t: Throwable) {
-                Log.w(TAG, "background launch blocked: ${t.javaClass.simpleName}")
-                notifyAction(ctx)
-            }
+            Log.i(TAG, "player=$pkg capture_off; requesting consent por NOTIFICACION")
+            // [FIX 2026-11-14] PROHIBIDO startActivity AQUI.
+            //
+            // MEDIDO en el device: `ctx.startActivity(ScreenCaptureActivity + NEW_TASK)`
+            // TRAE una Activity al primer plano. Como onForeground se dispara al entrar a
+            // CUALQUIER reproductor (OTT Navigator, TiviMate, VLC, Kodi, SmartPlayer) y el
+            // cooldown es de 30 s, el operador veia saltar la app ARA encima del player
+            // una y otra vez. Lo describio asi:
+            //   "A CUALQUIER APLICACION QUE INGRESO, ME LLEVA AL APK ARA Y ENTRA AL MENU"
+            // No era el badge (ese ya usa BadgeOverlay sin Activity): era este watchdog.
+            //
+            // El consentimiento de captura NO justifica robar el foco. Se pide con una
+            // notificacion (PendingIntent), que el operador atiende cuando quiere y que
+            // no saca a nadie de su reproduccion. notifyAction() ya existia como fallback
+            // para cuando el sistema bloquea el lanzamiento en background; ahora es la
+            // UNICA via.
+            notifyAction(ctx)
         }
 
         private fun notifyAction(ctx: Context) {
