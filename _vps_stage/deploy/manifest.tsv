@@ -65,3 +65,7 @@ IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/qoe_flush_worker.lua	/etc/nginx/lua/qoe_f
 IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/reactor_tick.lua	/etc/nginx/lua/reactor_tick.lua	644	www-data:www-data	[2026-11-14] init_worker de la cadena; ya encadena qoe_flush_worker con pcall
 IPTV_v5.4_MAX_AGGRESSION/vps/nginx/conf.d/prisma-floor-lock.conf	/etc/nginx/conf.d/prisma-floor-lock.conf	644	root:root	[2026-11-14] declara init_worker_by_lua_file reactor_tick.lua; NUNCA estuvo en el manifiesto
 IPTV_v5.4_MAX_AGGRESSION/vps/nginx/sites-enabled-default.conf	/etc/nginx/sites-enabled/default	644	root:root	[2026-11-14] bypass /prisma/api/qoe-flush.php (mata el 302 que ahogaba el flush)
+IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/sentinel_telemetry_api.lua	/etc/nginx/lua/sentinel_telemetry_api.lua	644	www-data:www-data	[2026-11-14] content_by_lua_file exigido por prisma-floor-lock; sin el, nginx -t falla
+IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/bandwidth_reactor_api.lua	/etc/nginx/lua/bandwidth_reactor_api.lua	644	www-data:www-data	[2026-11-14] content_by_lua_file exigido por prisma-floor-lock; sin el, nginx -t falla
+IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/prisma_telemetry_full.lua	/etc/nginx/lua/prisma_telemetry_full.lua	644	www-data:www-data	[2026-11-14] content_by_lua_file exigido por prisma-floor-lock; sin el, nginx -t falla
+IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/quality_realtime.lua	/etc/nginx/lua/quality_realtime.lua	644	www-data:www-data	[2026-11-14] content_by_lua_file exigido por prisma-floor-lock; sin el, nginx -t falla
