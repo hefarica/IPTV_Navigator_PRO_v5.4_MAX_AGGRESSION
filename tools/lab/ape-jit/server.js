@@ -5292,6 +5292,132 @@ function publicBase(req) {
   return proto + '://' + (req.headers.host || 'iptv-ape.duckdns.org') + '/jit';
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * RUTA CANONICA DE LISTAS  /lists/<cualquier-lista>.m3u8
+ * ══════════════════════════════════════════════════════════════════════════
+ * Una sola ruta que sirve CUALQUIER lista .m3u8 del directorio de listas, con
+ * tres propiedades que se demuestran en tools/quality/test_canonical_route.js:
+ *
+ *  IDEMPOTENTE  Los bytes de una misma (lista, forma) son siempre los mismos.
+ *               ETag = sha256 del fuente + WIRING_VERSION + forma. If-None-Match
+ *               corta en 304 SIN abrir el fichero. No se escribe nada: dos
+ *               peticiones concurrentes leen el mismo fichero y no se pisan.
+ *  POLIMORFA    El mismo path cambia de forma segun el reproductor:
+ *                 cartucho (VLC/LibVLC/Kodi/LibreELEC) -> lista VERBATIM
+ *                 proxy    (OTT/TiviMate/ExoPlayer/Smarters) -> URLs envueltas
+ *                          en el contrato del OttShim (127.0.0.1/source.m3u8)
+ *                 desconocido -> VERBATIM (forma segura) y se declara
+ *  ISOMORFA     El id sale de la RUTA, nunca del codigo: cualquier *.m3u8 del
+ *               directorio se sirve igual. Sin lista hardcodeada.
+ *
+ * STREAMING OBLIGATORIO: 1,3 GB y 21.224 canales. Se lee con createReadStream y
+ * se transforma linea a linea; JAMAS un readFileSync del fuente. El consumo de
+ * memoria no depende del tamano del fichero (se mide en la prueba).
+ *
+ * Lo que NO hace: no toca las URLs del proveedor (la forma proxy las lleva
+ * VERBATIM dentro de url=), no abre conexiones al proveedor (el OttShim es del
+ * device), y no aplica nonce por descarga: aqui manda la idempotencia exigida.
+ */
+const WIRING_VERSION = 'ape-wire-1';
+const LISTS_DIR = process.env.LISTS_DIR || path.join(path.dirname(MAP_FILE), 'lists');
+const SHIM_PORT = Number(process.env.APE_SHIM_PORT || 0);
+
+/* Clasificacion de reproductor. Mismo regex que ya usa el motor para decidir
+ * master-vs-media (L6319/L6416): una sola definicion de "cartucho" en todo el
+ * fichero, no dos que puedan divergir. */
+const RE_CARTRIDGE = /(^|\s|\/)(VLC|LibVLC|Kodi|LibreELEC)(\s|\/|$)/i;
+const RE_PROXY = /(OTT\s*Navigator|OTTNavigator|TiviMate|ExoPlayer|IPTV\s*Smarters|Smarters)/i;
+function playerForm(ua) {
+  const s = String(ua || '');
+  if (RE_CARTRIDGE.test(s)) return { form: 'cartridge', player_class: 'cartridge', reason: 'ua-cartucho' };
+  if (RE_PROXY.test(s)) return { form: 'proxy', player_class: 'proxy', reason: 'ua-proxy' };
+  return { form: 'cartridge', player_class: 'unknown', reason: 'ua-desconocido-forma-segura' };
+}
+
+/* Cache de huella: evita releer 1,3 GB en cada GET. La clave es la identidad
+ * fisica del fichero; si cambia cualquiera de sus cuatro campos se recomputa.
+ * NO altera los bytes servidos: solo el coste de calcular el ETag. */
+const _listHashCache = new Map();
+function listSha256(st) {
+  const key = [st.dev, st.ino, st.size, st.mtimeMs].join(':');
+  const hit = _listHashCache.get(key);
+  if (hit) return hit;
+  const h = crypto.createHash('sha256');
+  const fd = fs.openSync(st._path, 'r');
+  try {
+    const buf = Buffer.allocUnsafe(1 << 20);
+    let n;
+    while ((n = fs.readSync(fd, buf, 0, buf.length, null)) > 0) h.update(buf.subarray(0, n));
+  } finally { try { fs.closeSync(fd); } catch (_) { } }
+  const digest = h.digest('hex');
+  _listHashCache.clear(); /* una entrada viva: el fichero es unico por ruta */
+  _listHashCache.set(key, digest);
+  return digest;
+}
+
+/* ETag fuerte: sha256 del fuente + version del cableador + forma. La forma entra
+ * porque dos representaciones distintas del mismo recurso no pueden compartir
+ * validador (si no, un 304 serviria la forma equivocada a un player distinto). */
+function listEtag(sha, form) {
+  return '"' + sha.slice(0, 32) + '-' + WIRING_VERSION + '-' + form + '"';
+}
+
+/* Transforma SOLO las lineas de URL para la forma proxy. Las lineas de etiqueta
+ * (#EXTM3U, #EXTINF, #EXT-X-APE-*) pasan intactas; el resto se envuelve en el
+ * contrato del OttShim con la URL original VERBATIM dentro de url=. */
+function makeShimWirer(shimPort) {
+  const pending = []; /* ids de los #EXTINF vistos y aun no consumidos */
+  return function wireLine(line) {
+    if (line.startsWith('#EXTINF')) {
+      const id = (line.match(/tvg-id="([^"]*)"/) || [])[1] || '';
+      pending.push(id);
+      return line;
+    }
+    if (line === '' || line.startsWith('#')) return line;
+    const id = pending.length ? pending.shift() : '';
+    return 'http://127.0.0.1:' + shimPort + '/source.m3u8?id=' + encodeURIComponent(id) +
+      '&url=' + encodeURIComponent(line);
+  };
+}
+
+/* Parte el stream en lineas conservando los finales de linea originales. Usa un
+ * carry acotado: si una sola linea supera LINE_CAP se aborta (fail-closed) en vez
+ * de crecer sin control — una lista corrupta no debe poder tumbar el proceso. */
+const LINE_CAP = 4 * 1024 * 1024;
+function makeLineTransform(wireLine) {
+  const { Transform } = require('stream');
+  let carry = Buffer.alloc(0);
+  return new Transform({
+    transform(chunk, _enc, cb) {
+      carry = carry.length ? Buffer.concat([carry, chunk]) : chunk;
+      let out = '';
+      let i = 0;
+      for (; ;) {
+        const nl = carry.indexOf(0x0a, i);
+        if (nl < 0) break;
+        const raw = carry.subarray(i, nl + 1).toString('utf8');
+        const body = raw.replace(/\r?\n$/, '');
+        out += (wireLine ? wireLine(body) : body) + raw.slice(body.length);
+        i = nl + 1;
+      }
+      carry = i > 0 ? carry.subarray(i) : carry;
+      if (carry.length > LINE_CAP) return cb(new Error('E_LIST_LINE_TOO_LONG'));
+      if (out) this.push(Buffer.from(out, 'utf8'));
+      cb();
+    },
+    flush(cb) {
+      if (carry.length) {
+        const raw = carry.toString('utf8');
+        const body = raw.replace(/\r?\n$/, '');
+        this.push(Buffer.from((wireLine ? wireLine(body) : body) + raw.slice(body.length), 'utf8'));
+        carry = Buffer.alloc(0);
+      }
+      cb();
+    }
+  });
+}
+
+
 function outputDescriptor(state) {
   const truth = state && state.outputTruth;
   if (!truth) return null;
@@ -6135,6 +6261,155 @@ const server = http.createServer((req, res) => {
     setNoCacheHeaders(res);
     res.writeHead(200, { 'Content-Type': MIME['.m3u8'] });
     return fs.createReadStream(f).pipe(res);
+  }
+  /* [2026-11-14] /playlist-shim.m3u8 — el MISMO catalogo, cableado al OttShim.
+   *
+   * El OttShim es un proxy LOOPBACK que corre EN EL DEVICE
+   * (com.ape.crystalagent/dev.venice.ottshim.ProxyService en 127.0.0.1:<puerto>).
+   * Medido en el ONN: proxy_up=true, rutas /source.m3u8 /media.m3u8 /seg /live/,
+   * parametros id= y url=. Pero con ids=0 y media_segments_served=0: encendido y
+   * sin agua, porque nadie le pasa canales.
+   *
+   * Transformacion, no reconstruccion: se lee el APE_JIT_LIST.m3u8 ya generado y
+   * solo se reescribe la linea de URL de cada canal:
+   *
+   *   ANTES: https://<host>/jit/go/<id>?p=<prof>&e=<engine>
+   *   AHORA: http://127.0.0.1:<puerto>/source.m3u8?id=<id>&url=<esa misma, codificada>
+   *
+   * El `url` es EXACTAMENTE la URL de antes, asi que el shim reenvia al mismo
+   * destino: no cambia resolucion, ni perfiles, ni directivas. Solo mete el proxy
+   * en medio para que pueda medir QoE, cachear segmentos y aplicar su ceilingBps.
+   * El catalogo de siempre (/playlist.m3u8) NO se toca.
+   *
+   * ?port=<n> elige el puerto (o APE_SHIM_PORT en el servicio). Sin puerto
+   * devuelve 400, nunca una lista rota en silencio. */
+  if (u.pathname === '/playlist-shim.m3u8') {
+    const f = path.join(path.dirname(MAP_FILE), 'APE_JIT_LIST.m3u8');
+    if (!fs.existsSync(f)) { res.writeHead(404); return res.end('playlist not built'); }
+    const shimPort = Number(u.searchParams.get('port') || process.env.APE_SHIM_PORT || 0);
+    if (!(shimPort > 0 && shimPort < 65536)) {
+      res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('falta ?port=<puerto del ottshim> (o APE_SHIM_PORT en el servicio)');
+    }
+    let src = '';
+    try { src = fs.readFileSync(f, 'utf8'); }
+    catch (e) { res.writeHead(500); return res.end('no se pudo leer el catalogo'); }
+    /* [2026-11-14 · corregido por la auditoria adversarial t51]
+     * El catalogo NO usa /jit/go/<id>?p=&e=. Medido sobre APE_JIT_LIST.m3u8:
+     *   urls=21224 · con /jit/live/=21224 · con /jit/go/=0
+     * La forma real es  <base>/jit/live/<id>/master.m3u8
+     * El primer regex (que buscaba /jit/go/) daba match_regex=0: reescribia CERO
+     * canales y aun asi proclamaba X-APE-Catalog: shim-wired. Eso es una mentira
+     * de estado, y por eso ahora:
+     *   - el regex acepta /jit/live/<id>/master.m3u8  Y  /jit/go/<id>?... (respaldo)
+     *   - si reescribe 0 canales, devuelve 500 con el conteo, NO un 200 vacio */
+    const out = [];
+    let rewrote = 0, sawChannelUrl = 0;
+    for (const line of src.split('\n')) {
+      const live = line.match(/^(https?:\/\/[^\s]+\/jit\/live\/([^\/\s]+)\/master\.m3u8)$/);
+      const go   = line.match(/^(https?:\/\/[^\s]+\/jit\/go\/([^?\s]+)\?[^\s]*)$/);
+      const m = live || go;
+      if (!m) {
+        if (/^https?:\/\//.test(line)) sawChannelUrl++;
+        out.push(line); continue;
+      }
+      rewrote++;
+      out.push('http://127.0.0.1:' + shimPort + '/source.m3u8?id=' +
+        encodeURIComponent(decodeURIComponent(m[2])) + '&url=' + encodeURIComponent(m[1]));
+    }
+    if (rewrote === 0) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      return res.end(JSON.stringify({
+        ok: false, error: 'wired_nothing',
+        detail: 'el catalogo no tiene URLs con forma /jit/live/<id>/master.m3u8 ni /jit/go/<id>',
+        urls_vistas: sawChannelUrl
+      }));
+    }
+    setNoCacheHeaders(res);
+    res.setHeader('X-APE-Catalog', 'shim-wired');
+    res.setHeader('X-APE-Shim-Port', String(shimPort));
+    res.setHeader('X-APE-Shim-Rewritten', String(rewrote));
+    res.writeHead(200, { 'Content-Type': MIME['.m3u8'] });
+    return res.end(out.join('\n'));
+  }
+  /* ── /lists/<cualquier-lista>.m3u8 : LA RUTA CANONICA ─────────────────────
+   * Ver el bloque de cabecera junto a publicBase() para las tres propiedades.
+   * Acepta /lists/... y /jit/lists/... porque publicBase() publica con /jit. */
+  const lm = u.pathname.match(/^\/(?:jit\/)?lists\/([^/]+)\.m3u8$/);
+  if (lm) {
+    const id = safeId(lm[1]);
+    if (!id) {
+      res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('id de lista invalido (se exige [A-Za-z0-9_.-]{1,80})');
+    }
+    const dirResolved = path.resolve(LISTS_DIR);
+    const file = path.resolve(dirResolved, id + '.m3u8');
+    if (file !== path.join(dirResolved, id + '.m3u8')) {
+      res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('ruta de lista fuera del directorio');
+    }
+    let st = null;
+    try { st = fs.statSync(file); } catch (_) { st = null; }
+    if (!st || !st.isFile()) {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('lista no encontrada');
+    }
+    st._path = file;
+    const who = playerForm(req.headers['user-agent']);
+    const form = who.form;
+    const shimPort = Number(u.searchParams.get('port') || SHIM_PORT);
+    if (form === 'proxy' && !(shimPort > 0 && shimPort < 65536)) {
+      /* Fail-closed: una lista proxy sin puerto del OttShim no se sirve "a
+       * medias". Es la misma doctrina que ya aplica /playlist-shim.m3u8. */
+      res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8', 'X-APE-Form': 'proxy', 'X-APE-Form-Reason': 'shim-port-ausente' });
+      return res.end('forma proxy: falta APE_SHIM_PORT (o ?port=<puerto del ottshim>)');
+    }
+    const sha = listSha256(st);
+    const etag = listEtag(sha, form === 'proxy' ? 'proxy-' + shimPort : form);
+    res.setHeader('ETag', etag);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+    res.setHeader('X-APE-Form', form);
+    res.setHeader('X-APE-Player-Class', who.player_class);
+    res.setHeader('X-APE-Form-Reason', who.reason);
+    res.setHeader('X-APE-Wiring-Version', WIRING_VERSION);
+    res.setHeader('X-APE-Source-Sha256', sha);
+    res.setHeader('X-APE-List-Id', id);
+    res.setHeader('Vary', 'User-Agent');
+    /* Revalidacion condicional ANTES de abrir nada: un 304 no lee 1,3 GB. */
+    const inm = String(req.headers['if-none-match'] || '').trim();
+    if (inm) {
+      const tokens = inm.split(',').map((s) => s.trim());
+      if (tokens.indexOf('*') >= 0 || tokens.indexOf(etag) >= 0 || tokens.indexOf(etag.replace(/^W\//, '')) >= 0) {
+        res.writeHead(304);
+        return res.end();
+      }
+    }
+    if (req.method === 'HEAD') {
+      if (form === 'cartridge') res.setHeader('Content-Length', String(st.size));
+      res.writeHead(200);
+      return res.end();
+    }
+    /* Forma cartucho: VERBATIM y sin transformacion — se sirve el fichero tal
+     * cual (Content-Length conocido, cero trabajo por linea). Forma proxy:
+     * reescritura linea a linea -> chunked. */
+    const rs = fs.createReadStream(file, { highWaterMark: 64 * 1024 });
+    if (form === 'cartridge') {
+      res.setHeader('Content-Length', String(st.size));
+      res.writeHead(200);
+      rs.on('error', () => { try { res.destroy(); } catch (_) { } });
+      req.on('close', () => { try { rs.destroy(); } catch (_) { } });
+      rs.pipe(res);
+      return;
+    }
+    res.writeHead(200);
+    const shaped = rs.pipe(makeLineTransform(makeShimWirer(shimPort)));
+    shaped.pipe(res);
+    const bail = () => { try { rs.destroy(); } catch (_) { } try { shaped.destroy(); } catch (_) { } try { res.destroy(); } catch (_) { } };
+    rs.on('error', bail);
+    shaped.on('error', bail);
+    req.on('close', () => { try { rs.destroy(); } catch (_) { } });
+    return;
   }
   if (u.pathname === '/capabilities.json') {
     setNoCacheHeaders(res);
