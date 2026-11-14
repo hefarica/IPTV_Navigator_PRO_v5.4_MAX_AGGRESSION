@@ -118,6 +118,32 @@ fi
 # provider_gate_decide, no aqui.
 if ! DECISION="$(provider_gate_decide canary)"; then
   log "$DECISION"
+  # [FIX 2026-11-14] SI LA PUERTA DENIEGA, SE DESCARTA LA COLA.
+  #
+  # Sin esto el modulo no puede estar sano. La secuencia medida:
+  #   1. Llega un zap -> pulse.php deja un .json en la cola.
+  #   2. El .path ve DirectoryNotEmpty y lanza el worker.
+  #   3. La puerta deniega (reason=player_active) porque el operador esta viendo.
+  #   4. El worker sale 0 SIN borrar el ticket: solo tiene 3 segundos de vida,
+  #      y el TTL es de 120 s.
+  #   5. El directorio sigue no-vacio -> el .path redispara EN EL ACTO.
+  #   6. Bucle: 11 arranques en 5 minutos, el StartLimit del servicio se agota
+  #      y el .path queda failed para siempre.
+  #
+  # Y el zap descartado es CORRECTO que se pierda: el canary es DIAGNOSTICO y el
+  # operador es PRODUCCION. Un zap de hace 3 segundos ya no interesa cuando el
+  # jugador esta usando la unica conexion del proveedor; ese canal se esta
+  # midiendo de hecho por el camino normal. Reintentarlo mas tarde competiria
+  # con el operador, que es justo lo que el orden reproductor > canary prohibe.
+  #
+  # Descartar la cola aqui rompe el bucle por el lado bueno: con el directorio
+  # vacio, DirectoryNotEmpty deja de ser cierto y el .path deja de disparar.
+  if [ -d "$QUEUE" ]; then
+    shopt -s nullglob
+    for f in "$QUEUE"/*.json; do
+      rm -f "$f" && log "denegado por la puerta: descarta el zap $(basename "$f")"
+    done
+  fi
   exit 0
 fi
 log "$DECISION"
