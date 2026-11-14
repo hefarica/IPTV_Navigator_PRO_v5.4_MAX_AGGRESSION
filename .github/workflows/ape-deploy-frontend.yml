@@ -54,7 +54,7 @@ jobs:
         js/ape-v9/ape-image-recipes-bundle.js js/ape-v9/generation-controller.js
         js/ape-v9/ape-server-profile.js js/ape-v9/ape-server-profiles-data.js
         js/ape-v9/rea-processing-policy.js js/ape-v9/rea-export-finalizer.js
-        js/ape-v9/rea-catalog-export.js js/ape-v9/ape-quality-prober.js
+        js/ape-v9/rea-catalog-export.js js/ape-v9/ape-quality-prober.js js/ape-v9/list-cablear-panel.js
         js/ape-v9/unified-generator-integration.js js/ape-v9/m3u8-api-wrapper-integrated.js
         js/ape-lab-import-helper.js js/ape-worker.js js/m3u8-world-class-generator.js
         js/m3u8-generator-v16-elite.js export-module.js app.js

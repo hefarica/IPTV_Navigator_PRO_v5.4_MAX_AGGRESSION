@@ -75,3 +75,14 @@ IPTV_v5.4_MAX_AGGRESSION/vps/bin/ape-cablear-auto.sh	/opt/ape-pulse/ape-cablear-
 tools/ops/ape-cablear-lista.php	/opt/ape-pulse/ape-cablear-lista.php	644	root:root	[2026-11-14] cableador PHP de una pasada: 21.224 canales en 24 s; urlencoded, corta el pipe
 IPTV_v5.4_MAX_AGGRESSION/vps/systemd/ape-cablear-auto.service	/etc/systemd/system/ape-cablear-auto.service	644	root:root	[2026-11-14] servicio oneshot del cableador; SuccessExitStatus=0 3 (el 3 es skip por disco)
 IPTV_v5.4_MAX_AGGRESSION/vps/systemd/ape-cablear-auto.timer	/etc/systemd/system/ape-cablear-auto.timer	644	root:root	[2026-11-14] timer 15 min; NO .path para no leer la lista a medio escribir
+IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/list_cablear_core.php	/var/www/html/prisma/api/list_cablear_core.php	644	www-data:www-data	[2026-11-14] nucleo del panel: encolado, estado, guardia de disco, creacion de los 5 directorios y E_COLA_NO_ESCRIBIBLE con ruta
+IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/list-cablear.php	/var/www/html/prisma/api/list-cablear.php	644	www-data:www-data	[2026-11-14] endpoint de encolado (alias del contrato): require del core
+IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/list-cablear-status.php	/var/www/html/prisma/api/list-cablear-status.php	644	www-data:www-data	[2026-11-14] endpoint de estado por ticket / ?ultimos / ?lista
+IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/cablear.php	/var/www/html/prisma/api/cablear.php	644	www-data:www-data	[2026-11-14] path oficial de encolado que usa el panel
+IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/cablear-estado.php	/var/www/html/prisma/api/cablear-estado.php	644	www-data:www-data	[2026-11-14] path oficial de estado que usa el panel
+IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/cablear-listas.php	/var/www/html/prisma/api/cablear-listas.php	644	www-data:www-data	[2026-11-14] endpoint de LISTADO: sin el, el panel no puede ofrecer elegir una lista que no sea la ultima
+IPTV_v5.4_MAX_AGGRESSION/vps/bin/ape-cablear-queue-worker.sh	/opt/ape-pulse/ape-cablear-queue-worker.sh	755	root:root	[2026-11-14] worker que drena la cola; toma atomica por rename; stub->.gz; guardia de disco; 31/31 PASS
+IPTV_v5.4_MAX_AGGRESSION/vps/bin/ape-cablear-queue-worker.test.sh	/opt/ape-pulse/ape-cablear-queue-worker.test.sh	755	root:root	[2026-11-14] suite del worker (31 aserciones) para smoke post-deploy
+IPTV_v5.4_MAX_AGGRESSION/vps/systemd/ape-cablear-cola.path	/etc/systemd/system/ape-cablear-cola.path	644	root:root	[2026-11-14] dispara el worker en <1 s al aparecer un ticket; MakeDirectory solo de cola/
+IPTV_v5.4_MAX_AGGRESSION/vps/systemd/ape-cablear-cola.service	/etc/systemd/system/ape-cablear-cola.service	644	root:root	[2026-11-14] oneshot del worker con flock singleton
+IPTV_v5.4_MAX_AGGRESSION/vps/systemd/ape-cablear-cola.timer	/etc/systemd/system/ape-cablear-cola.timer	644	root:root	[2026-11-14] red de seguridad: recoge un ticket que el .path hubiera perdido

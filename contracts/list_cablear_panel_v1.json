@@ -1,0 +1,271 @@
+{
+  "schema": "ape.lists.cablear_panel.contract.v1",
+  "contract_id": "list-cablear-panel-v1",
+  "version": "1.0.0",
+  "revision": 1,
+  "status": "SPECIFIED_NOT_IMPLEMENTED",
+  "authority": "operator",
+  "effective": "2026-11-14",
+  "purpose": "Cerrar el hueco medido: hoy el cableador automatico cablea SOLO la lista mas reciente. Este contrato define como pedir el cableado de UNA lista concreta (por nombre de /lists/ o por URL http(s) externa), como se encola sin duplicar trabajos, como se consulta el estado, quien ejecuta el trabajo, como se protege el disco y que URL exacta recibe el operador. Es un contrato de REQUISITOS: no implementa, no despliega, no toca el VPS.",
+  "scope": {
+    "in_scope": ["forma de entrada", "endpoint de encolado", "endpoint de estado", "formato de cola", "quien ejecuta", "guardia de disco", "respuesta final", "invariantes"],
+    "out_of_scope": ["codigo de produccion", "despliegue", "cambios en nginx", "cambios en el generador", "edicion de /lists/ (el contrato no publica: solo define)"],
+    "implementable_by": ["backend PHP (vps/prisma/api)", "frontend (panel de integracion de listas)"]
+  },
+  "measured_context": {
+    "rule": "Estos hechos NO se re-miden en esta tarea: vienen del encargo y del codigo leido. El contrato se apoya en ellos y no los contradice.",
+    "generator_already_wraps": "commit 4d96c07b desplegado: el generador ya envuelve cada URL de canal en /pulse/ al emitir la lista; verificado con 2 marcas _apePulseWrap servidas por HTTP y sha del VPS == repo a3002280.",
+    "auto_cabler_today": "IPTV_v5.4_MAX_AGGRESSION/vps/bin/ape-cablear-auto.sh (commit 965dd422) recorre /var/www/html/lists/*.m3u8 y cablea SOLO la mas reciente por mtime (o --todas), saltando *_CABLEADA.m3u8 y *_SHIELDED.m3u8. Verificado con --dry-run.",
+    "php_cabler_perf": "tools/ops/ape-cablear-lista.php: 22.190.344 lineas en 24,0 s; 21.224/21.224 canales cableados, 0 URLs directas, VIDEO-RANGE preservado en los 21.224.",
+    "disk": "VPS al 85 % con 5,6 GB libres. Cablear una lista la DUPLICA en disco: el .m3u8 cableado + su .gz.",
+    "pulse_encoding": "/pulse/<id>.m3u8?u=<urlencoded>&d=<device> exige u= URLENCODED; base64 devuelve 400 \"u no es http(s)\" (pulse.php:214).",
+    "existing_disk_rule": "ape-cablear-auto.sh ya usa MIN_FREE_MB=3000 (APE_MIN_FREE_MB) y estima el coste como tamano_descomprimido x 2; si no cabe, NO cablea y sale con 3.",
+    "existing_output_name": "<lista_sin_ext>_CABLEADA.m3u8 + <mismo>.gz, escrito como <.partial.$$> y luego mv (publicacion atomica).",
+    "existing_device_default": "d= por defecto es el descriptor base64 eyJ0IjoiZ2VuZXJpYyIsInMiOiJ1bmtub3duIiwiciI6MjA0OCwidyI6MTkyMCwiaCI6MTA4MCwiZiI6MzB9"
+  },
+  "decision_summary": {
+    "1_entrada": "Nombre de fichero de /lists/ O URL http(s) externa. Externa solo si el host esta en una allowlist que mantiene el OPERADOR; por defecto la allowlist esta VACIA y toda URL externa se rechaza con E_HOST_NO_PERMITIDO (fail-closed).",
+    "2_encolado": "POST /prisma/api/cablear.php, x-www-form-urlencoded, campos lista/publicar/device/forzar. Idempotente por clave (fuente+version+mtime+version_del_cableador): repetir devuelve el MISMO ticket con estado duplicado, no un segundo trabajo.",
+    "3_estado": "GET /prisma/api/cablear-estado.php?ticket=... (o ?ultimos=N o ?lista=...). Cinco estados canonicos + expired. La UI guarda el ticket en localStorage y reengancha por ?lista= al recargar.",
+    "4_cola": "/var/lib/ape/cablear/{cola,tomados,hechos,fallidos}/ con un JSON por ticket. Encolado atomico (tmp+rename). Toma atomica (rename a tomados/). Heartbeat cada 30 s; reaper a los 600 s; TTL de terminales 7 dias.",
+    "5_ejecutor": "systemd .path sobre cola/ (latencia <1 s) que arranca un worker oneshot con flock singleton. El timer de 15 min SE MANTIENE como red de seguridad (el worker es idempotente). Descartados: solo-timer (feedback de hasta 15 min) y worker con socket propio (otro proceso que vigilar).",
+    "6_disco": "Se exige libre >= MIN_FREE_MB (3000) Y coste_estimado <= libre - MIN_FREE_MB, con coste = tamano_descomprimido x 2. Si no cabe: estado skipped_disk, HTTP 507, y el ticket SE CONSERVA para reintento.",
+    "7_respuesta": "salida.url_cableada = https://iptv-ape.duckdns.org/lists/<base>_CABLEADA.m3u8 (mas .gz). Nombre DETERMINISTA por lista: recablear la misma lista reescribe el mismo fichero (mv atomico) y la URL no cambia. Con publicar=0 la salida va a _staging/ y NO se publica.",
+    "8_invariantes": "No degradar imagen (solo se reescribe la linea de URL), no tocar la lista original (solo lectura, sha256 antes/despues), no publicar sin pedirlo (publicar=0 por defecto), un trabajo por version de lista (clave de idempotencia)."
+  },
+  "input": {
+    "rule": "El campo lista admite DOS formas y se distinguen por la presencia de '://'. No hay una tercera forma (no se aceptan rutas absolutas, ni file:, ni ftp:, ni data:).",
+    "form_a_filename": {
+      "shape": "<nombre>.m3u8",
+      "regex": "^[A-Za-z0-9][A-Za-z0-9._-]{0,123}\\.m3u8$",
+      "resolved_against": "/var/www/html/lists",
+      "why": "Es el directorio donde el IPTV Navigator publica TODAS sus listas; el panel sirve para elegir UNA de ellas, incluidas las historicas."
+    },
+    "form_b_external_url": {
+      "allowed_schemes": ["http", "https"],
+      "allowlist_file": "/etc/ape/cablear-hosts.allow",
+      "allowlist_format": "un host (o .dominio) por linea, UTF-8, comodines solo con prefijo '.'; '#' inicia comentario",
+      "allowlist_owner": "OPERADOR",
+      "default_state": "VACIA",
+      "default_behaviour": "toda URL externa se rechaza con E_HOST_NO_PERMITIDO (fail-closed)",
+      "why": "Una URL arbitraria desde un panel es un SSRF hacia la red del propio VPS (127.0.0.1:8084, el proveedor, el metadata service del cloud). Permitirla por defecto es regalar la superficie interna. Con allowlist vacia la funcion existe pero esta cerrada: abrirla es un acto deliberado del operador, y cada apertura queda en el log de encolado.",
+      "download_rules": {
+        "max_redirects": 0,
+        "reject_userinfo": "una URL con usuario:password se rechaza con E_URL_CON_CREDENCIALES",
+        "max_bytes": 2147483648,
+        "timeout_s": 120,
+        "dest": "/var/lib/ape/cablear/staging/<ticket>/source.m3u8",
+        "on_failure": "estado failed, codigo E_DESCARGA_FALLIDA con el motivo literal del cliente HTTP"
+      }
+    },
+    "refused_variants": {
+      "rule": "No se cablea una variante ya cableada ni una blindada: seria cablear dos veces.",
+      "patterns": ["*_CABLEADA.m3u8", "*.m3u8.gz", "*_SHIELDED.m3u8"],
+      "code": "E_VARIANTE_NO_CABLEABLE"
+    }
+  },
+  "enqueue_endpoint": {
+    "method": "POST",
+    "path": "/prisma/api/cablear.php",
+    "content_type": "application/x-www-form-urlencoded",
+    "auth": "misma sesion/proteccion que el resto de /prisma/api; el contrato NO define auth, la hereda. Requisito: sin sesion valida -> 401 E_NO_AUTORIZADO",
+    "fields": {
+      "lista": { "required": true, "type": "string", "max_len": 2048, "shape": "nombre de /lists/ o URL http(s)" },
+      "publicar": { "required": false, "type": "0|1", "default": "0", "meaning": "1 = ademas de generar, deja el fichero en /lists/ (visible por HTTP). 0 = solo _staging/" },
+      "device": { "required": false, "type": "string", "regex": "^[A-Za-z0-9_-]{16,512}$", "default": "descriptor generico medido", "meaning": "se copia tal cual al parametro d= de cada URL /pulse/" },
+      "forzar": { "required": false, "type": "0|1", "default": "0", "meaning": "1 = re-cablea aunque la salida ya sea mas nueva que la fuente" }
+    },
+    "validations_in_order": [
+      { "n": 1, "check": "metodo POST", "code": "E_METODO_NO_PERMITIDO", "http": 405 },
+      { "n": 2, "check": "campo lista presente y no vacio", "code": "E_LISTA_REQUERIDA", "http": 400 },
+      { "n": 3, "check": "longitud <= 2048", "code": "E_LISTA_DEMASIADO_LARGA", "http": 400 },
+      { "n": 4, "check": "si es fichero: regex del nombre", "code": "E_LISTA_NOMBRE_INVALIDO", "http": 400 },
+      { "n": 5, "check": "si es fichero: realpath(resolve()) cuelga de /var/www/html/lists", "code": "E_LISTA_FUERA_DE_DIRECTORIO", "http": 400 },
+      { "n": 6, "check": "si es fichero: el ultimo componente NO es symlink (lstat)", "code": "E_LISTA_ES_SYMLINK", "http": 400 },
+      { "n": 7, "check": "si es fichero: no casa con las variantes rechazadas", "code": "E_VARIANTE_NO_CABLEABLE", "http": 400 },
+      { "n": 8, "check": "si es fichero: existe y es legible", "code": "E_LISTA_NO_EXISTE", "http": 404 },
+      { "n": 9, "check": "si es fichero: tamano fuente <= 2 GiB", "code": "E_LISTA_DEMASIADO_GRANDE", "http": 413 },
+      { "n": 10, "check": "si es URL: esquema http/https", "code": "E_ESQUEMA_NO_PERMITIDO", "http": 400 },
+      { "n": 11, "check": "si es URL: sin userinfo", "code": "E_URL_CON_CREDENCIALES", "http": 400 },
+      { "n": 12, "check": "si es URL: host en allowlist", "code": "E_HOST_NO_PERMITIDO", "http": 403 },
+      { "n": 13, "check": "coste estimado cabe en disco (ver disk_guard)", "code": "E_DISCO_INSUFICIENTE", "http": 507 },
+      { "n": 14, "check": "cola escribible", "code": "E_COLA_NO_ESCRIBIBLE", "http": 500 }
+    ],
+    "path_traversal_rule": {
+      "rule": "Cuatro barreras INDEPENDIENTES. Basta que una falle para rechazar; no se acepta ninguna lista por omision.",
+      "barriers": [
+        "B1 regex estricta: ^[A-Za-z0-9][A-Za-z0-9._-]{0,123}\\.m3u8$ -> no permite '/', '\\\\', '..' , espacios, ':' ni byte nulo.",
+        "B2 primer caracter alfanumerico -> rechaza '.' y '-' iniciales (nada de ocultos ni de '..').",
+        "B3 realpath(resolve(dir, nombre)) debe empezar por '/var/www/html/lists/' (con la barra final) -> si un symlink intermedio escapa, no cuela.",
+        "B4 lstat del destino final: si es symlink -> E_LISTA_ES_SYMLINK (no se cablea el blanco de un enlace)."
+      ],
+      "checkable_vectors": [
+        { "lista": "../etc/passwd", "esperado": "E_LISTA_NOMBRE_INVALIDO" },
+        { "lista": "..%2F..%2Fetc%2Fpasswd", "esperado": "E_LISTA_NOMBRE_INVALIDO" },
+        { "lista": "sub/dir.m3u8", "esperado": "E_LISTA_NOMBRE_INVALIDO" },
+        { "lista": ".oculta.m3u8", "esperado": "E_LISTA_NOMBRE_INVALIDO" },
+        { "lista": "lista.m3u8.gz", "esperado": "E_LISTA_NOMBRE_INVALIDO" },
+        { "lista": "lista.txt", "esperado": "E_LISTA_NOMBRE_INVALIDO" },
+        { "lista": "A%00B.m3u8", "esperado": "E_LISTA_NOMBRE_INVALIDO" },
+        { "lista": "APE_LISTA_X_CABLEADA.m3u8", "esperado": "E_VARIANTE_NO_CABLEABLE" },
+        { "lista": "NO_EXISTE.m3u8", "esperado": "E_LISTA_NO_EXISTE" },
+        { "lista": "http://169.254.169.254/latest/meta-data", "esperado": "E_HOST_NO_PERMITIDO" },
+        { "lista": "ftp://host/x.m3u8", "esperado": "E_ESQUEMA_NO_PERMITIDO" },
+        { "lista": "http://user:pass@host/x.m3u8", "esperado": "E_URL_CON_CREDENCIALES" }
+      ]
+    },
+    "idempotency": {
+      "rule": "Un trabajo por (fuente, version del fuente, version del cableador). Encolar dos veces la MISMA lista NO crea dos trabajos: devuelve el ticket existente.",
+      "key_definition": "sha256( fuente_canonica + '|' + tamano_fuente + '|' + mtime_epoch + '|' + wiring_version )",
+      "fuente_canonica": "para fichero: '/var/www/html/lists/<nombre>'; para URL: la URL normalizada (host en minusculas, sin fragmento, query ordenada)",
+      "why_mtime": "El mismo nombre con contenido nuevo es una lista NUEVA y debe poder cablearse (el generador reescribe el mismo fichero). Sin mtime, un reintento tras una regeneracion devolveria un ticket viejo y el operador creeria que cableo la version nueva.",
+      "why_wiring_version": "Si cambia el cableador (p.ej. cambia el formato de u= o el device), la misma lista tiene que poder re-cablearse: la version entra en la clave.",
+      "duplicate_response": { "http": 200, "estado": "duplicado", "body": "{ ok:true, estado:'duplicado', ticket:'<el mismo>', estado_url:'/prisma/api/cablear-estado.php?ticket=<el mismo>' }" },
+      "accepted_response": { "http": 202, "estado": "queued", "body": "{ ok:true, estado:'queued', ticket:'t-<epochms>-<rand8>', estado_url:'/prisma/api/cablear-estado.php?ticket=<ticket>', cola_posicion:<n> }" }
+    }
+  },
+  "status_endpoint": {
+    "method": "GET",
+    "path": "/prisma/api/cablear-estado.php",
+    "queries": {
+      "ticket": { "shape": "^t-[0-9]{13}-[a-z0-9]{8}$", "meaning": "el ticket exacto" },
+      "ultimos": { "shape": "^[1-9][0-9]?$", "max": 50, "meaning": "lista de los N mas recientes (para recuperar el hilo tras recargar)" },
+      "lista": { "shape": "el mismo valor del campo lista", "meaning": "ultimo ticket de esa lista (reenganche sin haber guardado el ticket)" }
+    },
+    "rule": "Exactamente uno de los tres. Cero o dos -> E_CONSULTA_AMBIGUA (400).",
+    "response_shape": {
+      "ok": true,
+      "ticket": "t-...",
+      "estado": "queued|running|done|failed|skipped_disk|expired",
+      "fase": "queued|resolviendo|descargando|cableando|comprimiendo|publicando|fin",
+      "progreso": { "lineas": 0, "canales": 0, "envueltos": 0, "ya_estaban": 0, "sin_id": 0, "bytes_salida": 0 },
+      "entrada": { "tipo": "fichero|url", "ref": "<nombre o url>", "bytes": 0, "mtime_epoch": 0, "sha256": null },
+      "salida": { "nombre": "<base>_CABLEADA.m3u8", "url_cableada": null, "url_gz": null, "bytes": 0, "sha256": null, "publicada": false, "reutilizada": false },
+      "error": null,
+      "timestamps": { "encolado": "<ISO8601Z>", "iniciado": null, "terminado": null, "heartbeat": null },
+      "intentos": 0,
+      "wiring_version": "ape-wire-1"
+    },
+    "states": {
+      "queued": { "http": 200, "meaning": "aceptado, aun sin worker", "ui": "spinner 'en cola', se puede cancelar", "terminal": false },
+      "running": { "http": 200, "meaning": "el worker lo tiene tomado y escribe heartbeat cada 30 s", "ui": "progreso con fase y contadores", "terminal": false },
+      "done": { "http": 200, "meaning": "salida escrita y verificada (sha256 calculado y canales envueltos > 0)", "ui": "muestra url_cableada copiable + boton 'copiar'", "terminal": true },
+      "failed": { "http": 200, "meaning": "error no recuperable; error.codigo + error.motivo literal", "ui": "muestra el motivo y permite reintentar (nuevo POST, misma clave si la fuente no cambio -> el contrato exige forzar=1)", "terminal": true },
+      "skipped_disk": { "http": 200, "meaning": "no se cableó por guardia de disco; el ticket SE CONSERVA", "ui": "muestra 'sin espacio' con los numeros y el boton 'reintentar' (forzar=1)", "terminal": true },
+      "expired": { "http": 410, "meaning": "el ticket ya no existe (TTL de terminales superado o cola limpiada)", "ui": "borra el ticket de localStorage y pide de nuevo", "terminal": true }
+    },
+    "resume_after_reload": {
+      "rule": "El frontend guarda el ticket en localStorage['ape.cablear.ticket'] al recibir 202 y lo borra al ver un estado terminal. Al recargar: (1) si hay ticket guardado, GET ?ticket=; (2) si responde 410 o E_TICKET_DESCONOCIDO, borra y prueba ?ultimos=10; (3) si el operador recuerda la lista, ?lista=<nombre>. Asi no se pierde el hilo ni se duplica el trabajo.",
+      "why_not_websocket": "El progreso de 24 s no justifica un canal persistente; un polling de 1 s durante running y de 5 s durante queued mata el problema con menos superficie."
+    }
+  },
+  "queue": {
+    "root": "/var/lib/ape/cablear",
+    "dirs": { "cola": "tickets pendientes", "tomados": "tickets tomados por un worker (rename atomico)", "hechos": "terminales done (TTL 7 dias)", "fallidos": "terminales failed/skipped_disk (TTL 7 dias)", "staging": "salidas con publicar=0" },
+    "file_name": "t-<epochms>-<rand8>.json",
+    "enqueue_atomic": "escribir cola/.tmp-<ticket>.json y DESPUES rename() a cola/<ticket>.json. Un lector nunca ve un JSON a medio escribir: el rename es atomico en el mismo sistema de ficheros.",
+    "take_atomic": "rename('cola/<t>.json', 'tomados/<t>.json'). Si dos workers intentan el mismo ticket, exactamente uno gana el rename y el otro recibe ENOENT y sigue. No hay lock distribuido ni TTL de lock: el rename ES el lock.",
+    "singleton": "flock -n /var/lib/ape/cablear/worker.lock en el worker: si no lo consigue, sale 0 sin tocar nada (otro worker esta trabajando).",
+    "ticket_fields": {
+      "schema": "ape.lists.cablear.ticket.v1",
+      "ticket": "t-<epochms>-<rand8>",
+      "clave": "sha256(...) de idempotency.key_definition",
+      "estado": "queued|running|done|failed|skipped_disk",
+      "fase": "string",
+      "entrada": "{ tipo, ref, path|url, bytes, mtime_epoch }",
+      "salida": "{ nombre, path_staging|path_final, bytes, sha256, publicada }",
+      "publicar": "0|1",
+      "forzar": "0|1",
+      "device": "string",
+      "wiring_version": "ape-wire-1",
+      "intentos": "0..2",
+      "timestamps": "{ encolado, iniciado, heartbeat, terminado }",
+      "progreso": "contadores",
+      "error": "null | { codigo, motivo }"
+    },
+    "ttl": {
+      "terminal_retention_days": 7,
+      "heartbeat_seconds": 30,
+      "reaper_stale_seconds": 600,
+      "reaper_behaviour": "ticket en tomados/ con heartbeat mas viejo que 600 s -> intentos+1; si intentos < 2 vuelve a cola/ con reintentos++; si intentos >= 2 -> fallidos/ con error E_WORKER_MUERTO. Asi un worker que muere no deja el ticket colgado para siempre y tampoco se reintenta infinito.",
+      "queued_max_age_hours": 24,
+      "queued_expiry": "un ticket que lleva 24 h en cola sin que nadie lo tome pasa a fallidos/ con E_SIN_EJECUTOR: significa que el .path/timer no esta funcionando y hay que verlo, no esperar mas."
+    }
+  },
+  "executor": {
+    "chosen": "systemd .path + worker oneshot con flock singleton, y el timer de 15 min SE MANTIENE como red de seguridad.",
+    "units": {
+      "ape-cablear-cola.path": "PathExistsGlob=/var/lib/ape/cablear/cola/t-*.json ; Unit=ape-cablear-cola.service",
+      "ape-cablear-cola.service": "Type=oneshot, ExecStart=/opt/ape-pulse/ape-cablear-cola.sh, Restart=no, CPUQuota=40% (misma cuota que el resto de jobs de imagen, medido: el PHP tarda 24 s en 21.224 canales)",
+      "ape-cablear-auto.timer": "SE MANTIENE (OnCalendar=*:0/15) como red de seguridad: si un evento .path se pierde (reinicio, inotify desbordado), el tick recoge lo que quedo."
+    },
+    "partial_write_hazard": {
+      "risk": "un .path puede dispararse al ver el fichero a medio escribir y el worker leer un JSON truncado",
+      "mitigation": "el encolado escribe .tmp y hace rename: el fichero que .path ve nace completo. Ademas el worker valida JSON y, si falla, deja el ticket donde esta y loguea E_TICKET_ILEGIBLE (no lo borra)."
+    },
+    "alternatives": {
+      "solo_timer_15min": { "latencia_max": "900 s", "coste": "0 unidades nuevas (ya existe)", "descartado_porque": "la UI no puede dar feedback: 15 min de spinner no es un panel, es una sala de espera" },
+      "path_mas_oneshot": { "latencia_max": "<1 s (inotify)", "coste": "1 unidad .path + 1 unidad .service; sin proceso residente", "elegido": true },
+      "worker_residente": { "latencia_max": "<1 s", "coste": "1 proceso permanente que vigilar, con su propio log, su propio restart y su propio punto de fuga de memoria", "descartado_porque": "el trabajo dura 24 s y ocurre cuando el operador aprieta un boton: no justifica un demonio" }
+    }
+  },
+  "disk_guard": {
+    "rule": "Misma regla que ya aplica ape-cablear-auto.sh (MIN_FREE_MB=3000, coste = tamano_descomprimido x 2). No se inventa una nueva: se eleva a contrato.",
+    "min_free_mb": 3000,
+    "cost_estimate": "bytes_descomprimidos * 2 (el cableado alarga cada linea de URL con el prefijo /pulse/<id>.m3u8?u=...&d=... y ademas se genera el .gz)",
+    "admission": "libre_mb >= min_free_mb  AND  cost_mb <= (libre_mb - min_free_mb)",
+    "when_source_is_gz_or_stub": "si el .m3u8 mide menos de 1024 B y existe <nombre>.m3u8.gz, el tamano descomprimido se obtiene de el (ese es el caso medido: el .m3u8 es un stub de 8 B y la lista real vive en el .gz)",
+    "on_not_fit": { "estado": "skipped_disk", "http": 507, "error_codigo": "E_DISCO_INSUFICIENTE", "motivo_literal_template": "no cabe: libre=<libre_mb>MB, minimo=<min_free_mb>MB, coste_estimado=<cost_mb>MB; el ticket se conserva para reintentar", "ticket": "SE CONSERVA en fallidos/ (TTL 7 d) para que el operador libere espacio y reintente con forzar=1" },
+    "recheck_at_execution": "el worker RE-CALCULA el disco antes de escribir: entre el encolado y la ejecucion pueden pasar minutos y el disco puede haber cambiado. Si ya no cabe -> skipped_disk igualmente.",
+    "measured_arithmetic_today": "libre=5734 MB, min=3000, coste(1,3 GB)=2597 MB -> 2597 <= 2734: cabe, por 137 MB de margen. Con dos listas de ese tamano NO caben las dos: la segunda da 2597 > 2801-3000 < 0 -> skipped_disk. Esto es el 85 % medido, no una hipotesis."
+  },
+  "final_response": {
+    "output_name": "<base>_CABLEADA.m3u8  (base = nombre de la fuente sin .m3u8) y su <mismo>.gz",
+    "why_deterministic": "recablear la misma lista reescribe el MISMO fichero (via .partial + mv atomico). El operador guarda UNA url por lista y sigue valida despues de recablear.",
+    "url_cableada": "https://iptv-ape.duckdns.org/lists/<base>_CABLEADA.m3u8",
+    "url_gz": "https://iptv-ape.duckdns.org/lists/<base>_CABLEADA.m3u8.gz",
+    "publish_rule": {
+      "publicar_0": "la salida queda en /var/lib/ape/cablear/staging/<ticket>/ y la respuesta trae url_cableada=null + ruta_staging. NO es accesible por HTTP: no se ha publicado nada.",
+      "publicar_1": "ademas, mv atomico a /var/www/html/lists/<base>_CABLEADA.m3u8 (+ .gz) y la respuesta trae url_cableada. DEBE quedar registrado en el log de encolado quien lo pidio y cuando.",
+      "default": 0,
+      "why": "invariante del encargo: no publicar sin que el operador lo pida. El panel muestra la URL solo cuando existe."
+    },
+    "ui_final_state": "con estado done: muestra url_cableada copiable, bytes, sha256 de la salida, y los contadores (canales, envueltos, ya_estaban, sin_id). Con sin_id > 0 avisa: 'N canales no se pudieron envolver (sin id reconocible) y quedaron directos'."
+  },
+  "invariants": [
+    { "id": "I1", "invariant": "No se degrada la imagen", "mechanism": "el cableador SOLO reescribe lineas que empiezan por http(s); '#', vacias y toda la metadata (#EXTINF, #EXTVLCOPT, #KODIPROP, #EXTHTTP, #EXT-X-STREAM-INF con VIDEO-RANGE) pasan verbatim. Medido: VIDEO-RANGE preservado en 21.224/21.224.", "check": "comparar conteos por tipo de linea entre fuente y salida; si alguno baja -> failed E_DEGRADACION_DETECTADA" },
+    { "id": "I2", "invariant": "No se toca la lista original", "mechanism": "la fuente se abre en solo lectura; la salida es un fichero NUEVO con otro nombre.", "check": "sha256 y mtime de la fuente identicos antes y despues; si cambian -> failed E_FUENTE_MODIFICADA" },
+    { "id": "I3", "invariant": "No se publica sin pedirlo", "mechanism": "publicar=0 por defecto -> staging no servido.", "check": "sin publicar=1 no se escribe nada bajo /var/www/html/lists/" },
+    { "id": "I4", "invariant": "Un trabajo por version de lista", "mechanism": "clave de idempotencia (fuente + tamano + mtime + wiring_version).", "check": "dos POST identicos devuelven el MISMO ticket; cola/ tiene un solo fichero con esa clave" },
+    { "id": "I5", "invariant": "Una sola pasada por fichero (no doble-envuelto)", "mechanism": "si la URL ya contiene /pulse/ o empieza por la base, se deja tal cual (regla 5 del PHP medido).", "check": "segunda ejecucion sobre la salida -> envueltos=0, ya_estaban=N" },
+    { "id": "I6", "invariant": "El parche no puede dejar el fichero a medias", "mechanism": "escritura en <out>.partial.<pid> + mv atomico; el .gz se genera despues. Si el proceso muere, se borra el .partial y la salida anterior sigue intacta.", "check": "no existe ningun *_CABLEADA.m3u8.partial* tras un fallo" },
+    { "id": "I7", "invariant": "u= va URLENCODED, nunca base64", "mechanism": "rawurlencode; pulse.php:214 exige que u empiece por http(s) y base64 da 400 'u no es http(s)'.", "check": "el 100% de las URLs de salida casan ^https://iptv-ape\\.duckdns\\.org/pulse/[0-9]+\\.m3u8\\?u=https?%3A%2F%2F" }
+  ],
+  "wiring": {
+    "url_shape": "<base>/pulse/<id>.m3u8?u=<rawurlencode(url_sin_pipe)>&d=<device>",
+    "id_extraction_order": ["/live/USER/PASS/<id>.m3u8", "/<id>.m3u8", "/<id>.(ts|mp4)"],
+    "headers_rule": "si la linea trae '|Header=...', se corta en el PRIMER '|' antes de codificar; los headers no se pierden porque cada canal ya lleva su #EXTHTTP",
+    "base_default": "https://iptv-ape.duckdns.org"
+  },
+  "rejection_codes": {
+    "E_METODO_NO_PERMITIDO": 405, "E_LISTA_REQUERIDA": 400, "E_LISTA_DEMASIADO_LARGA": 400,
+    "E_LISTA_NOMBRE_INVALIDO": 400, "E_LISTA_FUERA_DE_DIRECTORIO": 400, "E_LISTA_ES_SYMLINK": 400,
+    "E_VARIANTE_NO_CABLEABLE": 400, "E_LISTA_NO_EXISTE": 404, "E_LISTA_DEMASIADO_GRANDE": 413,
+    "E_ESQUEMA_NO_PERMITIDO": 400, "E_URL_CON_CREDENCIALES": 400, "E_HOST_NO_PERMITIDO": 403,
+    "E_DISCO_INSUFICIENTE": 507, "E_COLA_NO_ESCRIBIBLE": 500, "E_CONSULTA_AMBIGUA": 400,
+    "E_TICKET_DESCONOCIDO": 404, "E_NO_AUTORIZADO": 401,
+    "E_TICKET_ILEGIBLE": 0, "E_WORKER_MUERTO": 0, "E_SIN_EJECUTOR": 0, "E_DESCARGA_FALLIDA": 0,
+    "E_DEGRADACION_DETECTADA": 0, "E_FUENTE_MODIFICADA": 0
+  },
+  "not_computed": [
+    "El numero real de peticiones concurrentes del panel: no medido. El contrato asume 1 operador y serializa el trabajo con flock.",
+    "El tiempo exacto de cableado de una lista de 1,3 GB en el VPS con el worker nuevo: los 24 s medidos son del PHP sobre la lista de 21.224 canales; el worker anade gzip y publicacion, no medido.",
+    "Si nginx sirve .m3u8.gz con gzip_static: el auto.sh asume que si (lo cita), este contrato no lo re-verifica.",
+    "La auth de /prisma/api: se hereda, no se define aqui."
+  ],
+  "open_questions_for_operator": [
+    "Allowlist externa: si el operador quiere cablear URLs de fuera, debe decidir que hosts van en /etc/ape/cablear-hosts.allow. Por defecto esta vacia y la funcion externa esta cerrada.",
+    "Retencion de terminales: el contrato propone 7 dias; si el operador quiere historial mas largo, es un cambio de una constante.",
+    "MIN_FREE_MB=3000 es el valor que ya usa el auto.sh; si el VPS sigue al 85 %, subirlo es la palanca mas barata para no volver a llenar el disco."
+  ]
+}

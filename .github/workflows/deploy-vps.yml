@@ -867,6 +867,14 @@ jobs:
           echo "--- worker canary: OK ejecutable ($(ls -l /opt/ape-pulse/ape-pulse-canary-worker.sh | awk '{print $1, $5}'))"
           # [2026-11-14] Cableador automatico de listas: habilitar el timer.
           # Idempotente: enable --now no falla si ya estaba.
+          # [2026-11-14] Panel de cableado: .path (dispara en <1 s) + .timer (red de seguridad).
+          sudo -n systemctl enable --now ape-cablear-cola.path 2>&1 || true
+          sudo -n systemctl enable --now ape-cablear-cola.timer 2>&1 || true
+          echo "--- cablear-cola.path: $(systemctl is-active ape-cablear-cola.path 2>/dev/null || echo unknown)"
+          echo "--- cablear-cola.timer: $(systemctl is-active ape-cablear-cola.timer 2>/dev/null || echo unknown)"
+          # El arbol de la cola lo crea el primer encolado (validacion 14 del core), pero lo
+          # dejamos hecho para que el .path no dependa de ese orden.
+          install -d -m 0775 /var/lib/ape/cablear/{cola,tomados,hechos,fallidos,staging} 2>&1 || true
           sudo -n systemctl enable --now ape-cablear-auto.timer 2>&1 || true
           echo "--- cablear-auto.timer: $(systemctl is-active ape-cablear-auto.timer 2>/dev/null || echo unknown)"
           sudo -n systemctl daemon-reload 2>&1 || true

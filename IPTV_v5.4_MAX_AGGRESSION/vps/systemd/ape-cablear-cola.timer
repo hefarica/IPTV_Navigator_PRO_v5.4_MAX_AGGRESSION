@@ -1,0 +1,16 @@
+[Unit]
+Description=APE cablear: red de seguridad del consumidor de la cola (cada 15 min)
+Documentation=file:/opt/ape-pulse/ape-cablear-queue-worker.sh
+# t59 pide que el timer de 15 min se mantenga como red por si un evento .path se
+# pierde (reinicio, inotify desbordado). El timer existente ape-cablear-auto.timer
+# NO sirve para eso: cablea por mtime y no conoce la cola. Por eso este timer
+# nuevo, con la misma cadencia, y el de auto queda intacto.
+
+[Timer]
+OnBootSec=90s
+OnUnitActiveSec=15min
+AccuracySec=5s
+Unit=ape-cablear-cola.service
+
+[Install]
+WantedBy=timers.target

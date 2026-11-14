@@ -1,0 +1,34 @@
+[Unit]
+Description=APE cablear: consume la cola del panel y ejecuta el cableado pedido
+Documentation=file:/opt/ape-pulse/ape-cablear-queue-worker.sh
+ConditionPathExists=/opt/ape-pulse/ape-cablear-queue-worker.sh
+ConditionPathIsDirectory=/var/lib/ape/cablear/cola
+# Arranca con el .path (evento inmediato) y con el .timer (red de seguridad).
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/opt/ape-pulse/ape-cablear-queue-worker.sh
+# El motor tarda ~24 s en 21.224 canales; una corrida puede drenar varios
+# tickets. El techo protege de una cola patologica sin dejar el unit colgado.
+TimeoutStartSec=1800
+TimeoutStopSec=60
+# El singleton REAL es el rename de la toma (cola -> tomados): el nucleo
+# garantiza que solo uno gana. El flock del worker es la guinda, no el cimiento.
+# Misma cuota que el resto de jobs de imagen (contrato de t59).
+CPUQuota=40%
+MemoryMax=1G
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+PrivateTmp=yes
+StandardOutput=journal
+StandardError=journal
+# No se reinicia solo: si falla, el estado queda en el ticket y el siguiente
+# tick lo reintenta (o el reaper lo rescata). Un Restart=on-failure aqui
+# convertiria un fallo de disco en una tormenta de reintentos.
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,20 @@
+[Unit]
+Description=APE cablear: dispara el consumidor de la cola en cuanto cae un ticket
+Documentation=file:/opt/ape-pulse/ape-cablear-queue-worker.sh
+Documentation=file:/var/www/html/../contracts/list_cablear_panel_v1.json
+# Decision 5 del contrato de t59: ".path + worker oneshot con flock singleton".
+# El riesgo de leer un fichero a medias lo cierra el ENCOLADO (escribe
+# cola/.tmp-<t> y hace rename): inotify ve nacer el fichero ya completo. Y aun
+# asi el worker valida el JSON antes de tomar nada.
+
+[Path]
+# Un ticket por fichero: t-<epochms>-<rand8>.json
+PathExistsGlob=/var/lib/ape/cablear/cola/t-*.json
+# Si el directorio no existe todavia (primer arranque), que lo cree en vez de
+# fallar la unidad.
+MakeDirectory=yes
+DirectoryMode=0755
+Unit=ape-cablear-cola.service
+
+[Install]
+WantedBy=paths.target
