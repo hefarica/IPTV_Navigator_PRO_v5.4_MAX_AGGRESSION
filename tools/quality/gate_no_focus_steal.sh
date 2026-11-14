@@ -101,6 +101,40 @@ else
   else
     bad "BadgeActivity-delega" "UpscaleBadgeActivity no delega o no cierra"
   fi
+
+  # ── [7] LA 4a VIA: ningun intent-filter puede anunciar ARA al sistema ─────
+  #
+  # Medido el 2026-11-14 (t69): ReaExternalPlayerActivity declaraba
+  #   <category BROWSABLE/> + <data scheme="https"/> + <data mimeType="application/x-mpegURL"/>
+  # y el sistema lo registro como MANEJADOR PREFERIDO de https y x-mpegURL:
+  #   Preferred Activities User 0: Schemes: https -> com.ape.crystalagent/...
+  # A partir de ahi, CUALQUIER app que abriera un enlace o un HLS acababa dentro
+  # de ARA. No habia ningun startActivity: decidia el sistema.
+  #
+  # Este check recorre el manifest y falla si aparece un filtro con esas tres
+  # cosas a la vez (BROWSABLE + scheme http(s) + mime de playlist/video).
+  MF="${ROOT%/java/com/ape/crystalagent}/AndroidManifest.xml"
+  if [ -r "$MF" ]; then
+    # Se aisla cada <intent-filter>...</intent-filter> en una linea.
+    peligrosos=$(tr '\n' ' ' < "$MF" \
+      | grep -o '<intent-filter>[^<]*\(<[^>]*>[^<]*\)*</intent-filter>' 2>/dev/null \
+      | grep -c 'BROWSABLE' || true)
+    # Comprobacion directa y legible: en el manifest NO debe existir BROWSABLE
+    # junto a un scheme http/https en el MISMO fichero (este manifest es de una
+    # app de fondo, no de un navegador).
+    if sed -e :a -e 's/<!--[^>]*-->//g' -e '/<!--/,/-->/d' "$MF" 2>/dev/null | grep -q 'category.BROWSABLE'; then
+      bad "manifest-sin-BROWSABLE" "el manifest declara category.BROWSABLE: la app vuelve a ofrecerse como navegador"
+    else
+      ok "manifest-sin-BROWSABLE" "0 declaraciones de BROWSABLE"
+    fi
+    if sed -e :a -e 's/<!--[^>]*-->//g' -e '/<!--/,/-->/d' "$MF" 2>/dev/null | grep -qE 'android:scheme="https?"'; then
+      bad "manifest-sin-scheme-http" "el manifest declara scheme http(s): puede ser elegida manejador por defecto"
+    else
+      ok "manifest-sin-scheme-http" "0 schemes http(s)"
+    fi
+  else
+    bad "manifest" "no se encontro AndroidManifest.xml en $MF"
+  fi
 fi
 
 rows="[${rows%,}]"

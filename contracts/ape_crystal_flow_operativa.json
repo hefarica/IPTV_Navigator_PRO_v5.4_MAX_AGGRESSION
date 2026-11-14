@@ -1,0 +1,175 @@
+{
+  "flow": "APE CRYSTAL FLOW",
+  "contract": "ape.crystal.flow.operativa/1",
+  "version": "1.0.0",
+  "frozen_at": "2026-11-14",
+  "owner_quote": "me refiero es que nadie cambie su operativa",
+  "que_es": "Contrato de OPERATIVA por estacion. No dice como esta programado: dice que hace cada estacion, que tiene prohibido y como se comprueba. Si alguien cambia la operativa, el gate falla y el cambio tiene que ser una decision explicita del operador, no un efecto colateral de un refactor.",
+
+  "LEY_1_SEGUNDO_PLANO": {
+    "texto_literal_del_operador": "toda la operativa del sistema APE CRYSTAL FLOW es en segundo plano y no tendra que tener, ni tomar el control del device para salirse ni entrar a ninguna aplicacion o llevarme al menu principal del device. El debe funcionar sin interrumpir la reproduccion, ni entrar ni salir de aplicaciones. el sistema funciona cuando este reproduciendo OTT navigator exclusivamente",
+    "alcance": "APLICA A LAS CINCO ESTACIONES. No hay excepciones por comodidad de implementacion.",
+    "obligaciones": [
+      "Todo el trabajo ocurre en segundo plano (foreground service silencioso, handler, timer, o trabajo del lado del VPS).",
+      "El sistema NO abre aplicaciones. Ni las del operador, ni las suyas, ni el instalador.",
+      "El sistema NO cierra aplicaciones.",
+      "El sistema NO lleva al operador al menu principal del device.",
+      "El sistema NO interrumpe la reproduccion de OTT Navigator ni la de ninguna otra app.",
+      "El unico momento en que el sistema 'trabaja de cara' es el overlay del badge, y lo hace SIN Activity y SIN robar el foco."
+    ],
+    "prohibiciones": [
+      "startActivity para cualquier fin: pedir consentimiento, despertar, mostrar estado, instalar, abrir un menu.",
+      "moveTaskToFront / ActivityManager para traer nada al frente.",
+      "Cualquier gesto simulado (input tap/scroll) sobre la UI de otra aplicacion.",
+      "Cambiar de app, abrir el launcher o salir de la app del operador.",
+      "Pausar, renegociar o forzar una recarga de la reproduccion en curso."
+    ],
+    "unico_disparador_valido": "OTT Navigator (studio.scillarium.ottnavigator) reproduciendo. Ni la pantalla encendida, ni el boot, ni el launcher, ni el primer plano de otra app, ni un timer por si solo.",
+    "como_se_comprueba": "gate_no_focus_steal.sh verifica estaticamente que no hay startActivity en el codigo del camino de ejecucion. El baseline verifica en device que mFocusedApp sigue en el reproductor con el overlay montado. gate_ape_crystal_flow.sh verifica que el flujo sirve sin tocar el device.",
+    "si_algo_necesita_pedir_algo": "Se pide con una NOTIFICACION (PendingIntent inerte que el operador pulsa cuando quiera). Nunca con una Activity."
+  },
+
+  "reglas_globales": {
+    "innegociables": [
+      "Ninguna estacion puede adelantar trabajo de otra (el AGENTE no cablea, el SHIM no mide, el VPS no aplica settings).",
+      "Ninguna estacion puede degradar la imagen para resolver un fallo (Anti-Degradation Law).",
+      "Ninguna estacion puede declarar 'aplicado' lo que solo 'declaro' (truth-guard).",
+      "Ninguna estacion puede aparecer encima del operador sin que el la invoque."
+    ],
+    "prohibido_en_todas": [
+      "cambiar CODECS= / RESOLUTION= / SUPPLEMENTAL-CODECS sin bitstream real",
+      "declarar HDR verificado sin metadata real del proveedor",
+      "bajar 4K a FHD/HD/SD para 'arreglar' buffering",
+      "inventar una metrica cuando no se pudo medir (se dice N/D)"
+    ]
+  },
+
+  "estaciones": [
+    {
+      "id": 1,
+      "nombre": "GENERADOR",
+      "operativa": "el Navigator produce la .m3u8 con 949 directivas por canal",
+      "dueno": "frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js",
+      "invariantes": [
+        "cada canal emite EXACTAMENTE 1 URL tras su #EXTINF (anti-509)",
+        "el master declara #EXT-X-APE-CHANNELS con el total real",
+        "catchup se declara solo si el proveedor lo soporta",
+        "#EXT-X-MEDIA y #EXT-X-I-FRAME-STREAM-INF sin URI= en catalogos",
+        "0 headers toxicos (Range, If-None-Match, If-Modified-Since, TE, Priority, Upgrade-Insecure-Requests)"
+      ],
+      "prohibido": [
+        "poner logica de generacion en el onclick del boton",
+        "emitir SUPPLEMENTAL-CODECS sin dolby real del probe",
+        "declarar 6K/8K sin capacidad real medida"
+      ],
+      "verificacion": "gate_ape_crystal_flow.sh [3] lee la cabecera por Range y exige #EXT-X-APE-CHANNELS",
+      "no_cubre": "el contenido exacto de las 949 directivas por canal no se valida linea a linea en el gate; requiere el auditor de lista"
+    },
+
+    {
+      "id": 2,
+      "nombre": "CABLEADO",
+      "operativa": "el VPS envuelve cada URL del proveedor en /pulse/<id> y sirve con cache",
+      "dueno": "tools/ops/ape-cablear*.php + vps/bin/ape-cablear-queue-worker.sh",
+      "invariantes": [
+        "TODOS los canales quedan con /pulse/ (100%, medido: 21224 de 21224)",
+        "un solo slot por lista: el reproductor tiene prioridad absoluta sobre canary y JIT",
+        "el manifest cacheadO se sirve en ~1 ms; el miss va al proveedor en <= 2 s p90",
+        "el cableado es idempotente: recablear no duplica canales",
+        "la lista publicada conserva el NUMERO de lista en el nombre"
+      ],
+      "prohibido": [
+        "transformar las URLs internas de los canales (SHIELDED: solo renombrar el fichero)",
+        "cablear tomando 'el mas reciente por mtime' en vez de por numero de lista",
+        "bloquear por host o activar circuit breaker (autopista: nunca frenar al reproductor)"
+      ],
+      "verificacion": "gate_ape_crystal_flow.sh [2][3]: JIT 200/206 con cabecera, lista 200/206 con #EXTINF y /pulse/",
+      "no_cubre": "la latencia p50 del manifest se mide en el vigilante, no en el gate"
+    },
+
+    {
+      "id": 3,
+      "nombre": "AGENTE",
+      "operativa": "la APK aplica settings, HDR y display, y monta el overlay. Nada mas",
+      "dueno": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent (com.ape.crystalagent)",
+      "invariantes": [
+        "CERO llamadas reales a startActivity en AgentService, CaptureWatchdogService y BootReceiver",
+        "el overlay se monta con WindowManager.addView + TYPE_APPLICATION_OVERLAY, sin Activity",
+        "el overlay NO roba el foco: mFocusedApp sigue en el reproductor",
+        "los settings pasan por allowlist + regex de valor; nada fuera de la lista se escribe",
+        "si un setting es imposible en este SoC se rechaza UNA vez con motivo, no en bucle",
+        "el arranque es START_STICKY + BootReceiver + onTaskRemoved, en silencio"
+      ],
+      "prohibido": [
+        "abrir una Activity para pedir consentimiento, despertar o mostrar estado",
+        "escribir settings fuera de la allowlist o sin validar el valor",
+        "declarar aplicado un setting que el framework ignora",
+        "configurar OTT o cualquier otra app (no es su competencia y no puede)"
+      ],
+      "verificacion": "gate_no_focus_steal.sh (estatico, 6 comprobaciones) + gate_ape_crystal_flow.sh [4]",
+      "no_cubre": "nada pendiente: la 4a via se cerro el 2026-11-14 (t69). Era un <intent-filter> con BROWSABLE + scheme https + mimeType x-mpegURL que registro ARA como MANEJADOR PREFERIDO del sistema (dumpsys package, seccion Preferred Activities). Eliminado el filtro; verificado que el mismo VIEW https ahora resuelve a BrowserStub. Los checks [7][8] del gate estatico impiden que vuelva. Nota residual: el registro Preferred Activities sigue guardado pero es INERTE; se borra con pm uninstall + instalacion limpia, que no se ejecuto para no perder la configuracion del operador."
+    },
+
+    {
+      "id": 4,
+      "nombre": "SHIM",
+      "operativa": "el proxy loopback fija la variante y mapea los segmentos",
+      "dueno": "ottshim/app/src/main/kotlin/dev/venice/ottshim (modulo :shim)",
+      "invariantes": [
+        "fija la VARIANTE mas alta que el player puede decodificar: nunca baja de escalon por su cuenta",
+        "mapea segmentos en /seg?id= para que el player no hable con el proveedor",
+        "catalogo multi-canal: passthrough (no reescribe) porque el Rewriter no termina con 22 M de lineas",
+        "playlist de un canal: reescribe (ahi esta su valor)",
+        "arranca con ARA y sobrevive: START_STICKY + watchdog de socket cada 5 s",
+        "fail-open: si el proxy no arranca, ARA sigue funcionando"
+      ],
+      "prohibido": [
+        "transcodificar o recomprimir",
+        "degradar la variante para 'estabilizar'",
+        "cargar un body de mas de 2 MB en memoria (el bug del 0 bytes)",
+        "pedir al proveedor con un UA que no sea el del player"
+      ],
+      "verificacion": "gate_ape_crystal_flow.sh [6] (endpoint) + la comprobacion manual del shim en el baseline",
+      "no_cubre": "el pin de variante no se verifica automaticamente en CI; se mide en device"
+    },
+
+    {
+      "id": 5,
+      "nombre": "MEDICION",
+      "operativa": "vuelve al VPS: QoE, zapeo, latencia y canary, sin tocar la reproduccion",
+      "dueno": "vps/bin/ape-module-watchdog.sh + vps/prisma/api/* + logs de nginx",
+      "invariantes": [
+        "el vigilante corre cada 60 s y PRUEBA por HTTP real, nunca por 'systemctl is-active'",
+        "un canal caido NO se cuenta como modulo caido",
+        "reinicia SOLO el servicio cuyo endpoint fallo",
+        "Nice=10 + IOSchedulingClass=idle: no compite con el video",
+        "332 canary responde 200/301/302; un 404 o un 500 es fallo",
+        "el zapeo se mide con rt=/urt= de playlist_access.log, no se estima"
+      ],
+      "prohibido": [
+        "reiniciar nginx porque un endpoint PHP dio 404",
+        "llamar 'cero' a lo que no se pudo medir (se dice no computado)",
+        "inventar una latencia o un QoE sin muestra",
+        "cualquier escritura que no sea su propio JSON de estado"
+      ],
+      "verificacion": "gate_ape_crystal_flow.sh [1][4][7] + /var/lib/ape/module-watchdog.json",
+      "no_cubre": "el QoE perceptual del decoder no se mide en el VPS (solo proxy-QoE de red)"
+    }
+  ],
+
+  "como_se_hace_cumplir": {
+    "gate_estatico": "tools/quality/gate_no_focus_steal.sh — milisegundos, corre en el CI antes de desplegar",
+    "gate_flujo": "tools/quality/gate_ape_crystal_flow.sh — HTTP real, corre dentro del VPS tras publicar",
+    "vigilante": "ape-module-watchdog.timer — cada 60 s, estado en /var/lib/ape/module-watchdog.json",
+    "baseline": "docs/architecture/BASELINE_APE_CRYSTAL_FLOW_20261114.md — cada metrica con su comando de repro",
+    "regla": "si un gate se pone rojo, NO se despliega. Cambiar la operativa exige decision explicita del operador, no un commit de refactor."
+  },
+
+  "lo_que_este_contrato_no_puede_garantizar": [
+    "Que el 4K se vea en el televisor: depende del enlace del device (~18 Mbps medidos como techo).",
+    "Que OTT use la lista cableada: el alta del proveedor es manual por diseno de OTT.",
+    "Que la 4a via del salto a ARA desaparezca: no esta en el codigo; se caza con el intent (t69).",
+    "Que el VPP mejore la imagen: los 4 levers devuelven null en este firmware.",
+    "Que un cambio futuro no cambie la operativa por la puerta de atras: solo lo impide un gate que lo detecte, y un gate estatico no ve todo."
+  ]
+}
