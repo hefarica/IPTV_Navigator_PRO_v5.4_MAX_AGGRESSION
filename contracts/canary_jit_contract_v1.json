@@ -314,15 +314,15 @@
   "engine": {
     "rule": "Fijar el motor por sha256, NUNCA por ruta. Un recibo que no nombra el sha256 del motor no acredita nada.",
     "receipt_required_field": "engine_sha256",
-    "deployable_engine_sha256": "8e9e663b43f822a9b9c8d3ecde38ec0a296441b926b47cec81803867f229b6e5",
+    "deployable_engine_sha256": "8c1a00852ba4df2adfa1cc1b17e980c8cfc7faee3ede1d65c69aa8e7456eaec6",
     "deployable_engine_path": "tools/lab/ape-jit/server.js",
     "deployable_engine_manifest_line": 59,
     "candidates": [
       {
         "id": "A",
         "path": "tools/lab/ape-jit/server.js",
-        "bytes": 463568,
-        "sha256": "8e9e663b43f822a9b9c8d3ecde38ec0a296441b926b47cec81803867f229b6e5",
+      "bytes": 468210,
+        "sha256": "8c1a00852ba4df2adfa1cc1b17e980c8cfc7faee3ede1d65c69aa8e7456eaec6",
         "manifest_row": true,
         "manifest_line": 59,
         "has_jit_signal": true,

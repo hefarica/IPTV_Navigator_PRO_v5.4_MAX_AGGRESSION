@@ -762,7 +762,7 @@ jobs:
       - name: Instalar el motor pineado (un fichero, sha en origen y destino)
         run: |
           set -euo pipefail
-          SHA_PIN=8e9e663b43f822a9b9c8d3ecde38ec0a296441b926b47cec81803867f229b6e5
+          SHA_PIN=8c1a00852ba4df2adfa1cc1b17e980c8cfc7faee3ede1d65c69aa8e7456eaec6
           GOT_LOCAL=$(sha256sum tools/lab/ape-jit/server.js | cut -d' ' -f1)
           echo "sha del repo:  $GOT_LOCAL"
           if [ "$GOT_LOCAL" != "$SHA_PIN" ]; then
@@ -784,7 +784,7 @@ jobs:
           set -euo pipefail
           ssh "${{ secrets.VPS_USER }}@$VPS_HOST" "bash -s" <<'APE_EOF'
           set -uo pipefail
-          SHA_PIN=8e9e663b43f822a9b9c8d3ecde38ec0a296441b926b47cec81803867f229b6e5
+          SHA_PIN=8c1a00852ba4df2adfa1cc1b17e980c8cfc7faee3ede1d65c69aa8e7456eaec6
           TIMER_PREV=$(systemctl is-active ape-pulse-canary.timer 2>/dev/null || echo unknown)
           echo "--- timer ape-pulse-canary antes: $TIMER_PREV"
           if [ "$TIMER_PREV" = "active" ]; then

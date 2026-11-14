@@ -666,7 +666,7 @@ function evidenceArtifact(frames, seconds) {
 function baseReceipt(overrides) {
   const base = {
     schema: 'ape.canary_jit.receipt.v1',
-    engine_sha256: '8e9e663b43f822a9b9c8d3ecde38ec0a296441b926b47cec81803867f229b6e5',
+    engine_sha256: '8c1a00852ba4df2adfa1cc1b17e980c8cfc7faee3ede1d65c69aa8e7456eaec6',
     deployability: {
       state: 'NOT_DEPLOYED',
       artifact: 'vps/bin/ape-visual-emulate.sh',
@@ -693,7 +693,7 @@ function baseReceipt(overrides) {
     applied: {
       status: 'APPLIED_MEASURED',
       route: 'canary_canonical',
-      engine_sha256: '8e9e663b43f822a9b9c8d3ecde38ec0a296441b926b47cec81803867f229b6e5',
+      engine_sha256: '8c1a00852ba4df2adfa1cc1b17e980c8cfc7faee3ede1d65c69aa8e7456eaec6',
       codec_mode: 'transcode',
       filtergraph: 'deblock,smartblur=lr=1.5:ls=-0.5,format=yuv444p,scale=3840:2160:flags=lanczos,noise=alls=8:allf=t,unsharp=5:5:0.8:3:3:0.4,eq=contrast=1.05:brightness=0.02:saturation=1.05,format=yuv420p',
       encoder: {

@@ -4759,7 +4759,11 @@ function chKey(id, sdr, sdr720) { return id + '|' + (sdr720 ? 'h' : sdr ? 's' : 
 function safeStartFailure(error) {
   const code = String(error && error.message || '').split(':', 1)[0];
   return ['SOURCE_PRESERVATION_REQUIRED', 'UNSUPPORTED_NATIVE_CMAF_CODEC',
-    'AUDIO_PROBE_INCOMPLETE', 'UNSUPPORTED_CMAF_AUDIO'].includes(code) ? code : 'JIT_START_FAILED';
+    'AUDIO_PROBE_INCOMPLETE', 'UNSUPPORTED_CMAF_AUDIO',
+    /* t55: el slot lo tiene otro (player/canary). No es un fallo del canal: es
+     * el motor negandose a abrir una segunda conexion. El codigo viaja al player
+     * en manifest.json ('error') para que elija provider-direct sin ambiguedad. */
+    'PROVIDER_SLOT_BUSY'].includes(code) ? code : 'JIT_START_FAILED';
 }
 function recordStartFailure(id, sdr, sdr720, error) {
   const key = chKey(id, sdr, sdr720), code = safeStartFailure(error);
@@ -4772,6 +4776,74 @@ function reapDir(dir) {
   if (!dir) return;
   pendingDirs.delete(dir);
   try { fs.rmSync(dir, { recursive: true, force: true }); } catch (_) {}
+}
+
+/* ── ADMISION ANTE EL PROVEEDOR (t55, 2026-11-14) ───────────────────────────
+ * QUE ARREGLA (medido, no supuesto):
+ *   t54 §2 — el JIT es el propietario P4 y su ffmpeg ES la conexion al
+ *   proveedor. slotAcquire() solo serializa JIT<->JIT (liveKids.size === 0).
+ *   Nadie mas pregunta: el player (P1/P2) y el canary (P3) pueden tener el slot
+ *   mientras el JIT abre una SEGUNDA conexion al upstream. t53 midio que >=103
+ *   de 137 502 ocurren con un solo propietario declarado; esta es la parte que
+ *   si es NUESTRA y que se puede cerrar desde este fichero.
+ *
+ * COMO: se pregunta al gate (que es un oraculo, t54 §1) ANTES de spawnear.
+ *   Se permite solo con ALLOW o con `jit_serving_player_path`, que es el unico
+ *   DENY que hay que ignorar a proposito: cualquier ffmpeg del JIT dispara esa
+ *   razon —incluidos los nuestros de liveKids— y el JIT ya se serializa solo;
+ *   respetarla seria negarse a si mismo en cada canal.
+ *   Cualquier otra razon DENIEGA, incluidas las fail-closed del gate.
+ *
+ * NO DEGRADA: no se sirve menor calidad ni se recorta bitrate. El JIT no abre
+ *   la conexion y el player sigue por su ruta directa, que es el mismo camino
+ *   que el motor ya usa para sus fallos de arranque ('source unchanged').
+ *
+ * FAIL-CLOSED SOLO CUANDO HAY GATE: si la libreria no esta instalada no hay
+ *   otro propietario al que proteger y se permite (se declara GATE_ABSENT). Si
+ *   esta y falla o tarda, se DENIEGA: sin poder probar que estamos solos, no se
+ *   abre una segunda conexion.
+ */
+const PG_LIB = process.env.APE_PROVIDER_GATE || '/opt/ape-pulse/lib/provider-gate.sh';
+const PG_TIMEOUT_MS = Number(process.env.APE_PROVIDER_GATE_TIMEOUT_MS || 3000);
+const gateStats = { checks: 0, allow: 0, deny: 0, absent: 0, last_reason: null, last_claimant: null, last_at: null };
+
+function pgStat(reason, claimant) {
+  gateStats.last_reason = reason;
+  gateStats.last_claimant = claimant;
+  gateStats.last_at = new Date().toISOString();
+}
+
+function providerGateAdmit(claimant) {
+  const who = String(claimant || 'jit');
+  gateStats.checks++;
+  if (!fs.existsSync(PG_LIB)) {
+    gateStats.absent++; pgStat('gate_absent', who);
+    log('GATE_ABSENT', who, PG_LIB, 'se permite: sin gate instalado no hay otro propietario que proteger');
+    return { allow: true, decision: 'ALLOW', reason: 'gate_absent' };
+  }
+  let raw = '';
+  try {
+    raw = execFileSync('bash',
+      ['-c', '. "$1" >/dev/null 2>&1; provider_gate_decide "$2"', '--', PG_LIB, who],
+      { encoding: 'utf8', timeout: PG_TIMEOUT_MS, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  } catch (e) {
+    /* exit != 0 = DENY normal del gate (devuelve 1) o fallo real. La linea va por stdout. */
+    raw = String((e && e.stdout) || '').trim();
+    if (!raw) {
+      const reason = (e && e.signal) ? 'gate_timeout' : 'gate_unavailable';
+      gateStats.deny++; pgStat(reason, who);
+      log('GATE_DENY', who, reason);
+      return { allow: false, decision: 'DENY', reason: reason };
+    }
+  }
+  const m = raw.match(/decision=(\w+)\s+claimant=\S+\s+level=\S+\s+reason=(\S+)/);
+  const decision = m ? m[1] : 'DENY';
+  const reason = m ? m[2] : 'gate_unparsed';
+  /* Unica razon DENY que se ignora: la disparan los ffmpeg del propio JIT. */
+  const allow = decision === 'ALLOW' || reason === 'jit_serving_player_path';
+  if (allow) gateStats.allow++; else gateStats.deny++;
+  pgStat(reason, who);
+  return { allow: allow, decision: decision, reason: reason, line: raw };
 }
 
 /* Espera a que NO haya ningun hijo vivo: el slot unico del proveedor. */
@@ -4868,6 +4940,16 @@ async function start(id, spec, sdr, sdr720) {
   const slotOk = await slotAcquire();
   if (!slotOk) {
     log('START_ABORT', id, 'slot ocupado, no se abre una segunda conexion');
+    return;
+  }
+  /* t55: ADMISION ANTE EL PROVEEDOR. slotAcquire() ya garantiza que no hay otro
+   * ffmpeg NUESTRO; esto garantiza que el operador o el canary no tengan el
+   * slot. Sin esta puerta el JIT abre una segunda conexion al upstream y el
+   * proveedor corta las dos (max_connections=1). Ver providerGateAdmit(). */
+  const admit = providerGateAdmit('jit');
+  if (!admit.allow) {
+    log('START_ABORT', id, 'gate=' + admit.reason + ' (otro propietario del slot; no se abre la conexion)');
+    recordStartFailure(id, sdr, sdr720, new Error('PROVIDER_SLOT_BUSY'));
     return;
   }
   const child = spawn(NICE_BIN || FFMPEG_BIN, NICE_BIN ? ['-n', '19', FFMPEG_BIN, ...args] : args, {
@@ -9309,6 +9391,10 @@ function simChain(plan, tenBit, conPq) {
       ok: true, active: current ? current.id : null,
       pid: current ? current.child.pid : null,
       uptime_s: current ? Math.round((Date.now() - current.started) / 1000) : 0,
+      /* t55: observabilidad de la admision. `checks` sube en cada intento de
+       * transcode; `deny` cuenta las veces que el JIT NO abrio la conexion
+       * porque el slot lo tenia otro. Sin esto el arreglo seria invisible. */
+      provider_gate: gateStats,
     }));
   }
   const jm = u.pathname.match(/^\/live\/([^/]+)\/(sdr720\/|sdr\/)?manifest\.json$/);
