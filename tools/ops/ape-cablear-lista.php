@@ -55,6 +55,30 @@ $reAny  = '#/(\d+)\.(?:m3u8|ts|mp4)/?$#';
 $reAnyPipe = '#/(\d+)\.(?:m3u8|ts|mp4)#';
 $basePrefix = rtrim($base, '/');
 
+/* [FIX 2026-11-14, BUG MEDIDO EN PRODUCCION] BASE VACIO = TODO "YA ESTABA".
+ *
+ * El worker invoca este motor sin el argumento base cuando APE_CABLEAR_ENGINE_BASE
+ * no esta definida, asi que $base llegaba como cadena vacia y $basePrefix = ''.
+ * Con eso, la comprobacion de idempotencia de mas abajo
+ *
+ *     strpos($url, $basePrefix) === 0
+ *
+ * se cumplia SIEMPRE: en PHP, strpos($pajar, '') devuelve 0 para cualquier
+ * $pajar. Medido en el VPS cableando APE_LISTA_1793926685925: el ticket termino
+ * en done con 618.074.125 B y "envueltos: 0 · ya estaban: 10573" mientras las
+ * 10.573 URLs seguian apuntando DIRECTAS a line.tivi-ott.net y /pulse/ era 0.
+ * Es decir: el sistema decia que habia cableado y no habia cableado nada.
+ *
+ * Dos arreglos, los dos necesarios:
+ *   1) aqui: si no llega base se usa el host de produccion por defecto. Un motor
+ *      que no sabe a donde cablear no puede asumir "ya esta hecho".
+ *   2) la comprobacion exige prefijo NO vacio, para que ningun otro camino pueda
+ *      reintroducir el mismo falso positivo.
+ */
+if ($basePrefix === '') {
+    $basePrefix = 'https://iptv-ape.duckdns.org';
+}
+
 while (true) {
     $line = $gz ? gzgets($fh, 1 << 20) : fgets($fh, 1 << 20);
     if ($line === false) break;
@@ -72,7 +96,12 @@ while (true) {
         if ($pipe !== false) $url = substr($url, 0, $pipe);
 
         // (5) idempotencia
-        if (strpos($url, '/pulse/') !== false || strpos($url, $basePrefix) === 0) {
+        // El prefijo NO vacio es obligatorio: strpos($url, '') === 0 siempre, y con
+        // eso TODA url se daria por "ya cableada" sin estarlo. Ya paso una vez en
+        // produccion (ver el bloque de arriba): 10.573 URLs declaradas envueltas y
+        // /pulse/ = 0. Aqui se cierra la puerta por si otra ruta deja base vacia.
+        if (strpos($url, '/pulse/') !== false
+            || ($basePrefix !== '' && strpos($url, $basePrefix) === 0)) {
             $yaEstaban++; fwrite($fo, $line . "\n"); continue;
         }
 
