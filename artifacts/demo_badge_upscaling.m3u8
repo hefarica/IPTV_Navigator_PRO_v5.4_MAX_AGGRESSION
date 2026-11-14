@@ -1,0 +1,20 @@
+#EXTM3U x-tvg-url="" catchup="flussonic" catchup-days="7"
+#EXT-X-VERSION:9
+#EXT-X-APE-CHANNELS:3
+# =====================================================================
+# DEMO DEL INDICADOR DE UPSCALING
+# Tres canales reales con el marcador visible en el NOMBRE (lo que pinta
+# el overlay), sin tocar tvg-id ni tvg-name: el EPG sigue casando.
+# Dos variantes para que se vea la diferencia:
+#   1 y 2 -> marcador de texto en el nombre
+#   3     -> tvg-logo apuntando al badge (sustituye el logo del canal)
+# =====================================================================
+#EXTINF:-1 tvg-id="1" tvg-name="✦●✦| FHD - BEIN SPORTS FHD |✦●✦ [EVEST]" tvg-logo="https://lo1.in/bss/bs.png" tvg-chno="1" group-title="DEMO UPSCALING",✦●✦| FHD - BEIN SPORTS FHD |✦●✦ ▲4K
+#EXT-X-STREAM-INF:BANDWIDTH=5500000,RESOLUTION=1920x1080,CODECS="avc1.640028"
+https://iptv-ape.duckdns.org/artifacts/badge_upscaling.svg
+#EXTINF:-1 tvg-id="2" tvg-name="AR| BEIN SPORTS NEWS FHD [EVEST]" tvg-logo="https://lo1.in/bss/bsnews.png" tvg-chno="2" group-title="DEMO UPSCALING",AR| BEIN SPORTS NEWS FHD ▲4K·UP
+#EXT-X-STREAM-INF:BANDWIDTH=5500000,RESOLUTION=1920x1080,CODECS="avc1.640028"
+https://iptv-ape.duckdns.org/artifacts/badge_upscaling.svg
+#EXTINF:-1 tvg-id="3" tvg-name="CANAL CON LOGO DE BADGE" tvg-logo="https://iptv-ape.duckdns.org/artifacts/badge_upscaling.svg" tvg-chno="3" group-title="DEMO UPSCALING",CANAL CON LOGO DE BADGE
+#EXT-X-STREAM-INF:BANDWIDTH=5500000,RESOLUTION=1920x1080,CODECS="avc1.640028"
+https://iptv-ape.duckdns.org/artifacts/badge_upscaling.svg
