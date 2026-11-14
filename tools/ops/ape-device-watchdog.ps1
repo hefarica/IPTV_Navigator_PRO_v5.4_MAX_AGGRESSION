@@ -14,17 +14,30 @@
     las fuentes primarias del sistema (SurfaceFlinger, /proc/net, wm, settings,
     logcat) y decide por lo que encuentra.
 
+    REESCRITO 2026-11-14 tras cuatro parches fallidos. Los fallos que lo
+    motivaron, todos medidos:
+      1) $Adb='adb' a secas: el Programador de tareas no tiene el PATH de la
+         sesion y la llamada moria. Ahora se resuelve adb probando rutas.
+      2) Get-FileHash: existe desde PowerShell 4.0 y el powershell.exe del
+         planificador lo rechazaba. Ahora SHA256 nativo.
+      3) $ErrorActionPreference='Stop': un solo fallo abortaba el script SIN
+         ESCRIBIR NADA — la tarea reportaba exito con codigo 0 y no dejaba
+         rastro. Un vigilante que se cae en silencio es peor que no tenerlo.
+         Ahora 'Continue' + un try/catch global que SIEMPRE deja constancia.
+      4) La ruta del repo se derivaba de $PSScriptRoot; ahora se fija desde el
+         propio fichero y se valida que exista.
+
     QUE DEJA EN DISCO
       artifacts/device-truth/device-truth.log     una linea por ejecucion (JSON)
       artifacts/device-truth/LATEST.json          el ultimo resultado
       artifacts/device-truth/ALERTA.txt           existe SOLO si el veredicto no
                                                   es OK; se borra cuando vuelve
       artifacts/device-truth/incidentes.log       una linea por cambio de estado
+      artifacts/device-truth/crash.log            solo si el runner falla
 
     COMO AVISA
-      - El archivo ALERTA.txt (visible, persistente, sobrevive a reinicios).
+      - ALERTA.txt (visible, persistente, sobrevive a reinicios).
       - Exit code != 0, para que el Programador de tareas lo marque en rojo.
-      - Opcional: POST al VPS si se pasa -VpsUrl (nunca bloquea; fail-open).
 
 .PARAMETER Device
     Serial de adb. Por defecto 192.168.1.3:5555.
@@ -32,9 +45,8 @@
 .PARAMETER Json
     Devuelve el JSON por la salida estandar en vez del resumen legible.
 
-.PARAMETER VpsUrl
-    Endpoint opcional para reportar (p.ej. https://iptv-ape.duckdns.org/prisma/api/qoe-flush.php).
-    Si falla, se registra y se sigue: el vigilante nunca se cae por no poder avisar.
+.PARAMETER Adb
+    Ruta a adb.exe. Si se omite, se resuelve probando PATH y rutas tipicas.
 
 .EXAMPLE
     .\ape-device-watchdog.ps1
@@ -45,160 +57,172 @@ param(
     [string]$Device = '192.168.1.3:5555',
     [switch]$Json,
     [string]$VpsUrl = '',
-    [string]$Adb = 'adb'
+    [string]$Adb = ''
 )
 
-$ErrorActionPreference = 'Stop'
-$repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-if (-not $repo) { $repo = (Get-Location).Path }
+# 'Continue' y no 'Stop': un vigilante NUNCA debe morir en silencio. Con 'Stop',
+# un fallo temprano (adb ausente, permiso, lo que sea) abortaba el script sin
+# escribir nada y la tarea quedaba en verde. Eso es exactamente la falsa
+# sensacion de "hay alguien mirando" que el operador denuncio.
+$ErrorActionPreference = 'Continue'
+
+# La raiz se deriva del propio fichero y se valida; si no, se usa el cwd.
+try {
+    $here = $PSScriptRoot
+    if (-not $here) { $here = Split-Path -Parent $MyInvocation.MyCommand.Path }
+    $repo = Split-Path -Parent (Split-Path -Parent $here)
+    if (-not $repo -or -not (Test-Path $repo)) { $repo = (Get-Location).Path }
+} catch { $repo = (Get-Location).Path }
+
 $outDir = Join-Path $repo 'artifacts\device-truth'
-if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
+try { if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null } } catch { }
 
 $logPath   = Join-Path $outDir 'device-truth.log'
 $latest    = Join-Path $outDir 'LATEST.json'
 $alertPath = Join-Path $outDir 'ALERTA.txt'
 $incPath   = Join-Path $outDir 'incidentes.log'
+$crashPath = Join-Path $outDir 'crash.log'
 $scriptDev = '/data/local/tmp/ape-device-truth.sh'
 $srcScript = Join-Path $repo 'tools\ops\ape-device-truth.sh'
 $stamp     = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
 
-function Write-Line($p, $t) { Add-Content -Path $p -Value $t -Encoding UTF8 }
+function Write-Line($p, $t) {
+    try { Add-Content -Path $p -Value $t -Encoding UTF8 } catch { }
+}
 
-# ── 1. El dispositivo responde? Sin esto no hay medida: se declara, no se finge.
-$conn = (& $Adb -s $Device shell 'echo ADB-OK' 2>&1) -join ' '
-if ($conn -notmatch 'ADB-OK') {
-    $motivo = "SIN_CONEXION: adb no responde en $Device ($($conn.Trim()))"
-    $registro = [ordered]@{
-        ts = $stamp; verdict = 'SIN_CONEXION'; reason = $motivo
-        device = $Device; measured = $false
-    }
-    $j = $registro | ConvertTo-Json -Compress
+function Emitir($verdict, $motivo, $extra) {
+    # Escribe SIEMPRE las cuatro cosas: log, LATEST, ALERTA y incidentes.
+    $o = [ordered]@{ ts = $stamp; verdict = $verdict; reason = $motivo; device = $Device; measured = ($verdict -notin @('SIN_ADB','SIN_CONEXION','SIN_MEDIDA','RUNNER_CRASH')) }
+    if ($extra) { foreach ($k in $extra.Keys) { $o[$k] = $extra[$k] } }
+    $j = ($o | ConvertTo-Json -Compress)
     Write-Line $logPath $j
-    Set-Content -Path $latest -Value $j -Encoding UTF8
-    $cuerpoA = @"
-ALERTA — $stamp
-VEREDICTO: SIN_CONEXION
-MOTIVO   : $motivo
-
-Esto NO significa que el sistema este bien: significa que NO SE PUDO MEDIR.
-Un dispositivo inalcanzable no es un dispositivo sano.
-"@
-    Write-Line $incPath "$stamp SIN_CONEXION $motivo"
-    if ($Json) { $j } else { Write-Output "SIN_CONEXION · $motivo" }
-    exit 3
-}
-
-# ── 2. Subir el script si cambio (idempotente: compara sha256)
-$needsPush = $true
-if (Test-Path $srcScript) {
-    # Convertir a texto primero y luego a bytes: hacer -replace sobre el resultado
-    # de ReadAllBytes devuelve un ARRAY de bytes convertidos a string y ToBase64String
-    # acaba interpretando el segundo argumento como Base64FormattingOptions.
-    $texto = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes($srcScript)) -replace "`r`n", "`n"
-    $b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($texto))
-    $remoteSha = (& $Adb -s $Device shell "sha256sum $scriptDev 2>/dev/null | cut -d' ' -f1" 2>&1) -join ''
-    $localSha  = (Get-FileHash $srcScript -Algorithm SHA256).Hash.ToLower()
-    if ($remoteSha.Trim() -eq $localSha) {
-        $needsPush = $false
+    try { Set-Content -Path $latest -Value $j -Encoding UTF8 } catch { }
+    if ($verdict -eq 'OK') {
+        if (Test-Path $alertPath) { try { Remove-Item $alertPath -Force } catch { } }
     } else {
-        & $Adb -s $Device shell "printf %s '$b64' | base64 -d > $scriptDev && chmod 755 $scriptDev" 2>&1 | Out-Null
+        $txt = "ALERTA - $stamp`nVEREDICTO: $verdict`nMOTIVO   : $motivo`n`n$($extra['detalle'] )`n`nQue significa cada veredicto:`n  ROTO       el shim no escucha o no hay agente: el sistema NO esta funcionando`n  DEGRADADO  responde pero miente en algo: HDR irreal, compositor no nativo,`n             settings rechazados en bucle, levers inexistentes`n  OK         todo lo anterior medido en verde`n  SIN_*      no se pudo medir: eso NO es un sistema sano`n`nEl detalle completo esta en LATEST.json. Este archivo desaparece solo cuando`nel veredicto vuelve a OK."
+        try { Set-Content -Path $alertPath -Value $txt -Encoding UTF8 } catch { }
     }
-} else {
-    Write-Output "AVISO: no encuentro $srcScript — uso el del dispositivo si ya esta"
+    Write-Line $incPath "$stamp $verdict | $motivo"
+    if ($Json) { $j } else {
+        Write-Output "VERDICT=$verdict"
+        Write-Output "MOTIVO=$motivo"
+        if ($verdict -ne 'OK') { Write-Output "  ALERTA escrita en: $alertPath" }
+    }
 }
 
-# ── 3. Medir
-$raw = (& $Adb -s $Device shell "sh $scriptDev --json 2>/dev/null" 2>&1) -join ''
-if (-not $raw -or $raw -notmatch '\{') {
-    $motivo = "SIN_MEDIDA: el script no devolvio JSON"
-    $registro = [ordered]@{ ts = $stamp; verdict = 'SIN_MEDIDA'; reason = $motivo; device = $Device; measured = $false }
-    $j = $registro | ConvertTo-Json -Compress
-    Write-Line $logPath $j; Set-Content $latest $j; Set-Content $alertPath "ALERTA — $stamp`nVEREDICTO: SIN_MEDIDA`n$motivo" -Encoding UTF8
-    Write-Line $incPath "$stamp SIN_MEDIDA $motivo"
-    if ($Json) { $j } else { Write-Output "SIN_MEDIDA · $motivo" }
+# ── Envoltorio global: si CUALQUIER cosa revienta, queda constancia ──────────
+try {
+
+# ── 0. Resolver adb (el planificador no tiene el PATH de la sesion) ──────────
+$candidatos = @()
+if ($Adb) { $candidatos += $Adb }
+$candidatos += @(
+    'C:\Android\platform-tools\adb.exe',
+    (Join-Path $env:LOCALAPPDATA 'Android\Sdk\platform-tools\adb.exe'),
+    (Join-Path ${env:ProgramFiles} 'Android\platform-tools\adb.exe')
+)
+$adbOk = $null
+foreach ($c in $candidatos) { if ($c -and (Test-Path $c)) { $adbOk = $c; break } }
+if (-not $adbOk) {
+    $gc = Get-Command adb -ErrorAction SilentlyContinue
+    if ($gc) { $adbOk = $gc.Source }
+}
+if (-not $adbOk) {
+    Emitir 'SIN_ADB' 'no encuentro adb.exe (PATH, C:\Android\platform-tools, LOCALAPPDATA, ProgramFiles)' @{}
+    exit 3
+}
+$Adb = $adbOk
+
+# ── 1. El dispositivo responde? ──────────────────────────────────────────────
+$conn = ''
+try { $conn = (& $Adb -s $Device shell 'echo ADB-OK' 2>&1 | Out-String) } catch { $conn = $_.Exception.Message }
+if ($conn -notmatch 'ADB-OK') {
+    Emitir 'SIN_CONEXION' "adb no responde en $Device" @{ detalle = "Salida de adb: $($conn.Trim())" }
     exit 3
 }
 
-try { $r = $raw | ConvertFrom-Json } catch {
-    $motivo = "JSON_INVALIDO: $($_.Exception.Message)"
-    $registro = [ordered]@{ ts = $stamp; verdict = 'SIN_MEDIDA'; reason = $motivo; device = $Device; measured = $false }
-    $j = $registro | ConvertTo-Json -Compress
-    Write-Line $logPath $j; Set-Content $latest $j; Set-Content $alertPath "ALERTA — $stamp`nVEREDICTO: SIN_MEDIDA`n$motivo" -Encoding UTF8
-    Write-Line $incPath "$stamp SIN_MEDIDA $motivo"
-    if ($Json) { $j } else { Write-Output "SIN_MEDIDA · $motivo" }
+# ── 2. Subir el script si cambio (comparando sha256 sin Get-FileHash) ────────
+if (Test-Path $srcScript) {
+    try {
+        $texto = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes($srcScript)) -replace "`r`n", "`n"
+        $b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($texto))
+        $shaObj = [System.Security.Cryptography.SHA256]::Create()
+        try { $localSha = ([BitConverter]::ToString($shaObj.ComputeHash([IO.File]::ReadAllBytes($srcScript))) -replace '-','').ToLower() } finally { $shaObj.Dispose() }
+        $remoto = (& $Adb -s $Device shell "sha256sum $scriptDev 2>/dev/null" 2>&1 | Out-String)
+        if ($remoto -notmatch [regex]::Escape($localSha)) {
+            & $Adb -s $Device shell "printf %s '$b64' | base64 -d > $scriptDev && chmod 755 $scriptDev" 2>&1 | Out-Null
+        }
+    } catch {
+        Write-Line $crashPath "$stamp push fallo: $($_.Exception.Message)"
+    }
+}
+
+# ── 3. Medir ─────────────────────────────────────────────────────────────────
+$raw = ''
+try { $raw = (& $Adb -s $Device shell "sh $scriptDev --json 2>/dev/null" 2>&1 | Out-String).Trim() } catch { $raw = '' }
+
+# Quedarse SOLO con el objeto JSON: de la primera '{' a la ultima '}'.
+$ini = $raw.IndexOf('{')
+$fin = $raw.LastIndexOf('}')
+if ($ini -lt 0 -or $fin -le $ini) {
+    Emitir 'SIN_MEDIDA' 'el script del device no devolvio JSON' @{ detalle = "Salida cruda (primeros 200): $($raw.Substring(0,[Math]::Min(200,$raw.Length)))" }
+    exit 3
+}
+$jsonTxt = $raw.Substring($ini, $fin - $ini + 1)
+
+$r = $null
+try { $r = $jsonTxt | ConvertFrom-Json } catch {
+    Emitir 'SIN_MEDIDA' "JSON_INVALIDO: $($_.Exception.Message)" @{ detalle = "JSON recibido (primeros 200): $($jsonTxt.Substring(0,[Math]::Min(200,$jsonTxt.Length)))" }
     exit 3
 }
 
-$r | Add-Member -NotePropertyName ts -NotePropertyValue $stamp -Force
-$r | Add-Member -NotePropertyName device -NotePropertyValue $Device -Force
-$r | Add-Member -NotePropertyName measured -NotePropertyValue $true -Force
-$jsonOut = $r | ConvertTo-Json -Compress
-
-Write-Line $logPath $jsonOut
-Set-Content -Path $latest -Value $jsonOut -Encoding UTF8
-
-# ── 4. Decidir y avisar
 $verdict = [string]$r.verdict
-$prevVerdict = $null
-if (Test-Path $latest) { }
-$hist = Get-Content $logPath -ErrorAction SilentlyContinue
-if ($hist -and $hist.Count -ge 2) {
-    try { $prevVerdict = ([string]($hist[$hist.Count - 2]) | ConvertFrom-Json).verdict } catch { }
+if (-not $verdict) {
+    Emitir 'SIN_MEDIDA' 'el JSON no trae veredicto' @{ detalle = "Claves recibidas: $((($r.PSObject.Properties | ForEach-Object { $_.Name }) -join ', '))" }
+    exit 3
 }
 
-if ($verdict -eq 'OK') {
-    if (Test-Path $alertPath) {
-        Remove-Item $alertPath -Force
-        Write-Line $incPath "$stamp RECUPERADO estaba=$prevVerdict ahora=OK"
-    }
-} else {
-    $cuerpo = @"
-ALERTA — $stamp
-VEREDICTO: $verdict
-MOTIVO   : $($r.reason)
-
+$detalle = @"
 MEDIDO (fuentes primarias, no la leyenda del panel):
-  agente            : pid=$($r.agent_pid) version=$($r.version) servicios=$($r.agent_servicios)
-  shim              : sockets=$($r.shim_sockets) acepta=$($r.shim_accepts) puertos='$($r.shim_ports)'
-  display           : fisico=$($r.display_phys) override=$($r.display_override) modo=$($r.display_mode) tope_sf=$($r.sf_max)
-  HDR (dataspace)   : capas=$($r.hdr_layers) unknown=$($r.hdr_unknown) no_sdr=$($r.hdr_non_sdr) conv=$($r.hdr_conversion_mode)
-  settings          : aplicados=$($r.settings_applied) rechazados=$($r.settings_rejected) ledger='$($r.settings_ledger)'
-  rechazos ventana  : $($r.reject_loop)
-  VPP levers        : $($r.vpp_levers) presentes
-  video             : geomBufferSize=$($r.play_geombuffersize)
-
-Que significa cada veredicto:
-  ROTO       el shim no escucha o no hay agente: el sistema NO esta funcionando
-  DEGRADADO  el sistema responde pero miente en algo: HDR irreal, compositor no
-             nativo, settings rechazados en bucle, levrers inexistentes
-  OK         todo lo anterior medido en verde
-
-El detalle completo esta en LATEST.json. Este archivo desaparece solo cuando el
-veredicto vuelve a OK.
+  agente          : pid=$($r.agent_pid) version=$($r.version) servicios=$($r.agent_servicios)
+  shim            : sockets=$($r.shim_sockets) acepta=$($r.shim_accepts) puertos='$($r.shim_ports)'
+  display         : fisico=$($r.display_phys) override=$($r.display_override) modo=$($r.display_mode) tope_sf=$($r.sf_max)
+  HDR (dataspace) : capas=$($r.hdr_layers) unknown=$($r.hdr_unknown) no_sdr=$($r.hdr_non_sdr) conv=$($r.hdr_conversion_mode)
+  settings        : aplicados=$($r.settings_applied) rechazados=$($r.settings_rejected) ledger='$($r.settings_ledger)'
+  rechazos ventana: $($r.reject_loop)
+  VPP levers      : $($r.vpp_levers) presentes
+  video           : geomBufferSize=$($r.play_geombuffersize)
 "@
-    Set-Content -Path $alertPath -Value $cuerpo -Encoding UTF8
-    if ($prevVerdict -and $prevVerdict -ne $verdict) {
-        Write-Line $incPath "$stamp CAMBIO $prevVerdict -> $verdict | $($r.reason)"
-    } elseif (-not $prevVerdict) {
-        Write-Line $incPath "$stamp INICIAL $verdict | $($r.reason)"
-    }
+
+# El veredicto lo decide el script del device; aqui solo se propaga con su motivo.
+Emitir $verdict ([string]$r.reason) @{
+    detalle          = $detalle
+    shim_sockets     = $r.shim_sockets
+    hdr_unknown      = $r.hdr_unknown
+    hdr_layers       = $r.hdr_layers
+    settings_rejected= $r.settings_rejected
+    vpp_levers       = $r.vpp_levers
+    display_override = $r.display_override
+    display_phys     = $r.display_phys
+    version          = $r.version
+    agent_pid        = $r.agent_pid
 }
 
-# ── 5. Reporte opcional al VPS (fail-open: nunca bloquea al vigilante)
+# ── 4. Reporte opcional al VPS (fail-open) ───────────────────────────────────
 if ($VpsUrl) {
     try {
         $payload = @{ source = 'ape-device-watchdog'; device = $Device; verdict = $verdict; reason = $r.reason; ts = $stamp } | ConvertTo-Json -Compress
         Invoke-RestMethod -Uri $VpsUrl -Method Post -Body $payload -ContentType 'application/json' -TimeoutSec 5 | Out-Null
-    } catch {
-        Write-Line $incPath "$stamp REPORTE_FALLIDO $($_.Exception.Message)"
-    }
+    } catch { Write-Line $incPath "$stamp REPORTE_FALLIDO $($_.Exception.Message)" }
 }
 
-if ($Json) { $jsonOut } else {
-    Write-Output "VERDICT=$verdict"
-    Write-Output "MOTIVO=$($r.reason)"
-    Write-Output "  shim sockets=$($r.shim_sockets) · HDR unknown=$($r.hdr_unknown)/$($r.hdr_layers) · settings rej=$($r.settings_rejected) · vpp=$($r.vpp_levers)"
-    if ($verdict -ne 'OK') { Write-Output "  ALERTA escrita en: $alertPath" }
-}
+if ($verdict -eq 'OK') { exit 0 } else { exit 1 }
 
-exit $(if ($verdict -eq 'OK') { 0 } else { 1 })
+} catch {
+    # Ultimo recurso: si el script revienta por donde no debe, SE SABE.
+    $msg = "$($_.Exception.Message) | $($_.InvocationInfo.PositionMessage)"
+    Write-Line $crashPath "$stamp $msg"
+    Emitir 'RUNNER_CRASH' "el vigilante fallo: $($_.Exception.Message)" @{ detalle = $msg }
+    exit 4
+}
