@@ -260,9 +260,24 @@
             const key = attr.split('=')[0].trim().toUpperCase();
             return /^[A-Z0-9-]+=/.test(attr) && !controlled.has(key);
         });
-        // BANDWIDTH is required for a HLS variant. If it is not observed, keep a
-        // valid IPTV catalog entry (EXTINF + URI) instead of inventing a variant.
+        // BANDWIDTH is required for a HLS variant.
+        // ── [2026-11-15 · MANDATO DEL OPERADOR: EL OBJETIVO MANDA, NO LA FUENTE] ──────
+        // La doctrina anterior dejaba el bloque SOLO con EXTINF + URI cuando el probe no
+        // daba bandwidth. Medido sobre la lista real de 21.224 canales: la cobertura del
+        // probe fue 2.334/21.224 = 11,0 %, asi que 18.890 canales salieron SIN STREAM-INF
+        // (verificado: grep -c '^#EXT-X-STREAM-INF' = 0 en la lista generada).
+        //
+        // El operador corrigio la doctrina: el STREAM-INF declara el OBJETIVO, que es
+        // 6K EMULADO (5760x3240). La fuente medida es la VARIACION, y esa brecha es el
+        // gradiente que el LLM usa con el prober para cerrarla en tiempo real.
+        //
+        // HONESTIDAD: el BANDWIDTH sin probe sale del PERFIL, no de una medicion, y eso
+        // queda escrito en el tag UPSCALE (BANDWIDTH-SOURCE=profile-target, MODE=EMULATED).
+        // El bitstream no cambia: esto es intencion de display, no un transcode.
+        // El mapa por perfil es el MISMO que usa el generador (BANDWIDTH de referencia
+        // de CLAUDE.md) para que no haya dos fuentes de verdad.
         let streamInf = null;
+        let streamInfSource = null;
         if (evidence.bandwidth) {
             const sourceAttrs = ['BANDWIDTH=' + Math.round(evidence.bandwidth)];
             if (evidence.averageBandwidth) sourceAttrs.push('AVERAGE-BANDWIDTH=' + Math.round(evidence.averageBandwidth));
@@ -273,6 +288,27 @@
             if (evidence.hdcpLevel) sourceAttrs.push('HDCP-LEVEL=' + evidence.hdcpLevel);
             if (evidence.supplementalCodecs) sourceAttrs.push('SUPPLEMENTAL-CODECS="' + evidence.supplementalCodecs + '"');
             streamInf = '#EXT-X-STREAM-INF:' + sourceAttrs.concat(attrs).join(',');
+            streamInfSource = 'probe';
+        } else {
+            const _pf = String(
+                (ctx.channel && (ctx.channel.ape_profile || ctx.channel.profile)) ||
+                (ctx.options && ctx.options.profile) || 'P3'
+            ).toUpperCase().replace(/\.5$/, '');
+            const _bwMap = { P0: 120000000, P1: 80000000, P2: 50000000, P3: 25000000, P4: 15000000, P5: 8000000 };
+            const _cdMap = {
+                P0: 'hvc1.2.4.L186.B0', P1: 'hvc1.2.4.L153.B0', P2: 'hvc1.2.4.L153.B0',
+                P3: 'hvc1.2.4.L123.B0', P4: 'hvc1.2.4.L120.B0', P5: 'hvc1.2.4.L93.B0'
+            };
+            const _tBw = _bwMap[_pf] || 25000000;
+            const _tCd = _cdMap[_pf] || 'hvc1.2.4.L123.B0';
+            const _tFps = (_pf === 'P0') ? 120 : 60;
+            streamInf = '#EXT-X-STREAM-INF:BANDWIDTH=' + _tBw
+                + ',AVERAGE-BANDWIDTH=' + Math.round(_tBw * 0.8)
+                + ',CODECS="' + _tCd + ',mp4a.40.2"'
+                + ',RESOLUTION=5760x3240'
+                + ',FRAME-RATE=' + _tFps.toFixed(3)
+                + ',VIDEO-RANGE=PQ';
+            streamInfSource = 'profile-target';
         }
         const target = intent.targetResolution || 'unknown';
         const wants6k = Math.min(intent.targetWidth || 0, intent.targetHeight || 0) === 3240
@@ -289,7 +325,14 @@
             '#EXT-X-APE-CRYSTAL-6K-BITRATE:': 'UNKNOWN;MEASURE_AT_RUNTIME=1',
             '#EXT-X-APE-CRYSTAL-6K-TRUTH:': 'REQUESTED_ENHANCEMENT;NOT_SOURCE;DOWNSCALE_FORBIDDEN',
             '#EXT-X-APE-UPSCALE:': (intent.enhancementRequested === true ? 'REQUESTED_ONLY'
-                : (intent.enhancementRequested === false ? 'NATIVE_PASSTHROUGH' : 'PENDING_SOURCE')) + ';TARGET=' + target + ';EXECUTED=0',
+                : (intent.enhancementRequested === false ? 'NATIVE_PASSTHROUGH' : 'PENDING_SOURCE'))
+                // Si el STREAM-INF se emitio por objetivo (sin probe), el TARGET es el mismo
+                // 5760x3240 que declara el STREAM-INF. Dejarlo en 'unknown' mientras el
+                // STREAM-INF dice 5760x3240 seria una contradiccion legible por el operario.
+                + ';TARGET=' + (streamInfSource === 'profile-target' ? '5760x3240' : target)
+                + ';SOURCE=' + (evidence.resolution || 'UNKNOWN')
+                + ';BANDWIDTH-SOURCE=' + (streamInfSource || 'none')
+                + ';MODE=EMULATED;EXECUTOR=display;EXECUTED=0',
             '#EXT-X-APE-QUALITY:': 'SOURCE=' + (evidence.resolution || 'unknown') + ';STATUS=' + evidence.status.toUpperCase(),
             '#EXT-X-APE-QUALITY-SOURCE:': evidence.source || 'UNKNOWN',
             '#EXT-X-APE-FPS-SOURCE:': evidence.frameRate ? 'probe-url' : 'unknown',

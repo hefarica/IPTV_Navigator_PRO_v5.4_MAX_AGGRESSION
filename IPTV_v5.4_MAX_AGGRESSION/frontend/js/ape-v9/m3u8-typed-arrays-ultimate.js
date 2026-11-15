@@ -12724,7 +12724,43 @@ return lines.join('\n');
                 lines.push(`#EXT-X-APE-FPS-SOURCE:${_fpsSource}`);
             }
         } else if (_apeTruth && _apeTruth.tier === 'F5_ORIGINAL_DIRECT_SAFE') {
-            // F5: NO STREAM-INF — solo EXTINF + URL original (ya emitido arriba)
+            // ═══ [2026-11-15 · MANDATO DEL OPERADOR] F5 TAMBIEN EMITE STREAM-INF ═══
+            // La doctrina anterior PROHIBIA STREAM-INF en F5 (tier sin variante medida) y eso
+            // dejaba sin STREAM-INF al 89 % del catalogo. MEDIDO en la lista real de 21.224
+            // canales: la cobertura del probe fue 2.334/21.224 = 11,0 %, asi que 18.890 canales
+            // salian SOLO con EXTINF + URL.
+            //
+            // El operador corrigio la doctrina: el STREAM-INF declara el OBJETIVO, no la fuente.
+            //   · objetivo  = 6K EMULADO (5760x3240) — lo que se quiere alcanzar.
+            //   · variacion = la fuente medida, y esa brecha es el gradiente que el LLM usa
+            //                 con el prober para cerrarla en tiempo real.
+            //
+            // HONESTIDAD: se declara MODE=EMULATED y EXECUTOR=display en el tag UPSCALE, de modo
+            // que ningun consumidor pueda creer que 5760x3240 son pixeles decodificados. El
+            // bitstream NO se toca: esto es metadata de intencion de display, no un transcode.
+            // VIDEO-RANGE=PQ es la decision LOCKED del propietario (CLAUDE.md, 2026-06-16).
+            const _p6k = String(profile || 'P3').toUpperCase();
+            const _bw6kMap = { P0: 120000000, P1: 80000000, P2: 50000000, P3: 25000000, P4: 15000000, P5: 8000000 };
+            const _cd6kMap = {
+                P0: 'hvc1.2.4.L186.B0', P1: 'hvc1.2.4.L153.B0', P2: 'hvc1.2.4.L153.B0',
+                P3: 'hvc1.2.4.L123.B0', P4: 'hvc1.2.4.L120.B0', P5: 'hvc1.2.4.L93.B0'
+            };
+            const _bw6k = _bw6kMap[_p6k] || 25000000;
+            const _cd6k = _cd6kMap[_p6k] || 'hvc1.2.4.L123.B0';
+            const _fps6k = _noProbeFps(profile);
+            _streamInfLine = `#EXT-X-STREAM-INF:BANDWIDTH=${_bw6k},AVERAGE-BANDWIDTH=${Math.round(_bw6k * 0.8)},CODECS="${_cd6k},mp4a.40.2",RESOLUTION=5760x3240,FRAME-RATE=${Number(_fps6k).toFixed(3)},VIDEO-RANGE=PQ`;
+            _fpsSource = (_fps6k === 120) ? 'default-120' : 'default-60';
+            // La fuente medida va declarada, y su multiplicador. Sin medida => UNKNOWN y
+            // EVIDENCE=unmeasured: el LLM sabe que ese canal no tiene gradiente medido.
+            const _srcRes6k = (_apeTruth && _apeTruth.resolution) ? String(_apeTruth.resolution) : 'UNKNOWN';
+            const _m6k = /^(\d+)x(\d+)$/.exec(_srcRes6k);
+            const _mult6k = _m6k ? (3240 / Number(_m6k[2])).toFixed(2) : 'UNKNOWN';
+            lines.push(_streamInfLine);
+            lines.push(`#EXT-X-APE-UPSCALE:TARGET=5760x3240;SOURCE=${_srcRes6k};MULTIPLIER=x${_mult6k};TECH=lanczos+unsharp;MODE=EMULATED;EXECUTOR=display;EVIDENCE=${_m6k ? 'probe' : 'unmeasured'}`);
+            lines.push(`#EXT-X-APE-FPS-SOURCE:${_fpsSource}`);
+            lines.push(`#EXT-X-APE-TARGET-PROFILE:${_p6k}.5;TARGET-RES=5760x3240;SOURCE-RES=${_srcRes6k};GAP=x${_mult6k};ADJUSTER=llm+prober`);
+            _streamInfLine = null;   // ya emitido aqui; evita el doble push del bloque de arriba
+            _fpsSource = null;
         } else {
             // Legacy emit sin truth: emite STREAM-INF SIN HDCP-LEVEL ni SUPPLEMENTAL-CODECS hardcoded.
             //
