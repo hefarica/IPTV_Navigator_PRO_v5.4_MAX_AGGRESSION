@@ -205,6 +205,10 @@ class AgentService : Service() {
             scope.launch(Dispatchers.IO) {
                 val ottPkg = "studio.scillarium.ottnavigator"
                 var badgeShown = false
+                // Cuando se re-verifico por ultima vez que OTT sigue reproduciendo.
+                // El badge se montaba y ya no se volvia a comprobar nunca: se quedo
+                // 16 minutos en pantalla sobre YouTube TV (medido 2026-11-14).
+                var lastBadgeReverifyAt = 0L
                 // [FIX 2026-11-14] OTT NO PUBLICA MediaSession.
                 //
                 // Medido en el zapeo real: OTT estaba en PlayerActivity reproduciendo
@@ -260,14 +264,68 @@ class AgentService : Service() {
                         val playing = am?.isMusicActive == true
 
                         if (playing) {
+                            // [FIX 2026-11-14] REFRESCAR EL ESTADO DEL SHIM ANTES DE MIRARLO.
+                            //
+                            // `ShimBridge.running` solo se actualizaba dentro de
+                            // ShimBridge.refresh(), y refresh() se llamaba UNICAMENTE desde
+                            // MainActivity (el panel, al abrirse). En segundo plano -que es
+                            // como funciona el sistema el 99% del tiempo- nadie refrescaba,
+                            // asi que `running` se quedaba en false PARA SIEMPRE.
+                            //
+                            // MEDIDO en el device:
+                            //   "OTT reproduciendo y shim caido -> relanzo"  x6, cada 5 s
+                            //   mientras el shim estaba perfectamente sano:
+                            //   {"ok":true,"proxy_up":true,"port":44055,"uptime_ms":832469}
+                            // Es decir: el agente relanzaba un proxy que ya estaba corriendo,
+                            // en bucle, cada 5 segundos. CPU y bateria gratis, y un
+                            // startForegroundService repetido que puede acabar en crash del
+                            // servicio (es justo el tipo de caida "inadvertida" que el
+                            // operador denuncia).
+                            //
+                            // refresh() hace un GET a 127.0.0.1 con timeouts de 700/900 ms y
+                            // este ticker corre en Dispatchers.IO, asi que no bloquea nada.
+                            runCatching { ShimBridge.refresh() }
                             if (!ShimBridge.running) {
-                                Log.w(TAG, "OTT reproduciendo y shim caido -> relanzo")
+                                Log.w(TAG, "OTT reproduciendo y shim realmente caido -> relanzo")
                                 ShimBridge.start(
                                     this@AgentService,
                                     "https://iptv-ape.duckdns.org/jit/playlist-calidad.m3u8",
                                     null,
                                     0
                                 )
+                            }
+                            // [FIX 2026-11-14] RE-VERIFICAR EL BADGE YA MONTADO.
+                            //
+                            // El chequeo de age_s solo ocurria dentro de `if (!badgeShown)`:
+                            // se comprobaba al MONTAR y nunca mas. Si el badge se monto con
+                            // un age_s valido y luego OTT se cerro mientras seguia habiendo
+                            // audio (YouTube TV), el overlay se quedaba pegado indefinidamente.
+                            //
+                            // MEDIDO en el device: Window{7800ed3 u0 UpscaleBadge} con
+                            // mSession=...17186 y age_s del endpoint = 999 s (16 min). El badge
+                            // llevaba 16 minutos en pantalla sobre YouTube TV sin que OTT
+                            // estuviera reproduciendo.
+                            //
+                            // Se revisa cada 30 s (no en cada tick de 5 s) para no castigar el
+                            // endpoint. Si el ultimo /pulse/ externo ya no es reciente, se retira.
+                            if (badgeShown) {
+                                val ahora2 = System.currentTimeMillis()
+                                if (ahora2 - lastBadgeReverifyAt >= 30_000L) {
+                                    lastBadgeReverifyAt = ahora2
+                                    val edad = try {
+                                        val u2 = java.net.URL(
+                                            cfg.vpsBase.trimEnd('/') +
+                                                "/prisma/api/ape-last-channel.php"
+                                        )
+                                        org.json.JSONObject(u2.readText(Charsets.UTF_8))
+                                            .optInt("age_s", -1)
+                                    } catch (_: Throwable) { -1 }
+                                    if (edad !in 0..120) {
+                                        Log.i(TAG, "badge retirado: OTT ya no reproduce (age_s=$edad)")
+                                        runCatching { BadgeOverlay.hide(this@AgentService) }
+                                        badgeShown = false
+                                    }
+                                }
                             }
                             if (!badgeShown) {
                                 // [2026-11-14] PRIMERO se pregunta al VPS si OTT sigue ahi.
