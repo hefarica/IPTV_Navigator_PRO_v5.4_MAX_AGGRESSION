@@ -14,6 +14,13 @@
  *   El player no sabe que hay un VPS en medio: pide la URL, /pulse registra el
  *   pulso y responde 302 (vídeo directo al proveedor) o el cartucho (200).
  *
+ * [EXTSHIMOTT] Además, por canal, emite UNA línea `#EXTSHIMOTT:{json}` (contrato
+ *   ape.extshimott.v1) como última línea de tag, inmediatamente ANTES de la URI.
+ *   Es aditiva: no sustituye ninguna capa existente (EXTHTTP / EXTVLCOPT /
+ *   KODIPROP / EXT-X-APE-*) y no toca CODECS=/RESOLUTION= del STREAM-INF. Un
+ *   parser RFC 8216 ignora el tag; lo lee el shim de la APK. Si la lista YA trae
+ *   el tag en el bloque, NO se añade otro (una ocurrencia por canal).
+ *
  * GARANTÍAS (las tres que pidió el operador)
  *   IDEMPOTENTE   misma entrada + misma versión/política ⇒ salida byte a byte
  *                 idéntica. El seed del builder NO depende del reloj. Si la lista
@@ -40,7 +47,11 @@ const crypto = require('crypto');
 const { ApeUrlBuilder } = require(process.env.APE_URL_BUILDER || '/opt/ape-pulse/ape-url-builder.js');
 
 const POLICY_VERSION = '1';
-const WRAPPER_VERSION = '1.5.0';
+// 1.5.0 -> 1.6.0: emite #EXTSHIMOTT por canal (cambio de comportamiento de la salida).
+// NOTA DE DESPLIEGUE: ape-pulse-sync.sh cachea por SU PROPIA constante WRAPPER_VERSION
+// (1.5.0) + tamaño/mtime del origen. Para re-envolver listas ya generadas hay que
+// bumpear esa constante en el .sh (fuera de este archivo) o correr `ape-pulse-sync.sh --force`.
+const WRAPPER_VERSION = '1.6.0';
 const PULSE_BASE_DEFAULT = 'https://iptv-ape.duckdns.org/pulse';
 const ALREADY = /\/(pulse|url2)\//i;
 
@@ -134,6 +145,151 @@ function channelName(line) {
   return String(m[1]).trim();
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * [EXTSHIMOTT] Payload del sidecar por canal (contrato ape.extshimott.v1).
+ *
+ * QUÉ SE EMITE Y DE QUÉ DATO REAL SALE:
+ *   ver, id, tgt  identidad + routing. `id` = tvg-id (el contrato ancla ahí la
+ *                 identidad y el validador compara contra el tvg-id del EXTINF);
+ *                 si no existe, tvg-chno; si tampoco, el ordinal del canal (`chN`),
+ *                 que es la MISMA identidad que el envoltorio usa para /pulse.
+ *                 `tgt` = "ott" siempre (el shim de la APK —ottshim— es el
+ *                 consumidor lado-player del sidecar) + "vlc" si el bloque trae
+ *                 #EXTVLCOPT: + "kod" si trae #KODIPROP:. Esas dos capas son
+ *                 evidencia real de que VLC/Kodi leen el canal; no se declaran
+ *                 por gusto.
+ *   v.*           SOLO desde `#EXT-X-APE-STREAM-TRUTH` (la línea de verdad del
+ *                 generador): familia de codec y fps crudo. `w`/`h` SOLO si esa
+ *                 línea certifica fuente no-fake (`src` sin "fake"): escribir
+ *                 3840x2160 sobre un upscale es la mentira que prohíben el
+ *                 contrato y la Ley Anti-Degradación. NUNCA `v.hdr` desde `pq=1`:
+ *                 el generador emite PQ incondicional (decisión 2026-06-16), así
+ *                 que `pq=1` NO es evidencia de HDR.
+ *   hdr.ua/rf     del `#EXTHTTP:` del PROPIO canal, verbatim: es exactamente lo
+ *                 que el shim necesita para pedir el upstream con el mismo
+ *                 UA/Referer. Si el valor viola el contrato (%20, CR/LF, Referer
+ *                 al VPS propio, longitud fuera de rango) se OMITE y se cuenta;
+ *                 no se reescribe ni se completa.
+ *   NO se emite   a.*, cad, dev, ott, vlc, kod, flt. Este envoltorio no los
+ *                 conoce. `flt` en particular NO se copia de la cadena de filtros
+ *                 de la lista: sería una orden de ejecución que nadie validó aquí.
+ *
+ * REGLA DURA: campo desconocido ⇒ se omite. No hay centinelas (null, -1, "unknown").
+ * ══════════════════════════════════════════════════════════════════════════ */
+const SHIMOTT_PREFIX = '#EXTSHIMOTT:';
+const SHIMOTT_VER = 1;
+const SHIMOTT_MAX_LINE = 4096;   // techo duro del contrato: línea completa, sin LF
+const SHIMOTT_ID_RE = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/;
+const SHIMOTT_CODEC = {
+  hevc: 'hevc', h265: 'hevc', 'h.265': 'hevc', hvc1: 'hevc', hev1: 'hevc',
+  av1: 'av1', av01: 'av1',
+  vvc: 'vvc', h266: 'vvc', 'h.266': 'vvc',
+  h264: 'h264', 'h.264': 'h264', avc: 'h264', avc1: 'h264',
+  vp9: 'vp9', vp09: 'vp9',
+};
+
+/** `k=v,k=v` de una línea del generador -> objeto (primera clave gana). */
+function truthKv(line) {
+  const body = line.slice(line.indexOf(':') + 1);
+  const out = {};
+  for (const part of body.split(',')) {
+    const i = part.indexOf('=');
+    if (i <= 0) continue;
+    const k = part.slice(0, i).trim().toLowerCase();
+    if (!k || k in out) continue;
+    out[k] = part.slice(i + 1).trim();
+  }
+  return out;
+}
+
+/** Busca una cabecera por nombre (case-insensitive) en el JSON de #EXTHTTP. */
+function headerOf(obj, names) {
+  if (!obj || typeof obj !== 'object') return '';
+  for (const k of Object.keys(obj)) {
+    if (names.indexOf(k.toLowerCase()) >= 0) {
+      const v = obj[k];
+      return typeof v === 'string' ? v : '';
+    }
+  }
+  return '';
+}
+
+/** Valor admisible según el contrato; '' = no se emite (y se cuenta el motivo). */
+function shimottHeader(kind, value) {
+  const s = String(value == null ? '' : value);
+  if (kind === 'ua') {
+    if (!s || s.length > 512) return '';
+    if (/%20/.test(s) || /[\r\n]/.test(s)) {
+      counters.shimottUaDropped = (counters.shimottUaDropped || 0) + 1;
+      return '';
+    }
+    return s;
+  }
+  if (s.length < 8 || s.length > 512) return '';
+  if (!/^https?:\/\/[^\s]+$/.test(s)) return '';
+  if (/iptv-ape|duckdns|178\.156|hetzner/i.test(s)) {
+    counters.shimottRfDropped = (counters.shimottRfDropped || 0) + 1;
+    return '';
+  }
+  return s;
+}
+
+function shimottId() {
+  // Precedencia: tvg-id (ancla del contrato) -> tvg-chno -> saneado -> ordinal.
+  const exact = [cur.tvgId, cur.tvgChno];
+  for (const c of exact) {
+    const s = String(c || '').trim();
+    if (s && SHIMOTT_ID_RE.test(s)) return s;
+  }
+  const raw = String(cur.tvgId || cur.tvgChno || '').trim();
+  let s = raw.replace(/[^A-Za-z0-9_.:-]/g, '_').replace(/^[^A-Za-z0-9]+/, '');
+  if (s.length > 64) s = s.slice(0, 64);
+  if (s && SHIMOTT_ID_RE.test(s)) {
+    counters.shimottIdSanitized = (counters.shimottIdSanitized || 0) + 1;
+    return s;
+  }
+  counters.shimottIdFallback = (counters.shimottIdFallback || 0) + 1;
+  return 'ch' + channelOrd;
+}
+
+function shimottTargets() {
+  const t = ['ott'];
+  if (cur.hasVlcOpt) t.push('vlc');
+  if (cur.hasKodiProp) t.push('kod');
+  return t.join('|');
+}
+
+function shimottPayload() {
+  const payload = { ver: SHIMOTT_VER, id: shimottId() };
+
+  if (cur.truth) {
+    const v = {};
+    const codec = SHIMOTT_CODEC[String(cur.truth.family || '').toLowerCase()];
+    if (codec) v.c = codec;
+    const fps = Number(cur.truth.rawfps || cur.truth.fps);
+    if (Number.isFinite(fps) && fps > 0 && fps <= 240) v.f = fps;
+    if (cur.truth.src && !/fake/i.test(cur.truth.src)) {
+      const w = parseInt(cur.truth.w, 10);
+      const h = parseInt(cur.truth.h, 10);
+      if (Number.isInteger(w) && w >= 2 && w <= 7680) v.w = w;
+      if (Number.isInteger(h) && h >= 2 && h <= 4320) v.h = h;
+    }
+    if (Object.keys(v).length) payload.v = v;
+  }
+
+  const ua = shimottHeader('ua', cur.exthttp ? headerOf(cur.exthttp, ['user-agent']) : '');
+  const rf = shimottHeader('rf', cur.exthttp ? headerOf(cur.exthttp, ['referer', 'referrer']) : '');
+  if (ua || rf) {
+    const hdr = {};
+    if (ua) hdr.ua = ua;
+    if (rf) hdr.rf = rf;
+    payload.hdr = hdr;
+  }
+
+  payload.tgt = shimottTargets();
+  return payload;
+}
+
 const counters = {
   lines: 0, extinf: 0, urls: 0, wrapped: 0, already: 0, skipped_no_inf: 0,
   profiles: {}, errors: 0,
@@ -141,6 +297,8 @@ const counters = {
 
 const sha = crypto.createHash('sha256');
 let seq = 0;
+let channelOrd = 0;                 // ordinal de bloque #EXTINF (identidad de ultimo recurso)
+let curHasShimott = false;          // el bloque ya trae #EXTSHIMOTT (no se duplica)
 let cur = { name: '', group: '', id: '', logo: '' };
 
 const tmp = outPath + '.tmp';
@@ -246,16 +404,22 @@ let curHasDecl = false;
 function onLine(line) {
   counters.lines++;
   if (line.startsWith('#EXTINF')) {
-    counters.extinf++; seq += 0;
+    counters.extinf++; seq += 0; channelOrd++;
     cur = {
       name: channelName(line),
       group: attr(line, 'group-title'),
       id: attr(line, 'tvg-chno') || attr(line, 'tvg-id'),
       logo: attr(line, 'tvg-logo'),
+      // [EXTSHIMOTT] tvg-id crudo: el contrato ancla ahi la identidad del canal
+      tvgId: attr(line, 'tvg-id'),
+      tvgChno: attr(line, 'tvg-chno'),
       // declaracion explicita en el propio EXTINF (si la hay, manda)
       profile: profileFromExtinf(line),
       profileSource: profileFromExtinf(line) ? 'extinf' : null,
+      // [EXTSHIMOTT] evidencia real del bloque para el payload del canal
+      exthttp: null, truth: null, hasVlcOpt: false, hasKodiProp: false,
     };
+    curHasShimott = false;
     write(line);
     return;
   }
@@ -267,6 +431,28 @@ function onLine(line) {
     return;
   }
   if (line.startsWith('#EXT-X-APE-ENHANCE-STATE')) { curHasDecl = true; write(line); return; }
+  // [EXTSHIMOTT] Estado del bloque para el payload del canal. NO altera la línea:
+  // sólo observa lo que la lista YA declara (EXTHTTP, capas de player, verdad del
+  // generador) y si el tag ya está puesto (para no duplicarlo).
+  if (cur) {
+    if (line.startsWith('#EXTHTTP:')) {
+      if (!cur.exthttp) {
+        try {
+          const o = JSON.parse(line.slice('#EXTHTTP:'.length));
+          if (o && typeof o === 'object' && !Array.isArray(o)) cur.exthttp = o;
+        } catch (_) { counters.shimottExthttpInvalid = (counters.shimottExthttpInvalid || 0) + 1; }
+      }
+    } else if (line.startsWith('#EXTVLCOPT:')) {
+      cur.hasVlcOpt = true;
+    } else if (line.startsWith('#KODIPROP:')) {
+      cur.hasKodiProp = true;
+    } else if (line.startsWith('#EXT-X-APE-STREAM-TRUTH:')) {
+      if (!cur.truth) cur.truth = truthKv(line);
+    } else if (line.startsWith(SHIMOTT_PREFIX)) {
+      curHasShimott = true;
+      counters.shimottPresent = (counters.shimottPresent || 0) + 1;
+    }
+  }
   // [PERFIL EXPLICITO] una directiva APE con PROFILE= fija el perfil del canal y
   // GANA sobre la heuristica. Se conserva el primer valor declarado del bloque.
   {
@@ -285,7 +471,22 @@ function onLine(line) {
     if (m && m[3] && m[3].trim() !== '') { counters.sanitized = (counters.sanitized || 0) + 1; }
     // [OWNER OVERRIDE] declaraciones de mejora extrema, una vez por canal
     if (!curHasDecl) { for (const _d of OWNER_DECLARATIONS) write(_d + '\n'); counters.declared = (counters.declared || 0) + 1; }
-    write(transformUrl(clean));
+    const wrapped = transformUrl(clean);
+    // [EXTSHIMOTT] UNA línea por canal, DESPUES de las APE/EXTHTTP y ANTES de la URI
+    // (posición del contrato: última línea de tag, 0 líneas en blanco por medio).
+    // `counters.extinf > 0`: una URL suelta en la cabecera NO es un canal y no
+    // recibe tag (si lo recibiera, el tag quedaría fuera de bloque: E_TAG_OUTSIDE).
+    if (!curHasShimott && counters.extinf > 0) {
+      const tag = SHIMOTT_PREFIX + JSON.stringify(shimottPayload());
+      if (tag.length <= SHIMOTT_MAX_LINE) {
+        write(tag + '\n');
+        counters.shimott = (counters.shimott || 0) + 1;
+        curHasShimott = true;
+      } else {
+        counters.shimottSkippedLong = (counters.shimottSkippedLong || 0) + 1;
+      }
+    }
+    write(wrapped);
     return;
   }
   write(line);
@@ -322,6 +523,14 @@ stream.on('end', () => {
       channels: counters.extinf, urls: counters.urls,
       wrapped: counters.wrapped, already: counters.already, sanitized: counters.sanitized || 0,
       dropped_iframe: counters.dropped_iframe || 0,
+      shimott: counters.shimott || 0,
+      shimott_present: counters.shimottPresent || 0,
+      shimott_skipped_long: counters.shimottSkippedLong || 0,
+      shimott_id_fallback: counters.shimottIdFallback || 0,
+      shimott_id_sanitized: counters.shimottIdSanitized || 0,
+      shimott_ua_dropped: counters.shimottUaDropped || 0,
+      shimott_rf_dropped: counters.shimottRfDropped || 0,
+      shimott_exthttp_invalid: counters.shimottExthttpInvalid || 0,
       profiles: counters.profiles, errors: counters.errors,
     };
     if (statePath) {

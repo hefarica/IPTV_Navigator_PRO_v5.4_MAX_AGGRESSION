@@ -78,6 +78,15 @@ object AraStatus {
     @Volatile var sourceResolution: String = ""
     @Volatile var sourceResolutionAt: Long = 0L
 
+    // ── Tag #EXTSHIMOTT (sidecar por canal que lee el shim) ──────────────────
+    /**
+     * Último recibo del tag: qué canal, qué se aplicó y qué se rechazó. Lo escribe
+     * [ExtShimOttBridge] cuando el shim le entrega un tag. Vacío = nunca llegó ninguno
+     * (el shim solo ve el tag si la playlist se materializa; un catálogo en streaming no).
+     */
+    @Volatile var extShimOtt: String = ""
+    @Volatile var extShimOttAt: Long = 0L
+
     // ── Homologación de presets de lista ─────────────────────────────────────
     @Volatile var lastPresetCount: Int = 0
     @Volatile var lastPresetLocal: Int = 0

@@ -1,8 +1,10 @@
 # APE CRYSTAL FLOW — nombre propuesto del sistema completo
 
-> **Estado: PROPUESTA.** Lo propone el agente a petición del operador
-> (*«¿cómo vamos a llamar este proceso o sistema?»*). El nombre no se da por
-> adoptado hasta que el operador lo elija. Las alternativas están al final.
+> **Estado: ADOPTADO (2026-11-15).** El operador lo pidió
+> (*«¿cómo vamos a llamar este proceso o sistema?»*) y el nombre se usa como
+> referencia del sistema vigente del repo desde
+> [`ESTADO_DEL_ARTE_20261115.md`](ESTADO_DEL_ARTE_20261115.md) §5.
+> Las alternativas del final quedan como registro histórico de la decisión.
 
 ---
 

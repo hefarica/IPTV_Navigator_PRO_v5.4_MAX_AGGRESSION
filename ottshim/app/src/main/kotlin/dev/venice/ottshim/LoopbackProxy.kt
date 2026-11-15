@@ -281,6 +281,15 @@ class LoopbackProxy(private val policy: AbrPolicy) {
                 return
             }
             val body = it.body?.string() ?: return text(c, "empty", "text/plain", 502)
+            // [EXTSHIMOTT] ÚNICO punto de contacto con el tag: LECTURA del texto que este
+            // camino ya tiene materializado. No altera `body`, ni el `out` que se sirve, ni
+            // la fijación de variante. `ShimOttTap` extrae las líneas `#EXTSHIMOTT:{json}`,
+            // las expone al consumidor (la APK) y decide el routing por `tgt`; la aplicación
+            // de settings ocurre en su propio hilo. Nunca lanza: si algo falla, el tag se
+            // ignora y la reproducción sigue igual. El catálogo servido en streaming
+            // (`streamThrough`, >2 MB o tamaño desconocido) NO pasa por aquí: ese texto no
+            // se materializa, y el shim no finge haberlo leído.
+            runCatching { ShimOttTap.ingest(body, target) }
             val base = it.request.url
             val out = Rewriter(policy, ::map).rewrite(body, base)
             recordPlaylist(body, base)

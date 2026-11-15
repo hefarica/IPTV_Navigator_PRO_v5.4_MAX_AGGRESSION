@@ -63,6 +63,15 @@ class AgentService : Service() {
         // la app abre y reproduce; el servicio se detiene limpio en vez de crashear.
         try {
             applier = SettingsApplier(this)
+            // [EXTSHIMOTT] Sink del tag: el shim del :shim EXTRAE `#EXTSHIMOTT` de la
+            // playlist y este proceso lo parsea (ExtShimOttParser) y aplica `dev.*`/`ott.*`
+            // con el MISMO applier de arriba (allowlist + regex de valor). Sin Activity,
+            // sin arrancar apps: solo settings. Si el shim nunca ve un tag, aquí no pasa nada.
+            try {
+                ExtShimOttBridge.install(this, applier)
+            } catch (t: Throwable) {
+                Log.w(TAG, "ExtShimOtt sink no instalado (el resto sigue): ${t.message}")
+            }
             ff = FeedForwardClient(cfg)
             qoe = QoEReporter(this, cfg)
             idata = IDataClient(cfg)

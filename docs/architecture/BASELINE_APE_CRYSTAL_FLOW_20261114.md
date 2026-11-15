@@ -142,3 +142,434 @@ bash tools/quality/gate_ape_crystal_flow.sh --json   # el check pulse-canal
 
 **Un baseline sin esta sección sería una mentira.** Lo que no está medido no
 está protegido, y se dice.
+
+---
+
+# AMPLIACIÓN 2026-11-15 — los 14 hechos medidos
+
+> Esta ampliación **no borra nada** de lo anterior. Lo anterior queda como la foto
+> del 2026-11-14; esto es la foto del 2026-11-15, con los valores que cambiaron
+> escritos como **ANTES → DESPUÉS** para que una regresión se vea de un vistazo.
+
+## Cómo leer las marcas de esta ampliación
+
+| Marca | Significado |
+|---|---|
+| **[VERIFICADO AQUÍ]** | lo he ejecutado y pego la salida. Es reproducible ahora |
+| **[DECLARADO POR EL CAPITÁN]** | no lo he podido ejecutar yo (ssh al VPS bloqueado por política a mitad de sesión — ver §Nota de método). Se cita con su comando de repro, **sin afirmar que lo medí** |
+
+Los comandos de repro se escriben **tal cual se lanzan**, no parafraseados.
+
+---
+
+## Hecho 1 · La 4ª vía del salto a ARA — CERRADA
+
+**No era un `startActivity`.** Era el `<intent-filter>` de `ReaExternalPlayerActivity`
+(`BROWSABLE` + `scheme https` + `mimeType x-mpegURL`): el sistema registraba ARA como
+**manejador preferido** para los enlaces `https://…m3u8`.
+
+| | ANTES (2026-11-14) | DESPUÉS (2026-11-15) |
+|---|---|---|
+| Un `VIEW https://…m3u8` lo abría | **ARA** (`Preferred Activities User 0`) | **BrowserStub** |
+| `intent-filter` BROWSABLE | presente | **eliminado** |
+| Gate que lo vigila | no existía | `gate_no_focus_steal.sh` checks **[7]** `manifest-sin-BROWSABLE` y **[8]** `manifest-sin-scheme-http` |
+
+```bash
+bash tools/quality/gate_no_focus_steal.sh        # VERDICT=PASS pass=8 fail=0  [VERIFICADO AQUÍ]
+adb -s 192.168.1.3:5555 shell dumpsys package com.ape.crystalagent | grep -A3 'Preferred Activities'
+adb -s 192.168.1.3:5555 shell "am start -a android.intent.action.VIEW -d 'https://iptv-ape.duckdns.org/lists/x.m3u8'"
+```
+
+> **Nota:** el registro «Preferred Activities» sigue guardado en el sistema, pero es **inerte**
+> una vez retirado el filtro. No confundir «sigue apareciendo en dumpsys» con «sigue secuestrando».
+
+---
+
+## Hecho 2 · El badge ya muestra la ENTRADA — verificado en device
+
+| | ANTES | DESPUÉS |
+|---|---|---|
+| Resolución de entrada en el badge | `N/D` (el baseline anterior la listaba como **no cubierta**) | **`entrada=3840x2160`** |
+| Coste de resolverla | **3.077 ms** (midiendo con `ffprobe` en cada zapeo) | **23 ms** con `cache_hit:true` |
+
+Log medido en device:
+
+```text
+badge de upscaling sobre OTT canal=|UK| TNT SPORTS ULTIMATE 4K entrada=3840x2160 (overlay sin Activity)
+```
+
+La entrada se mide **en el VPS** con `ffprobe` sobre un segmento real, y devuelve
+`{"resolution":"3840x2160","codec":"hevc","profile":"Main 10","fps":"50/1"}`.
+
+```bash
+adb -s 192.168.1.3:5555 logcat -d | grep 'badge de upscaling'
+curl -s 'https://iptv-ape.duckdns.org/prisma/api/ape-last.php'      # el JSON con resolution/codec/profile/fps
+```
+
+**[DECLARADO POR EL CAPITÁN]** — el log y el JSON son suyos; desde aquí no tengo device.
+
+---
+
+## Hecho 3 · El badge solo sale con OTT real — el falso positivo está cerrado
+
+`isMusicActive()` es **global**: se activa con cualquier audio, no solo con el OTT.
+
+| Escenario | ANTES | DESPUÉS |
+|---|---|---|
+| Foco en `youtube.tv`, audio activo | `audio=1 · badge=3` **(mal)** | `audio=1 · badge=0` |
+| Motivo registrado | — | `audio activo pero OTT no reciente (age_s=1193) -> sin badge` |
+
+El endpoint devuelve **`age_s`** (segundos desde el último `/pulse/` **externo**) y la app
+exige **0..120**.
+
+> **`age_s` solo cuenta peticiones EXTERNAS** (descarta loopback, la IP del VPS y RFC1918).
+> Si contara todas, el propio vigilante —que pide `/pulse/` cada 60 s— habría mantenido el
+> badge encendido para siempre. Ese matiz es la diferencia entre un arreglo y un arreglo aparente.
+
+```bash
+adb -s 192.168.1.3:5555 logcat -d | grep -E 'OTT no reciente|badge de upscaling'
+curl -s 'https://iptv-ape.duckdns.org/prisma/api/ape-last.php' | grep -o 'age_s[^,]*'
+```
+
+**[DECLARADO POR EL CAPITÁN]**
+
+---
+
+## Hecho 4 · El shim ya no se relanza en bucle
+
+| | ANTES | DESPUÉS |
+|---|---|---|
+| Relanzos del shim con el shim **sano** | **6**, uno cada 5 s | **0** |
+| Síntoma | `OTT reproduciendo y shim caido -> relanzo` con `/health = {"ok":true,"proxy_up":true,"uptime_ms":832469}` | — |
+
+**Causa raíz:** `ShimBridge.running` solo se refrescaba desde `MainActivity`, así que el
+ticker lo veía `false` para siempre. **Arreglo:** el ticker llama `ShimBridge.refresh()`.
+
+```bash
+adb -s 192.168.1.3:5555 logcat -d | grep -c 'shim caido -> relanzo'      # esperado: 0
+adb -s 192.168.1.3:5555 shell dumpsys activity services | grep ProxyService
+```
+
+**[DECLARADO POR EL CAPITÁN]**
+
+---
+
+## Hecho 5 · La lista tiene una PROYECCIÓN LIGERA para OTT (el hallazgo más grande)
+
+| Métrica | Valor |
+|---|---|
+| Lista cableada completa | **1.298.222.092 B** · `.gz` **352.804.883 B** (353 MB) |
+| Proyección ligera `…_CABLEADA_LIGHT.m3u8` | **171.893.544 B** · `.gz` **3.480.451 B** |
+| `#EXT-X-APE-` en la LIGHT | **0** líneas |
+| Canales / URLs de la LIGHT | **21.224 / 21.224**, URLs **verbatim** |
+
+**Desglose por familia en la lista completa:** `#EXT-X-APE-` **14.316.139** líneas /
+**734.550.274 B** (56,6 %) · `#EXTVLCOPT` **2.907.692** / **111.071.055 B** (8,6 %) ·
+`#EXTINF` **21.224** / **10.157.879 B** (0,8 %) · URLs **21.224** / **4.392.831 B** (0,3 %).
+
+| | ANTES | DESPUÉS |
+|---|---|---|
+| Carga del catálogo a 20 Mbps | **~141 s** | **~1,3 s** |
+
+```bash
+ls -l /var/www/lists/APE_LISTA_1794100720046_CABLEADA.m3u8 /var/www/lists/APE_LISTA_1794100720046_CABLEADA_LIGHT.m3u8
+grep -c '^#EXT-X-APE-' /var/www/lists/APE_LISTA_1794100720046_CABLEADA_LIGHT.m3u8   # esperado: 0
+grep -c '^#EXTINF'     /var/www/lists/APE_LISTA_1794100720046_CABLEADA_LIGHT.m3u8   # esperado: 21224
+```
+
+**[DECLARADO POR EL CAPITÁN]** — el ssh al VPS quedó bloqueado antes de poder re-medirlo.
+
+---
+
+## Hecho 6 · El mecanismo que SECUESTRABA la proyección (documentarlo o se repite)
+
+`/etc/nginx/snippets/url2-cartridge.conf` sirve **`/lists/pulse/X` antes que `/lists/X`**:
+
+```nginx
+location ~ ^/lists/(?<ape_list>[A-Za-z0-9._-]+)\.m3u8$ {
+    root /var/www;
+    try_files /lists/pulse/$ape_list.m3u8 /lists/$ape_list.m3u8 =404;
+    add_header X-APE-List-Source "pulse-wrapped-if-present";
+}
+```
+
+Y `ape-pulse-sync.sh` copia `$LISTS/*.m3u8` a `$LISTS/pulse/` **añadiendo** las `#EXT-X-APE-`.
+Resultado: la proyección ligera se servía **con las APE inyectadas**.
+
+| | ANTES | DESPUÉS |
+|---|---|---|
+| Servido por HTTP | **181.614.136 B con 169.792 líneas `#EXT-X-APE-`** | la LIGHT, **0** líneas `#EXT-X-APE-` |
+| Cómo se delató | comparar **sha256 en disco vs descarga** | — |
+| Arreglo | — | se añadió **`*_LIGHT*`** a la lista de exclusión del sync |
+
+`/var/www/html/lists` es un **SYMLINK** a `/var/www/lists` — razón por la que comparar rutas
+literales engaña.
+
+```bash
+grep -nE 'location|try_files|X-APE-List-Source' /etc/nginx/snippets/url2-cartridge.conf
+grep -n 'LIGHT' /opt/ape-pulse/ape-pulse-sync.sh
+sha256sum /var/www/lists/APE_LISTA_1794100720046_CABLEADA_LIGHT.m3u8
+curl -s https://iptv-ape.duckdns.org/lists/APE_LISTA_1794100720046_CABLEADA_LIGHT.m3u8 | sha256sum
+ls -ld /var/www/html/lists
+```
+
+**[DECLARADO POR EL CAPITÁN]** — el comando que lo delata (sha256 disco vs descarga) está arriba
+y es el que hay que ejecutar en cualquier revisión futura.
+
+---
+
+## Hecho 7 · El vigilante tenía DOS falsos positivos
+
+| # | ANTES | DESPUÉS |
+|---|---|---|
+| 1 | Marcaba **DEGRADADO** con `nginx` y `php-fpm` **active**, porque el canal de prueba devolvía **407** (bloqueo del proveedor) | **403/407/404/429/451 → `sin-muestra`** |
+| 2 | El módulo `zapping` leía `/var/log/nginx/access.log` (**3** peticiones) | lee `playlist_access.log` (**2.929**) → ahora informa **67** peticiones |
+
+**Por qué importa el primero:** un 407 del proveedor no dice nada del flujo. Contarlo como
+degradación hace que el vigilante grite cuando el sistema está sano — y un vigilante que grita
+siempre se ignora, que es peor que no tenerlo.
+
+```bash
+curl -s https://iptv-ape.duckdns.org/prisma/api/prisma-service-status.php     # o el endpoint del vigilante
+grep -n 'sin-muestra' /opt/ape-pulse/*.sh
+wc -l /var/log/nginx/access.log /var/log/nginx/playlist_access.log
+```
+
+**[DECLARADO POR EL CAPITÁN]**
+
+---
+
+## Hecho 8 · Los TRES gates (el hardening)
+
+| Gate | Tipo | Checks | Resultado |
+|---|---|---|---|
+| `tools/quality/gate_no_focus_steal.sh` | estático | **8** | **PASS 8 / 0** |
+| `tools/quality/gate_ape_crystal_flow.sh` | HTTP real | **10** | **PASS 8 / 0** *(en el VPS)* |
+| `tools/ops/ape-device-health.sh` | device por `adb` | **8** | **PASS 7 / 0 + 1 SKIP** |
+
+**[VERIFICADO AQUÍ] el primero, y el segundo parcialmente:**
+
+```text
+$ bash tools/quality/gate_no_focus_steal.sh
+[focus-gate] VERDICT=PASS pass=8 fail=0
+exit 0
+
+$ bash tools/quality/gate_ape_crystal_flow.sh
+[gate] APE CRYSTAL FLOW — https://iptv-ape.duckdns.org
+[gate] VERDICT=PASS pass=5 fail=0
+exit 0
+```
+
+**Por qué 5 y no 8 en el segundo, sin que sea una regresión:** el gate define **10** checks y
+marca **SKIP** los que exigen estar *en* el VPS, con el motivo escrito en el propio código:
+
+```text
+L139:  skip "disco"              "sin /var/www/html (no es el VPS)"
+L154:  skip "cache-resolucion"   "aun no existe (se crea al primer zapeo con ffprobe)"
+L168:  skip "vigilante-fresco"   "sin $WD"
+L117:  skip "pulse-canal"        "(canal bloqueado por el proveedor, no por el flujo)"
+L126:  skip "vigilante"          "sin endpoint publico ($c)"
+```
+
+Ejecutado desde este host (Windows) no hay `/var/www/html`, así que esos checks se saltan **con
+su razón** en vez de mentir con un FAIL. **El número honesto es: 5 PASS + 5 SKIP aquí; 8 PASS + 2 SKIP
+en el VPS.** No son dos cifras contradictorias: son dos entornos.
+
+El gate de flujo incluye, cuando corre en el VPS: **disco < 90 %**, **caché de resolución válida**
+y **frescura del vigilante < 180 s**.
+
+**[DECLARADO POR EL CAPITÁN]** para el device-health (7/0 + 1 SKIP): necesita `adb` al ONN.
+
+---
+
+## Hecho 9 · El VPP no existe en este SoC — concluyente
+
+| | Resultado |
+|---|---|
+| Settings **aplicados** | **12** (`hdr_conversion_mode=1`, `match_content_frame_rate=2`, `minimal_post_processing_allowed=0`, `user_preferred_resolution 3840x2160`, …) |
+| Settings **rechazados** (devuelven `null`) | **12**: `pq_ai_sr_enable`, `ai_sr_level`, `pq_sharpness_enable`, `pq_hdr_mode`, `ai_pq_mode`, `pq_dnr_enable` + **7 `com.amazon.tv.*`** |
+
+Los `com.amazon.tv.*` son de **Fire TV**; este equipo es **ONN**. Buscarlos aquí es buscar una
+API que no está.
+
+> **Esto cambia el baseline anterior:** «VPP / AI-PQ» figuraba en *no cubierto* como «los 4 levers
+> devuelven `null`». Ya no es una incógnita: es un **hecho concluyente** — no existe en este firmware.
+
+```bash
+adb -s 192.168.1.3:5555 shell settings list global | grep -E 'pq_ai_sr|ai_sr_level|pq_sharpness|pq_hdr|ai_pq|pq_dnr'
+adb -s 192.168.1.3:5555 logcat -d | grep -c 'ApeSettingsApplier'      # aplicados vs rechazados
+```
+
+**[DECLARADO POR EL CAPITÁN]**
+
+---
+
+## Hecho 10 · El URL2 no llega a OTT
+
+**2.907.692 líneas `#EXTVLCOPT`** con filtros ffmpeg (`nlmeans`, `unsharp`, `gradfun`, `zscale`)
+son **opciones de VLC**. OTT Navigator no las lee. Los **14,3 M** de `#EXT-X-APE-` tampoco:
+**RFC 8216 manda ignorar las etiquetas desconocidas**.
+
+Consecuencia práctica: el recetario de imagen de la lista **no actúa en OTT**. Lo que se ve en
+OTT es el stream tal cual; el "realce" sólo existe en la ruta VLC.
+
+```bash
+grep -c '^#EXTVLCOPT' /var/www/lists/APE_LISTA_1794100720046_CABLEADA.m3u8   # 2907692
+grep -c '^#EXT-X-APE-' /var/www/lists/APE_LISTA_1794100720046_CABLEADA.m3u8  # 14316139
+```
+
+**[DECLARADO POR EL CAPITÁN]**
+
+---
+
+## Hecho 11 · Desajuste de cadencia — ABIERTO y medido
+
+| | Valor |
+|---|---|
+| El canal 4K sirve | **50 fps** (`ffprobe` → `50/1`) |
+| El panel está en | **3840x2160 @ 59,94 Hz** (`mDefaultModeId=229`, `renderFrameRate 59.94006`) |
+| Relación | **1,199 refrescos por fotograma** → judder |
+| `match_content_frame_rate=2` | **no lo corrige** |
+| Existe modo 3840x2160@**50 Hz** en el panel | sí |
+
+**NO verificado en reproducción real.** Es el último número pendiente de este baseline: se sabe
+que el desajuste existe y se sabe cuál es el modo correcto, pero **no está medido el efecto en
+pantalla**. No se declara arreglado.
+
+```bash
+adb -s 192.168.1.3:5555 shell dumpsys display | grep -E 'mDefaultModeId|renderFrameRate'
+adb -s 192.168.1.3:5555 shell dumpsys display | grep -E '3840x2160.*50'
+ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate -of csv=p=0 <segmento>
+```
+
+**[DECLARADO POR EL CAPITÁN]** y **sigue abierto**.
+
+---
+
+## Hecho 12 · El medidor de zapeo
+
+`tools/ops/ape-zapping-meter.sh` lee `playlist_access.log` (`rt=` / `urt=`).
+
+| Métrica (ventana de **60 min** con tráfico real) | Valor |
+|---|---|
+| Zapeos | **106** |
+| Segmentos | **46** |
+| Arranque de red **p50** | **3.000 ms** |
+| Servicio de segmento **p50** | **3.520 ms** |
+| Gap **p50** | **4.000 ms** |
+| Canales | 1312008, 622683-622685 |
+
+> **AVISO que hay que repetir cada vez:** el log tiene granularidad de **SEGUNDOS**, no de ms.
+> Un p50 de «3.000 ms» significa «3 s» redondeado por el propio log: no se puede refinar más
+> desde ahí. Cualquier cifra con decimales sacada de este log es inventada.
+
+```bash
+bash tools/ops/ape-zapping-meter.sh            # o el comando de la sección «Cómo se mide cada cosa»
+```
+
+**[DECLARADO POR EL CAPITÁN]** — no lo he re-ejecutado (necesita leer el log del VPS por ssh).
+
+---
+
+## Hecho 13 · El disco
+
+| | ANTES | DESPUÉS |
+|---|---|---|
+| Uso del disco | **91 %** — y el vigilante decía **OK** | **79 %** (**7,8 GB** libres) |
+| Protección | ninguna | el gate del flujo **falla si pasa del 90 %** |
+
+**El dato incómodo:** estuvo al 91 % mientras el vigilante decía OK. Un vigilante que no mira el
+disco no es un vigilante. Ahora el disco es un **check con umbral**, no un adorno.
+
+```bash
+df -h /
+bash tools/quality/gate_ape_crystal_flow.sh | grep -i disco
+```
+
+**[DECLARADO POR EL CAPITÁN]**
+
+---
+
+## Hecho 14 · Nuevas reglas y contratos
+
+| Artefacto | Bytes | Qué fija |
+|---|---|---|
+| `contracts/ape_crystal_flow_operativa.json` | **11.195** | Contrato de operativa por estación, con **`LEY_1_SEGUNDO_PLANO`** (texto literal del operador) |
+| `docs/architecture/INSTRUMENTACION_APE_CRYSTAL_FLOW.md` | **9.820** | Qué mide cada módulo |
+| `docs/architecture/APE_CRYSTAL_FLOW.md` | **6.389** | El nombre propuesto del sistema |
+
+**[VERIFICADO AQUÍ]** los tres existen con esos bytes (más los gates: `gate_no_focus_steal.sh`
+**8.121 B**, `gate_ape_crystal_flow.sh` **10.629 B**, `ape-device-health.sh` **9.526 B**,
+`ape-zapping-meter.sh` **6.571 B**).
+
+```bash
+ls -l contracts/ape_crystal_flow_operativa.json docs/architecture/INSTRUMENTACION_APE_CRYSTAL_FLOW.md docs/architecture/APE_CRYSTAL_FLOW.md
+grep -o 'LEY_1_SEGUNDO_PLANO' contracts/ape_crystal_flow_operativa.json | head -1
+```
+
+---
+
+## Actualización de «Lo que este baseline NO cubre»
+
+La tabla original de arriba **se conserva tal cual** (es la foto del 14). Tres filas han cambiado
+de estado; no se borran, se anotan aquí:
+
+| Fila original | Estado a 2026-11-15 |
+|---|---|
+| **La resolución de ENTRADA del badge** — «`N/D` hasta que el endpoint la mida con `ffprobe`» | **CUBIERTA** → Hecho 2: `entrada=3840x2160`, caché 23 ms |
+| **La 4ª vía del salto a ARA** — «t69 abierta: hay que cazar el `intent`» | **CERRADA** → Hecho 1: era el `intent-filter` BROWSABLE; retirado, gate [7][8] lo vigila |
+| **VPP / AI-PQ** — «los 4 levers devuelven `null`: no existen en este firmware» | **CONCLUYENTE** → Hecho 9: 12 aplicados / 12 rechazados; los `com.amazon.tv.*` son de Fire TV |
+
+**Lo que SIGUE sin medir (actualizado):**
+
+| No cubierto | Por qué sigue abierto |
+|---|---|
+| **El efecto del desajuste de cadencia en pantalla** | Hecho 11: se sabe que hay 1,199 refrescos/fotograma y que existe el modo 50 Hz, pero **no se ha verificado en reproducción real** |
+| **El 4K real en el televisor** | sigue necesitando ~18 Mbps sostenidos; el WiFi medido no los da. **No es regresión del flujo** |
+| **Alta de la lista en OTT** | manual por diseño de OTT; no automatizable sin root |
+| **La proyección LIGHT servida por HTTP con su sha256** | Hecho 6: el comando está escrito, pero **en esta sesión no se pudo ejecutar** (ssh bloqueado) — hay que correrlo en la próxima revisión |
+
+---
+
+## Nota de método (por qué hay filas «declaradas» y no «medidas»)
+
+Durante esta actualización **el acceso ssh al VPS quedó bloqueado por política** a mitad de sesión
+(`Auto review rejected tool "pwsh"; its body was not executed` — el comando **no llegó a correr**,
+no fue red ni timeout). Por eso:
+
+- Lo que se pudo ejecutar **sin ssh** (gates locales y HTTP público, existencia y bytes de los
+  artefactos) va marcado **[VERIFICADO AQUÍ]** con su salida pegada.
+- Lo que exige leer el VPS o el device va marcado **[DECLARADO POR EL CAPITÁN]** con su comando.
+
+**Un valor declarado no es un valor medido**, y este documento no los mezcla. Cuando se recupere el
+acceso, la primera tarea es convertir las filas declaradas en medidas: los comandos ya están escritos
+al lado de cada una, que es precisamente para lo que sirven.
+
+---
+
+## HISTORIAL DE REVISIONES
+
+| Fecha | Cambio | Motivo |
+|---|---|---|
+| **2026-11-14** | **Baseline inicial** | Congelar el nivel medido cuando el operador pidió *«hardening para que no tenga regresiones»*. Commits `2784595c`, `cf1ca27f`. Dos gates, 6/6 cada uno |
+| **2026-11-15** | **Ampliación con los 14 hechos** (este commit) | Cerrar la 4ª vía del salto a ARA (H1), medir la entrada del badge (H2), cerrar el falso positivo del badge (H3) y del shim (H4), documentar la **proyección ligera** y el **mecanismo que la secuestraba** (H5, H6), los dos falsos positivos del vigilante (H7), los **tres** gates (H8), el VPP concluyente (H9), el URL2 que no llega a OTT (H10), el desajuste de cadencia abierto (H11), el medidor de zapeo (H12), el disco 91→79 % (H13) y los contratos nuevos (H14). **Ningún valor anterior se ha borrado** |
+
+### Qué cambió en los números (ANTES → DESPUÉS)
+
+| Métrica | 2026-11-14 | 2026-11-15 |
+|---|---|---|
+| Gates que vigilan | 2 (`no_focus_steal` 6/6, `ape_crystal_flow` 6/6) | **3** (`no_focus_steal` **8**/0, `ape_crystal_flow` **8**/0 en VPS, `ape-device-health` 7/0 + 1 SKIP) |
+| Enlace `https://…m3u8` lo abre | ARA (preferido) | **BrowserStub** |
+| Resolución de entrada del badge | `N/D` | **3840x2160** |
+| Coste de resolverla | 3.077 ms | **23 ms** |
+| Badge con audio ajeno | `badge=3` (falso positivo) | **`badge=0`** con `age_s=1193` |
+| Relanzos del shim | 6 | **0** |
+| Carga del catálogo (20 Mbps) | ~141 s | **~1,3 s** |
+| Disco | **91 %** con vigilante OK | **79 %** y el gate falla > 90 % |
+| VPP / AI-PQ | «4 levers null», incógnita | **12 aplicados / 12 rechazados — concluyente: no existe** |
+
+### Regla para la próxima revisión
+
+**Antes de dar por buena una mejora, correr el comando que está al lado del número.** Si el número
+baja, es regresión aunque compile, aunque el gate pase y aunque el informe diga que está arreglado.
+

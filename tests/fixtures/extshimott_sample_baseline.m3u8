@@ -1,0 +1,36 @@
+#EXTM3U x-tvg-url=""
+#EXT-X-VERSION:9
+#EXT-X-INDEPENDENT-SEGMENTS
+#EXT-X-APE-CHANNELS:3
+#EXT-X-APE-QMAX-VERSION:2.0-ADAPTIVE
+# FIXTURE del contrato ape.extshimott.v1. Dominios .invalid: no hay hosts reales ni credenciales.
+# Cada canal conserva sus capas existentes (EXTHTTP / EXTVLCOPT / KODIPROP / EXT-X-APE-* / EXT-X-STREAM-INF)
+# y ANADE el tag #EXTSHIMOTT como ULTIMA linea de tag, inmediatamente antes de la URI.
+#EXTINF:-1 tvg-id="es_c01" tvg-name="FIXTURE 4K HDR10+ ES" tvg-logo="https://fixture.invalid/logo/c01.png" group-title="FIXTURE",FIXTURE 4K HDR10+ ES
+#EXTHTTP:{"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36","Referer":"https://www.google.com/"}
+#EXTVLCOPT:network-caching=4000
+#EXTVLCOPT:http-referrer=https://www.google.com/
+#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)
+#KODIPROP:inputstream.adaptive.manifest_type=hls
+#KODIPROP:inputstream.adaptive.stream_selection_type=manual-osd
+#EXT-X-APE-CODEC-REAL:hvc1.2.4.L153.B0
+#EXT-X-APE-RESILIENCE:LEVELS=7
+#EXT-X-APE-QMAX-STRATEGY:GREEDY-BEST-AVAILABLE
+#EXT-X-STREAM-INF:BANDWIDTH=28000000,AVERAGE-BANDWIDTH=22000000,RESOLUTION=3840x2160,FRAME-RATE=50.000,CODECS="hvc1.2.4.L153.B0,ec-3",VIDEO-RANGE=PQ
+https://fixture.invalid/provider/es_c01/master.m3u8
+#EXTINF:-1 tvg-id="es_c02" tvg-name="FIXTURE AV1 SDR" tvg-logo="https://fixture.invalid/logo/c02.png" group-title="FIXTURE",FIXTURE AV1 SDR
+#EXTHTTP:{"User-Agent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"}
+#EXTVLCOPT:network-caching=2000
+#KODIPROP:inputstream.adaptive.manifest_type=hls
+#EXT-X-APE-RESILIENCE:LEVELS=5
+#EXT-X-STREAM-INF:BANDWIDTH=6000000,AVERAGE-BANDWIDTH=4500000,RESOLUTION=1920x1080,FRAME-RATE=25.000,CODECS="av01.0.08M.08,mp4a.40.2",VIDEO-RANGE=SDR
+https://fixture.invalid/provider/es_c02/master.m3u8
+#EXTINF:-1 tvg-id="es_c03" tvg-name="FIXTURE HEVC 60fps" tvg-logo="https://fixture.invalid/logo/c03.png" group-title="FIXTURE",FIXTURE HEVC 60fps
+#EXTHTTP:{"User-Agent":"VLC/3.0.20 LibVLC/3.0.20","Referer":"https://www.bing.com/"}
+#EXTVLCOPT:network-caching=3000
+#EXTVLCOPT:adaptive-logic=highest
+#KODIPROP:inputstream.adaptive.manifest_type=hls
+#EXT-X-APE-RESILIENCE:LEVELS=7
+#EXT-X-APE-QMAX-STRATEGY:GREEDY-BEST-AVAILABLE
+#EXT-X-STREAM-INF:BANDWIDTH=24000000,AVERAGE-BANDWIDTH=19000000,RESOLUTION=3840x2160,FRAME-RATE=60.000,CODECS="hvc1.2.4.L153.B0,ac-3",VIDEO-RANGE=PQ
+https://fixture.invalid/provider/es_c03/master.m3u8

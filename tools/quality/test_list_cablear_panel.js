@@ -168,7 +168,12 @@ t('canales cableados > 0', $s['body']['progreso']['canales'] > 0, 'canales=' . $
 echo "\\n== los cinco directorios de la cola ==\\n";
 $intentos = array();
 $ioMkdir = ape_cablear_io(array(
-  'store' => 'fs', 'mkdir' => function ($d) use (&$intentos) { $intentos[] = $d; return true; },
+  'store' => 'fs',
+  /* is_dir=false INYECTADO: la prueba no puede depender de si /var/lib/ape/cablear
+   * ya existe en el VPS. Medido: entre dos corridas aparecieron los cinco
+   * directorios y esto paso a fallar sin que el codigo cambiara. */
+  'is_dir' => function ($d) { return false; },
+  'mkdir' => function ($d) use (&$intentos) { $intentos[] = $d; return true; },
   'now_ms' => 1794700000000,
 ));
 ape_cablear_validate(array('lista' => $REAL, '_method' => 'POST'), $ioMkdir);
@@ -192,6 +197,7 @@ t('se crea tambien el padre /var/lib/ape/cablear',
  * /var/lib/ape/cablear — tambien literal, pero menos preciso. */
 $ioFalla = ape_cablear_io(array(
   'store' => 'fs',
+  'is_dir' => function ($d) { return false; },
   'mkdir' => function ($d) { return substr($d, -5) === '/cola' ? false : true; },
   'now_ms' => 1794700000000,
 ));

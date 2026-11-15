@@ -61,31 +61,48 @@ if [ -z "$A_PID" ]; then
 fi
 
 # ── 2. EL SHIM: LA PRUEBA QUE EL WATCHDOG DE LA APP NO HACE ──────────────────
-#    Un socket en LISTEN del uid del agente es la unica prueba de que el proxy
-#    existe. Ojo: NO se comprueba el 10042 — en este dispositivo ese puerto es
-#    de com.google.android.apps.mediashell (uid 10050), no del shim. Confundirlos
-#    fue el error de medicion que hizo creer que el shim estaba vivo.
+#    Tres fuentes, en orden de autoridad:
+#      a) port.txt que el PROPIO agente publica: es la fuente autorizada.
+#      b) sockets en LISTEN del uid del agente en /proc/net.
+#      c) prueba real: GET /health al puerto y ver que contesta.
+#
+#    Dos errores mios que este bloque corrige, ambos medidos hoy:
+#      1) Usaba `strtonum()` para convertir el puerto de hex. El awk de Android
+#         (toybox) NO tiene strtonum: "awk: syntax error at source line 1".
+#         Resultado: SHIM.puertos salia vacio y SHIM.sockets=0 AUNQUE EL SHIM
+#         ESTUVIERA ARRIBA. El vigilante habria mentido igual que el panel.
+#      2) Emitia las lineas SHIM.* ANTES de calcularlas con el port.txt, asi que
+#         imprimia el valor viejo. Ahora se calcula todo y se emite al final.
+#
+#    Y OJO con el campo del uid: en /proc/net/tcp{,6} el uid es el campo 10.
+#    El 8 es tm->when. Filtrar por $8=="10124" no encuentra NADA nunca.
+#
+#    NO se comprueba el 10042: medido, ese puerto es de
+#    com.google.android.apps.mediashell (uid 10050), no del shim. Confundirlos
+#    fue el error que hizo creer que el shim estaba vivo cuando no lo estaba.
 SHIM_PORTS=""
-if [ "$A_APPID" != "0" ]; then
-  SHIM_PORTS=$(awk -v u="$A_APPID" '$4=="0A" && $8==u {split($2,a,":"); p=strtonum("0x" a[2]); if (p>0) print p}' \
-                 /proc/net/tcp /proc/net/tcp6 2>/dev/null | sort -un | tr '\n' ' ' | sed 's/ $//')
-fi
 SHIM_SOCKETS=0
-[ -n "$SHIM_PORTS" ] && SHIM_SOCKETS=$(echo "$SHIM_PORTS" | wc -w)
+SHIM_ACEPTA=0
+PORTFILE="/storage/emulated/0/Android/data/$PKG/files/port.txt"
+if [ -r "$PORTFILE" ]; then
+  PFP=$(tr -dc '0-9' < "$PORTFILE" 2>/dev/null)
+  if [ -n "$PFP" ]; then SHIM_PORTS="$PFP"; SHIM_SOCKETS=1; fi
+fi
+if [ "$SHIM_SOCKETS" -eq 0 ] && [ "$A_APPID" != "0" ]; then
+  NSOCK=$(awk -v u="$A_APPID" '$4=="0A" && $10==u' /proc/net/tcp /proc/net/tcp6 2>/dev/null | wc -l | tr -dc '0-9')
+  [ -n "$NSOCK" ] && [ "$NSOCK" -gt 0 ] && SHIM_SOCKETS="$NSOCK"
+fi
+if [ -n "$SHIM_PORTS" ]; then
+  PONLY=$(printf '%s' "$SHIM_PORTS" | tr -dc '0-9')
+  RESP=$(printf 'GET /health HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n' | timeout 3 toybox nc 127.0.0.1 "$PONLY" 2>/dev/null | head -c 24)
+  [ -n "$RESP" ] && SHIM_ACEPTA=1
+fi
 emit "SHIM.puertos=$SHIM_PORTS"
 emit "SHIM.sockets=$SHIM_SOCKETS"
-# ¿Responde? Sin curl en el device (no existe): se usa toybox nc, que si existe.
-SHIM_ACEPTA=0
-if [ -n "$SHIM_PORTS" ]; then
-  P=$(echo "$SHIM_PORTS" | awk '{print $1}')
-  R=$(printf 'GET / HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n' | timeout 3 toybox nc 127.0.0.1 "$P" 2>/dev/null | head -c 20)
-  [ -n "$R" ] && SHIM_ACEPTA=1
-fi
 emit "SHIM.acepta=$SHIM_ACEPTA"
-if [ "$SHIM_SOCKETS" -eq 0 ]; then
+if [ "$SHIM_SOCKETS" -eq 0 ] && [ "$SHIM_ACEPTA" -eq 0 ]; then
   add_reason "shim sin socket: el proxy no escucha"
 fi
-
 # ── 3. EL DISPLAY: fisico vs override vs modo activo ─────────────────────────
 PHYS=$(wm size 2>/dev/null | grep -i physical | grep -oE '[0-9]+x[0-9]+')
 OVER=$(wm size 2>/dev/null | grep -i override | grep -oE '[0-9]+x[0-9]+')
@@ -162,7 +179,7 @@ if echo "$PLAYER_LAYER" | grep -q '\-1'; then
 fi
 
 # ── 8. EL PUERTO 10042: se deja claro de quiEN es para no volver a confundirlo ─
-MEDIA_UID=$(awk '$2 ~ /:273A$/ {print $8; exit}' /proc/net/tcp6 2>/dev/null)
+MEDIA_UID=$(awk '$2 ~ /:273A$/ {print $10; exit}' /proc/net/tcp6 2>/dev/null)
 emit "RUIDO.puerto_10042_uid=${MEDIA_UID:-libre}"
 if [ -n "$MEDIA_UID" ] && [ "$A_APPID" != "0" ] && [ "$MEDIA_UID" = "$A_APPID" ]; then
   emit "RUIDO.puerto_10042_es=AGENTE"

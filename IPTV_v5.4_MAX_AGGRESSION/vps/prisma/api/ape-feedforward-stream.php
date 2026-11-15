@@ -12,6 +12,11 @@
 require_once '/var/www/html/prisma/lib/list_registry.php';
 require_once '/var/www/html/prisma/lib/ape_mesh.php';
 
+// [EXTSHIMOTT] Helper local del payload `shimott` (contrato ape.extshimott.v1).
+// Guarda de existencia: si no está desplegado, el SSE emite EXACTAMENTE lo de hoy.
+$apeShimottLib = __DIR__ . '/ape-shimott-emit.php';
+if (@is_file($apeShimottLib)) { require_once $apeShimottLib; }
+
 header('Content-Type: text/event-stream');
 header('Cache-Control: no-cache');
 header('Connection: keep-alive');
@@ -70,6 +75,9 @@ while ((time() - $start) < $dur) {
             if ($chId === '' && !empty($st['ch'])) $chId = preg_replace('/[^0-9A-Za-z_.\-]/', '', $st['ch']);
         }
     }
+    // [EXTSHIMOTT] ¿hay canal REAL en este tick? Si sólo hay key (list_id/device)
+    // no se emite el payload: no se inventa un id de canal.
+    $chKnown = ($chId !== '');
     if ($chId === '') $chId = $keyLabel;
 
     // D6 — CERRAR EL LAZO QoE: refrescar riskScore POR TICK desde la QoE (real de conviva_events =
@@ -114,7 +122,7 @@ while ((time() - $start) < $dur) {
             return ($d === 'global hdr_conversion_mode 1') ? 'global hdr_conversion_mode 0' : $d;
         }, $device_settings);
     }
-    $payload = json_encode(array(
+    $payloadArr = array(
         'seq'             => $seq,
         'mode'            => $rec ? 'matricula' : 'device',
         'channel'         => $chId,
@@ -126,7 +134,18 @@ while ((time() - $start) < $dur) {
         'preset_count'    => count($mesh['presets']),
         'presets'         => $mesh['presets'],
         'device_settings' => $device_settings,
-    ), JSON_UNESCAPED_SLASHES);
+    );
+    // ── [EXTSHIMOTT] payload por canal (contrato ape.extshimott.v1) ───────────
+    // El tag de la LISTA lo emite tools/pulse/ape-pulse-wrap.js; aquí viaja como
+    // CAMPO del evento `presets` (objeto, sin prefijo). NO se emite la línea del
+    // tag desde el SSE: duplicaría la del wrap. Se calcula DESPUÉS del rollback
+    // PQ y del puente, así `dev.hdr_c` refleja lo que el daemon aplicará de verdad.
+    // Sin canal real en este tick no hay bloque (no se inventa un id).
+    if ($chKnown && function_exists('ape_shimott_payload')) {
+        $shimott = ape_shimott_payload($chId, $device_settings);
+        if (is_array($shimott)) { $payloadArr['shimott'] = $shimott; }
+    }
+    $payload = json_encode($payloadArr, JSON_UNESCAPED_SLASHES);
 
     $h = md5($payload);
     if ($h !== $lastHash) { $emit("id: $seq\nevent: presets\ndata: $payload\n\n"); $lastHash = $h; }

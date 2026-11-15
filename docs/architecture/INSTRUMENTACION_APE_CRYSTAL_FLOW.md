@@ -164,10 +164,29 @@ python3 -c "import json;d=json.load(open('contracts/ape_crystal_flow_operativa.j
 
 # 4) El baseline no se movió (cada fila trae su comando)
 sed -n '/## Cómo se mide/,/^---/p' docs/architecture/BASELINE_APE_CRYSTAL_FLOW_20261114.md
+
+# 5) El zapeo real: lee playlist_access.log (rt=/urt=) y da p50 de arranque, de
+#    servicio de segmento y de gap. AVISO: ese log tiene granularidad de SEGUNDOS,
+#    no de ms -> cualquier decimal que salga de aqui es inventado.
+bash tools/ops/ape-zapping-meter.sh
+
+# 6) El device por adb: foco real, overlay, settings aplicados/rechazados y
+#    coherencia de cadencia contenido vs panel. Da 7 PASS + 1 SKIP sin device.
+bash tools/ops/ape-device-health.sh
 ```
 
 **Los dos gates están en el CI** (`ape-deploy-frontend.yml` corre el estático como
 primer paso; `deploy-vps.yml` corre el del flujo dentro del VPS tras publicar).
+
+> **Ampliación 2026-11-15.** A los dos gates se les suma un **tercero**,
+> `tools/ops/ape-device-health.sh` (device por `adb`, 8 checks: 7 PASS + 1 SKIP sin
+> device), y dos **medidores** que no son gates porque no bloquean pero sí informan:
+> `tools/ops/ape-zapping-meter.sh` (zapeo real desde `rt=`/`urt=`) y la comprobación de
+> **disco** que el gate del flujo hace con umbral (falla por encima del **90 %**).
+> El gate del flujo corre **10 checks** y marca **SKIP** los que exigen estar *en* el
+> VPS (disco, vigía, frescura, caché): ejecutado fuera del VPS da `pass=5 fail=0`, y
+> dentro da `pass=8 fail=0`. Las dos cifras son correctas; no confundirlas con una
+> regresión.
 
 ---
 

@@ -81,13 +81,29 @@ class ProxyService : Service() {
                         NotificationChannel(channel, "ottshim", NotificationManager.IMPORTANCE_LOW)
                     )
                 }
+                // [FIX 2026-11-14, CAUSA RAIZ MEDIDA DEL SHIM PARADO]
+                // Aqui faltaba setSmallIcon(). En Android el icono pequeno es OBLIGATORIO:
+                // una notificacion sin el es INVALIDA, y startForeground lanza
+                //   android.app.RemoteServiceException$CannotPostForegroundServiceNotificationException:
+                //   "Bad notification for startForeground"
+                // que mata el proceso. Medido en el ONN 4K (Android 14) pulsando el boton
+                // "ARRANCAR SHIM CON LA URL DE ARRIBA":
+                //   FATAL EXCEPTION: main · com.ape.crystalagent
+                //   CannotPostForegroundServiceNotificationException: Bad notification for startForeground
+                //   am_crash ... am_proc_died [0,20965,com.ape.crystalagent]
+                // Es decir: el shim NUNCA podia arrancar, la app se cerraba al intentarlo, y
+                // el panel se quedaba en "shim: PARADO" sin que nada avisara. Se usa un icono
+                // del sistema (android.R.drawable) para no depender de que el modulo :shim
+                // tenga recursos propios, que el manifest de ARA no declara.
                 Notification.Builder(this, channel)
+                    .setSmallIcon(android.R.drawable.stat_sys_download)
                     .setContentTitle("ottshim")
                     .setContentText("loopback proxy activo")
                     .build()
             } else {
                 @Suppress("DEPRECATION")
                 Notification.Builder(this)
+                    .setSmallIcon(android.R.drawable.stat_sys_download)
                     .setContentTitle("ottshim")
                     .setContentText("loopback proxy activo")
                     .build()

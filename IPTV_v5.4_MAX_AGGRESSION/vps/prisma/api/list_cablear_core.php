@@ -65,6 +65,14 @@ if (!defined('APE_CABLEAR_CORE')) {
              * directorios y que un fallo de creacion da E_COLA_NO_ESCRIBIBLE con
              * la ruta literal, sin escribir nada en ningun disco. */
             'mkdir'      => null,
+            /* Y este, para que esa prueba no dependa del estado del VPS: si los
+             * directorios YA existen (los crea el primer encolado, o el worker),
+             * is_dir() es true y no se llama a mkdir — que es lo correcto, pero
+             * dejaba el test a merced de lo que hubiera en /var/lib/ape/cablear.
+             * Medido: entre dos corridas del test, los cinco directorios
+             * aparecieron en el VPS y la prueba paso a fallar sin que el codigo
+             * hubiera cambiado. */
+            'is_dir'     => null,
         );
         return array_merge($base, $o);
     }
@@ -305,11 +313,20 @@ if (!defined('APE_CABLEAR_CORE')) {
         if ($io['store'] === 'fs') {
             $dirs = ape_cablear_dirs($io);
             foreach ($dirs as $d) {
-                if (is_dir($d)) { continue; }
+                $esDir = ($io['is_dir'] !== null)
+                    ? (bool) call_user_func($io['is_dir'], $d)
+                    : is_dir($d);
+                if ($esDir) { continue; }
                 $creado = ($io['mkdir'] !== null)
                     ? (bool) call_user_func($io['mkdir'], $d)
                     : @mkdir($d, 0775, true);
-                if (!$creado && !is_dir($d)) {
+                /* Re-comprobacion con el MISMO lector: si el mkdir real fallo pero
+                 * otro proceso creo el directorio a la vez, no es un error. Con
+                 * is_dir inyectado, el veredicto es coherente con la inyeccion. */
+                $esDirAhora = ($io['is_dir'] !== null)
+                    ? (bool) call_user_func($io['is_dir'], $d)
+                    : is_dir($d);
+                if (!$creado && !$esDirAhora) {
                     return array(false, 'E_COLA_NO_ESCRIBIBLE', 500,
                         'no se pudo crear el directorio de la cola: ' . $d
                         . ' (el worker NO puede renombrar el ticket a tomados/ sin el;'

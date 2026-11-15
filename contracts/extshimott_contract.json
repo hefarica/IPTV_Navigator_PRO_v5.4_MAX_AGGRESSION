@@ -1,0 +1,402 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ape.extshimott.v1",
+  "title": "#EXTSHIMOTT payload contract (ver 1) - HLS sidecar for APE CRYSTAL FLOW",
+  "description": "Contrato del PAYLOAD JSON del tag propietario #EXTSHIMOTT (sin el prefijo #EXTSHIMOTT:). Segun RFC 8216 4.1 y 6.3.1 un cliente HLS DEBE ignorar los tags desconocidos, por lo que el player generico no lo interpreta: lo lee el shim de la APK. El tag es ADITIVO: se anade al bloque del canal y NUNCA sustituye CODECS=/RESOLUTION=/BANDWIDTH= del #EXT-X-STREAM-INF ni el #EXTHTTP.",
+  "x-ape": {
+    "contract": "ape.extshimott.v1",
+    "tag": "#EXTSHIMOTT",
+    "tag_prefix": "#EXTSHIMOTT:",
+    "payload_form": "objeto JSON compacto de UNA linea, sin saltos de linea y sin comas finales",
+    "placement": {
+      "scope": "channel",
+      "definition_of_channel": "bloque que empieza en #EXTINF: y termina en la primera linea que no es comentario (no empieza por '#') ni vacia: la URI del canal",
+      "position": "ultima linea de tag del bloque, inmediatamente antes de la URI",
+      "occurrences_per_channel": 1,
+      "blank_lines_between_tag_and_uri": 0,
+      "valid_in": "catalogo de canales (bloques #EXTINF ... URI). NO se define para media playlists (segmentos)"
+    },
+    "limits": {
+      "max_line_chars": 4096,
+      "warn_line_chars": 3840,
+      "counted_as": "caracteres de la linea COMPLETA (prefijo '#EXTSHIMOTT:' incluido), sin terminador LF/CRLF",
+      "max_payload_chars": 4084,
+      "note": "4096 es el techo DURO; 3840 el presupuesto operativo. Justificacion en docs/architecture/EXTSHIMOTT_CONTRACT.md sec. 6 (no hay medicion de truncado de parser en esta tarea: es una decision de diseno, no un hecho medido)."
+    },
+    "additive_only": true,
+    "never_replaces": [
+      "EXT-X-STREAM-INF:CODECS",
+      "EXT-X-STREAM-INF:RESOLUTION",
+      "EXT-X-STREAM-INF:BANDWIDTH",
+      "EXT-X-STREAM-INF:VIDEO-RANGE",
+      "EXTHTTP",
+      "EXTVLCOPT",
+      "KODIPROP",
+      "EXT-X-APE-*",
+      "EXT-X-MEDIA",
+      "EXT-X-I-FRAME-STREAM-INF"
+    ],
+    "declared_protected_counts_per_channel": {
+      "exthttp": 199,
+      "ape_directives": 109,
+      "extvlcopt": 21,
+      "kodiprop": 6,
+      "source": "operator_declared_pending_measurement",
+      "honesty": "Estos conteos los declara el operador; esta tarea NO los mide sobre una lista real. El validador los CENSA sobre la lista que recibe (opcion sin argumentos) para que la comparacion sea medible."
+    },
+    "unknown_field_policy": "RECHAZO. additionalProperties=false: un campo fuera de este contrato es error, no warning. Para extender el sobre se sube 'ver' y se versiona el contrato; nunca se cuela un campo nuevo en ver:1.",
+    "unknown_value_policy": "Si un valor no se conoce, se OMITE el campo. El contrato no define centinelas (null, -1, \"unknown\"): emitir un centinela es inventar.",
+    "consumers": {
+      "generator": "frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js emite el tag (fuera del alcance de esta tarea)",
+      "vps": "nginx/shim lee hdr.ua y hdr.rf para inyectar cabeceras y flt solo si transcoda (fuera del alcance de esta tarea)",
+      "apk_shim": "lee el objeto completo y aplica dev.*/ott.* por canal (fuera del alcance de esta tarea)",
+      "vlc": "aplica flt como args SOLO si vlc.f=1 y 'vlc' esta en tgt",
+      "kodi": "lee kod.isa SOLO si 'kod' esta en tgt; no consume flt",
+      "ott": "consume ott.*; NUNCA toca flt (ni siquiera si viene)"
+    },
+    "validator": "tools/quality/validate_extshimott.js",
+    "fixtures": [
+      "tests/fixtures/extshimott_sample.m3u8",
+      "tests/fixtures/extshimott_sample_baseline.m3u8",
+      "tests/fixtures/extshimott_sample_bad.m3u8"
+    ],
+    "consumer_matrix": {
+      "ver": ["generator", "vps", "apk_shim", "vlc", "kodi", "ott"],
+      "id": ["generator", "vps", "apk_shim", "vlc", "kodi", "ott"],
+      "v": ["vps", "apk_shim", "generator", "vlc", "kodi", "ott"],
+      "v.c": ["vps", "apk_shim"],
+      "v.p": ["vps", "apk_shim"],
+      "v.hdr": ["generator", "vps", "apk_shim", "vlc", "kodi", "ott"],
+      "v.w": ["generator", "vps", "apk_shim", "vlc", "kodi", "ott"],
+      "v.h": ["generator", "vps", "apk_shim", "vlc", "kodi", "ott"],
+      "v.f": ["generator", "vps", "apk_shim", "vlc", "kodi", "ott"],
+      "v.g": ["vps", "apk_shim"],
+      "v.tf": ["vps", "apk_shim"],
+      "a": ["generator", "vps", "apk_shim", "vlc", "kodi", "ott"],
+      "a.c": ["generator", "vps", "apk_shim", "vlc", "kodi", "ott"],
+      "a.ch": ["generator", "vps", "apk_shim", "vlc", "kodi", "ott"],
+      "a.l": ["generator", "vps", "apk_shim", "vlc", "kodi", "ott"],
+      "hdr": ["vps", "apk_shim"],
+      "hdr.ua": ["vps", "apk_shim"],
+      "hdr.rf": ["vps", "apk_shim"],
+      "flt": ["vps", "vlc"],
+      "cad": ["vps", "apk_shim"],
+      "cad.mode": ["vps", "apk_shim"],
+      "cad.fps": ["vps", "apk_shim"],
+      "cad.seg": ["vps", "apk_shim"],
+      "dev": ["apk_shim"],
+      "dev.hdr_c": ["apk_shim"],
+      "dev.mcr": ["apk_shim"],
+      "dev.mmp": ["apk_shim"],
+      "dev.res_w": ["apk_shim"],
+      "dev.res_h": ["apk_shim"],
+      "dev.di": ["apk_shim"],
+      "ott": ["apk_shim"],
+      "ott.buf": ["apk_shim"],
+      "ott.hw": ["apk_shim"],
+      "ott.asp": ["apk_shim"],
+      "vlc": ["vlc"],
+      "vlc.f": ["vlc"],
+      "kod": ["kodi"],
+      "kod.isa": ["kodi"],
+      "tgt": ["generator", "vps", "apk_shim", "vlc", "kodi"]
+    },
+    "consumer_matrix_rule": "Consumidor por campo, en el vocabulario de x-ape.consumers. Un campo sin consumidor declarado no debe existir: el generador no emite lo que nadie lee. flt NO lo lee ott (es VPS/VLC). tgt decide quien lee el resto."
+  },
+  "type": "object",
+  "required": ["ver", "id", "tgt"],
+  "properties": {
+    "ver": {
+      "type": "integer",
+      "const": 1,
+      "description": "Version del contrato. OBLIGATORIO (regla dura 5): sin 'ver' el payload es invalido porque el consumidor no puede saber como leerlo. Un valor distinto de 1 se rechaza: este validador solo conoce ver:1."
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$",
+      "description": "Clave unica del canal, la MISMA que ape_lists.db. Ancla la identidad del objeto: si no casa con el tvg-id del #EXTINF, el validador emite W_ID_TVGID (warning, no error, porque el tvg-id puede faltar o ser un alias de EPG)."
+    },
+    "v": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "description": "Video de la FUENTE REAL SERVIDA (no la deseada ni la del display). Cualquier subcampo ausente = no conocido: se omite.",
+      "properties": {
+        "c": {
+          "type": "string",
+          "enum": ["hevc", "av1", "vvc", "h264", "vp9"],
+          "description": "Codec de video. Consumidor: shim (routing de decoder), VPS (decide si puede remuxear sin recomprimir)."
+        },
+        "p": {
+          "type": "string",
+          "enum": ["main", "main8", "main10", "main12", "high", "high10", "professional"],
+          "description": "Perfil del codec, como ETIQUETA declarada (no se resuelve a un nivel RFC 6381: eso vive en CODECS= del STREAM-INF). 'main8' se admite porque el operador lo usa para AV1 8-bit."
+        },
+        "hdr": {
+          "type": "string",
+          "enum": ["sdr", "hdr10", "hdr10plus", "dolby_vision"],
+          "description": "Rango dinamico REAL de la fuente. CUIDADO: este 'hdr' es un STRING dentro de v, distinto del objeto 'hdr' de nivel superior (ua/rf). Son dos campos diferentes con el mismo nombre."
+        },
+        "w": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 7680,
+          "description": "Ancho real servido, en pixeles. Fuente REAL, no la deseada. Ley Cardinal 1: debe ser coherente con el nivel declarado en CODECS=."
+        },
+        "h": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 4320,
+          "description": "Alto real servido, en pixeles."
+        },
+        "f": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 240,
+          "description": "FPS efectivo del segmento (no el nominal del contenedor). Base de la coherencia cad.seg <=> v.g/v.f."
+        },
+        "g": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000,
+          "description": "GOP en frames. La duracion del GOP es v.g/v.f segundos; cad.seg debe ser multiplo entero de esa duracion."
+        },
+        "tf": {
+          "type": "string",
+          "enum": ["bt709", "bt2020", "smpte428"],
+          "description": "Transfer characteristic declarada. Consumidor: color scientist / shim para no tone-mapear a ciegas."
+        }
+      }
+    },
+    "a": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "description": "Audio de la fuente. Ausente = no conocido.",
+      "properties": {
+        "c": {
+          "type": "string",
+          "enum": ["aac", "aac-lc", "he-aac", "ec-3", "ac-3", "opus", "mp3", "flac", "truehd", "dts"],
+          "description": "Codec de audio. Consumidor: shim (decide passthrough vs transcode) y VPS."
+        },
+        "ch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16,
+          "description": "Numero de canales (2 = estereo, 6 = 5.1, 8 = 7.1)."
+        },
+        "l": {
+          "type": "string",
+          "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{1,8})*$",
+          "description": "Idioma BCP-47 en minusculas (es, en, pt-BR). Minusculas obligatorias para que el matcher del shim no dependa de mayusculas."
+        }
+      }
+    },
+    "hdr": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "description": "Cabeceras que el shim/nginx inyecta al pedir el stream. Es DECLARATIVO y ADITIVO: NO sustituye ni modifica el #EXTHTTP del canal, que sigue siendo la fuente de verdad de las cabeceras del player. Nombre del objeto igual al de v.hdr: son campos distintos (aqui, objeto; alli, string).",
+      "properties": {
+        "ua": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^\\r\\n]+$",
+          "description": "User-Agent a inyectar. Prohibido URL-encodear el espacio (%20): es la trampa 2 del checklist EXTHTTP y el validador la bloquea con E_UA_PCT20. Prohibido CR/LF (inyeccion de cabeceras). Prohibido meter huellas de motor (OMEGA/CRYSTAL/APE_): W_UA_ENGINE_FP."
+        },
+        "rf": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 512,
+          "pattern": "^https?://[^\\s]+$",
+          "description": "Referer a inyectar. Prohibido apuntar al VPS propio (iptv-ape/duckdns/178.156/hetzner): un bloqueo del CDN mataria todos los canales a la vez (trampa 14). El validador lo bloquea con E_RF_VPS."
+        }
+      }
+    },
+    "flt": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^[A-Za-z0-9_.,:=+*/\\[\\] -]{1,1024}$",
+      "description": "Cadena ffmpeg COMPACTA. SOLO para el pipeline VPS si transcoda; VLC la aplica si vlc.f=1; OTT NO la toca nunca. El validador NO verifica que los filtros existan (eso es del gate de ffmpeg): solo charset, longitud y las relaciones con vlc.f/tgt."
+    },
+    "cad": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "description": "Cadencia objetivo del canal.",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["fixed", "adaptive"],
+          "description": "fixed = cadencia fija; adaptive = el shim puede variar."
+        },
+        "fps": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 240,
+          "description": "FPS objetivo. Con mode=fixed y distinto de v.f, el validador emite W_CAD_FPS_MISMATCH (conversion de cadencia declarada)."
+        },
+        "seg": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 30,
+          "description": "Duracion de segmento HLS en segundos. Debe ser multiplo ENTERO de la duracion de GOP (v.g/v.f), con tolerancia 1e-3 s: si no, E_GOP_COHERENCE. Si falta v.g o v.f no se puede computar y el validador lo reporta como NO COMPUTADO, no como OK."
+        }
+      }
+    },
+    "dev": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "description": "Ajustes de dispositivo. Son los MISMOS que hoy se aplican por ADB/settings; el shim los aplica por canal. Las abreviaturas mapean a claves Android medidas (ver descripcion de cada campo y docs/architecture/EXTSHIMOTT_CONTRACT.md sec. 5).",
+      "properties": {
+        "hdr_c": {
+          "type": "integer",
+          "enum": [0, 1, 2, 3],
+          "description": "hdr_conversion_mode (namespace global). Semantica MEDIDA (CLAUDE.md, correccion 2026-06-17): 0=UNKNOWN, 1=PASSTHROUGH, 2=SYSTEM, 3=FORCE. NO hace SDR->HDR: 1 deja pasar el HDR real."
+        },
+        "mcr": {
+          "type": "integer",
+          "enum": [0, 1, 2],
+          "description": "match_content_frame_rate (namespace secure). Regex medida en la APK: ^[012]$. 2=ALWAYS en los dumps del ONN 4K; el firmware puede anularla (ro.surface_flinger.enable_frame_rate_override=false)."
+        },
+        "mmp": {
+          "type": "integer",
+          "enum": [0, 1],
+          "description": "minimal_post_processing_allowed (namespace secure). MAPEO INFERIDO: el nombre expandido no aparece escrito en ningun sitio del repo; se infiere por dominio {0,1} y por ser la unica clave con ese rol. NO VERIFICADO contra el shim (fuera de alcance). El contrato fija el VALOR; el nombre de la clave es responsabilidad de la capa dispositivo."
+        },
+        "res_w": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7680,
+          "description": "user_preferred_resolution_width (namespace global). Resolucion preferida de display: es una PREFERENCIA, no una degradacion (Ley Anti-Degradacion: no se usa para bajar la fuente)."
+        },
+        "res_h": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4320,
+          "description": "user_preferred_resolution_height (namespace global)."
+        },
+        "di": {
+          "type": "string",
+          "enum": ["off", "on", "auto"],
+          "description": "Interpolacion/desentrelazado de display. La EXPANSION de la abreviatura 'di' NO esta verificada en el repo; el contrato fija el dominio de valores y deja el significado al shim."
+        }
+      }
+    },
+    "ott": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "description": "Ajustes de OTT Navigator. Solo los consume el target 'ott'.",
+      "properties": {
+        "buf": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 512,
+          "description": "Buffer en MB."
+        },
+        "hw": {
+          "type": "integer",
+          "enum": [0, 1],
+          "description": "Usar decoder hardware (1) o no (0)."
+        },
+        "asp": {
+          "type": "string",
+          "enum": ["fit", "fill", "center"],
+          "description": "Aspecto de pantalla."
+        }
+      }
+    },
+    "vlc": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "description": "Ajustes de VLC. Solo los consume el target 'vlc'.",
+      "properties": {
+        "f": {
+          "type": "integer",
+          "enum": [0, 1],
+          "description": "1 = aplicar la cadena 'flt' como argumentos de filtro de VLC. Si es 1 y falta 'flt', el validador falla con E_VLC_FLT_MISSING: declarar la intencion sin la cadena no aplica nada."
+        }
+      }
+    },
+    "kod": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "description": "Ajustes de Kodi. Solo los consume el target 'kod'.",
+      "properties": {
+        "isa": {
+          "type": "integer",
+          "enum": [0, 1],
+          "description": "1 = Kodi IS-A (inputstream.adaptive) habilitado para el canal."
+        }
+      }
+    },
+    "tgt": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 14,
+      "pattern": "^(ott|vlc|kod)(\\|(ott|vlc|kod))*$",
+      "description": "Pipe-list de targets que LEEN el objeto. Valores permitidos: ott, vlc, kod. Sin duplicados (E_TGT_DUP). Si 'ott' esta presente, ott.* aplica y flt se ignora (N_OTT_IGNORES_FLT, nota informativa). Si 'vlc' esta presente y vlc.f=1, flt es obligatorio. Si 'kod' esta presente, kod.isa aplica."
+    }
+  },
+  "additionalProperties": false,
+  "minProperties": 3,
+  "examples": [
+    {
+      "ver": 1,
+      "id": "es_c01",
+      "v": {
+        "c": "hevc",
+        "p": "main10",
+        "hdr": "hdr10plus",
+        "w": 3840,
+        "h": 2160,
+        "f": 50,
+        "g": 50,
+        "tf": "bt2020"
+      },
+      "a": {
+        "c": "ec-3",
+        "ch": 6,
+        "l": "es"
+      },
+      "hdr": {
+        "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "rf": "https://www.google.com/"
+      },
+      "flt": "nlmeans=s=1.0:p=7:r=15,unsharp=5:5:0.8:3:3:0.4,gradfun=1.2:16,zscale=t=709:m=709:r=limited",
+      "cad": {
+        "mode": "fixed",
+        "fps": 50,
+        "seg": 4
+      },
+      "dev": {
+        "hdr_c": 1,
+        "mcr": 2,
+        "mmp": 0,
+        "res_w": 3840,
+        "res_h": 2160,
+        "di": "off"
+      },
+      "ott": {
+        "buf": 8,
+        "hw": 1,
+        "asp": "fit"
+      },
+      "vlc": {
+        "f": 1
+      },
+      "kod": {
+        "isa": 1
+      },
+      "tgt": "ott|vlc|kod"
+    }
+  ]
+}

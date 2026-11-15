@@ -6,6 +6,14 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
     <uses-permission android:name="android.permission.GET_TASKS" />
+    <!-- [FIX 2026-11-14] Android 13+ exige POST_NOTIFICATIONS para que la
+         notificacion del foreground service sea visible. Sin ella el sistema
+         puede rechazar la notificacion y tumbar el servicio: es la segunda
+         mitad de la causa raiz del shim parado (la primera era setSmallIcon
+         ausente en ProxyService.kt, que hacia la notificacion INVALIDA).
+         Declararla NO concede el permiso: en API 33+ hay que pedirlo en runtime.
+         Aun asi, sin la linea del manifest el permiso ni se puede pedir. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
@@ -111,17 +119,27 @@
             android:label="REA · Reproductor externo"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
             android:launchMode="singleTask">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" />
-                <data android:scheme="https" />
-                <data android:mimeType="application/x-mpegURL" />
-                <data android:mimeType="application/vnd.apple.mpegurl" />
-                <data android:mimeType="video/*" />
-                <data android:mimeType="audio/*" />
-            </intent-filter>
+            <!-- [FIX 2026-11-14 t69] SIN <intent-filter> A PROPOSITO.
+
+                 MEDIDO en el device (dumpsys package com.ape.crystalagent -> "Activity
+                 Resolver Table"): con el filtro anterior esta Activity se anunciaba al
+                 sistema como manejador IMPLICITO de
+                     action=VIEW + category=DEFAULT + category=BROWSABLE
+                     scheme=http, https
+                     mimeType=application/x-mpegURL, application/vnd.apple.mpegurl,
+                              video/*, audio/*
+                 O sea: ARA se ofrecia como reproductor/navegador para contenido abierto
+                 desde CUALQUIER app, y esta Activity reenvia a PlayerActivity. Un
+                 startActivity(VIEW, url, type="video/*") de un tercero podia terminar
+                 dentro de ARA sin que el operador la abriera: exactamente el sintoma
+                 "a cualquier aplicacion que ingreso me lleva al APK ARA".
+
+                 Quitar el filtro NO quita funcionalidad: la Activity sigue declarada y
+                 exported="true", asi que lanzarla de forma EXPLICITA funciona igual
+                 (am start -n com.ape.crystalagent/com.ape.rea.ReaExternalPlayerActivity,
+                 o el flujo REA con componente explicito). Lo unico que desaparece es la
+                 resolucion implicita por el sistema, que es la via por la que ARA podia
+                 aparecer sola encima de otras apps. -->
         </activity>
 
         <service

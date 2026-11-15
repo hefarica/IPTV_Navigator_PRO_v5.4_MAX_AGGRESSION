@@ -81,6 +81,7 @@ class SettingsApplier(ctx: Context) {
         sb.appendLine("modelo: ${android.os.Build.MODEL}")
         sb.appendLine("Android: ${android.os.Build.VERSION.RELEASE} (SDK ${android.os.Build.VERSION.SDK_INT})")
         sb.appendLine("últimos settings: aplicados=$lastApplied rechazados=$lastRejected")
+        sb.appendLine("EXTSHIMOTT: ${AraStatus.extShimOtt.ifEmpty { "sin tag recibido (el shim no lo vio o no había)" }}")
         sb.appendLine()
         sb.appendLine("== /sync (D3) ==")
         sb.appendLine("self-check contrato: ${AraStatus.syncSelfCheck.ifEmpty { "no ejecutado" }}")
@@ -262,6 +263,22 @@ class SettingsApplier(ctx: Context) {
 
     companion object {
         const val TAG = "ApeSettingsApplier"
+
+        /**
+         * Guard PURO de la MISMA allowlist de abajo: ¿esta fila `<ns> <key> <val>` se aplicaría?
+         * No escribe nada y no duplica la tabla: usa [ALLOW_KEY] y su regex de valor.
+         *
+         * POR QUÉ EXISTE (2026-11-14, tag #EXTSHIMOTT): el tag por canal propone filas de
+         * dispositivo y hay que poder demostrar —antes de escribir— que ninguna cae fuera de
+         * la allowlist. [ExtShimOttBridge] filtra con esto y cuenta lo rechazado; el escrito
+         * final sigue pasando por [applyDetailed], que vuelve a validar. Dos puertas, una tabla.
+         */
+        fun allowsRow(row: String): Boolean {
+            val p = row.trim().split(Regex("\\s+"), limit = 3)
+            if (p.size != 3) return false
+            val rx = ALLOW_KEY[p[1]] ?: return false
+            return rx.matches(p[2])
+        }
 
         /** ns real medido en el ONN Android 14/S905X4 cuando getString no lo expone. */
         private val NS_HINT: Map<String, String> = mapOf(

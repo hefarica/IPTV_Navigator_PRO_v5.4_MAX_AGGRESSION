@@ -8,18 +8,27 @@
 
 ## 0. VEREDICTO
 
-Los dos endpoints y el formato de cola están escritos, y **38 controles en verde, 0 en rojo**. La prueba **no escribe nada en ningún sitio**: la cola usa un store en memoria y el sistema de ficheros real del VPS se usa **solo en lectura**.
+Los dos endpoints y el formato de cola están escritos, y **46 controles en verde, 0 en rojo**. La prueba **no escribe nada en ningún sitio**: la cola usa un store en memoria y el sistema de ficheros real del VPS se usa **solo en lectura**.
 
 Y hay un dato que solo aparece si se mide: **el guardia de disco reproduce exactamente la aritmética del contrato** —libre 5638 MB, mínimo 3000, coste 2501 MB para la lista del operador ⇒ **137 MB de margen**, el mismo número que el contrato da como medido—. No es coincidencia: es que la fórmula del contrato está bien y la implementación la aplica igual.
 
-| # | Fichero | Bytes | sha256 |
+**sha256 VIGENTES** (esta es la ÚNICA tabla de cifras de este entregable; cualquier otra copia que
+circule de estos ficheros está obsoleta):
+
+| # | Fichero | Bytes | sha256 (completo) |
 |---|---|---:|---|
-| 1 | `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/list_cablear_core.php` | 27.177 | `107896b6…39ab0` |
-| 2 | `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/list-cablear.php` | 3.674 | `40fbc1bc…0d961` |
-| 3 | `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/list-cablear-status.php` | 2.736 | `5b24bb1d…df506` |
-| 4 | `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/cablear.php` (alias del path del contrato) | 600 | `627f0146…43d9c` |
-| 5 | `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/cablear-estado.php` (alias) | 306 | `714934f…6695b` |
-| 6 | `tools/quality/test_list_cablear_panel.js` | 11.632 | `ba21f967…ba3cf` |
+| 1 | `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/list_cablear_core.php` | 30.513 | `59fef25ea5eb914e6b262fb9e5c23d80aab1141d023555896e53f10d9f8333d3` |
+| 2 | `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/list-cablear.php` | 3.674 | `40fbc1bcb82c13ed8a8c9fd883f5e2203ae2a835571543cb50ebc195c400d961` |
+| 3 | `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/list-cablear-status.php` | 2.736 | `5b24bb1d012ca8f39a853872847ccc599ed515c77902faa85a4531fc141df506` |
+| 4 | `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/cablear.php` (alias del path del contrato) | 600 | `627f01469cff5ef13c62e772f2d9c60d818602ba2a4324d435639c53cb543d9c` |
+| 5 | `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/cablear-estado.php` (alias) | 306 | `714934fc84cb80e825ef5fc2d18f368bb8ab499a1e880d1040819f511df6695b` |
+| 6 | `tools/quality/test_list_cablear_panel.js` | 14.147 | `4c8433702e272c0e843ae6b7f8ca472752ebfb48f451f4f4a6e319b4cf2e03d4` |
+| 7 | `tools/quality/conteo_cableado.php` | 2.379 | `16a5d22910c7a268f5a46367ab8df82c541700875983f716d328db24bfe6990a` |
+| 8 | este informe (`docs/audits/LIST_CABLEAR_IMPL_20261114.md`) | *cambia con cada edición* | ver `sha256` del fichero en el repo, no una copia citada |
+
+> Las cifras de la primera versión del informe (`27.177/107896b6…`, `11.632/ba21f967…`) quedaron
+> **obsoletas** cuando el suplemento de t62 cambió el core y el test. Se sustituyen aquí enteras en vez
+> de añadir una nota: dos cifras para el mismo fichero es exactamente el problema que había que cerrar.
 
 ---
 
@@ -83,7 +92,7 @@ Y hay un dato que solo aparece si se mide: **el guardia de disco reproduce exact
 
 ## 3. LA PRUEBA — qué corre y por qué no escribe nada
 
-`node tools/quality/test_list_cablear_panel.js` → **38 PASS, 0 FAIL**, exit 0.
+`node tools/quality/test_list_cablear_panel.js` → **46 PASS, 0 FAIL**, exit 0.
 
 Cómo funciona y por qué es una prueba de verdad:
 
@@ -205,6 +214,31 @@ que el `mkdir` recursivo encuentra el árbol a medio crear y lo completa. Y la g
 mide el espacio en `dirname($queue_root)` = `/var/lib/ape`, que **sí** existe ⇒ en un VPS virgen la
 validación 13 no falla antes de que la 14 cree el árbol.
 
+#### 5.2.1 Estado medido del VPS, y por qué el test se hizo hermético
+
+Entre dos corridas del test (10 minutos de diferencia) el árbol **apareció** en el VPS. Medido ahora,
+en lectura:
+
+```
+drwxrwxr-x 7 www-data www-data  /var/lib/ape/cablear            Nov 14 18:14
+drwxrwxr-x 2 www-data www-data  /var/lib/ape/cablear/{cola,tomados,hechos,fallidos,staging}  Nov 14 18:14
+```
+
+- Los **seis** caminos existen, con **`0775`** (`drwxrwxr-x` = exactamente el modo que fija la
+  validación 14, no `0755`) y dueño **`www-data`** (el usuario de php-fpm) ⇒ **el árbol lo creó el
+  propio encolado**, no un `mkdir` a mano de otro modo.
+- **Quién lo invocó: `NO COMPUTADO`.** No lo hice yo: mi test no escribe en el VPS (store `mem` y
+  `mkdir`/`is_dir` inyectados) y todas mis llamadas a PHP fueron `php -n -l /dev/stdin`. La hora
+  (18:14 UTC) cae dentro de esta ronda, así que lo más probable es que otro miembro o el capitán
+  desplegara y ejercitara el endpoint; **lo digo como no atribuido en vez de inventarlo**.
+- **Consecuencia inmediata y arreglada:** la primera versión del test asumía «VPS virgen» (`is_dir`
+  real ⇒ los seis no existen ⇒ se llama a `mkdir`). Al existir ya, `validate()` **acertadamente** no
+  llama a `mkdir`, y el test pasó a dar **5 FAIL sin que el código estuviera mal**: medía el estado
+  del VPS, no el código. Arreglado haciendo `is_dir` **inyectable** (y usando el mismo lector en la
+  re-comprobación posterior al `mkdir`), de modo que la prueba dé el mismo resultado en un VPS virgen
+  y en uno ya provisionado. **46 PASS / 0 FAIL** en los dos casos.
+
+
 **Lo que NO se cambió, por indicación expresa del capitán:** el nombre determinista
 `<base>_CABLEADA.m3u8` (el worker y el panel lo dan por hecho) y el `auto.sh` de 15 min (cablea por
 mtime, no conoce la cola; convive con `ape-cablear-cola.timer` y no se toca).
@@ -243,7 +277,77 @@ php -l list-cablear-status.php   -> No syntax errors detected
 php -l list_cablear_core.php     -> No syntax errors detected
 php -l cablear.php               -> No syntax errors detected
 php -l cablear-estado.php        -> No syntax errors detected
-node tools/quality/test_list_cablear_panel.js -> 38 PASS, 0 FAIL, exit 0
+node tools/quality/test_list_cablear_panel.js -> 46 PASS, 0 FAIL, exit 0
 ```
 
 `php -n` (sin ini) a propósito: el código no usa APCu ni ninguna extensión; así la comprobación no depende de la configuración del VPS.
+
+---
+
+## 9. HALLAZGOS DE t63 (ronda 2 de reparación) — qué se hizo con cada uno
+
+### F1 · «Añadir el fichero a la allowlist de `ape-deploy-frontend.yml`»
+
+**La allowlist ya lo contiene.** Texto literal de `.github/workflows/ape-deploy-frontend.yml`, dentro de `FICHEROS:`:
+
+```yaml
+      js/ape-v9/rea-catalog-export.js js/ape-v9/ape-quality-prober.js js/ape-v9/list-cablear-panel.js
+```
+
+Es exactamente la línea que pide `frontend/CABLEAR_PANEL_DEPLOY_ENTRY.md` §1 (`js/ape-v9/list-cablear-panel.js`).
+**La parte reparadora del hallazgo está cerrada: no hay nada que añadir.**
+
+**Lo que NO está hecho, y es de otro:** el **redespliegue**. Medido ahora por HTTP contra el vhost real
+(`curl --resolve … https://iptv-ape.duckdns.org/js/ape-v9/list-cablear-panel.js`):
+
+```
+404  146      <- el JS NO se sirve todavía
+```
+
+**404 es el estado esperado si no se ha desplegado**, y desplegar no es una acción de esta tarea:
+`.github/` está **excluido del inScope** por el propio contrato de t66, y el workflow exige
+`workflow_dispatch` + aprobación del entorno `production`. Queda preparado para que lo dispare el capitán:
+
+```
+gh workflow run ape-deploy-frontend.yml --ref <rama>      # dispara
+# aprobar el entorno production (pending_deployments) con -F "environment_ids[]=$EID"
+curl -sSI https://iptv-ape.duckdns.org/js/ape-v9/list-cablear-panel.js | head -5   # esperado: 200
+```
+
+> **No declaro 200 donde la sonda dice 404.** El criterio se cumple en su parte de repositorio
+> (allowlist) y queda **pendiente y declarado** en su parte operativa (deploy).
+
+### F2 · «Dejar constancia del sha256 vigente para que no haya dos cifras para el mismo fichero»
+
+**Arreglado de raíz.** La tabla de §0 tenía las cifras de la **primera** versión del core y del test
+(`27.177`/`107896b6…` y `11.632`/`ba21f967…`), que quedaron obsoletas cuando el suplemento de t62 los
+cambió. Ahora §0 lleva **una sola tabla**, con los **8** ficheros y el sha256 **completo** (no
+abreviado, para que se pueda comparar sin ambigüedad), y declara explícitamente que es la única cifra
+vigente por fichero. Las viejas se sustituyen enteras, no se anotan.
+
+### F3 · «Mapear el código del encolador a `E_LISTA_TRAVERSAL` cuando el nombre contenga `..`»
+
+**Documentado, NO unificado — y con razón.** Hay dos capas con dos códigos para la misma condición:
+
+| Capa | Fichero (anclado por contenido, no por línea) | Código |
+|---|---|---|
+| **Panel / encolado** (mío) | `list_cablear_core.php`, función `ape_cablear_validate()` | **`E_LISTA_NOMBRE_INVALIDO`** (400) |
+| **Worker** (t61) | `ape-cablear-queue-worker.sh`, función `lista_ok()` + rama `*/../*` | **`E_LISTA_TRAVERSAL`** (y `E_LISTA_FUERA_DE_LISTS` para el path fuera de `/lists/`) |
+
+**Por qué no lo cambio:** el contrato de t59 fija el código **por escrito** en
+`input.path_traversal_rule.checkable_vectors`: `{"lista": "../etc/passwd", "esperado":
+"E_LISTA_NOMBRE_INVALIDO"}` — y ese vector está entre los 12 que el test verifica. Cambiar el panel a
+`E_LISTA_TRAVERSAL` **rompería el contrato y el test** para satisfacer un hallazgo marcado como
+*opcional y no bloqueante*.
+
+**Por qué tampoco es un problema:** el rechazo es el mismo y por la misma puerta (B1/B2), y el worker
+ya lo dice en su propio comentario: la barrera del nombre rechazaba igual; `E_LISTA_TRAVERSAL` se
+añadió por **claridad de diagnóstico** en la capa que ejecuta. Son dos vocabularios para dos
+consumidores distintos: el panel responde a un operador con el código del contrato; el worker deja
+constancia interna. Unificarlos sería cambiar el contrato para arreglar un texto.
+
+**Un dato del hallazgo que es falso en el árbol:** cita `vps/prisma/api/list_core.php:180` como «el
+encolador». **Ese fichero no existe** (comprobado). El encolador es
+`vps/prisma/api/list_cablear_core.php`, localizado por **ancla de contenido** (`ape_cablear_validate`)
+y no por número de línea, precisamente porque las líneas se mueven con cada edición.
+

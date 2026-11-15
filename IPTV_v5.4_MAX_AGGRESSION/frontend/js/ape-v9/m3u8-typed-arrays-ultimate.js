@@ -9736,6 +9736,313 @@ return lines.join('\n');
             .join('\n') + '\n#EXT-X-APE-REA:{"status":"finalizer_unavailable","sourceStatus":"unknown","execution":"not_verified"}';
     }
 
+    // ═════════════════════════════════════════════════════════════════════════
+    // #EXTSHIMOTT — ape.extshimott.v1 · sidecar por canal (ADITIVO)
+    // Contrato: contracts/extshimott_contract.json
+    //           docs/architecture/EXTSHIMOTT_CONTRACT.md
+    //           validador: tools/quality/validate_extshimott.js
+    //
+    // RFC 8216 §4.1/§6.3.1: un cliente HLS DEBE ignorar los tags que no conoce,
+    // así que el player genérico no interpreta este tag; lo lee el shim de la APK.
+    //
+    // Reglas duras de la emisión (no negociables):
+    //   · +1 línea por canal, la ÚLTIMA línea de tag del bloque, inmediatamente
+    //     antes de la URI (0 líneas en blanco por medio).
+    //   · NUNCA toca EXTHTTP / EXTVLCOPT / KODIPROP / EXT-X-APE-* / EXT-X-STREAM-INF:
+    //     solo se AÑADE una línea. Las líneas existentes no se reordenan ni se editan.
+    //   · Todo dato que no se conoce se OMITE. El contrato prohíbe centinelas
+    //     (null/-1/"unknown"): emitirlos sería inventar.
+    //   · Si no hay NINGÚN dato de canal, no se emite el tag.
+    //   · Rollback sin tocar código: window.APE_SHIMOTT = false.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    // Familia de códec desde el string REAL del probe (p.ej. hvc1.2.4.L153.B0,
+    // avc1.640028, av01.0.08M.08). Devuelve null si no se reconoce: no se adivina.
+    function _apeShimottVideoFamily(raw) {
+        const s = String(raw == null ? '' : raw).trim().toLowerCase();
+        if (!s) return null;
+        if (/^(dvh1|dvhe)\./.test(s)) return 'hevc';
+        if (/^(hvc1|hev1|hvc|hevc|h265|h\.265)/.test(s)) return 'hevc';
+        if (/^(av01|av1)(\.|$)/.test(s)) return 'av1';
+        if (/^(vvc1|vvi1|h266|vvc)(\.|$)/.test(s)) return 'vvc';
+        if (/^(vp09|vp9)(\.|$)/.test(s)) return 'vp9';
+        if (/^(avc1|avc3|h264|h\.264)/.test(s)) return 'h264';
+        return null;
+    }
+
+    function _apeShimottVideoProfile(raw, family) {
+        const s = String(raw == null ? '' : raw).trim().toLowerCase();
+        if (!s || !family) return null;
+        if (family === 'hevc') {
+            const m = s.match(/^(?:hvc1|hev1)\.(\d)/);
+            if (!m) return null;
+            // Profile IDC HEVC: 1=Main, 2=Main10, 3=Main Still Picture, 4=Main12.
+            return ({ '1': 'main', '2': 'main10', '3': 'professional', '4': 'main12' })[m[1]] || null;
+        }
+        if (family === 'h264') {
+            const m = s.match(/^avc[13]\.([0-9a-f]{2})/);
+            if (!m) return null;
+            const p = parseInt(m[1], 16);
+            if (p === 100) return 'high';
+            if (p === 110) return 'high10';
+            if (p === 122 || p === 244) return 'professional';
+            if (p === 66 || p === 77 || p === 88) return 'main';
+            return null;
+        }
+        if (family === 'av1') {
+            const pm = s.match(/^av01\.(\d)\./);
+            if (pm && pm[1] === '2') return 'professional';
+            const bd = s.match(/\.(\d{2})$/);
+            if (!bd) return null;
+            return Number(bd[1]) >= 10 ? 'main10' : 'main8';
+        }
+        // VVC/VP9: el contrato ver:1 no define un profile label fiable para estos
+        // strings; se omite en vez de inventar una etiqueta.
+        return null;
+    }
+
+    // Rango dinámico REAL de la fuente (probe), nunca el VIDEO-RANGE declarativo del
+    // STREAM-INF (que es PQ incondicional por decisión del propietario). HLG no está
+    // en el enum de ver:1: se omite (no se miente etiquetándolo hdr10/sdr).
+    function _apeShimottVideoRange(probe, rawCodec) {
+        if (/^(dvh1|dvhe)\./i.test(String(rawCodec == null ? '' : rawCodec))) return 'dolby_vision';
+        const p = probe || {};
+        const raw = String(p.videoRange || p.video_range || p.dynamicRange || p.dynamic_range || p.hdr || '').trim().toLowerCase();
+        if (!raw) return null;
+        if (/dolby|dvh|\bdv\b/.test(raw)) return 'dolby_vision';
+        if (/hdr10\+|hdr10plus|10\+/.test(raw)) return 'hdr10plus';
+        if (/hdr10|\bpq\b|smpte2084|st2084/.test(raw)) return 'hdr10';
+        if (/hlg|arib/.test(raw)) return null; // no expresable en ver:1 -> se omite
+        if (/sdr|bt\.?709/.test(raw)) return 'sdr';
+        return null;
+    }
+
+    function _apeShimottAudioCodec(raw) {
+        const s = String(raw == null ? '' : raw).trim().toLowerCase();
+        if (!s) return null;
+        if (/^(ec-3|eac3|e-ac-3)/.test(s)) return 'ec-3';
+        if (/^(ac-3|ac3)/.test(s)) return 'ac-3';
+        if (/^mp4a\.40\.(29|5)\b/.test(s)) return 'he-aac';
+        if (/^mp4a\.40\.2\b/.test(s)) return 'aac-lc';
+        if (/^mp4a/.test(s)) return 'aac';
+        if (/^opus/.test(s)) return 'opus';
+        if (/^mp3|\.mp3/.test(s)) return 'mp3';
+        if (/^flac/.test(s)) return 'flac';
+        if (/^truehd/.test(s)) return 'truehd';
+        if (/^dts/.test(s)) return 'dts';
+        if (/^aac/.test(s)) return 'aac';
+        return null;
+    }
+
+    function _apeShimottId(channel, index) {
+        const ch = channel || {};
+        let raw = (ch.stream_id != null && ch.stream_id !== '') ? ch.stream_id
+            : ((ch.id != null && ch.id !== '') ? ch.id
+                : ((ch.tvg_id != null && ch.tvg_id !== '') ? ch.tvg_id : null));
+        if (raw == null || raw === '') raw = 'ch_' + String(index == null ? 0 : index);
+        let s = String(raw).replace(/[^A-Za-z0-9_.:-]/g, '_').slice(0, 64);
+        if (!/^[A-Za-z0-9]/.test(s)) s = ('ch_' + s).slice(0, 64);
+        if (!/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/.test(s)) s = 'ch_' + String(index == null ? 0 : index);
+        return s;
+    }
+
+    // Las cabeceras declarativas del shim salen del #EXTHTTP REAL del bloque
+    // (la MISMA UA/Referer que lleva el canal), no de un UA genérico distinto:
+    // si el shim inyectara otra UA, el proveedor vería dos identidades para el
+    // mismo canal. Si el bloque no trae #EXTHTTP se usa el UA del generador.
+    function _apeShimottFromExthttp(lines) {
+        try {
+            const line = (lines || []).find(l => typeof l === 'string' && l.startsWith('#EXTHTTP:'));
+            if (!line) return null;
+            const obj = JSON.parse(line.slice(9));
+            if (!obj || typeof obj !== 'object') return null;
+            const read = (name) => {
+                if (Object.prototype.hasOwnProperty.call(obj, name)) return obj[name];
+                const lower = name.toLowerCase();
+                for (const k of Object.keys(obj)) {
+                    if (String(k).toLowerCase() === lower) return obj[k];
+                }
+                return null;
+            };
+            const ua = read('User-Agent');
+            const rf = read('Referer');
+            return { ua: ua == null ? null : ua, rf: rf == null ? null : rf };
+        } catch (_eH) { return null; }
+    }
+
+    // Cabeceras declarativas que el shim/nginx inyecta. Se emiten SOLO si son
+    // seguras según el contrato: sin CR/LF, sin %20 en UA, rf http(s) y nunca el VPS.
+    function _apeShimottHttp(ua, rf) {
+        const out = {};
+        const u = String(ua == null ? '' : ua).trim();
+        if (u && u.length >= 1 && u.length <= 512 && u.indexOf('\r') === -1 && u.indexOf('\n') === -1
+            && u.indexOf('%20') === -1) {
+            out.ua = u;
+        }
+        const r = String(rf == null ? '' : rf).trim();
+        if (/^https?:\/\/[^\s]+$/.test(r) && r.length >= 8 && r.length <= 512
+            && !/iptv-ape|duckdns|178\.156|hetzner/i.test(r)) {
+            out.rf = r;
+        }
+        return Object.keys(out).length ? out : null;
+    }
+
+    // Ajustes de dispositivo: los MISMOS que el agente aplica por ADB/settings
+    // (encargo EXTSHIMOTT): hdr_conversion_mode=1, match_content_frame_rate=2,
+    // minimal_post_processing_allowed=0, user_preferred_resolution=3840x2160.
+    // 'di' NO se emite: la expansión de esa abreviatura no está verificada en el
+    // contrato (sec. dev.di) y el generador no conoce un valor medido.
+    // Override explícito en runtime: window.APE_SHIMOTT_DEV = {hdr_c,mcr,mmp,res_w,res_h,di}
+    function _apeShimottDevice() {
+        let base = {};
+        try {
+            if (typeof window !== 'undefined' && window.APE_SHIMOTT_DEV && typeof window.APE_SHIMOTT_DEV === 'object') {
+                base = window.APE_SHIMOTT_DEV;
+            }
+        } catch (_eD) { base = {}; }
+        const src = {
+            hdr_c: base.hdr_c != null ? base.hdr_c : 1,
+            mcr: base.mcr != null ? base.mcr : 2,
+            mmp: base.mmp != null ? base.mmp : 0,
+            res_w: base.res_w != null ? base.res_w : 3840,
+            res_h: base.res_h != null ? base.res_h : 2160,
+            di: base.di
+        };
+        const out = {};
+        const hdrC = Number(src.hdr_c);
+        if (hdrC === 0 || hdrC === 1 || hdrC === 2 || hdrC === 3) out.hdr_c = hdrC;
+        const mcr = Number(src.mcr);
+        if (mcr === 0 || mcr === 1 || mcr === 2) out.mcr = mcr;
+        const mmp = Number(src.mmp);
+        if (mmp === 0 || mmp === 1) out.mmp = mmp;
+        const rw = Number(src.res_w);
+        if (isFinite(rw) && rw >= 1 && rw <= 7680) out.res_w = Math.round(rw);
+        const rh = Number(src.res_h);
+        if (isFinite(rh) && rh >= 1 && rh <= 4320) out.res_h = Math.round(rh);
+        if (['off', 'on', 'auto'].indexOf(src.di) !== -1) out.di = src.di;
+        return Object.keys(out).length ? out : null;
+    }
+
+    // ott.* SOLO si el perfil declara los ajustes de OTT Navigator. El generador
+    // no tiene hoy una tabla ott por perfil: en ese caso se OMITE el objeto entero
+    // (nunca se inventan buf/hw/asp). Fuentes aceptadas: cfg.ott o el perfil del
+    // Profile Manager (p.ott / p.settings.ott), tal como lleguen del LAB.
+    function _apeShimottOtt(cfg, profile) {
+        let o = null;
+        try {
+            if (cfg && cfg.ott && typeof cfg.ott === 'object') o = cfg.ott;
+            if (!o && typeof window !== 'undefined' && window.APE_PROFILES_CONFIG
+                && typeof window.APE_PROFILES_CONFIG.getProfile === 'function') {
+                const p = window.APE_PROFILES_CONFIG.getProfile(profile);
+                o = (p && (p.ott || (p.settings && p.settings.ott))) || null;
+            }
+        } catch (_eO) { o = null; }
+        if (!o || typeof o !== 'object') return null;
+        const out = {};
+        const buf = Number(o.buf);
+        if (isFinite(buf) && buf > 0 && buf <= 512) out.buf = buf;
+        const hw = Number(o.hw);
+        if (hw === 0 || hw === 1) out.hw = hw;
+        if (['fit', 'fill', 'center'].indexOf(o.asp) !== -1) out.asp = o.asp;
+        return Object.keys(out).length ? out : null;
+    }
+
+    function _apeShimottPayload(channel, profile, probe, cfg, index, ua, rf) {
+        const p = probe || {};
+        const payload = { ver: 1, id: _apeShimottId(channel, index) };
+
+        // ── v: video de la FUENTE REAL SERVIDA (probe), no la deseada ────────
+        const codecRaw = p.videoCodecBinary || p.videoCodec || p.codec || '';
+        const family = _apeShimottVideoFamily(codecRaw);
+        const v = {};
+        if (family) v.c = family;
+        const vp = _apeShimottVideoProfile(codecRaw, family);
+        if (vp) v.p = vp;
+        const range = _apeShimottVideoRange(p, codecRaw);
+        if (range) v.hdr = range;
+        let w = null, h = null;
+        const resMatch = String(p.resolution || '').trim().match(/^(\d{1,5})x(\d{1,5})$/i);
+        if (resMatch) { w = Number(resMatch[1]); h = Number(resMatch[2]); }
+        else if (Number(p.width) > 0 && Number(p.height) > 0) { w = Number(p.width); h = Number(p.height); }
+        if (isFinite(w) && w >= 2 && w <= 7680) v.w = Math.round(w);
+        if (isFinite(h) && h >= 2 && h <= 4320) v.h = Math.round(h);
+        const fps = Number(p.frameRate != null ? p.frameRate : p.fps);
+        if (isFinite(fps) && fps > 0 && fps <= 240) v.f = fps;
+        const gop = Number(p.gopFrames != null ? p.gopFrames : (p.gop != null ? p.gop : p.gop_size));
+        if (isFinite(gop) && gop >= 1 && gop <= 2000 && Math.floor(gop) === gop) v.g = gop;
+        const tfRaw = String(p.transferCharacteristics || p.transfer_characteristics || p.tf || '').trim().toLowerCase();
+        if (tfRaw === 'bt709' || tfRaw === 'bt2020' || tfRaw === 'smpte428') v.tf = tfRaw;
+        if (Object.keys(v).length) payload.v = v;
+
+        // ── a: audio de la fuente (ausente = no conocido) ─────────────────────
+        const acRaw = p.audioCodecBinary || p.audioCodec || p.audio_codec || '';
+        const ac = _apeShimottAudioCodec(acRaw);
+        const a = {};
+        if (ac) a.c = ac;
+        const chn = Number(p.audioChannels != null ? p.audioChannels
+            : (p.audio_channels != null ? p.audio_channels : p.channels));
+        if (isFinite(chn) && chn >= 1 && chn <= 16 && Math.floor(chn) === chn) a.ch = chn;
+        const langRaw = String(p.audioLanguage || p.audio_language || p.language
+            || (channel && (channel.audio_language || channel.language)) || '').trim().toLowerCase();
+        if (/^[a-z]{2,3}(-[A-Za-z0-9]{1,8})*$/.test(langRaw)) a.l = langRaw;
+        if (Object.keys(a).length) payload.a = a;
+
+        // ── hdr: cabeceras declarativas (aditivas; NO sustituyen #EXTHTTP) ────
+        const hdr = _apeShimottHttp(ua, rf);
+        if (hdr) payload.hdr = hdr;
+
+        // ── dev / ott ─────────────────────────────────────────────────────────
+        const dev = _apeShimottDevice();
+        if (dev) payload.dev = dev;
+        const ott = _apeShimottOtt(cfg, profile);
+        if (ott) payload.ott = ott;
+
+        payload.tgt = 'ott|vlc|kod';
+        return payload;
+    }
+
+    // Inserta el tag en el TEXTO FINAL del bloque (después del finalizador REA, para
+    // que sea de verdad la última línea de tag) inmediatamente antes de la URI.
+    // Idempotente: si el bloque ya lo trae, no duplica. Fail-open: cualquier error
+    // devuelve el bloque intacto (cero regresión).
+    function _apeAppendExtshimottTag(text, channel, profile, probe, cfg, index, ua, rf) {
+        try {
+            const src = String(text == null ? '' : text);
+            if (!src) return src;
+            if (typeof window !== 'undefined' && window.APE_SHIMOTT === false) return src;
+            const lines = src.split('\n');
+            let uriIdx = -1;
+            for (let i = lines.length - 1; i >= 0; i--) {
+                const t = lines[i].trim();
+                if (t && t.charAt(0) !== '#') { uriIdx = i; break; }
+            }
+            if (uriIdx < 0) return src;                         // sin URI: no es bloque de canal
+            if (!lines.some(l => l.startsWith('#EXTINF:'))) return src;  // media playlist: no aplica
+            if (lines.some(l => l.startsWith('#EXTSHIMOTT:'))) return src; // idempotencia
+            const fromHttp = _apeShimottFromExthttp(lines);
+            const uaFinal = (fromHttp && fromHttp.ua != null) ? fromHttp.ua : ua;
+            const rfFinal = (fromHttp && fromHttp.rf != null) ? fromHttp.rf : rf;
+            const payload = _apeShimottPayload(channel, profile, probe, cfg, index, uaFinal, rfFinal);
+            let tag = '#EXTSHIMOTT:' + JSON.stringify(payload);
+            // Presupuesto duro del contrato (4096 chars con prefijo). Si se excediera,
+            // se recortan bloques OPCIONALES en orden determinista; los obligatorios
+            // (ver,id,tgt) nunca se tocan.
+            const drops = ['ott', 'hdr', 'a', 'v.tf', 'v.g'];
+            let d = 0;
+            while (tag.length > 4096 && d < drops.length) {
+                const path = drops[d++].split('.');
+                if (path.length === 1) delete payload[path[0]];
+                else if (payload[path[0]] && typeof payload[path[0]] === 'object') delete payload[path[0]][path[1]];
+                tag = '#EXTSHIMOTT:' + JSON.stringify(payload);
+            }
+            if (tag.length > 4096 || tag.indexOf('\n') !== -1 || tag.indexOf('\r') !== -1) return src;
+            lines.splice(uriIdx, 0, tag);
+            return lines.join('\n');
+        } catch (_eShim) {
+            return String(text == null ? '' : text); // aditivo: nunca rompe la generación
+        }
+    }
+
     function generateChannelEntry(channel, profile = 'P3', index = 0, credentialsMap = {}, options = {}) {
         const lines = [];
 
@@ -13061,7 +13368,7 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                 ? String(channel._probeData.resolution)
                 : null
         });
-        return _apeFinalizeReaChannel(_finalM3U, {
+        const _reaFinalBlock = _apeFinalizeReaChannel(_finalM3U, {
             channel: channel,
             probe: _probeData,
             sourceUrl: primaryUrl,
@@ -13069,6 +13376,11 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
             options: options,
             profile: profile
         });
+        // ═══ #EXTSHIMOTT (ape.extshimott.v1) — ADITIVO, +1 línea por canal ═══
+        // Se aplica sobre el bloque YA finalizado para que el tag sea la ÚLTIMA
+        // línea de tag e inmediatamente preceda a la URI. No toca ni reordena
+        // EXTHTTP / EXTVLCOPT / KODIPROP / EXT-X-APE-* / EXT-X-STREAM-INF.
+        return _apeAppendExtshimottTag(_reaFinalBlock, channel, profile, _probeData, cfg, index, _uaApeProfile, 'https://www.google.com/');
     }
 
     if (typeof window !== 'undefined') window.APE_GEN = generateM3U8Stream; // [t53/t72] export headless (hoisting)

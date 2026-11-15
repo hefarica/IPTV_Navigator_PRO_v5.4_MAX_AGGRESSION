@@ -1,0 +1,32 @@
+#EXTM3U x-tvg-url=""
+#EXT-X-VERSION:9
+#EXT-X-INDEPENDENT-SEGMENTS
+#EXT-X-APE-CHANNELS:3
+#EXT-X-APE-QMAX-VERSION:2.0-ADAPTIVE
+# FIXTURE NEGATIVO del contrato ape.extshimott.v1. Cada canal viola una regla DISTINTA a proposito
+# para que el validador tenga que emitir su codigo. NO es una lista usable.
+# El primer tag del encabezado esta FUERA de todo canal: E_TAG_OUTSIDE.
+#EXTSHIMOTT:{"ver":1,"id":"bad_out","tgt":"ott"}
+#EXTINF:-1 tvg-id="bad_c01" tvg-name="BAD JSON" group-title="FIXTURE",BAD JSON
+#EXTVLCOPT:network-caching=1000
+#EXT-X-STREAM-INF:BANDWIDTH=5000000,RESOLUTION=1920x1080,CODECS="avc1.640028"
+#EXTSHIMOTT:{"ver":1,"id":"bad_c01","tgt":"ott",}
+https://fixture.invalid/provider/bad_c01/master.m3u8
+#EXTINF:-1 tvg-id="bad_c02_alias" tvg-name="BAD SCHEMA" group-title="FIXTURE",BAD SCHEMA
+#EXT-X-STREAM-INF:BANDWIDTH=5000000,RESOLUTION=1920x1080,CODECS="avc1.640028"
+#EXTSHIMOTT:{"id":"bad_c02","v":{"w":"3840"},"tgt":"ott|web","extra":1}
+https://fixture.invalid/provider/bad_c02/master.m3u8
+#EXTINF:-1 tvg-id="bad_c03" tvg-name="BAD CABECERAS Y GOP" group-title="FIXTURE",BAD CABECERAS Y GOP
+#EXTVLCOPT:network-caching=1000
+#EXT-X-STREAM-INF:BANDWIDTH=24000000,RESOLUTION=3840x2160,CODECS="hvc1.2.4.L153.B0"
+#EXTSHIMOTT:{"ver":1,"id":"bad_c03","v":{"c":"hevc","p":"main10","hdr":"hdr10","w":3840,"h":2160,"f":50,"g":50,"tf":"bt2020"},"hdr":{"ua":"Mozilla/5.0%20(X11;%20Linux%20x86_64)","rf":"https://iptv-ape.duckdns.org/"},"cad":{"mode":"fixed","fps":60,"seg":2.5},"vlc":{"f":1},"tgt":"vlc"}
+https://fixture.invalid/provider/bad_c03/master.m3u8
+#EXTINF:-1 tvg-id="bad_c04" tvg-name="TAG DUPLICADO Y NO ULTIMO" group-title="FIXTURE",TAG DUPLICADO Y NO ULTIMO
+#EXT-X-STREAM-INF:BANDWIDTH=5000000,RESOLUTION=1920x1080,CODECS="avc1.640028"
+#EXTSHIMOTT:{"ver":1,"id":"bad_c04","tgt":"ott"}
+#EXTSHIMOTT:{"ver":1,"id":"bad_c04","tgt":"ott"}
+#EXTVLCOPT:network-caching=1000
+https://fixture.invalid/provider/bad_c04/master.m3u8
+#EXTINF:-1 tvg-id="bad_c05" tvg-name="SIN TAG" group-title="FIXTURE",SIN TAG
+#EXT-X-STREAM-INF:BANDWIDTH=5000000,RESOLUTION=1920x1080,CODECS="avc1.640028"
+https://fixture.invalid/provider/bad_c05/master.m3u8

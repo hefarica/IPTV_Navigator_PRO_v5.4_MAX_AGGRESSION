@@ -51,6 +51,33 @@ Verificado por construcción: `git diff` da **0 borrados**, y el hunk nuevo (`@@
 
 `node --check` sobre el fichero modificado: **exit 0**.
 
+### 2.4 Medición de producción (lectura, sin escribir)
+
+`GET https://iptv-ape.duckdns.org/jit/playlist.m3u8` — el catálogo de siempre, hoy:
+
+```
+HTTP=200  bytes=7513817  time=4.169354s
+EXTINF=21224   /jit/live/=42448   /jit/go/=0   source.m3u8=0
+```
+
+Tres cosas de ahí:
+
+1. **21.224 canales.** Eso es exactamente lo que la ruta nueva reescribiría: 21.224 URLs apuntando a `/source.m3u8`. No es una ruta de laboratorio con cuatro canales de prueba: es el catálogo entero.
+2. **`/jit/go/` = 0 y `/jit/live/` presente.** Confirma que la corrección de t51 era necesaria (el primer regex buscaba una forma que no existe en el catálogo real) y que el regex actual sí engancha.
+3. **`source.m3u8` = 0** en producción: la ruta no está viva.
+
+Y la prueba directa de que no se ha desplegado nada:
+
+```
+GET https://iptv-ape.duckdns.org/jit/playlist-shim.m3u8?port=40213   ->  HTTP 404
+
+sha256sum /opt/ape-jit/server.js
+  290b11030f3b6bf944c14298f3fe8401c0f9bd773789e26afeca8bb9f8aeb492   (449.392 B, mtime 03:22:09Z)
+grep -c "playlist-shim" /opt/ape-jit/server.js  ->  0
+```
+
+El `server.js` desplegado **no contiene la ruta**. Hubo un `Deploy VPS` (run `43550173854`, 03:09:55Z, success) que **no disparé yo**, y desplegó el árbol tal como estaba commiteado; como mi cambio sigue sin commitear, no viajó.
+
 ---
 
 ## 3. Dos incoherencias de estado que encontré al mirar
