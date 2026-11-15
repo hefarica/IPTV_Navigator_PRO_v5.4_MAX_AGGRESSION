@@ -876,6 +876,13 @@ jobs:
           # [2026-11-14] Indice id -> nombre de los canales, para que el badge del agente
           # sepa QUE canal esta viendo (OTT no publica MediaSession). Se regenera en
           # cada deploy para que siga a la _CABLEADA mas reciente.
+          # [2026-11-15] Proyeccion OTT de la lista cableada.
+          # Medido: 1.298.222.092 B (353 MB gz) de los que el 56,6% son #EXT-X-APE-
+          # y el 8,6% #EXTVLCOPT — tags que OTT IGNORA por RFC 8216 y opciones de VLC
+          # respectivamente. La proyeccion deja EXTINF + EXTHTTP + URL: 3,3 MB gz con
+          # los MISMOS 21.224 canales y las MISMAS URLs. A 20 Mbps, la carga del
+          # catalogo pasa de 141 s a 1,3 s.
+          bash /opt/ape-pulse/ape-list-project.sh 2>&1 || echo "--- aviso: ape-list-project fallo"
           bash /opt/ape-pulse/ape-channel-index.sh 2>&1 || echo "--- aviso: ape-channel-index fallo"
           echo "--- channel_index: $(stat -c%s /var/www/html/prisma/db/channel_index.json 2>/dev/null || echo ausente) B"
           # [2026-11-14] HARDENING: gate anti-regresion del APE CRYSTAL FLOW.

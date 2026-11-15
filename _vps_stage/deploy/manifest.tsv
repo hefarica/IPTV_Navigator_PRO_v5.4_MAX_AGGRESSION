@@ -97,3 +97,4 @@ IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-last-channel.php	/var/www/html/prism
 IPTV_v5.4_MAX_AGGRESSION/vps/bin/ape-channel-index.sh	/opt/ape-pulse/ape-channel-index.sh	755	root:root	[2026-11-14] regenera channel_index.json (21224 canales, 993 KB) desde la _CABLEADA de numero mas alto
 tools/quality/gate_ape_crystal_flow.sh	/opt/ape-pulse/gate_ape_crystal_flow.sh	755	root:root	[2026-11-14] gate anti-regresion del APE CRYSTAL FLOW: las 5 estaciones medidas contra el propio VPS
 tools/ops/ape-zapping-meter.sh	/opt/ape-pulse/ape-zapping-meter.sh	755	root:root	[2026-11-14] mide el zapeo real del log: arranque de red, servicio de segmento y gap entre segmentos; honesto sobre lo que NO mide (tap/render)
+IPTV_v5.4_MAX_AGGRESSION/vps/bin/ape-list-project.sh	/opt/ape-pulse/ape-list-project.sh	755	root:root	[2026-11-15] proyecta la lista cableada a una variante OTT de 3,3 MB (desde 353 MB) sin perder canales ni tocar URLs
