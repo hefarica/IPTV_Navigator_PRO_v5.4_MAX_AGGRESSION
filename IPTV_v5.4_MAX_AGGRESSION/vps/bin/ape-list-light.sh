@@ -48,11 +48,29 @@ STANDARD_TAGS='EXT-X-VERSION|EXT-X-INDEPENDENT-SEGMENTS|EXT-X-TARGETDURATION|EXT
 #  2) El filtro tiene que excluir PRUEBA, proyecciones y residuos, o se come su propia
 #     salida (_LIGHT_CABLEADA) o un artefacto de test.
 ORIGIN_FILTER='_(LIGHT|SHIELDED|OTT)(_CABLEADA)?\.m3u8$|/APE_PRUEBA'
+# CUAL ES LA LISTA VIGENTE. Tres intentos, tres lecciones:
+#  1) `ls -1t` (por fecha) tomo APE_PRUEBA_ORDER_OK_CABLEADA, que tenia 3 canales.
+#  2) `ls -1S` (por tamano) arregla eso, pero si el generador produce una lista nueva
+#     mas pequena que la anterior, el script seguiria procesando la VIEJA para siempre.
+#  3) La regla correcta: la MAS RECIENTE que ademas tenga volumen de catalogo real.
+#     Un catalogo de operador tiene miles de canales; un fixture tiene tres.
+#     Se exige MIN_CHANNELS (por defecto 1000) y se ordena por fecha.
+MIN_CHANNELS="${APE_MIN_CHANNELS:-1000}"
+count_ch() { grep -c '^#EXTINF' "$1" 2>/dev/null || echo 0; }
+
 BASE="${1:-}"
 if [ -z "$BASE" ]; then
-  BASE=$(ls -1S "$LISTS"/*_CABLEADA.m3u8 2>/dev/null \
-         | grep -vE "$ORIGIN_FILTER" \
-         | head -1 | xargs -r basename -s .m3u8)
+  while IFS= read -r cand; do
+    [ -n "$cand" ] || continue
+    cb=$(basename "$cand" .m3u8)
+    n=$(count_ch "$cand")
+    if [ "$n" -ge "$MIN_CHANNELS" ]; then
+      BASE="$cb"
+      log "origen elegido: $cb ($n canales, mtime $(stat -c%y "$cand" 2>/dev/null | cut -d. -f1))"
+      break
+    fi
+    log "descartado como origen: $cb ($n canales < $MIN_CHANNELS)"
+  done < <(ls -1t "$LISTS"/*_CABLEADA.m3u8 2>/dev/null | grep -vE "$ORIGIN_FILTER")
 fi
 [ -n "$BASE" ] || die 2 "no hay lista origen en $LISTS"
 
