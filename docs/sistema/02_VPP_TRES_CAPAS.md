@@ -13,7 +13,7 @@ Documentado por el propio repo en `ara-x/spec/actuator_allowlist.json` → `open
 > **GAP-04:** «Los 13 levers VPP sólo llegan al APK con `APE_4K_BRIDGE_ENABLED=1` (**default OFF**): en producción **se aplican 3 filas, no 14**.»
 > **GAP-03:** «El bloque `ape_vpp` **NO viaja** en el SSE que consume el APK.»
 
-**Evidencia:** `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-feedforward-stream.php:95` — `getenv('APE_4K_BRIDGE_ENABLED') === '1'`.
+**Evidencia:** `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-feedforward-stream.php:103` — `getenv('APE_4K_BRIDGE_ENABLED') === '1'`.
 
 **Cierto. Y arreglarlo no basta**, como demuestra la capa 2.
 
