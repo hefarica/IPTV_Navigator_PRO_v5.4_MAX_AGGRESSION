@@ -1357,3 +1357,63 @@ ESTADO AL MEDIRLO
 gate : PASS 11/11 · vig : OK 0 fallos
 lista: 241.369.147 B · disco 86% · 5,0 GB libres
 ```
+---
+
+## Hecho 27 · "Nunca se caiga": el Restart= correcto es el que NO esta en los one-shot
+
+Lo pidio el operador: "un workflow para que corra siempre, nunca se caiga y despierte en
+cada zapping de segundo plano". Medido el 2026-11-15 10:25Z sobre las 14 unidades ape-*.
+
+LA TABLA REAL
+```
+UNIDAD                        RESTART      ENABLED   NATURALEZA
+ape-jit.service               always       enabled   persistente
+ape-list-probe.service        on-failure   enabled   persistente
+ape-net-tuning.service        no           enabled   persistente (arranque)
+nginx / php8.3-fpm            on-failure   --        NRestarts=0
+
+ape-module-watchdog.service   no           static    one-shot <- disparado por timer
+ape-meta-watchdog.service     no           static    one-shot
+ape-pulse-canary.service      no           static    one-shot (StartLimitBurst=10)
+ape-list-light.service        no           static    one-shot
+ape-pulse-sync / quality-sync / jit-reconcile / cablear-auto / cablear-cola   static
+```
+
+POR QUE `Restart=no` EN LOS ONE-SHOT NO ES UN DEFECTO
+Son `Type=oneshot` disparados por timer. El mecanismo de repeticion NO es `Restart=`, es
+el TIMER:
+```
+ape-pulse-canary.timer        cada 20 s   StartLimitBurst=10 en el service
+ape-meta-watchdog.timer       cada 60 s
+ape-module-watchdog.timer     cada 60 s
+ape-pulse-sync / quality-sync / jit-reconcile   cada  5 min
+ape-list-light.timer          cada 10 min
+ape-cablear-auto.timer        cada 15 min   persistent=yes
+```
+Poner `Restart=always` en un oneshot seria el error, no la solucion: lo reejecutaria en
+bucle sin esperar al timer y sin la ventana que el timer impone.
+
+LOS 11 TIMERS, TODOS enabled
+```
+ape-cablear-auto.timer    persistent=yes   <- recupera la ejecucion perdida tras una caida
+ape-jit-reconcile.timer   persistent=yes
+los otros 9               persistent=no    (se rearman solos en el siguiente ciclo)
+```
+
+SERVICIOS QUE DEBEN VIVIR SIEMPRE
+```
+nginx        restart=on-failure   NRestarts=0
+php8.3-fpm   restart=on-failure   NRestarts=0
+ape-jit      restart=always       NRestarts=0
+```
+Cero reinicios en toda la sesion: no han necesitado la red de seguridad, pero la tienen.
+
+ARTEFACTOS DE MI PROPIO COMANDO, declarados antes de que confundan
+El listado mostro un servicio llamado `UNIT` y un timer llamado `16`. Son el `awk`
+capturando la cabecera y un fragmento de linea, NO unidades reales. Se dice para que nadie
+lea la salida y crea que hay basura en systemd.
+
+CONCLUSION
+"Cada modulo corre siempre" no se garantiza con `Restart=always` en todo: se garantiza con
+timer + enabled en los one-shot, y con `Restart=` en los persistentes. Ambas cosas estan
+medidas arriba.
