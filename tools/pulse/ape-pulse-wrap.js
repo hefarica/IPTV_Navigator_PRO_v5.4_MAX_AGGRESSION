@@ -330,8 +330,45 @@ function normalizeUpstream(u) {
   }
 }
 
+/**
+ * [FIX 2026-11-15] Reescribe el `d=` de una URL de /pulse con la resolucion REAL del canal.
+ *
+ * El `d=` lo ponia el generador como constante (m3u8-typed-arrays-ultimate.js:13213) y
+ * equivale a {t:generic,s:unknown,r:2048,w:1920,h:1080,f:30} — el perfil 'generic' de
+ * ape-url-builder.js:77. Todos los canales llevaban lo mismo, un 4K real incluido.
+ *
+ * El VPS no sabe que televisor tienes al generar la lista, pero SI sabe que resolucion
+ * tiene CADA canal: es el `#EXT-X-APE-STREAM-TRUTH` que el generador ya mide. Eso es lo
+ * que va en el d=.
+ *
+ * NO se toca el `hdr`: el fichero documenta mas arriba que no se declara HDR desde pq=1.
+ * Solo w/h/f, que es observacion directa del STREAM-TRUTH.
+ *
+ * Se aplica ANTES del early-return de ALREADY: las listas cableadas ya traen URLs
+ * /pulse/ y sin esto el fix no llegaba nunca (medido: wrapped=0, d_rebuilt=None).
+ */
+function rebuildDeviceData(url) {
+  if (!cur || !cur.truth) { return url; }
+  const w = parseInt(cur.truth.w, 10);
+  const h = parseInt(cur.truth.h, 10);
+  const fps = Number(cur.truth.rawfps || cur.truth.fps);
+  if (!Number.isInteger(w) && !Number.isInteger(h) && !Number.isFinite(fps)) { return url; }
+  const dd = { t: 'generic', s: 'unknown', r: 2048 };
+  if (Number.isInteger(w) && w >= 2 && w <= 7680) dd.w = w;
+  if (Number.isInteger(h) && h >= 2 && h <= 4320) dd.h = h;
+  if (Number.isFinite(fps) && fps > 0 && fps <= 240) dd.f = Math.round(fps);
+  let b64;
+  try { b64 = Buffer.from(JSON.stringify(dd), 'utf8').toString('base64').replace(/=+$/, ''); }
+  catch (e) { counters.dRebuiltError = (counters.dRebuiltError || 0) + 1; return url; }
+  if (!/[?&]d=/.test(url)) { counters.dRebuiltMiss = (counters.dRebuiltMiss || 0) + 1; return url; }
+  const out = url.replace(/([?&])d=[^&]*/, '$1d=' + b64);
+  if (out !== url) { counters.dRebuilt = (counters.dRebuilt || 0) + 1; }
+  return out;
+}
+
 function transformUrl(url) {
   url = normalizeUpstream(url);
+  url = rebuildDeviceData(url);
   if (ALREADY.test(url)) { counters.already++; return url; }
   if (!/^https?:\/\//i.test(url)) return url;
   seq++;
