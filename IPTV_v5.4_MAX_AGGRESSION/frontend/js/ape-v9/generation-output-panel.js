@@ -907,6 +907,122 @@
     } catch (e) { status('AMBAS falló: ' + e.message, '#ef4444'); toast('AMBAS falló: ' + e.message, 'error'); }
   }
 
+  // ── LIGHT · proyeccion por perfil (cuarta salida) ───────────────────────────
+  // Contrato que se VALIDA antes de dar por buena la lista. Si algo no cuadra,
+  // se dice y NO se entrega como verde. Ningun numero se inventa.
+  var LIGHT_CONTRACT = {
+    canalesMin: 20000,        // medido 21.224
+    plantillas: 9,            // medido 9
+    apeEnCuerpo: 0,           // 0 lineas #EXT-X-APE- despues del primer #EXTINF
+    lineasPorCanal: 1040
+  };
+
+  function setLightState(text, color) {
+    var el = document.getElementById('ape-light-state');
+    if (!el) return;
+    el.textContent = text;
+    el.style.color = color || '#64748b';
+  }
+
+  function lightBaseUrl() {
+    try {
+      var l = window.APE_LIST_NAME || window.APE_LAST_LIST || '';
+      if (l) return l.replace(/\.m3u8$/i, '') + '_CABLEADA_LIGHT.m3u8';
+    } catch (e) { /* noop */ }
+    return null;
+  }
+
+  // Valida la lista servida SIN descargar 241 MB: pide las cabeceras y usa
+  // el endpoint de estado del VPS, que ya cuenta EXTINF y plantillas.
+  async function validateLight() {
+    var base = lightBaseUrl();
+    if (!base) return { ok: false, reason: 'NO_LIST_NAME' };
+    var url = '/prisma/api/list-light-verify.php?lista=' + encodeURIComponent(base);
+    var r;
+    try {
+      r = await fetch(url, { cache: 'no-store' });
+    } catch (e) {
+      return { ok: false, reason: 'VERIFY_UNREACHABLE', detail: e.message };
+    }
+    if (r.status === 404) return { ok: false, reason: 'VERIFY_ENDPOINT_ABSENT' };
+    if (!r.ok) return { ok: false, reason: 'VERIFY_HTTP_' + r.status };
+    var j;
+    try { j = await r.json(); } catch (e) { return { ok: false, reason: 'VERIFY_NOT_JSON' }; }
+
+    var fallos = [];
+    if (!(j.canales >= LIGHT_CONTRACT.canalesMin)) fallos.push('canales=' + j.canales + ' < ' + LIGHT_CONTRACT.canalesMin);
+    if (j.plantillas !== LIGHT_CONTRACT.plantillas) fallos.push('plantillas=' + j.plantillas + ' != ' + LIGHT_CONTRACT.plantillas);
+    if ((j.ape_cuerpo || 0) !== LIGHT_CONTRACT.apeEnCuerpo) fallos.push('ape_cuerpo=' + j.ape_cuerpo + ' != 0');
+    if (j.lineas_por_canal && j.lineas_por_canal !== LIGHT_CONTRACT.lineasPorCanal) {
+      fallos.push('lineas_por_canal=' + j.lineas_por_canal + ' != ' + LIGHT_CONTRACT.lineasPorCanal);
+    }
+    if (fallos.length) return { ok: false, reason: 'CONTRACT_FAIL', fallos: fallos, raw: j };
+    return { ok: true, raw: j };
+  }
+
+  async function runLight() {
+    var d = applyDelta(false);
+    if (!checkGeneration()) return;
+    var cb = document.getElementById('ape-out-light');
+    if (!cb || !cb.checked) {
+      status('LIGHT: marca el checkbox LIGHT para poder generarla', '#f59e0b');
+      toast('LIGHT: el checkbox es la autorización explícita de esta variante', 'warning');
+      return;
+    }
+    try {
+      status('LIGHT: generando la base CDN con delta ' + d + '%…', '#e879f9');
+      setLightState('generando base…', '#e879f9');
+      if (!isJsonMetadataOutput()) sendDeltaToVps(d);
+
+      // 1) base CDN (la materia prima real de la proyeccion)
+      var result = await window.APEGenerationController.prepublishAndGenerateDual({
+        buffer_delta_pct: d,
+        buffer_delta_array: getDeltaArray(d)
+      });
+      generationResultStatus(result, 'LIGHT: base CDN lista · proyectando…');
+
+      // 2) proyeccion en el VPS
+      var base = lightBaseUrl();
+      setLightState('proyectando…', '#e879f9');
+      var pr = await fetch('/prisma/api/list-light-project.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lista: base })
+      });
+      if (pr.status === 404) {
+        setLightState('NOT_AVAILABLE · endpoint ausente', '#f59e0b');
+        status('LIGHT: el endpoint de proyección no está desplegado (404). La base CDN SÍ se generó.', '#f59e0b');
+        toast('LIGHT: base generada, proyección no disponible (404 honesto)', 'warning');
+        return;
+      }
+      if (!pr.ok) {
+        setLightState('FALLÓ · HTTP ' + pr.status, '#ef4444');
+        status('LIGHT: proyección falló con HTTP ' + pr.status, '#ef4444');
+        return;
+      }
+
+      // 3) validacion fail-closed del contrato
+      setLightState('validando…', '#38bdf8');
+      var v = await validateLight();
+      if (v.ok) {
+        setLightState('VALIDADA · ' + (v.raw.canales || '?') + ' canales · ' + (v.raw.plantillas || '?') + ' plantillas', '#22c55e');
+        status('LIGHT VALIDADA: ' + (v.raw.canales || '?') + ' canales · ' + (v.raw.plantillas || '?') + ' plantillas · ' +
+               (v.raw.ape_cuerpo === 0 ? '0 APE en cuerpo' : 'APE en cuerpo: ' + v.raw.ape_cuerpo) +
+               ' · ' + (v.raw.bytes ? Math.round(v.raw.bytes / 1048576) + ' MB' : 'bytes N/D'), '#22c55e');
+        toast('LIGHT validada: contrato cumplido', 'success');
+      } else {
+        var why = v.reason + (v.fallos ? ' · ' + v.fallos.join(' · ') : '');
+        setLightState('NO VALIDADA · ' + v.reason, '#ef4444');
+        status('LIGHT NO VALIDADA: ' + why, '#ef4444');
+        toast('LIGHT no cumple el contrato: ' + why, 'error');
+      }
+    } catch (e) {
+      setLightState('FALLÓ · ' + e.message, '#ef4444');
+      status('LIGHT falló: ' + e.message, '#ef4444');
+      toast('LIGHT falló: ' + e.message, 'error');
+    }
+  }
+
   function bindOption(id, cardId) {
     var input = document.getElementById(id);
     var card = document.getElementById(cardId);
@@ -958,6 +1074,14 @@
       '<label style="cursor:pointer;"><input type="checkbox" id="ape-out-dash" style="accent-color:#38bdf8;"> DASH</label>' +
       '<label style="cursor:pointer;"><input type="checkbox" id="ape-out-hybrid" style="accent-color:#a855f7;"> HÍBRIDA HLS+DASH</label>' +
       '<label style="cursor:pointer;" title="Usar rutas /jit/live/ del catálogo JIT"><input type="checkbox" id="ape-out-jit" style="accent-color:#f59e0b;"> JIT</label>' +
+      // [LIGHT 2026-11-15] Cuarta salida: proyeccion por perfil. NO la produce ninguna
+      // de las tres tarjetas existentes: nace de la CABLEADA y la transforma
+      //  1) ape-pulse-wrap.js reescribe d= desde #EXT-X-APE-STREAM-TRUTH
+      //  2) ape-profile-project.js light escribe 9 plantillas + 1 indice en cabecera
+      //  3) resultado: 1.040 lineas por canal recuperables desde 9 plantillas
+      //     21.224 canales - 241.369.147 B - 0 APE en cuerpo
+      // El checkbox VALIDA (gate fail-closed) y no solo genera.
+      '<label style="cursor:pointer;" title="Proyeccion LIGHT por perfil: 1.040 lineas por canal desde 9 plantillas, d= desde STREAM-TRUTH"><input type="checkbox" id="ape-out-light" style="accent-color:#e879f9;"> LIGHT</label>' +
       '<label style="cursor:pointer;" title="Modo HDR de salida">HDR <select id="ape-out-hdr" style="accent-color:#ef4444;background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:5px;padding:2px 4px;font-size:.78rem;">' +
       '<option value="auto">Auto</option><option value="pq">PQ</option><option value="sdr">SDR</option></select></label>' +
       '</div>' +
@@ -989,6 +1113,12 @@
       '<div style="font-size:.8rem;color:#94a3b8;margin:4px 0 7px;">Un archivo DIRECTA y otro CDN, con los mismos canales</div>' +
       '<button data-ape-run="both" style="background:linear-gradient(135deg,#0891b2,#22d3ee);color:#06240f;border:0;border-radius:7px;padding:7px 12px;font-size:.82rem;font-weight:800;cursor:pointer;">Generar AMBAS</button>' +
       '<span style="font-size:.84rem;color:#64748b;margin-left:7px;">dos archivos M3U</span></div>' +
+      // LIGHT
+      '<div style="background:rgba(2,6,23,.38);border:1px solid rgba(232,121,249,.45);border-radius:11px;padding:11px;">' +
+      '<div style="font-weight:800;color:#f0abfc;font-size:1.05rem;">LIGHT · proyección por perfil</div>' +
+      '<div style="font-size:.8rem;color:#94a3b8;margin:4px 0 7px;">9 plantillas + índice · d= desde STREAM-TRUTH · valida antes de entregar</div>' +
+      '<button data-ape-run="light" style="background:linear-gradient(135deg,#a21caf,#e879f9);color:#fff;border:0;border-radius:7px;padding:7px 12px;font-size:.82rem;font-weight:800;cursor:pointer;">Generar LIGHT</button>' +
+      '<span id="ape-light-state" style="font-size:.84rem;color:#64748b;margin-left:7px;">sin validar</span></div>' +
       '</div>' +
       // Options
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:9px;margin-top:9px;">' +
@@ -1042,6 +1172,7 @@
         var k = b.getAttribute('data-ape-run');
         if (k === 'vps') runVps();
         else if (k === 'direct') runDirect();
+        else if (k === 'light') runLight();
         else runBoth();
       });
     });
@@ -1071,7 +1202,19 @@
       panel.querySelectorAll('[data-ape-run="both"]').forEach(function (b) {
         b.disabled = !sb.checked; b.style.opacity = sb.checked ? '1' : '.4'; b.style.cursor = sb.checked ? 'pointer' : 'not-allowed';
       });
+      // LIGHT: su propio checkbox es la autorizacion. Sin marcar, el boton NO se puede pulsar.
+      var sl = document.getElementById('ape-out-light');
+      panel.querySelectorAll('[data-ape-run="light"]').forEach(function (b) {
+        var on = !!(sl && sl.checked);
+        b.disabled = !on; b.style.opacity = on ? '1' : '.4'; b.style.cursor = on ? 'pointer' : 'not-allowed';
+      });
     }
+    var slCb = document.getElementById('ape-out-light');
+    if (slCb) slCb.addEventListener('change', function () {
+      selPaint();
+      if (slCb.checked) { setLightState('seleccionada · sin validar', '#e879f9'); }
+      else { setLightState('sin validar', '#64748b'); }
+    });
     if (sv) sv.addEventListener('change', function () { if (sb) sb.checked = false; selPaint(); });
     if (sd) sd.addEventListener('change', function () { if (sb) sb.checked = false; selPaint(); });
     if (sb) sb.addEventListener('change', function () { if (sb.checked) { sv.checked = true; sd.checked = true; } selPaint(); });
