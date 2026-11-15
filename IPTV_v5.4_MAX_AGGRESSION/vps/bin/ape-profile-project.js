@@ -67,12 +67,39 @@
  *
  * USO
  *   node ape-profile-project.js project <in.m3u8> <out.m3u8> [--gz] [--no-selfverify] [--limit N]
+ *   node ape-profile-project.js light   <lista_servida.m3u8> <out.m3u8> --origin <origen.m3u8>
+ *                                       [--gz] [--no-selfverify] [--no-gz-size] [--limit N] [--report r.json]
+ *   node ape-profile-project.js verify-light <lista_con_plantillas.m3u8> <origen.m3u8>
+ *                                       [--channels 1,100,21000]
  *   node ape-profile-project.js verify  <projected.m3u8> <original.m3u8>
  *   node ape-profile-project.js info    <file.m3u8>
  *
+ *   `light` es el modo de ESTE encargo: lleva las plantillas de perfil a la cabecera de la
+ *   lista servida y deja en cada #EXTSHIMOTT la referencia `mp` que permite reconstruir las
+ *   1.040 lineas de metadata de ese canal. Ver el bloque 9 de este mismo fichero.
+ *
  *   --gz   escribe el artefacto como gzip (magic 1f 8b). `verify` lo detecta solo.
  *          El JSON de salida informa bytes_out (artefacto real), bytes_out_plain,
- *          ratio y ratio_plain: los dos numeros, medidos.
+ *          ratio y ratio_plain: los dos numeros, medidos. En `light`, ademas, bytes_out_gz
+ *          (gzip -9 medido del artefacto completo).
+ *
+ * DESPLIEGUE (NO se ejecuta aqui: lo aprueba el operador)
+ *   1) dry-run a un fichero hermano, NUNCA sobre la lista servida:
+ *        node /opt/ape-bin/ape-profile-project.js light \
+ *          /var/www/lists/<BASE>_LIGHT.m3u8  /var/www/lists/<BASE>_LIGHT.m3u8.NEW \
+ *          --origin /var/www/lists/<BASE>.m3u8 --gz --report /var/log/ape-light.json
+ *   2) gate que decide (los tres a la vez):
+ *        exit 0 · .verificado === true · checks 1/100/21000 con
+ *        sha256_reconstruido === sha256_origen
+ *   3) promover SOLO con autorizacion explicita y copia previa:
+ *        cp -a <BASE>_LIGHT.m3u8 <BASE>_LIGHT.m3u8.bak-<stamp>
+ *        mv <BASE>_LIGHT.m3u8.NEW <BASE>_LIGHT.m3u8
+ *        mv <BASE>_LIGHT.m3u8.NEW.gz <BASE>_LIGHT.m3u8.gz
+ *      rollback: mv <BASE>_LIGHT.m3u8.bak-<stamp> <BASE>_LIGHT.m3u8
+ *   AVISO MEDIDO: ape-list-light.sh valida `grep -c '^#EXT-X-APE-' == 0` sobre la
+ *   lista _LIGHT y consideraria corrupta esta salida por sus 10 lineas de cabecera.
+ *   Ese guard esta FUERA de este fichero: debe relajarse a "0 fuera de la cabecera"
+ *   antes de publicar, o el timer regenerara la lista y tirara las plantillas.
  *
  * SALIDAS
  *   project -> JSON {canales, plantillas, lineas_plantilla, bytes_in, bytes_out, ratio,
@@ -90,7 +117,7 @@ const crypto = require('crypto');
 const zlib = require('zlib');
 
 const TOOL = 'ape-profile-project';
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const FORMAT = 'ape-profile-template+nonce/1';
 
 /* ────────────────────────────────────────────────────────────────────────────────
@@ -947,23 +974,1040 @@ function info(file) {
   };
 }
 
-/* ────────────────────────────────────────────────────────────────────────────────
- * 9. CLI
- * ──────────────────────────────────────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════════════════════════
+ * 9. LIGHT — PLANTILLAS DE PERFIL EN LA CABECERA + REFERENCIA POR CANAL
+ *
+ * QUE HACE ESTE MODO (medido sobre el ORIGEN real, no supuesto)
+ *   Toma la LISTA SERVIDA (la que ya es OTT-valida: #EXTINF + #EXTHTTP +
+ *   #EXTSHIMOTT + URL) y la ORIGEN (la que trae las 1.040 lineas de metadata por
+ *   canal). Aprende, por FORMA de bloque, una plantilla con los valores nonce
+ *   sustituidos por marcadores; la publica UNA vez en la cabecera (un tag por par
+ *   perfil+tier); y en cada canal solo deja la referencia `mp` dentro del
+ *   #EXTSHIMOTT que ya existe (que se conserva ENTERO: solo se le anade `mp`).
+ *
+ * POR QUE POR FORMA Y NO SOLO POR PAR (perfil,tier) — MEDIDO
+ *   El bloque no mide lo mismo en todos los canales del mismo par: el origen real
+ *   tiene 40 formas sobre 9 pares (rango 1.027..1.051 lineas). Una plantilla por
+ *   par desalinea los indices y el "valor variable" pasa a ser el bloque entero.
+ *   Por eso la plantilla de un par contiene VARIANTES, una por forma, y el canal
+ *   declara cual usa (`v`). La cabecera sigue teniendo UN tag por perfil.
+ *
+ * LOS VALORES DE CADA CANAL (n)
+ *   Se extraen de los tags portadores que el propio generador declara en el
+ *   bloque (SID, NONCE, REQUEST, SESSION, LIST-HASH, TIMESTAMP, UA, IP, canal,
+ *   nombre, spoof por familia, DENYLIST...). La sustitucion es POR VALOR: un solo
+ *   valor cubre todas las lineas que lo repiten ({SID} aparece ~20 veces). Los
+ *   valores que se repiten en el catalogo (UA, IP, paneles) se guardan UNA vez
+ *   por par en un POOL y el canal lleva el INDICE (un numero), no la cadena.
+ *   `n` es un ARRAY POSICIONAL alineado con `vars` (no un objeto con claves): en
+ *   21.224 canales, ahorrarse ~20 claves por canal son ~2 MB de lista. El nombre
+ *   de cada posicion viaja en el INDICE (`vars`), asi que el receptor sabe que
+ *   n[0] es SID, n[1] NONCE, etc.
+ *
+ * LO QUE NO VIAJA EN `n` — EXTINF, EXTHTTP Y URL
+ *   La lista servida YA lleva por canal su #EXTINF, su #EXTHTTP y su URL. La
+ *   plantilla no los duplica: guarda su POSICION (`e` = indice de #EXTHTTP,
+ *   `u` = indice de la URL) y la reconstruccion los toma de la propia lista. Lo
+ *   que se reconstruye desde cabecera+`mp` son las 1.040 lineas de metadata que
+ *   la lista ligera tira. Todo lo que no se deriva (lineas que cambian de FORMA
+ *   dentro de la misma forma) va al parche `x` del canal, con la linea literal.
+ *
+ * FORMATO EMITIDO
+ *   Cabecera (una vez, antes del primer #EXTINF):
+ *     #EXT-X-APE-PROFILE-INDEX:{json}
+ *     #EXT-X-APE-PROFILE-TEMPLATE:<par>:<base64(gzip(json))>   (x9)
+ *   Canal: las lineas de la lista servida tal cual, con el #EXTSHIMOTT existente
+ *     ampliado: {"ver":...,"id":...,...,"mp":{"p":"P3+T5","v":3,"n":[...],"x":{...}}}
+ *
+ * RECONSTRUCCION (contrato del receptor)
+ *   variante = template[mp.p].variants[mp.v]
+ *   para i en 0..n-1:
+ *     i == 0        -> #EXTINF de la propia lista
+ *     i == e        -> #EXTHTTP de la propia lista
+ *     i == u        -> URL de la propia lista
+ *     x[i] existe   -> x[i] (linea literal)
+ *     si no         -> variante.l[i] con los numeros sustituidos por n[idx]
+ *   El resultado debe ser IDENTICO al bloque del origen. Eso es lo que comprueba
+ *   la autoverificacion: recorre la lista nueva Y el origen en paralelo y compara
+ *   linea por linea los 21.224 canales.
+ *
+ * LIMITES HONESTOS
+ *   - Lo que no es derivable de los portadores declarados se paga como parche.
+ *     El informe incluye `parche_lineas_total` y `parche_por_tag` medidos.
+ *   - El tamano que cuesta la cabecera se declara, no se esconde.
+ *   - NO sustituye a la lista servida: escribe donde se le diga y se niega a
+ *     escribir en directorios publicados (misma guarda que `project`).
+ * ════════════════════════════════════════════════════════════════════════════════ */
 
-function parseArgs(argv) {
-  const opts = { flags: new Set(), args: [] };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === '--limit') {
-      /* admite '--limit N' y '--limit=N' */
-      const v = argv[i + 1];
-      if (v !== undefined && !v.startsWith('--') && !isNaN(Number(v))) { opts.limit = Number(v); i++; opts.flags.add('--limit'); continue; }
-      opts.flags.add('--limit');
+const LIGHT_FORMAT = 'ape.profile-light/1';
+const LIGHT_TEMPLATE_FORMAT = 'ape.profile-template/1';
+const LIGHT_TEMPLATE_TAG = '#EXT-X-APE-PROFILE-TEMPLATE:';
+const LIGHT_INDEX_TAG = '#EXT-X-APE-PROFILE-INDEX:';
+const LIGHT_SHIM_TAG = '#EXTSHIMOTT:';
+const LIGHT_APE_PREFIX = '#EXT-X-APE-';
+/** Umbral de pool: un valor con <= N valores distintos por par viaja como indice. */
+const LIGHT_POOL_MAX = 512;
+
+/**
+ * Portadores de valor del canal: [MARCADOR, spec, weak?]. La spec es:
+ *   'TAG'                    -> el valor es el resto de la linea tras ':'
+ *   ['TAG', 'CLAVE', 'SEP']  -> el valor es lo que sigue a CLAVE= hasta SEP
+ * Los `weak` se aplican DESPUES de los fuertes: solo capturan el resto de la
+ * linea cuando ningun portador fuerte la ha cubierto. Asi una linea compuesta
+ * (p.ej. #EXT-X-CMAF-SESSION) se descompone en sus nonces, y una linea cuyo
+ * contenido entero varia (p.ej. el panel HDR de #EXT-X-DATERANGE) se captura
+ * como bloque.
+ */
+const LIGHT_VARS = [
+  ['SID', '#EXT-X-APE-IDEMPOTENCIA-SID'],
+  ['NONCE', '#EXT-X-APE-POLIMORFISMO-NONCE'],
+  ['REQ', '#EXT-X-APE-POLIMORFISMO-REQUEST'],
+  ['SESS', '#EXT-X-APE-POLIMORFISMO-SESSION'],
+  ['LHASH', '#EXT-X-APE-POLIMORFISMO-LIST-HASH'],
+  ['TS', '#EXT-X-APE-POLIMORFISMO-TIMESTAMP'],
+  ['UA', '#EXT-X-APE-POLIMORFISMO-UA'],
+  ['IP', '#EXT-X-APE-POLIMORFISMO-IP'],
+  ['CHID', '#EXT-X-APE-IDEMPOTENCIA-CHANNEL-ID'],
+  ['NAME', '#EXT-X-APE-IDEMPOTENCIA-CHANNEL-NAME'],
+  ['DENY', '#EXT-X-APE-DENYLIST-REMOVED'],
+  ['SAND', '#EXT-X-APE-SPOOF-ANDROID'],
+  ['SIOS', '#EXT-X-APE-SPOOF-IOS'],
+  ['SCHR', '#EXT-X-APE-SPOOF-CHROME'],
+  ['STIV', '#EXT-X-APE-SPOOF-TIVIMATE'],
+  ['SOTT', '#EXT-X-APE-SPOOF-OTT'],
+  ['SEXO', '#EXT-X-APE-SPOOF-EXOPLAYER'],
+  ['SVLC', '#EXT-X-APE-SPOOF-VLC'],
+  ['SSAF', '#EXT-X-APE-SPOOF-SAFARI'],
+  ['SIP', '#EXT-X-APE-SPOOF-IP'],
+  ['SKODI', '#EXT-X-APE-SPOOF-KODI'],
+  ['PHKODI', '#EXT-X-PHANTOM-HYDRA-UA-KODI'],
+  ['SPU', ['#EXT-X-APE-SPOOF', 'UA=', '']],
+  ['SVID', ['#EXT-X-STREAM-INF', 'STABLE-VARIANT-ID="', '"']],
+  ['SEED', ['#EXT-X-APE-URL2-DEVICE', 'SEED=', '']],
+  ['EXUA', '#EXTVLCOPT:http-user-agent'],
+  ['EXREF', '#EXTVLCOPT:http-referrer'],
+  ['KUA', '#KODIPROP:inputstream.adaptive.network_user_agent'],
+  ['MREF', ['#KODIPROP:inputstream.adaptive.manifest_headers', 'Referer=', '&']],
+  ['MUA', ['#KODIPROP:inputstream.adaptive.manifest_headers', 'User-Agent=', '&']],
+  ['SREF', ['#KODIPROP:inputstream.adaptive.stream_headers', 'Referer=', '&']],
+  ['SUA', ['#KODIPROP:inputstream.adaptive.stream_headers', 'User-Agent=', '&']],
+  ['MSEC', '#EXT-X-APE-MULTI-SERVER-SECONDARY'],
+  ['MTER', '#EXT-X-APE-MULTI-SERVER-TERTIARY'],
+  ['CBRAND', '#EXT-X-APE-CONTENT-HEURISTIC-BRAND'],
+  ['CCLASS', '#EXT-X-APE-CONTENT-CLASS'],
+  ['CTYPE', '#EXT-X-APE-CONTENT-HEURISTIC-TYPE'],
+  ['CVMAF', '#EXT-X-APE-CONTENT-HEURISTIC-VMAF'],
+  ['K4CT', '#EXT-X-APE-4KFALSE-CONTENT-TYPE'],
+  ['HDRID', ['#EXT-X-DATERANGE', 'ID="', '"']],
+  ['SRT', '#EXT-X-APE-SRT-PROTOCOL', true],
+  ['BITDEPTH', '#EXT-X-APE-BIT-DEPTH', true],
+  ['HDRBITDEPTH', '#EXT-X-APE-HDR-BITDEPTH', true],
+  ['QOBITDEPTH', '#EXT-X-APE-QUALITY-OVERRIDE-BITDEPTH', true],
+  ['REBUFTOL', '#EXT-X-APE-HTTP-REBUFFER-TOLERANCE', true],
+  ['AUDIOTRK', '#EXT-X-APE-AUDIO-TRACK-ID', true],
+  ['BNLIVE', '#EXT-X-APE-BUFFER-NUCLEAR-LIVE-DELAY', true],
+  ['BNHOLD', '#EXT-X-APE-BUFFER-NUCLEAR-HOLD-BACK', true],
+  ['BNPART', '#EXT-X-APE-BUFFER-NUCLEAR-PART-HOLD-BACK', true],
+  ['BBRMAX', '#EXT-X-APE-BBR-HIJACK-RELOAD-MAXPERIOD', true],
+  ['BBRMIN', '#EXT-X-APE-BBR-HIJACK-RELOAD-MINPERIOD', true],
+  ['CORTELEM', '#EXT-X-APE-CORTEX-TELEMETRY-REBUFFER', true],
+  ['CLOCKSYNC', '#EXT-X-APE-SYS-SYS-CLOCK-SYNCHRO', true],
+  ['CONF', '#EXT-X-APE-CONFIDENCE', true],
+  ['LCEVCPREQ', '#EXT-X-APE-LCEVC-PLAYER-REQUIRED', true],
+  ['TLS', '#EXT-X-APE-TLS-COHERENCE', true]
+];
+const LIGHT_VAR_NAMES = LIGHT_VARS.map((v) => v[0]);
+const LIGHT_VAR_SPEC = Object.create(null);
+for (const v of LIGHT_VARS) LIGHT_VAR_SPEC[v[0]] = { spec: v[1], weak: v[2] === true };
+const LIGHT_MARKER_RE = /\{([A-Z][A-Z0-9_]{0,15})\}/g;
+
+/** Nombre de tag de una linea: '#EXT-X-...' o '#EXTINF' / '<URL>' / '<EMPTY>'. */
+function lightTagOf(line) {
+  if (!line) return '<EMPTY>';
+  if (line.charCodeAt(0) !== 35) return '<URL>';
+  const c = line.indexOf(':');
+  return c > 0 ? line.slice(0, c) : line;
+}
+
+/** Valor de un portador en una linea (null si no esta). */
+function lightCarrierValue(line, name) {
+  const spec = LIGHT_VAR_SPEC[name].spec;
+  const colon = line.indexOf(':');
+  if (colon < 0) return null;
+  if (typeof spec === 'string') return line.slice(colon + 1);
+  const search = spec[1];
+  const at = line.indexOf(search, colon + 1);
+  if (at < 0) return null;
+  const from = at + search.length;
+  const sep = spec[2];
+  if (sep === '') return line.slice(from);
+  const end = line.indexOf(sep, from);
+  return end < 0 ? line.slice(from) : line.slice(from, end);
+}
+
+/** Analiza un bloque del ORIGEN: par, forma, portadores y posiciones especiales. */
+function lightAnalyse(block) {
+  const tags = new Array(block.length);
+  const vars = new Map();
+  let profile = null;
+  let tier = null;
+  let exthttpAt = -1;
+  let urlAt = -1;
+  for (let i = 0; i < block.length; i++) {
+    const line = block[i];
+    const tag = lightTagOf(line);
+    tags[i] = tag;
+    if (tag === '#EXTINF') {
+      if (profile === null) {
+        const m = /ape-profile="(P[0-9](?:\.5)?)"/.exec(line);
+        if (m) profile = m[1];
+      }
+    } else if (tag === '#EXTHTTP') {
+      if (exthttpAt < 0) {
+        exthttpAt = i;
+        const m = /"X-APE-Tier"\s*:\s*"(T[0-9]|F[0-9])"/.exec(line);
+        if (m) tier = m[1];
+      }
+    } else if (tag === '<URL>') {
+      if (urlAt < 0) urlAt = i;
+    }
+    if (tag.charCodeAt(0) !== 35) continue;
+    for (let k = 0; k < LIGHT_VARS.length; k++) {
+      const name = LIGHT_VAR_NAMES[k];
+      if (vars.has(name)) continue;
+      const spec = LIGHT_VARS[k][1];
+      const tagName = typeof spec === 'string' ? spec : spec[0];
+      if (tag !== tagName) continue;
+      const val = lightCarrierValue(line, name);
+      if (val !== null && val !== '') vars.set(name, val);
+    }
+  }
+  const pair = (profile === null ? '?' : profile) + '+' + (tier === null ? '?' : tier);
+  const shape = pair + '#' + block.length + '.' + fnv1a(tags.join('|')).toString(16).padStart(8, '0');
+  return { tags, vars, profile, tier, pair, shape, exthttpAt, urlAt };
+}
+
+/** Sustituye los marcadores conocidos de una linea por los valores del canal. */
+function lightRender(line, vars) {
+  let out = '';
+  let pos = 0;
+  LIGHT_MARKER_RE.lastIndex = 0;
+  let m;
+  while ((m = LIGHT_MARKER_RE.exec(line)) !== null) {
+    const v = vars.get(m[1]);
+    if (v === undefined) continue; /* llave literal: se conserva */
+    out += line.slice(pos, m.index) + v;
+    pos = m.index + m[0].length;
+  }
+  return out + line.slice(pos);
+}
+
+/**
+ * Tokeniza un bloque: sustituye cada valor portador por su marcador.
+ * Fuertes primero (longitud descendente) y `weak` despues, de modo que un valor
+ * compuesto no se come los marcadores ya puestos. Solo se marca una linea si la
+ * ida y vuelta es EXACTA; si no, la linea queda literal (flag 0).
+ */
+function lightTokenize(block, vars) {
+  const strong = [];
+  const weak = [];
+  const tailMap = new Map(); // valor -> marcador (para el anclaje de cola completa)
+  for (let k = 0; k < LIGHT_VARS.length; k++) {
+    const name = LIGHT_VAR_NAMES[k];
+    const v = vars.get(name);
+    if (typeof v !== 'string' || v.length === 0) continue;
+    const marker = '{' + name + '}';
+    if (!tailMap.has(v)) tailMap.set(v, marker);
+    if (v.length < MIN_TOKEN_LEN) continue;
+    (LIGHT_VAR_SPEC[name].weak ? weak : strong).push([v, marker]);
+  }
+  const byLen = (a, b) => b[0].length - a[0].length || (a[0] < b[0] ? -1 : 1);
+  strong.sort(byLen);
+  weak.sort(byLen);
+  const flags = new Uint8Array(block.length);
+  const out = new Array(block.length);
+  for (let i = 0; i < block.length; i++) {
+    const line = block[i];
+    /* ANCLAJE DE COLA COMPLETA: linea == 'TAG:' + valor. Exacto por construccion
+       y permite tokenizar valores cortos (p.ej. CHANNEL-ID:1) sin buscar
+       subcadenas cortas en todo el bloque, que corromperian otras lineas. */
+    const colon = line.indexOf(':');
+    if (colon > 0) {
+      const tail = line.slice(colon + 1);
+      const marker = tailMap.get(tail);
+      if (marker !== undefined) {
+        const candidate = line.slice(0, colon + 1) + marker;
+        if (lightRender(candidate, vars) === line) { out[i] = candidate; flags[i] = 1; continue; }
+      }
+    }
+    let s = line;
+    let touched = false;
+    for (let k = 0; k < strong.length; k++) {
+      if (s.indexOf(strong[k][0]) !== -1) { s = s.split(strong[k][0]).join(strong[k][1]); touched = true; }
+    }
+    for (let k = 0; k < weak.length; k++) {
+      if (s.indexOf(weak[k][0]) !== -1) { s = s.split(weak[k][0]).join(weak[k][1]); touched = true; }
+    }
+    if (!touched) { out[i] = line; continue; }
+    if (lightRender(s, vars) === line) { out[i] = s; flags[i] = 1; }
+    else out[i] = line;
+  }
+  return { lines: out, flags };
+}
+
+/**
+ * Compila una plantilla a segmentos: [texto, slot, texto, ...].
+ * Linea sin marcador -> [linea] (literal). `flags[i]===0` fuerza literal.
+ */
+function lightCompile(tokenLines, flags, vars) {
+  const slotIndex = new Map();
+  vars.forEach((n, i) => slotIndex.set(n, i));
+  const out = new Array(tokenLines.length);
+  for (let i = 0; i < tokenLines.length; i++) {
+    const line = tokenLines[i];
+    if (flags && flags[i] === 0) { out[i] = [line]; continue; }
+    const segs = [];
+    let pos = 0;
+    LIGHT_MARKER_RE.lastIndex = 0;
+    let m;
+    while ((m = LIGHT_MARKER_RE.exec(line)) !== null) {
+      const idx = slotIndex.get(m[1]);
+      if (idx === undefined) continue; /* llave literal */
+      segs.push(line.slice(pos, m.index));
+      segs.push(idx);
+      pos = m.index + m[0].length;
+    }
+    if (!segs.length) { out[i] = [line]; continue; }
+    segs.push(line.slice(pos));
+    out[i] = segs;
+  }
+  return out;
+}
+
+/** Renderiza una linea compilada con los valores posicionales del canal. */
+function lightRenderCompiled(seg, values, pool, vars) {
+  if (seg.length === 1) return seg[0];
+  let out = '';
+  for (let k = 0; k < seg.length; k++) {
+    const item = seg[k];
+    if ((k & 1) === 0) { out += item; continue; }
+    const v = values[item];
+    if (v === undefined || v === null) continue;
+    if (typeof v === 'number') {
+      const arr = pool[vars[item]];
+      out += arr && v < arr.length ? arr[v] : '';
+    } else out += v;
+  }
+  return out;
+}
+
+/* ── lectura/escritura por lineas, pull-based ──────────────────────────────── */
+
+function makeLineReader(file) {
+  const fd = fs.openSync(file, 'r');
+  const CH = 4 << 20;
+  const buf = Buffer.allocUnsafe(CH);
+  const pending = [];
+  let pi = 0;
+  let tail = null;
+  let eof = false;
+  let bytes = 0;
+  function fill() {
+    if (eof) return false;
+    const read = fs.readSync(fd, buf, 0, CH, null);
+    if (read <= 0) {
+      eof = true;
+      if (tail && tail.length) { pending.push(tail.toString('latin1')); tail = null; }
+      return false;
+    }
+    bytes += read;
+    let start = 0;
+    for (let i = 0; i < read; i++) {
+      if (buf[i] === 10) {
+        let line;
+        if (tail) { line = Buffer.concat([tail, buf.subarray(start, i)]).toString('latin1'); tail = null; }
+        else line = buf.toString('latin1', start, i);
+        pending.push(line);
+        start = i + 1;
+      }
+    }
+    if (start < read) {
+      const t = Buffer.from(buf.subarray(start, read));
+      tail = tail ? Buffer.concat([tail, t]) : t;
+    }
+    return true;
+  }
+  return {
+    next() {
+      if (pi >= pending.length) {
+        pending.length = 0; pi = 0;
+        if (!fill() && pi >= pending.length) return null;
+      }
+      return pending[pi++];
+    },
+    get bytes() { return bytes; },
+    close() { try { fs.closeSync(fd); } catch (e) { /* ya cerrado */ } }
+  };
+}
+
+/** Devuelve la cabecera de un m3u8 (lineas antes del primer #EXTINF). */
+function readHeaderLines(file) {
+  const r = makeLineReader(file);
+  const lines = [];
+  try {
+    for (;;) {
+      const line = r.next();
+      if (line === null) break;
+      if (line.startsWith('#EXTINF')) break;
+      lines.push(line);
+    }
+  } finally { r.close(); }
+  return lines;
+}
+
+/** Iterador pull de bloques de canal sobre un m3u8 (cabecera descartada). */
+function lightBlockIter(file) {
+  const r = makeLineReader(file);
+  let cur = null;
+  let inHeader = true;
+  let done = false;
+  return {
+    next() {
+      for (;;) {
+        if (done) return null;
+        const line = r.next();
+        if (line === null) {
+          done = true;
+          if (cur && cur.length) { const out = cur; cur = null; return out; }
+          return null;
+        }
+        if (inHeader) {
+          if (line.startsWith('#EXTINF')) { inHeader = false; cur = [line]; }
+          continue;
+        }
+        if (line.startsWith('#EXTINF')) {
+          if (cur) { const out = cur; cur = [line]; return out; }
+          cur = [line];
+          continue;
+        }
+        cur.push(line);
+      }
+    },
+    close() { r.close(); }
+  };
+}
+
+/** Escritor byte-exacto (latin1): 1 caracter = 1 byte, como el lector. */
+function makeByteWriter(fd) {
+  let acc = [];
+  let accBytes = 0;
+  let total = 0;
+  return {
+    push(line) {
+      acc.push(line);
+      accBytes += line.length + 1;
+      total += line.length + 1;
+      if (accBytes >= (4 << 20)) this.flush();
+    },
+    flush() {
+      if (!acc.length) return;
+      fs.writeSync(fd, Buffer.from(acc.join('\n') + '\n', 'latin1'));
+      acc = [];
+      accBytes = 0;
+    },
+    get bytes() { return total; }
+  };
+}
+
+/** Tamano gzip del fichero (nivel 9, mismo criterio que `gzip -9`). */
+function gzipSizeOfFile(file) {
+  const buf = fs.readFileSync(file);
+  return zlib.gzipSync(buf, { level: 9 }).length;
+}
+
+/* ── LIGHT: aprendizaje (pasada 1 sobre el origen) ─────────────────────────── */
+
+function lightLearn(originPath) {
+  const t0 = Date.now();
+  const shapes = new Map();
+  const pairOrder = [];
+  const pairPools = new Map(); // pair -> Map(name -> {set:Set, overflow:boolean})
+  let channels = 0;
+  let headerLines = 0;
+
+  function learnBlock(block) {
+    channels++;
+    const a = lightAnalyse(block);
+    if (!pairPools.has(a.pair)) { pairPools.set(a.pair, new Map()); pairOrder.push(a.pair); }
+    const pools = pairPools.get(a.pair);
+    for (const [name, val] of a.vars) {
+      let rec = pools.get(name);
+      if (!rec) { rec = { set: new Set(), overflow: false }; pools.set(name, rec); }
+      if (rec.overflow) continue;
+      rec.set.add(val);
+      if (rec.set.size > LIGHT_POOL_MAX) { rec.set = null; rec.overflow = true; }
+    }
+    let sh = shapes.get(a.shape);
+    if (!sh) {
+      const tk = lightTokenize(block, a.vars);
+      sh = {
+        pair: a.pair, shape: a.shape, ref: block, lines: block.length,
+        flags: tk.flags, tokenized: tk.lines, n: 0,
+        exthttpAt: a.exthttpAt, urlAt: a.urlAt
+      };
+      shapes.set(a.shape, sh);
+    }
+    sh.n++;
+  }
+
+  const r = makeLineReader(originPath);
+  let cur = null;
+  let inHeader = true;
+  for (;;) {
+    const line = r.next();
+    if (line === null) break;
+    if (inHeader) {
+      if (line.startsWith('#EXTINF')) { inHeader = false; cur = [line]; }
+      else headerLines++;
       continue;
     }
-    if (a.startsWith('--limit=')) { opts.limit = Number(a.slice(8)); opts.flags.add('--limit'); continue; }
-    if (a.startsWith('--')) { opts.flags.add(a); continue; }
+    if (line.startsWith('#EXTINF')) {
+      if (cur) learnBlock(cur);
+      cur = [line];
+      continue;
+    }
+    cur.push(line);
+  }
+  if (cur) learnBlock(cur);
+  r.close();
+
+  /* pares definitivos: vars usadas = union de marcadores de todas sus formas */
+  const pairs = [];
+  for (const pair of pairOrder) {
+    const list = [];
+    for (const sh of shapes.values()) if (sh.pair === pair) list.push(sh);
+    list.sort((a, b) => b.n - a.n || (a.shape < b.shape ? -1 : 1));
+    const used = new Set();
+    for (const sh of list) {
+      for (const line of sh.tokenized) {
+        LIGHT_MARKER_RE.lastIndex = 0;
+        let m;
+        while ((m = LIGHT_MARKER_RE.exec(line)) !== null) if (LIGHT_VAR_SPEC[m[1]]) used.add(m[1]);
+      }
+    }
+    const vars = LIGHT_VAR_NAMES.filter((n) => used.has(n));
+    list.forEach((sh, i) => {
+      sh.variant = i;
+      sh.segs = lightCompile(sh.tokenized, sh.flags, vars);
+    });
+    const pool = {};
+    const poolIdx = {};
+    const poolSets = pairPools.get(pair) || new Map();
+    const channelsOfPair = list.reduce((a, sh) => a + sh.n, 0);
+    for (const name of vars) {
+      const rec = poolSets.get(name);
+      if (!rec || rec.overflow || !rec.set || rec.set.size === 0 || rec.set.size > LIGHT_POOL_MAX) continue;
+      /* Un pool solo se amortiza si cada valor se REPITE: si el valor es unico
+         por canal, el indice no ahorra nada y ademas infla la cabecera. Se exige
+         reutilizacion media >= 8. */
+      if (rec.set.size * 8 > channelsOfPair) continue;
+      const arr = [...rec.set].sort();
+      pool[name] = arr;
+      const idx = new Map();
+      arr.forEach((v, i) => idx.set(v, i));
+      poolIdx[name] = idx;
+    }
+    pairs.push({ k: pair, vars, pool, poolIdx, shapes: list });
+  }
+  pairs.sort((a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : 0));
+  return { shapes, pairs, channels, headerLines, ms: Date.now() - t0 };
+}
+
+/* ── LIGHT: serializacion de las plantillas ───────────────────────────────── */
+
+function lightSerializeTemplates(learn) {
+  const out = new Map();
+  for (const p of learn.pairs) {
+    /* TABLA DE LINEAS COMPARTIDA: las variantes de un mismo par difieren en unas
+       pocas lineas; guardar 40 copias del bloque entero es lo que infla la
+       cabecera. Cada variante es una lista de indices a la tabla. */
+    const table = [];
+    const tableIdx = new Map();
+    const variants = p.shapes.map((sh) => {
+      const ix = new Array(sh.segs.length);
+      for (let i = 0; i < sh.segs.length; i++) {
+        const key = JSON.stringify(sh.segs[i]);
+        let at = tableIdx.get(key);
+        if (at === undefined) { at = table.length; table.push(sh.segs[i]); tableIdx.set(key, at); }
+        ix[i] = at;
+      }
+      return { s: sh.shape, n: sh.n, e: sh.exthttpAt, u: sh.urlAt, x: ix };
+    });
+    const tpl = {
+      f: LIGHT_TEMPLATE_FORMAT,
+      k: p.k,
+      vars: p.vars,
+      pool: p.pool,
+      lines: table,
+      variants
+    };
+    const json = JSON.stringify(tpl);
+    const gz = zlib.gzipSync(Buffer.from(json, 'utf8'), { level: 9 });
+    const b64 = gz.toString('base64');
+    out.set(p.k, {
+      json, gz, b64,
+      sha256: crypto.createHash('sha256').update(gz).digest('hex'),
+      bytes_json: Buffer.byteLength(json),
+      bytes_gz: gz.length,
+      variants: p.shapes.length,
+      lines: p.shapes.length ? p.shapes[0].lines : 0,
+      channels: p.shapes.reduce((a, s) => a + s.n, 0)
+    });
+  }
+  return out;
+}
+
+/* ── LIGHT: emision de la lista con plantillas ─────────────────────────────── */
+
+/**
+ * @param {string} inPath  lista servida (EXTINF/EXTHTTP/EXTSHIMOTT/URL)
+ * @param {string} outPath destino
+ * @param {object} opts    {origin, gz, noSelfVerify, limit, gzSize}
+ */
+function light(inPath, outPath, opts) {
+  const t0 = Date.now();
+  opts = opts || {};
+  const blocked = isProtectedTarget(inPath, outPath);
+  if (blocked) return { ok: false, error: 'destino_protegido', detail: blocked };
+  if (!fs.existsSync(inPath)) return { ok: false, error: 'no_existe_entrada', detail: inPath };
+  const originPath = opts.origin || inPath;
+  if (!fs.existsSync(originPath)) return { ok: false, error: 'no_existe_origen', detail: originPath };
+  const limit = opts.limit && opts.limit > 0 ? opts.limit : 0;
+
+  const learn = lightLearn(originPath);
+  const tpls = lightSerializeTemplates(learn);
+
+  const index = {
+    f: LIGHT_FORMAT,
+    tool: TOOL + '/' + VERSION,
+    origin: path.basename(originPath),
+    origin_bytes: fs.statSync(originPath).size,
+    base: path.basename(inPath),
+    base_bytes: fs.statSync(inPath).size,
+    channels: learn.channels,
+    vars: LIGHT_VAR_NAMES,
+    container: 'gzip+base64',
+    pairs: learn.pairs.map((p) => {
+      const t = tpls.get(p.k);
+      return { k: p.k, channels: t.channels, variants: t.variants, lines: t.lines, gz: t.bytes_gz, sha256: t.sha256 };
+    })
+  };
+  const indexJson = JSON.stringify(index);
+
+  const headerIn = readHeaderLines(inPath);
+  const keptHeader = headerIn.filter((l) => !l.startsWith(LIGHT_TEMPLATE_TAG) && !l.startsWith(LIGHT_INDEX_TAG));
+
+  const stats = {
+    ok: true,
+    modo: 'light',
+    canales: 0,
+    lineas_emitidas: 0,
+    formas: learn.shapes.size,
+    pares: [],
+    plantillas_bytes_gz: 0,
+    plantillas_bytes_b64: 0,
+    indice_bytes: Buffer.byteLength(indexJson, 'utf8'),
+    cabecera_lineas: keptHeader.length + 1 + learn.pairs.length,
+    shimott_inyectados: 0,
+    shimott_sintetizados: 0,
+    parche_lineas_total: 0,
+    parche_medio_lineas: 0,
+    parche_por_tag: [],
+    valores_bytes_medios: 0,
+    bytes_base: fs.statSync(inPath).size,
+    bytes_out: 0,
+    delta_bytes: 0,
+    ratio: 0,
+    sha256_out: null,
+    desalineados_tvgid: 0,
+    truncado_por_limite: false,
+    version: VERSION
+  };
+  for (const t of tpls.values()) {
+    stats.plantillas_bytes_gz += t.bytes_gz;
+    stats.plantillas_bytes_b64 += t.b64.length;
+  }
+
+  const outTmp = outPath + '.tmp';
+  let fd = null;
+  let fatal = null;
+  const patchByTag = new Map();
+  const pairCount = new Map();
+  let patchLinesTotal = 0;
+  let valuesBytes = 0;
+  const varBytes = new Map();
+  let injected = 0;
+  let synthesized = 0;
+  let mismatch = 0;
+  let emittedLines = 0;
+
+  const bIn = lightBlockIter(inPath);
+  const bOr = lightBlockIter(originPath);
+  try {
+    fd = fs.openSync(outTmp, 'w');
+    const w = makeByteWriter(fd);
+    for (const line of keptHeader) w.push(line);
+    w.push(LIGHT_INDEX_TAG + indexJson);
+    for (const p of learn.pairs) w.push(LIGHT_TEMPLATE_TAG + p.k + ':' + tpls.get(p.k).b64);
+
+    for (;;) {
+      if (limit && stats.canales >= limit) { stats.truncado_por_limite = true; break; }
+      const bl = bIn.next();
+      const bo = bOr.next();
+      if (!bl && !bo) break;
+      if (!bl || !bo) throw Object.assign(new Error('canales_no_cuadran'), { code: 'canales_no_cuadran', detail: bl ? 'sobran_origen' : 'faltan_canales' });
+      if (stats.canales === 0 && bl.length > 200) {
+        throw Object.assign(new Error('base_no_es_light'), { code: 'base_no_es_light', detail: 'la base trae ' + bl.length + ' lineas por canal: pásale la lista SERVIDA (light), no el origen; el origen va en --origin' });
+      }
+      const a = lightAnalyse(bo);
+      const sh = learn.shapes.get(a.shape);
+      if (!sh) throw Object.assign(new Error('forma_no_aprendida'), { code: 'forma_no_aprendida', detail: a.shape });
+      const pair = learn.pairs.find((x) => x.k === a.pair);
+      if (!pair) throw Object.assign(new Error('par_no_aprendido'), { code: 'par_no_aprendido', detail: a.pair });
+
+      const idIn = /tvg-id="([^"]*)"/.exec(bl[0]);
+      const idOr = /tvg-id="([^"]*)"/.exec(bo[0]);
+      if (!idIn || !idOr || idIn[1] !== idOr[1]) mismatch++;
+
+      const values = new Array(pair.vars.length);
+      for (let s = 0; s < pair.vars.length; s++) {
+        const name = pair.vars[s];
+        const raw = a.vars.get(name);
+        if (raw === undefined) { values[s] = ''; continue; }
+        const idx = pair.poolIdx[name];
+        const pi = idx ? idx.get(raw) : undefined;
+        values[s] = pi === undefined ? raw : pi;
+        if (typeof values[s] === 'string') {
+          valuesBytes += values[s].length;
+          varBytes.set(name, (varBytes.get(name) || 0) + values[s].length);
+        }
+      }
+
+      const x = {};
+      let patchCount = 0;
+      for (let i = 0; i < bo.length; i++) {
+        /* EXTINF, EXTHTTP y URL ya viajan en la lista servida: no se duplican */
+        if (i === 0 || i === sh.exthttpAt || i === sh.urlAt) continue;
+        const rendered = lightRenderCompiled(sh.segs[i], values, pair.pool, pair.vars);
+        if (rendered !== bo[i]) {
+          x[i] = bo[i];
+          patchCount++;
+          const tg = lightTagOf(bo[i]);
+          patchByTag.set(tg, (patchByTag.get(tg) || 0) + 1);
+        }
+      }
+      patchLinesTotal += patchCount;
+
+      const mp = { p: a.pair, v: sh.variant, n: values };
+      if (patchCount) mp.x = x;
+
+      let shimAt = -1;
+      for (let i = 0; i < bl.length; i++) if (bl[i].startsWith(LIGHT_SHIM_TAG)) { shimAt = i; break; }
+      let shimLine;
+      if (shimAt >= 0) {
+        let obj;
+        try { obj = JSON.parse(bl[shimAt].slice(LIGHT_SHIM_TAG.length)); }
+        catch (e) { throw Object.assign(new Error('shimott_json_invalido'), { code: 'shimott_json_invalido', detail: 'canal ' + (stats.canales + 1) + ': ' + e.message }); }
+        delete obj.mp;
+        obj.mp = mp;
+        shimLine = LIGHT_SHIM_TAG + JSON.stringify(obj);
+        injected++;
+      } else {
+        synthesized++;
+        shimLine = LIGHT_SHIM_TAG + JSON.stringify({ ver: 1, mp });
+      }
+
+      if (shimAt >= 0) {
+        for (let i = 0; i < bl.length; i++) w.push(i === shimAt ? shimLine : bl[i]);
+        emittedLines += bl.length;
+      } else {
+        /* posicion del contrato: ultima linea de tag, inmediatamente antes de la URI */
+        let at = bl.length;
+        for (let i = 0; i < bl.length; i++) {
+          if (bl[i].length && bl[i].charCodeAt(0) !== 35) { at = i; break; }
+        }
+        for (let i = 0; i < bl.length; i++) {
+          if (i === at) w.push(shimLine);
+          w.push(bl[i]);
+        }
+        if (at >= bl.length) w.push(shimLine);
+        emittedLines += bl.length + 1;
+      }
+      pairCount.set(a.pair, (pairCount.get(a.pair) || 0) + 1);
+      stats.canales++;
+    }
+    w.flush();
+  } catch (e) {
+    fatal = e;
+  } finally {
+    if (fd !== null) { try { fs.closeSync(fd); } catch (e) { /* cerrado */ } }
+    bIn.close();
+    bOr.close();
+  }
+
+  if (fatal) {
+    try { fs.unlinkSync(outTmp); } catch (e) { /* no estaba */ }
+    return { ok: false, error: fatal.code || 'light_error', detail: fatal.detail || String(fatal.message), canales_procesados: stats.canales };
+  }
+  if (mismatch > 0) {
+    try { fs.unlinkSync(outTmp); } catch (e) { /* no estaba */ }
+    return { ok: false, error: 'base_desalineada', detail: mismatch + ' canales con tvg-id distinto entre la lista servida y el origen', canales: stats.canales };
+  }
+  if (fs.existsSync(outPath)) fs.unlinkSync(outPath);
+  fs.renameSync(outTmp, outPath);
+
+  stats.lineas_emitidas = emittedLines;
+  stats.shimott_inyectados = injected;
+  stats.shimott_sintetizados = synthesized;
+  stats.parche_lineas_total = patchLinesTotal;
+  stats.parche_medio_lineas = stats.canales ? +(patchLinesTotal / stats.canales).toFixed(2) : 0;
+  stats.parche_por_tag = [...patchByTag.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20);
+  stats.valores_bytes_medios = stats.canales ? +(valuesBytes / stats.canales).toFixed(1) : 0;
+  stats.valores_bytes_por_var = [...varBytes.entries()].sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => [k, +(v / stats.canales).toFixed(1)]);
+  stats.pares = learn.pairs.map((p) => ({ k: p.k, variantes: p.shapes.length, canales: pairCount.get(p.k) || 0 }));
+  stats.bytes_out = fs.statSync(outPath).size;
+  stats.delta_bytes = stats.bytes_out - stats.bytes_base;
+  stats.ratio = stats.bytes_out / stats.bytes_base;
+  stats.sha256_out = sha256File(outPath);
+
+  /* gzip del artefacto completo (mismo criterio que gzip -9). Con --gz se escribe
+     el hermano .gz y se reutiliza ESE gzip para el numero: no se comprime dos veces. */
+  if (opts.gz) {
+    const gzPath = outPath + '.gz';
+    const buf = zlib.gzipSync(fs.readFileSync(outPath), { level: 9 });
+    fs.writeFileSync(gzPath, buf);
+    stats.gz_path = gzPath;
+    stats.bytes_out_gz = buf.length;
+    stats.sha256_out_gz = crypto.createHash('sha256').update(buf).digest('hex');
+  } else if (!opts.noGzSize) {
+    stats.bytes_out_gz = gzipSizeOfFile(outPath);
+  }
+
+  if (stats.truncado_por_limite) {
+    stats.verificado = null;
+    stats.motivo_no_verificado = 'truncado_por_limite';
+  } else if (!opts.noSelfVerify) {
+    const v = verifyLight(outPath, originPath, {});
+    stats.verificado = !!v.ok;
+    stats.verificacion = {
+      ok: v.ok,
+      canales: v.canales,
+      lineas: v.lineas,
+      lineas_distintas: v.lineas_distintas,
+      canales_distintos: v.canales_distintos,
+      checks_canales: v.checks_canales,
+      ott: v.ott,
+      muestras: v.muestras,
+      ms: v.ms
+    };
+    if (!v.ok) {
+      stats.ok = false;
+      stats.error = 'reconstruccion_no_coincide';
+      stats.detalle_verificacion = v;
+    }
+  }
+  stats.ms = Date.now() - t0;
+  return stats;
+}
+
+/* ── LIGHT: verificacion (reconstruye y compara contra el ORIGEN) ─────────── */
+
+function verifyLight(lightPath, originPath, opts) {
+  opts = opts || {};
+  const t0 = Date.now();
+  if (!fs.existsSync(lightPath)) return { ok: false, error: 'no_existe_lista', detail: lightPath };
+  if (!fs.existsSync(originPath)) return { ok: false, error: 'no_existe_origen', detail: originPath };
+
+  const header = readHeaderLines(lightPath);
+  let index = null;
+  const templates = new Map();
+  for (const line of header) {
+    if (line.startsWith(LIGHT_INDEX_TAG)) {
+      try { index = JSON.parse(line.slice(LIGHT_INDEX_TAG.length)); }
+      catch (e) { return { ok: false, error: 'indice_json_invalido', detail: String(e.message) }; }
+      continue;
+    }
+    if (line.startsWith(LIGHT_TEMPLATE_TAG)) {
+      const rest = line.slice(LIGHT_TEMPLATE_TAG.length);
+      const c = rest.indexOf(':');
+      const pair = rest.slice(0, c);
+      try {
+        const gz = Buffer.from(rest.slice(c + 1), 'base64');
+        templates.set(pair, JSON.parse(zlib.gunzipSync(gz).toString('utf8')));
+      } catch (e) {
+        return { ok: false, error: 'plantilla_ilegible', par: pair, detail: String(e.message) };
+      }
+    }
+  }
+  if (!index) return { ok: false, error: 'sin_indice' };
+  if (!templates.size) return { ok: false, error: 'sin_plantillas' };
+
+  const ott = {
+    extm3u_primera: header.length > 0 && header[0].startsWith('#EXTM3U'),
+    extinf: 0,
+    exthttp: 0,
+    urls: 0,
+    shimott: 0,
+    ape_fuera_cabecera: 0,
+    cabecera_lineas: header.length,
+    plantillas_cabecera: templates.size,
+    indice_pares: (index.pairs || []).length
+  };
+  const sum = (key) => otc(ott, key);
+
+  const wanted = new Set((opts.channels && opts.channels.length ? opts.channels : [1, 100, 21000]).map(Number));
+  const checks = {};
+  let channels = 0;
+  let lines = 0;
+  let mismatches = 0;
+  let channelsBad = 0;
+  const samples = [];
+
+  const bLight = lightBlockIter(lightPath);
+  const bOrigin = lightBlockIter(originPath);
+  try {
+    for (;;) {
+      const bl = bLight.next();
+      const bo = bOrigin.next();
+      if (!bl && !bo) break;
+      if (!bl || !bo) {
+        return { ok: false, error: 'canales_no_cuadran', canales: channels };
+      }
+      channels++;
+      const ord = channels;
+      let extinf = null;
+      let exthttp = null;
+      let url = null;
+      let mp = null;
+      for (const line of bl) {
+        if (line.startsWith('#EXTINF')) { if (extinf === null) extinf = line; sum('extinf'); continue; }
+        if (line.startsWith('#EXTHTTP:')) { if (exthttp === null) exthttp = line; sum('exthttp'); continue; }
+        if (line.startsWith(LIGHT_SHIM_TAG)) {
+          sum('shimott');
+          try {
+            const o = JSON.parse(line.slice(LIGHT_SHIM_TAG.length));
+            if (o && o.mp) mp = o.mp;
+          } catch (e) { /* se contabiliza como fallo abajo */ }
+          continue;
+        }
+        if (line.length && line.charCodeAt(0) !== 35) {
+          if (url === null) { url = line; sum('urls'); }
+          continue;
+        }
+        if (line.startsWith(LIGHT_APE_PREFIX)) ott.ape_fuera_cabecera++;
+      }
+      const a = lightAnalyse(bo);
+      const hRec = wanted.has(ord) ? crypto.createHash('sha256') : null;
+      const hOri = wanted.has(ord) ? crypto.createHash('sha256') : null;
+      let bad = 0;
+      if (!mp) {
+        bad = bo.length;
+      } else {
+        const tpl = templates.get(mp.p || a.pair);
+        const variant = tpl ? tpl.variants[mp.v | 0] : null;
+        if (!tpl || !variant) {
+          bad = bo.length;
+        } else {
+          const values = mp.n || [];
+          const x = mp.x || null;
+          for (let i = 0; i < bo.length; i++) {
+            let expected;
+            if (i === 0) expected = extinf;
+            else if (i === (variant.e | 0)) expected = exthttp;
+            else if (i === (variant.u | 0)) expected = url;
+            else if (x && x[i] !== undefined) expected = x[i];
+            else expected = lightRenderCompiled((tpl.lines || [])[variant.x[i]], values, tpl.pool || {}, tpl.vars || []);
+            lines++;
+            if (hRec) { hRec.update(expected === null || expected === undefined ? '' : expected, 'latin1'); hRec.update('\n'); }
+            if (expected !== bo[i]) {
+              bad++;
+              if (samples.length < 8) samples.push({ canal: ord, linea: i, tag: lightTagOf(bo[i]), reconstruido: String(expected).slice(0, 90), origen: String(bo[i]).slice(0, 90) });
+            }
+          }
+        }
+      }
+      if (hOri) {
+        for (const l of bo) hOri.update(l, 'latin1'), hOri.update('\n');
+        checks[ord] = {
+          lineas: bo.length,
+          distintas: bad,
+          ok: bad === 0,
+          sha256_reconstruido: hRec.digest('hex'),
+          sha256_origen: hOri.digest('hex')
+        };
+      }
+      if (bad) { mismatches += bad; channelsBad++; }
+    }
+  } finally {
+    bLight.close();
+    bOrigin.close();
+  }
+
+  const res = {
+    ok: mismatches === 0 &&
+      ott.ape_fuera_cabecera === 0 &&
+      ott.extm3u_primera &&
+      ott.extinf === ott.shimott &&
+      ott.exthttp === ott.extinf &&
+      ott.urls === ott.extinf,
+    canales: channels,
+    lineas: lines,
+    lineas_distintas: mismatches,
+    canales_distintos: channelsBad,
+    checks_canales: checks,
+    ott,
+    muestras: samples,
+    indice: { formato: index.f, canales: index.channels, pares: (index.pairs || []).length, vars: index.vars },
+    ms: Date.now() - t0
+  };
+  if (!res.ok) res.error = 'verificacion_fallida';
+  return res;
+}
+
+function otc(obj, key) { obj[key] = (obj[key] || 0) + 1; }
+
+/* ────────────────────────────────────────────────────────────────────────────────
+ * 9b. CLI
+ * ──────────────────────────────────────────────────────────────────────────────── */
+
+/** Opciones que llevan valor: se leen como `--x valor` o `--x=valor`. */
+const VALUED_FLAGS = new Set(['--limit', '--origin', '--report', '--channels']);
+
+function parseArgs(argv) {
+  const opts = { flags: new Set(), args: [], values: Object.create(null) };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a.startsWith('--')) {
+      const eq = a.indexOf('=');
+      const name = eq > 0 ? a.slice(0, eq) : a;
+      if (eq > 0) {
+        opts.values[name] = a.slice(eq + 1);
+        opts.flags.add(name);
+        if (name === '--limit') opts.limit = Number(a.slice(eq + 1));
+        continue;
+      }
+      const next = argv[i + 1];
+      if (VALUED_FLAGS.has(name) && next !== undefined && !next.startsWith('--')) {
+        opts.values[name] = next;
+        opts.flags.add(name);
+        if (name === '--limit') opts.limit = Number(next);
+        i++;
+        continue;
+      }
+      opts.flags.add(name);
+      continue;
+    }
     opts.args.push(a);
   }
   return opts;
@@ -996,6 +2040,38 @@ function main(argv) {
     return 0;
   }
 
+  if (cmd === 'light') {
+    const inPath = opts.args[1];
+    const outPath = opts.args[2];
+    const usage = 'light <lista_servida.m3u8> <out.m3u8> --origin <origen.m3u8> [--gz] [--no-selfverify] [--no-gz-size] [--limit N] [--report N]';
+    if (!inPath || !outPath) die(2, { ok: false, error: 'uso', usage });
+    const res = light(inPath, outPath, {
+      origin: opts.values['--origin'],
+      gz: opts.flags.has('--gz'),
+      noSelfVerify: opts.flags.has('--no-selfverify'),
+      noGzSize: opts.flags.has('--no-gz-size'),
+      limit: opts.limit
+    });
+    if (opts.values['--report']) {
+      try { fs.writeFileSync(opts.values['--report'], JSON.stringify(res, null, 1)); }
+      catch (e) { process.stderr.write('no pude escribir el informe: ' + e.message + '\n'); }
+    }
+    if (!res.ok) die(res.error === 'destino_protegido' ? 3 : 5, res);
+    out(res);
+    return 0;
+  }
+
+  if (cmd === 'verify-light') {
+    const lightPath = opts.args[1];
+    const originPath = opts.args[2];
+    if (!lightPath || !originPath) die(2, { ok: false, error: 'uso', usage: 'verify-light <lista_con_plantillas.m3u8> <origen.m3u8> [--channels 1,100,21000]' });
+    const chans = opts.values['--channels'] ? String(opts.values['--channels']).split(',').map(Number) : undefined;
+    const res = verifyLight(lightPath, originPath, { channels: chans });
+    if (!res.ok) die(5, Object.assign({ ok: false }, res));
+    out(res);
+    return 0;
+  }
+
   if (cmd === 'verify') {
     const projPath = opts.args[1];
     const origPath = opts.args[2];
@@ -1022,6 +2098,8 @@ function main(argv) {
     version: VERSION,
     uso: [
       'project <in.m3u8> <out.m3u8> [--gz] [--no-selfverify] [--limit N]',
+      'light   <lista_servida.m3u8> <out.m3u8> --origin <origen.m3u8> [--gz] [--no-selfverify] [--limit N]',
+      'verify-light <lista_con_plantillas.m3u8> <origen.m3u8> [--channels 1,100,21000]',
       'verify  <projected.m3u8> <original.m3u8>',
       'info    <file.m3u8>'
     ]
@@ -1032,4 +2110,10 @@ if (require.main === module) {
   process.exitCode = main(process.argv.slice(2));
 }
 
-module.exports = { project, verify, info, tokenizeBlock, analyseBlock, shapeKey, VAR_NAMES, FORMAT, VERSION };
+module.exports = {
+  project, verify, info,
+  light, verifyLight,
+  lightAnalyse, lightTokenize, lightRender, lightRenderCompiled, lightCompile,
+  tokenizeBlock, analyseBlock, shapeKey,
+  VAR_NAMES, LIGHT_VAR_NAMES, FORMAT, LIGHT_FORMAT, VERSION
+};
