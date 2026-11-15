@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Consola de Estabilidad APE",
+    "description": "Entrada en la barra lateral izquierda y panel de solo lectura de la infraestructura real del VPS APE: disponibilidad de nginx, php8.3-fpm y ape-jit con los 11 timers ape-*, la proyeccion de la lista servida (bytes, canales y tags, la misma comprobacion del gate [11]), el score de estabilidad por canal con la formula de la skill iptv-stream-stability-score, y el failover con los ultimos 5xx/timeout separando el bloqueo del proveedor (401/403/407/429) de un fallo de red. Lo que no se puede medir se declara NO COMPUTADO con su razon."
+  }
+}

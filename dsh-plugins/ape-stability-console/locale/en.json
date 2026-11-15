@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "APE Stability Console",
+    "description": "Left sidebar entry and read-only panel for the real infra of the APE VPS: nginx, php8.3-fpm and ape-jit availability together with the 11 ape-* timers, the served list projection (bytes, channels and tags - the same check as gate [11]), the per-channel stability score using the iptv-stream-stability-score skill formula, and failover with the latest 5xx/timeout entries, keeping provider blocking (401/403/407/429) apart from a network failure. Anything that cannot be measured is reported as NO COMPUTADO with its reason."
+  }
+}
