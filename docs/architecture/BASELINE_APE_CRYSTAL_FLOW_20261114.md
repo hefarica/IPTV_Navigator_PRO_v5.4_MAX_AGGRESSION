@@ -1913,3 +1913,78 @@ DE PASO, EL GATE ESTABA FALLANDO POR EL DISCO
   misma lista sin el modulo) y 482 backups del panel (156 MB, la version actual esta versionada).
   90% -> 86% · 3,9G -> 5,3G libres · 1.490 MB liberados · gate PASS 11/11.
   NO se toco ninguna lista servida ni la _CABLEADA fuente.
+---
+
+## Hecho 37 · Gobierno honesto en las seis listas + la medida del probe
+
+El operador pregunto que hacer con P0 y P2. Se midio antes de decidir, y la medida
+cambio el diagnostico.
+
+POR QUE P0 Y P2 ESTAN VACIOS, MEDIDO
+  P1 933 + P3 20.222 + P4 58 + P5 11 = 21.224 = exactamente los canales de la LIGHT.
+  El clasificador asigno TODOS los canales y P0/P2 quedaron con cero. No es un fallo
+  del generador. La escalera (ape-profile-classifier.js:250-273) dice:
+    h >= 4320        -> P0   (8K real)
+    h >= 3240        -> P0   (6K tratado como techo 8K)
+    h >= 2160 + HDR o fps>=50 -> P1
+    h >= 2160 resto  -> P2   (4K@30 sin HDR)
+    h >= 1080        -> P3 ; h >= 720 -> P4 ; resto -> P5
+  P0 exige 8K real: no hay ninguno en el catalogo.
+  P2 exige 4K@30 sin HDR: si un canal cabe en P1 (4K@60 o HDR), mandarlo a P2 seria
+  DEGRADARLO. Que P2 este vacio significa que todos los 4K llegaron al maximo.
+  Bajo MAX IMAGE FIRST eso es el resultado CORRECTO, no un hueco.
+  DECISION: no se crean P0 ni P2 como fichero. Una lista de 0 canales no reproduce.
+
+LA MEDIDA DEL PROBE
+  Los 21.224 canales llevan ape-classify-confidence, ninguno a cero:
+    min 16 · p25 33 · mediana 50 · p75 67 · max 100 · media 57,2
+    1-39   : 6.368 (30,0%)   <- evidencia debil
+    40-59  : 5.492 (25,9%)
+    60-79  : 5.556 (26,2%)
+    80-100 : 3.808 (17,9%)
+    -> solo 44,1% con evidencia fuerte (>=60)
+  Y NO existen marcadores de verdad en la lista: ape-source-truth=0 · ape-probe=0 ·
+  STREAM-TRUTH=0 · ape-verified=0. La confianza es lo unico que hay.
+  Por lista, el porcentaje con evidencia fuerte: P1 57% · P3 44% · P4 14% · P5 27%.
+  ESTO ES LO QUE EXPLICA P2 VACIO: con 44% de evidencia fuerte, el clasificador no
+  puede distinguir 4K@30 de 4K@60 en la mayoria, y sin esa distincion nunca baja a P2.
+
+LA CABECERA DE GOBIERNO MENTIA EN TRES COSAS
+  Las seis declaraban lo mismo, sin importar lo que contienen:
+    DECODER_MAX=4096x4096   <- el APK real decodifica 3840x2160
+                               (medido en /jit/image/prisma/lanes -> apkCeiling)
+    DEFAULT_PROFILE=P4.5    <- en las seis, aunque P5 tenga 11 canales de 480p
+    EXCEEDS_DECODER=21224   <- en las seis, aunque tres tengan 11, 58 y 933 canales
+
+  Se construyo /opt/ape-pulse/ape-governance-honest.sh (desde vps/bin/) y se aplico.
+  Ahora cada lista declara su verdad, y se anadieron dos campos de honestidad:
+    EXCEED_MEASURED  cuantos canales se midieron que exceden el techo real
+    PROBE_STRONG     porcentaje de canales con ape-classify-confidence >= 60
+  MEDIDO DESPUES:
+    LISTA                BYTES        CANALES  PROF   EXCEEDS   PROBE
+    P1                12.626.302          933  P1.5      933     57%
+    P3               240.724.013       20.222  P3.5   20.222     44%
+    P4                 1.199.384           58  P4.5       58     14%
+    P5                   514.472           11  P5.5       11     27%
+    CABLEADA_LIGHT   250.932.745       21.224  P0     21.224     44%
+    P5_CABLEADA_LIGHT    156.075           11  P5.5        0     27%
+  Canales, premium, fallback y LAB intactos en las seis. gate PASS 11/11.
+
+  Es seguro porque NADIE lee esos campos: el contrato del APK (ListLoader.kt) lee
+  solo ape-profile="Px" (L90), #EXT-X-APE-LAB-METADATA (L59-81) y
+  fields.<seccion>.<clave> (LabMetadataStore.kt:26-66). DEFAULT_PROFILE, EXCEEDS_DECODER
+  y com.ape.profile.master solo los ESCRIBE el generador (server.js:4054,4058).
+
+  Tres bugs propios corregidos en el script antes de aplicarlo: una coma en un
+  `local BN, PROF`, el conteo de EXCEEDS que contaba los dos STREAM-INF de cada canal
+  (42.448 en vez de 21.224), y P5_CABLEADA_LIGHT que caia en el case de _CABLEADA_LIGHT
+  y se declaraba P0 cuando es P5.5.
+
+LO QUE QUEDA ABIERTO, Y ES LO IMPORTANTE
+  Los 42.448 STREAM-INF declaran todos RESOLUTION=...x3240 (6K), incluso los canales
+  de 480p. El APK tiene maxDecodeH=2160, asi que el 6K es presentacion y nunca se
+  decodifica (apkCeiling: eightK="solo presentacion"). Es coherente con el diseno,
+  pero significa que el numero de EXCEEDS es siempre igual al de CHANNELS, y por eso
+  ese campo no discrimina nada: solo confirma que el 6K de presentacion excede el
+  decoder. Con el probe al 44%, la siguiente mejora real no es tocar perfiles: es
+  SUBIR LA COBERTURA DEL PROBE, que hoy no marca ni un solo canal como verificado.
