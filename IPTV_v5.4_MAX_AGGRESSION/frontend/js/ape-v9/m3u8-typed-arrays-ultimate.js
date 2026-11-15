@@ -3225,6 +3225,78 @@
         return '#EXT-X-APE-OUTPUT-METADATA:' + JSON.stringify(safe);
     }
 
+    /**
+     * __apeHybridHeaderBlock — SOPORTE HIBRIDO HLS+DASH EN UN UNICO FICHERO.
+     *
+     * EL PROBLEMA QUE RESUELVE (mandato del operador 2026-11-15)
+     *   "HIBRIDA" bajaba DOS archivos: la lista HLS y, aparte, una M3U que apuntaba al
+     *   MPD del JIT. Dos descargas, dos nombres, y el segundo podia fallar solo (HTTP 503
+     *   PROVIDER_SLOT_BUSY medido en produccion) dejando la salida a medias sin que el
+     *   primero lo supiera.
+     *
+     * LA SOLUCION
+     *   UN fichero. El mismo .m3u8 es la lista HLS completa Y lleva el manifiesto DASH
+     *   como METADATA JSON en un unico tag. Nada se pisa porque nadie lee lo mismo:
+     *     · un reproductor HLS lee #EXTM3U / #EXTINF / #EXTHTTP / la URI, e IGNORA este
+     *       tag — RFC 8216 §6.3.1 y §4.1 obligan a ignorar los tags desconocidos;
+     *     · un consumidor DASH lee SOLO este tag y no interpreta el cuerpo HLS.
+     *   Los dos formatos quedan integrados y los dos funcionan, cada uno en el device que
+     *   lo requiera, sin transcode y sin un segundo fichero.
+     *
+     * POR QUE NO HACE FALTA UN TAG POR CANAL
+     *   El template del MPD se rellena con el tvg-id que ya viaja en cada #EXTINF. Meter
+     *   21.224 punteros costaria ~3,2 MB para repetir lo que el EXTINF ya dice.
+     *
+     * HONESTIDAD (lo que este tag NO promete)
+     *   El MPD existe cuando ese canal tiene su pipeline JIT activo. Hoy el catalogo JIT
+     *   mide 0 activos de 21.224, asi que la ruta DASH devuelve 503 PROVIDER_SLOT_BUSY
+     *   hasta que el canal se abra. Por eso se declara works=when_jit_pipeline_active y
+     *   execution=declared: no se dice "funciona" sino "declarado y sujeto a pipeline".
+     *   La parte HLS de este mismo fichero funciona siempre.
+     */
+    function __apeHybridHeaderBlock(options = {}) {
+        try {
+            if (!options || options.hybrid !== true) return '';
+            var base = '';
+            try {
+                if (typeof window !== 'undefined') {
+                    base = String(window.APE_JIT_BASE || 'https://iptv-ape.duckdns.org').replace(/\/+$/, '');
+                }
+            } catch (_) { }
+            if (!base) base = 'https://iptv-ape.duckdns.org';
+            var spec = {
+                v: 'ape.dr.container/1',
+                container: 'single-m3u8',
+                formats: ['hls', 'dash'],
+                hls: {
+                    delivery: 'inline',
+                    reads: ['#EXTM3U', '#EXTINF', '#EXTHTTP', '#EXTSHIMOTT', 'URI'],
+                    works: 'always',
+                    players: 'any HLS player'
+                },
+                dash: {
+                    delivery: 'pointer',
+                    mpd_template: base + '/jit/live/{id}/manifest.mpd',
+                    id_source: '#EXTINF tvg-id',
+                    works: 'when_jit_pipeline_active',
+                    players: 'dash-capable consumers'
+                },
+                isolation: {
+                    hls_players: 'ignore the #EXT-X-APE-DASH-* tags (RFC 8216 6.3.1 / 4.1)',
+                    dash_consumers: 'read only #EXT-X-APE-DASH-CONTAINER and ignore the body',
+                    collide: 'none: no tag is written twice and no line is rewritten'
+                },
+                execution: 'declared'
+            };
+            return '\n#EXT-X-APE-DR-MODE:HYBRID'
+                + '\n#EXT-X-APE-DASH-CONTAINER:' + JSON.stringify(spec);
+        } catch (e) {
+            // Nunca romper la generacion por un tag aditivo.
+            console.warn('[GENERATOR] hybrid header block omitido:', e.message);
+            return '';
+        }
+    }
+
     function generateGlobalHeader(channelsCount, options = {}) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 18) + 'Z';
         const totalChannels = typeof window !== 'undefined' && window.app && typeof window.app.getFilteredChannels === 'function' ? window.app.getFilteredChannels().length : channelsCount;
@@ -13599,6 +13671,10 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                     const _outputMetadataTag = __apeOutputMetadataTag(options);
                     const headerText = generateGlobalHeader(channels.length, options)
                         + (_outputMetadataTag ? '\n' + _outputMetadataTag : '')
+                        // [2026-11-15] HIBRIDA en UN fichero: el manifiesto DASH viaja como
+                        // metadata JSON en el mismo .m3u8. Devuelve '' si no es hybrid, asi
+                        // que la ruta normal no cambia ni un byte.
+                        + __apeHybridHeaderBlock(options)
                         + '\n' + __omegaComplianceTags();
                     // 🛡️ M5: RFC 8216 order guard — verifica EXTM3U/VERSION/MEDIA-SEQUENCE order.
                     // Solo telemetría: registra violations en _apeAuditAcc.rfcViolations,
@@ -14187,6 +14263,13 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
             determineProfile: determineProfile,
             profiles: PROFILES,
             version: VERSION,
+
+            // [2026-11-15] Seam de prueba para el soporte HIBRIDO en un solo fichero.
+            // Devuelve el bloque de cabecera (#EXT-X-APE-DR-MODE + #EXT-X-APE-DASH-CONTAINER)
+            // o '' si options.hybrid !== true. Expuesto porque sin el no hay forma de
+            // verificar el JSON emitido sin generar una lista de 21.224 canales.
+            hybridHeaderBlock: __apeHybridHeaderBlock,
+            generateGlobalHeader: generateGlobalHeader,
 
             // 👻 Fusión Fantasma v22.1 API
             AtomicStealthEngine: window.APEAtomicStealthEngine,

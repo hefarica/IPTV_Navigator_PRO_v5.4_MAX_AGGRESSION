@@ -72,6 +72,14 @@
     if (!isJsonMetadataOutput()) {
       o.jit = out.jit === true;
       o.hdrMode = out.hdrMode || 'auto';
+      // [2026-11-15] HIBRIDA = los DOS formatos en UN fichero.
+      // Antes la opcion descargaba un segundo archivo (la M3U que apunta al MPD del JIT),
+      // con dos problemas medidos: dos descargas que el operador tenia que emparejar, y la
+      // segunda podia fallar sola (503 PROVIDER_SLOT_BUSY) dejando la salida a medias.
+      // Ahora el generador emite #EXT-X-APE-DASH-CONTAINER con el manifiesto DASH como
+      // metadata JSON DENTRO del mismo .m3u8: un reproductor HLS lo ignora (RFC 8216) y un
+      // consumidor DASH lee solo ese tag. Nada se pisa porque nadie lee lo mismo.
+      o.hybrid = (selectedFormat() === 'hybrid');
     }
     return o;
   }
@@ -90,20 +98,18 @@
     } catch (_) { return ''; }
   }
 
-  // [2026-11-15] HIBRIDA = HLS descargable + DASH servido por JIT. Antes la opcion
-  // solo mostraba un toast anunciandolo y ningun run* descargaba la parte DASH
-  // (todos comprobaban selectedFormat()==='mpd', que con 'hybrid' es falso):
-  // se prometia y no se entregaba. Ahora se entrega, y si la parte DASH falla se
-  // dice que la hibrida queda PARCIAL en vez de dar la opcion por cumplida.
-  async function deliverHybridDash() {
+  // [2026-11-15 · MANDATO DEL OPERADOR] HIBRIDA EN UN SOLO FICHERO.
+  // Antes esta opcion descargaba un SEGUNDO archivo (la M3U que enlaza el MPD del JIT).
+  // Dos descargas que emparejar, y la segunda podia fallar sola (503 PROVIDER_SLOT_BUSY
+  // medido) dejando la salida a medias sin que la primera lo supiera.
+  // Ahora NO se descarga nada aparte: el generador emite #EXT-X-APE-DASH-CONTAINER con el
+  // manifiesto DASH como metadata JSON dentro del MISMO .m3u8. El reproductor HLS lo
+  // ignora (RFC 8216 6.3.1) y el consumidor DASH lee solo ese tag: los dos formatos
+  // integrados, ninguno se pisa y ninguno depende del otro para existir.
+  function deliverHybridDash() {
     if (selectedFormat() !== 'hybrid' || isJsonMetadataOutput()) return;
-    try {
-      await downloadActiveJitMpd();
-      toast('HÍBRIDA completa: lista HLS generada + M3U DASH del canal JIT descargada', 'success');
-    } catch (e) {
-      status('HÍBRIDA PARCIAL · HLS generada, DASH no: ' + e.message, '#f59e0b');
-      toast('HÍBRIDA parcial: HLS sí, DASH no (' + e.message + ')', 'warning');
-    }
+    status('HÍBRIDA: los dos formatos van en el MISMO archivo · HLS en el cuerpo, DASH en '
+      + '#EXT-X-APE-DASH-CONTAINER', '#a855f7');
   }
 
   function currentManifestMetadata() {
@@ -188,6 +194,7 @@
       outOptsLabel: _outOptsLabel,
       deliverHybridDash: deliverHybridDash,
       runLight: runLight,
+      // selPaint se expone mas abajo, dentro de render(), que es donde se define.
       // Expuesto para fijar el delta por funcion desde una prueba. Escribir en localStorage no
       // cambia la variable en memoria, asi que un test no puede provocar un estado con ese truco.
       applyDelta: applyDelta
@@ -381,11 +388,12 @@
       return true;
     }
     if (f === 'hybrid') {
-      // [2026-11-15] El texto dice EXACTAMENTE lo que pasa: se entregan dos cosas.
-      // Antes ponia "el manifiesto DASH se sirve desde JIT" y ningun run* descargaba
-      // la parte DASH, asi que la opcion se anunciaba y no se cumplia.
-      toast('HÍBRIDA: se descargarán DOS archivos — la lista HLS y la M3U que enlaza el MPD del canal JIT.', 'info');
-      status('HÍBRIDA: HLS + DASH en dos entregables', '#a855f7');
+      // [2026-11-15 · MANDATO DEL OPERADOR] HIBRIDA = los DOS formatos en UN SOLO fichero.
+      // Antes decia "se descargaran DOS archivos" y asi era: la lista HLS y aparte una M3U
+      // que apuntaba al MPD del JIT. El operador lo corrigio: un fichero con los dos
+      // formatos integrados, sin que ninguno se pise y sin que ninguno falle.
+      toast('HÍBRIDA: un solo archivo .m3u8 con los DOS formatos — HLS en el cuerpo y el manifiesto DASH en #EXT-X-APE-DASH-CONTAINER.', 'info');
+      status('HÍBRIDA: HLS + DASH integrados en el mismo archivo', '#a855f7');
     }
     return true;
   }
@@ -1178,7 +1186,10 @@
       '<strong style="color:#7dd3fc;">Salidas:</strong>' +
       '<label style="cursor:pointer;"><input type="checkbox" id="ape-sel-vps" checked style="accent-color:#0ea5e9;"> VPS</label>' +
       '<label style="cursor:pointer;"><input type="checkbox" id="ape-sel-direct" style="accent-color:#a855f7;"> DIRECTO</label>' +
-      '<label style="cursor:pointer;"><input type="checkbox" id="ape-sel-both" style="accent-color:#22d3ee;"> AMBAS</label>' +
+      // [2026-11-15] AMBAS NO es una tercera salida: es un ATAJO que enciende VPS y
+      // DIRECTO a la vez, y se desmarca desmarcando las dos. El title lo dice para que
+      // no se lea como una opcion independiente.
+      '<label style="cursor:pointer;" title="Atajo: marca VPS y DIRECTO a la vez. No es una tercera salida — se deriva de las dos."><input type="checkbox" id="ape-sel-both" style="accent-color:#22d3ee;"> AMBAS</label>' +
       '<span id="ape-sel-state" style="color:#94a3b8;font-size:.74rem;">VPS seleccionado</span>' +
       '</div>' +
       '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px;padding:8px 10px;border-radius:9px;background:rgba(2,6,23,.28);border:1px solid rgba(148,163,184,.22);font-size:.82rem;color:#cbd5e1;">' +
@@ -1325,15 +1336,32 @@
     var sd = document.getElementById('ape-sel-direct');
     var sb = document.getElementById('ape-sel-both');
     var ss = document.getElementById('ape-sel-state');
+    // [2026-11-15] TRES CASILLAS NO SON TRES SALIDAS.
+    // VPS y DIRECTO son las dos salidas. AMBAS NO es una tercera: es la dos a la vez.
+    // El codigo anterior las trataba como tres independientes y tenia tres defectos
+    // medidos en la UI (captura del operador: las tres marcadas y el rotulo diciendo
+    // solo "VPS + DIRECTO"):
+    //   1) AMBAS no se podia DESMARCAR: se desmarcaba, y la linea siguiente
+    //      `else if (sv.checked && sd.checked) sb.checked = true` la volvia a marcar.
+    //   2) El rotulo no nombraba AMBAS aunque estuviera marcada.
+    //   3) Los listeners hacian `sb.checked = false` mientras selPaint lo derivaba a
+    //      true: dos reglas contradictorias sobre el mismo control.
+    // Ahora hay UNA regla: AMBAS se DERIVA de (VPS && DIRECTO), y el clic en AMBAS es
+    // un atajo en las dos direcciones (marcar = marcar las dos, desmarcar = ninguna).
     function selPaint() {
       if (!sv || !sd || !sb || !ss) return;
-      if (sb.checked) { sv.checked = true; sd.checked = true; }
-      else if (sv.checked && sd.checked) sb.checked = true;
-      else sb.checked = false;
+      // Regla unica: AMBAS refleja el AND de las dos salidas reales.
+      sb.checked = (sv.checked && sd.checked);
       var active = [];
       if (sv.checked) active.push('VPS');
       if (sd.checked) active.push('DIRECTO');
-      ss.textContent = active.length ? active.join(' + ') + ' seleccionado(s)' : 'ninguna salida seleccionada';
+      if (active.length === 2) {
+        ss.textContent = 'AMBAS · VPS + DIRECTO (dos listas)';
+      } else if (active.length === 1) {
+        ss.textContent = active[0] + ' (una lista)';
+      } else {
+        ss.textContent = 'ninguna salida seleccionada';
+      }
       ss.style.color = active.length ? '#86efac' : '#f59e0b';
       panel.querySelectorAll('[data-ape-run="vps"]').forEach(function (b) {
         b.disabled = !sv.checked; b.style.opacity = sv.checked ? '1' : '.4'; b.style.cursor = sv.checked ? 'pointer' : 'not-allowed';
@@ -1357,10 +1385,21 @@
       if (slCb.checked) { setLightState('seleccionada · sin validar', '#e879f9'); }
       else { setLightState('sin validar', '#64748b'); }
     });
-    if (sv) sv.addEventListener('change', function () { if (sb) sb.checked = false; selPaint(); });
-    if (sd) sd.addEventListener('change', function () { if (sb) sb.checked = false; selPaint(); });
-    if (sb) sb.addEventListener('change', function () { if (sb.checked) { sv.checked = true; sd.checked = true; } selPaint(); });
+    // Las dos salidas reales solo cambian su propia casilla; AMBAS se deriva en selPaint.
+    if (sv) sv.addEventListener('change', selPaint);
+    if (sd) sd.addEventListener('change', selPaint);
+    // AMBAS es atajo bidireccional: marcar enciende las dos, desmarcar apaga las dos.
+    if (sb) sb.addEventListener('change', function () {
+      var on = sb.checked;
+      sv.checked = on;
+      sd.checked = on;
+      selPaint();
+    });
     selPaint();
+    // [2026-11-15] Expuesto AQUI porque selPaint se define dentro de render().
+    // Sirve para probar que AMBAS se deriva de (VPS && DIRECTO) y que el rotulo de la
+    // fila dice la verdad en los cuatro estados posibles, sin abrir un navegador.
+    if (window.APE_OUTPUT_TEST_HOOKS) window.APE_OUTPUT_TEST_HOOKS.selPaint = selPaint;
 
     // SALIDAS + FORMATO: la selección de formato manda sobre HLS/DASH.
     var oh = document.getElementById('ape-out-hls');

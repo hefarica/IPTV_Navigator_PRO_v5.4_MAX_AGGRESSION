@@ -172,13 +172,20 @@ bootPanel(BASE_SEED, function (win, els) {
 
     console.log('\n═══ C · HIBRIDA ENTREGA LAS DOS PARTES, NO SOLO EL TOAST ═══\n');
 
-    check('C1 existe deliverHybridDash', /async function deliverHybridDash\(\)/.test(panelSrc));
+    check('C1 existe deliverHybridDash', /function deliverHybridDash\(\)/.test(panelSrc));
     const hybridCalls = (panelSrc.match(/await deliverHybridDash\(\)/g) || []).length;
     check('C2 la llaman las 4 salidas (VPS/DIRECTO/AMBAS)', hybridCalls >= 3, String(hybridCalls) + ' llamadas');
     check('C3 solo actua con formato hybrid', /selectedFormat\(\)\s*!==\s*'hybrid'/.test(panelSrc));
-    check('C4 si el DASH falla lo declara PARCIAL', /HÍBRIDA PARCIAL/.test(panelSrc));
-    check('C5 el aviso de HIBRIDA anuncia dos entregables',
-        /DOS archivos/.test(panelSrc) && !/Se generará la lista HLS; el manifiesto DASH se sirve desde JIT/.test(panelSrc));
+    // C4 — CAMBIO DE DISEÑO 2026-11-15: la HIBRIDA ya no descarga un segundo archivo que
+    // pudiera fallar. Los dos formatos van en el MISMO .m3u8, asi que ya no hay una
+    // "parte DASH" separada que pueda quedar en PARCIAL. Lo que se exige ahora es que el
+    // panel pida hybrid en las opciones (para que el generador emita el tag) y que no
+    // descargue nada aparte. El detalle vive en test_hybrid_single_file.js.
+    check('C4 ya no hay una parte DASH separada que pueda fallar',
+        !/HÍBRIDA PARCIAL/.test(panelSrc) && !/async function deliverHybridDash[\s\S]{0,400}downloadActiveJitMpd/.test(panelSrc));
+    check('C4b el panel pide hybrid en las opciones de generacion', /o\.hybrid = \(selectedFormat\(\) === 'hybrid'\)/.test(panelSrc));
+    check('C5 el aviso de HIBRIDA anuncia UN archivo con los dos formatos',
+        /un solo archivo \.m3u8 con los DOS formatos/.test(panelSrc));
 
     console.log('\n═══ D · LAS CUATRO SALIDAS USAN LA MISMA RUTA DE OPCIONES ═══\n');
 
@@ -297,6 +304,54 @@ bootPanel(BASE_SEED, function (win, els) {
         /function normalizeDeltaArray/.test(panelSrc) && /APE_OUTPUT_DELTA_ARRAY/.test(panelSrc));
     check('J9 el rotulo ya no promete un numero fijo de lineas sin medida',
         !/1\.040 lineas por canal desde 9 plantillas/.test(panelSrc));
+
+    console.log('\n═══ K · LA FILA "Salidas": TRES CASILLAS, DOS SALIDAS ═══\n');
+
+    // VPS y DIRECTO son las dos salidas. AMBAS es el AND de las dos, no una tercera.
+    // El codigo anterior dejaba marcar las tres y no permitia desmarcar AMBAS.
+    const setSel = (v, d) => { els.get('ape-sel-vps').checked = v; els.get('ape-sel-direct').checked = d; };
+    const label = () => els.get('ape-sel-state').textContent;
+
+    if (typeof H.selPaint === 'function') {
+        setSel(true, true); H.selPaint();
+        check('K1 con las dos, AMBAS se deriva marcada', els.get('ape-sel-both').checked === true);
+        check('K2 el rotulo nombra AMBAS y dice dos listas',
+            /AMBAS/.test(label()) && /dos listas/.test(label()), label());
+
+        setSel(true, false); H.selPaint();
+        check('K3 con solo VPS, AMBAS se apaga', els.get('ape-sel-both').checked === false);
+        check('K4 el rotulo dice VPS y una lista', /^VPS/.test(label()) && /una lista/.test(label()), label());
+
+        setSel(false, true); H.selPaint();
+        check('K5 con solo DIRECTO, el rotulo lo dice', /^DIRECTO/.test(label()) && /una lista/.test(label()), label());
+        check('K6 con solo DIRECTO, AMBAS sigue apagada', els.get('ape-sel-both').checked === false);
+
+        setSel(false, false); H.selPaint();
+        check('K7 sin ninguna, AMBAS apagada', els.get('ape-sel-both').checked === false);
+        check('K8 sin ninguna, el rotulo lo dice', /ninguna salida/.test(label()), label());
+
+        // El defecto que el operador vio: con las tres marcadas, desmarcar AMBAS no hacia nada
+        // porque selPaint la volvia a marcar. La regla correcta es que AMBAS NO IMPONE nada
+        // sobre las dos salidas reales: solo las refleja.
+        setSel(false, false); els.get('ape-sel-both').checked = true;   // AMBAS marcada a mano
+        H.selPaint();
+        check('K9 AMBAS no impone: marcarla sola no enciende VPS ni DIRECTO',
+            els.get('ape-sel-vps').checked === false && els.get('ape-sel-direct').checked === false,
+            'vps=' + els.get('ape-sel-vps').checked + ' direct=' + els.get('ape-sel-direct').checked);
+        check('K9b y la derivacion la apaga porque las dos estan apagadas',
+            els.get('ape-sel-both').checked === false);
+        // Y la derivacion es pura: el mismo estado da siempre el mismo resultado.
+        setSel(true, true); H.selPaint(); const a1 = els.get('ape-sel-both').checked;
+        H.selPaint(); const a2 = els.get('ape-sel-both').checked;
+        check('K9c la derivacion es idempotente', a1 === true && a2 === true, a1 + '/' + a2);
+    } else {
+        check('K1 selPaint expuesto al seam', false, 'no expuesto');
+    }
+    check('K10 el atajo de AMBAS apaga las dos al desmarcar',
+        /if \(sb\) sb\.addEventListener\('change', function \(\) \{[\s\S]{0,260}sv\.checked = on;[\s\S]{0,80}sd\.checked = on;/.test(panelSrc));
+    check('K11 ya no hay reglas contradictorias sobre AMBAS',
+        !/if \(sb\) sb\.checked = false; selPaint\(\);/.test(panelSrc));
+    check('K12 AMBAS tiene title que la explica como atajo', /Atajo: marca VPS y DIRECTO a la vez/.test(panelSrc));
 
     console.log('\n═══ I · SINTAXIS DE LO TOCADO ═══\n');
     for (const [label, src] of [['generation-output-panel.js', panelSrc], ['generation-controller.js', ctrlSrc]]) {
