@@ -63,13 +63,35 @@ OUT="$LISTS/${BASE}_LIGHT.m3u8"
 
 SRC_SIZE=$(stat -c%s "$SRC"); SRC_MTIME=$(stat -c%Y "$SRC")
 
-# ── 1. idempotencia ───────────────────────────────────────────────────────────
+# ── 1. idempotencia: MIRA EL RESULTADO, no solo la entrada ───────────────────
+# BUG MEDIDO 2026-11-15 05:59: el .stamp comparaba solo el origen. Alguien
+# (ape-cablear-auto, cada 15 min) reescribio la PROYECCION; el origen no cambio, el
+# stamp seguia diciendo "sin cambios" y el timer NO la recuperaba. La lista se quedo
+# en 171 MB sin tags y el timer lo daba por bueno. Una idempotencia que solo mira la
+# entrada no detecta que el resultado se corrompio.
+#
+# Ahora, antes de salir, se comprueba el CONTENIDO de la proyeccion: un #EXTSHIMOTT por
+# canal y cero lineas #EXT-X-APE-. Si no cuadra, se regenera aunque el origen no cambie.
 STAMP="$OUT.stamp"
-if [ "${APE_FORCE:-0}" != "1" ] && [ -f "$OUT" ] && [ -f "$STAMP" ]; then
+light_ok() {
+  [ -f "$OUT" ] || return 1
+  local ch tag ape
+  ch=$(grep -c '^#EXTINF' "$OUT" 2>/dev/null); ch=${ch:-0}
+  tag=$(grep -c '^#EXTSHIMOTT:' "$OUT" 2>/dev/null); tag=${tag:-0}
+  ape=$(grep -c '^#EXT-X-APE-' "$OUT" 2>/dev/null); ape=${ape:-0}
+  [ "$ch" -gt 0 ] || return 1
+  [ "$tag" -eq "$ch" ] || return 1
+  [ "$ape" -eq 0 ] || return 1
+  return 0
+}
+if [ "${APE_FORCE:-0}" != "1" ] && [ -f "$STAMP" ] && light_ok; then
   read -r s_size s_mtime < "$STAMP" || true
   if [ "$s_size" = "$SRC_SIZE" ] && [ "$s_mtime" = "$SRC_MTIME" ]; then
-    log "sin cambios: $OUT ya corresponde a $SRC ($SRC_SIZE B)"; exit 0
+    log "sin cambios: $OUT ya corresponde a $SRC ($SRC_SIZE B) y su contenido cuadra"; exit 0
   fi
+fi
+if [ -f "$OUT" ] && ! light_ok; then
+  log "REPARAR: $OUT no cuadra (se esperaba 1 tag por canal y 0 lineas APE) -> se regenera"
 fi
 
 # ── 2. disco ──────────────────────────────────────────────────────────────────
