@@ -100,6 +100,13 @@ awk '
   # Es ADITIVO: RFC 8216 manda ignorarlo a los players que no lo conocen.
   /^#EXTSHIMOTT:/            { print; next }
   /^https?:\/\//             { print; next }
+  # [2026-11-15] El LAB SI se conserva, y esta regla va ANTES de la que tira la familia APE.
+  # Medido sobre la lista de 21.224 canales: son 23 lineas EN LA CABECERA (una sola vez,
+  # no por canal), ~15 KB en total, frente a los 734.550.274 B que ocupa la familia
+  # #EXT-X-APE- completa. El APK lo lee: ListLoader.kt:59-81 concatena los chunks y
+  # LabMetadataStore.kt:26-66 aplana fields.<seccion>.<clave>. Sin el, el plan de perfiles
+  # no llega al device. Perderlo en la proyeccion era efecto colateral, no decision.
+  /^#EXT-X-APE-LAB-METADATA:/ { print; next }
   /^#EXT-X-APE-/             { next }   # 56,6% del fichero: OTT los ignora
   /^#EXTVLCOPT/              { next }   # opciones de VLC
   /^#KODIPROP/               { next }   # opciones de Kodi
