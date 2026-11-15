@@ -1,0 +1,5725 @@
+{
+  "schema": "ape.llm_operator.knobs.v1",
+  "contract_id": "llm-operator-knobs-v4",
+  "ver": 4,
+  "revision": 1,
+  "status": "SPECIFIED_NOT_IMPLEMENTED",
+  "date": "2026-11-15",
+  "purpose": "Superficie ESCRIBIBLE del operario LLM en dos lados (VPS y APK), con el GRUPO BUFFER primero, el techo REAL de cada perilla, si su valor lo fija una MEDICION o una DECISION, y la precedencia entre la tabla de perfil y el LLM.",
+  "operator_rule": "En CONSTRUCCION se toca la APK para meter al operario dentro; una vez instalado, el operario NO modifica nada de la APK: solo mueve valores del catalogo, en tiempo real.",
+  "operator_objective": "El LLM es el prober, el que asigna el perfil y el que mueve el JIT para una reproduccion excepcional, manteniendo el control de QoE/QoS para garantizar BUFFER INFINITO: NUNCA la reproduccion debe quedarse mientras haya red.",
+  "measured_from": {
+    "list": "ara-x/evidence/APE_LISTA_4K_ARA-X_once.m3u8",
+    "list_bytes": 572171381,
+    "list_sha256": "c8b5039ed8624b3d586bf60a85d1d15248475082f7552878e051ec1ae0d1ea07",
+    "channel_profile": "P3",
+    "channel_tier": "T6",
+    "device_audit": "docs/audits/VPP_SOC_QUALITY_20261114.md",
+    "probe_budget_from": "t75 (citado por el capitan)"
+  },
+  "probe_budget": {
+    "measured_probe_p50_s": 1.653,
+    "budget_ms": 5,
+    "ratio": 330.6,
+    "rule": "La MEDICION del canal cuesta 1,653 s de p50 (330,6x el presupuesto de 5 ms). Por eso se hace FUERA del camino caliente, en segundo plano, y deja el resultado en la tabla. El <5 ms es la DECISION al sintonizar.",
+    "consequence": "Cada perilla declara set_by: \"measurement\" (la fija el probe, coste ~1,7 s, fuera de camino) o \"decision\" (la fija el LLM, coste ~0 ms, en camino)."
+  },
+  "profile_authority": {
+    "sources": [
+      "tabla_del_lookup (t76)",
+      "LLM"
+    ],
+    "precedence": "La MEDICION manda sobre la DECISION en todo lo que describe la fuente (codec, resolucion, HDR, fps, bitrate declarado): eso lo fija el probe y vive en la lista negra. El LLM manda en las perillas de QoE (grupo buffer + qoe) dentro de sus rangos.",
+    "conflict_rule": "Si el perfil que elige el LLM contradice el de la tabla: (a) si el LLM quiere SUBIR de perfil (P3->P2), se acepta y se registra como elevacion (Ley Crystal: mejorar siempre); (b) si quiere BAJAR, se rechaza con E_PROFILE_DOWNGRADE (Ley Anti-Degradacion); (c) para el resto de campos declarados gana la tabla y el conflicto se registra como E_PROFILE_CONFLICT. Un conflicto sin esta regla seria un bug en produccion.",
+    "llm_can_assign_profile": true,
+    "llm_direction": "solo hacia arriba"
+  },
+  "sides": {
+    "vps": {
+      "applies": "en la siguiente recarga de manifest (NO inmediato)",
+      "cost": "una recarga de manifest por cambio",
+      "step_policy": {
+        "max_knobs_per_iteration": 3,
+        "cooldown_iterations": 2,
+        "fraction": 0.25,
+        "rule": "max 3 perillas por iteracion, <=25% cada una, 2 iteraciones de espera entre cambios de la MISMA perilla. Duplicar un valor exige >=4 pasos."
+      }
+    },
+    "apk": {
+      "applies": "INMEDIATO (settings put)",
+      "cost": "ninguno: no hay recarga",
+      "step_policy": {
+        "max_knobs_per_iteration": 5,
+        "cooldown_iterations": 1,
+        "discrete_only": true,
+        "rule": "max 5 perillas por iteracion, 1 iteracion de espera, un salto a un valor valido del vocabulario. Se verifica leyendo el setting tras cada escritura."
+      }
+    }
+  },
+  "buffer_doctrine": {
+    "objective": "buffer infinito = nunca pararse mientras haya red",
+    "bought_with": "LATENCIA, no calidad",
+    "rule": "Todo margen extra se saca de latencia (ir mas detras del directo), nunca de imagen. Subir buffer y bajar calidad a la vez esta prohibido por ley.",
+    "real_ceiling_rule": "Cada perilla de buffer declara su TECHO REAL: el punto en que subirla ya no mejora nada porque la ignora el player, la corta el protocolo, la limita el proveedor o no cabe en memoria. \"Infinito\" no existe; el techo medido si."
+  },
+  "prohibited_by_law": [
+    "Bajar resolucion (4K->FHD/HD/SD) para \"estabilizar\"",
+    "Bajar el bitrate maximo",
+    "Reducir fps (50/60 -> 25/30)",
+    "Apagar HDR o poner hdr_conversion_mode=3 (HDR falso)",
+    "Comprar estabilidad con calidad: el buffer se compra con latencia"
+  ],
+  "census": {
+    "exhttp_keys": 193,
+    "session_data_blocks": 24,
+    "total": 217,
+    "knobs_buffer": 23,
+    "knobs_vps": 79,
+    "knobs_apk": 11,
+    "knobs_total": 90,
+    "blacklist": 131,
+    "dead_excluded": 28,
+    "not_available": 17,
+    "set_by": {
+      "measurement": 159,
+      "decision": 90
+    },
+    "knobs_recarga": 11,
+    "knobs_profundidad": 12,
+    "invariants": 1
+  },
+  "knobs": [
+    {
+      "name": "com.ape.network_resilience.retryBackoffMs",
+      "side": "vps",
+      "group": "recarga",
+      "priority": 1,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_measured": "500",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "500",
+          "source": "bloque #EXT-X-SESSION-DATA medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "ms",
+      "safe_min": 100,
+      "safe_max": 5000,
+      "ceiling": {
+        "value": 5000,
+        "why": "mas de 5 s el reintento llega cuando el buffer ya se vacio",
+        "enforced_by": "protocol"
+      },
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 100,
+        "ceiling": 5000,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "NO perceptible: adelanta la descarga y acelera la recuperacion; no anade segundos detras del directo",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:204",
+      "symptom": "reintentos que empeoran el bloqueo",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad.",
+      "latency_class": "cheap",
+      "why_here": "Backoff del daemon: reintenta sin provocar 403/429."
+    },
+    {
+      "name": "com.ape.network_resilience.retryCount",
+      "side": "vps",
+      "group": "recarga",
+      "priority": 1,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_measured": "5",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "5",
+          "source": "bloque #EXT-X-SESSION-DATA medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "intentos",
+      "safe_min": 1,
+      "safe_max": 15,
+      "ceiling": {
+        "value": 15,
+        "why": "el VPS y el player reintentan a la vez: mas de 15 duplica la presion sobre el proveedor",
+        "enforced_by": "provider"
+      },
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 1,
+        "ceiling": 15,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "NO perceptible: adelanta la descarga y acelera la recuperacion; no anade segundos detras del directo",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:204",
+      "symptom": "fallos intermitentes",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad.",
+      "latency_class": "cheap",
+      "why_here": "Reintentos del daemon: mismo efecto, otra capa."
+    },
+    {
+      "name": "X-Connection-Timeout-Ms",
+      "side": "vps",
+      "group": "recarga",
+      "priority": 1,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "2500,3500,6000",
+          "source": "EXTHTTP medido (canal 1, lista de evidencia)"
+        }
+      ],
+      "value_measured": "2500,3500,6000",
+      "type": "int-list",
+      "unit": "ms",
+      "safe_min": 1000,
+      "safe_max": 15000,
+      "ceiling": {
+        "value": 15000,
+        "why": "mas que eso y el player abandona antes que nosotros",
+        "enforced_by": "player"
+      },
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 1000,
+        "ceiling": 15000,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "NO perceptible: adelanta la descarga y acelera la recuperacion; no anade segundos detras del directo",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:124",
+      "symptom": "timeout de conexion en hora punta",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad: subir buffer = ir mas detras del directo, jamas bajar imagen.",
+      "latency_class": "cheap",
+      "why_here": "Da tiempo a que la conexion lenta termine en vez de matarla."
+    },
+    {
+      "name": "X-Max-Reconnect-Attempts",
+      "side": "vps",
+      "group": "recarga",
+      "priority": 1,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "999999",
+          "source": "EXTHTTP medido (canal 1, lista de evidencia)"
+        }
+      ],
+      "value_measured": "999999",
+      "type": "int",
+      "unit": "intentos",
+      "safe_min": 1,
+      "safe_max": 100,
+      "ceiling": {
+        "value": 100,
+        "why": "por encima, el bucle de reconexion es indistinguible de un ban y empeora el bloqueo",
+        "enforced_by": "provider"
+      },
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 1,
+        "ceiling": 100,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "NO perceptible: adelanta la descarga y acelera la recuperacion; no anade segundos detras del directo",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:86",
+      "symptom": "canal que se rinde tras un bache",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad: subir buffer = ir mas detras del directo, jamas bajar imagen.",
+      "latency_class": "cheap",
+      "why_here": "No se rinde: la reproduccion no acaba mientras haya red."
+    },
+    {
+      "name": "X-Parallel-Segments",
+      "side": "vps",
+      "group": "recarga",
+      "priority": 1,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_sources": [
+        {
+          "profile": "P5",
+          "value": "4",
+          "source": "encargo del operador (perfil P5; NO presente en el EXTHTTP del perfil P3 medido)"
+        }
+      ],
+      "value_measured": null,
+      "type": "int",
+      "unit": "segmentos",
+      "safe_min": 1,
+      "safe_max": 8,
+      "ceiling": {
+        "value": 8,
+        "why": "no tiene sentido pedir mas segmentos en paralelo que descargas concurrentes permitidas (X-Concurrent-Downloads=8)",
+        "enforced_by": "protocol"
+      },
+      "step": {
+        "type": "absolute",
+        "value": 1,
+        "note": "un paso = una unidad de la escala"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "NO perceptible: adelanta la descarga y acelera la recuperacion; no anade segundos detras del directo",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:1344",
+      "symptom": "buffer que no se llena con red buena",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad: subir buffer = ir mas detras del directo, jamas bajar imagen.",
+      "latency_class": "cheap",
+      "why_here": "Reparte la descarga en paralelo: llena el buffer antes con la misma red."
+    },
+    {
+      "name": "X-Prefetch-Segments",
+      "side": "vps",
+      "group": "recarga",
+      "priority": 1,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_sources": [
+        {
+          "profile": "P5",
+          "value": "8",
+          "source": "encargo del operador (perfil P5; NO presente en el EXTHTTP del perfil P3 medido)"
+        }
+      ],
+      "value_measured": null,
+      "type": "int",
+      "unit": "segmentos",
+      "safe_min": 1,
+      "safe_max": 16,
+      "ceiling": {
+        "value": 16,
+        "why": "el doble de la ventana viva tipica (8): por encima, los fetches caen fuera del playlist y vuelven 404",
+        "enforced_by": "protocol"
+      },
+      "step": {
+        "type": "absolute",
+        "value": 1,
+        "note": "un paso = una unidad de la escala"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "NO perceptible: adelanta la descarga y acelera la recuperacion; no anade segundos detras del directo",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:1343",
+      "symptom": "arranque y zapeo lentos",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad: subir buffer = ir mas detras del directo, jamas bajar imagen.",
+      "latency_class": "cheap",
+      "why_here": "Pide los segmentos antes: el corte se evita por adelantarse, no por esperar."
+    },
+    {
+      "name": "X-Read-Timeout-Ms",
+      "side": "vps",
+      "group": "recarga",
+      "priority": 1,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "6000,9000,12000",
+          "source": "EXTHTTP medido (canal 1, lista de evidencia)"
+        }
+      ],
+      "value_measured": "6000,9000,12000",
+      "type": "int-list",
+      "unit": "ms",
+      "safe_min": 3000,
+      "safe_max": 30000,
+      "ceiling": {
+        "value": 30000,
+        "why": "por encima de 30 s la lectura ya no salva el segmento: el buffer se vacia igual",
+        "enforced_by": "player"
+      },
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 3000,
+        "ceiling": 30000,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "NO perceptible: adelanta la descarga y acelera la recuperacion; no anade segundos detras del directo",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:125",
+      "symptom": "cortes por lectura lenta del proveedor",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad: subir buffer = ir mas detras del directo, jamas bajar imagen.",
+      "latency_class": "cheap",
+      "why_here": "Da tiempo a que el segmento lento llegue entero."
+    },
+    {
+      "name": "X-Reconnect-Delay-Ms",
+      "side": "vps",
+      "group": "recarga",
+      "priority": 1,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "50,100,200",
+          "source": "EXTHTTP medido (canal 1, lista de evidencia)"
+        }
+      ],
+      "value_measured": "50,100,200",
+      "type": "int-list",
+      "unit": "ms",
+      "safe_min": 25,
+      "safe_max": 1000,
+      "ceiling": {
+        "value": 1000,
+        "why": "un segundo entre reconexiones ya es conservador; mas retrasa la vuelta",
+        "enforced_by": "protocol"
+      },
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 25,
+        "ceiling": 1000,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "NO perceptible: adelanta la descarga y acelera la recuperacion; no anade segundos detras del directo",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:87",
+      "symptom": "reconexion que empeora el bloqueo",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad: subir buffer = ir mas detras del directo, jamas bajar imagen.",
+      "latency_class": "cheap",
+      "why_here": "Vuelve antes sin empeorar el bloqueo."
+    },
+    {
+      "name": "X-Retry-Count",
+      "side": "vps",
+      "group": "recarga",
+      "priority": 1,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "10,12,15",
+          "source": "EXTHTTP medido (canal 1, lista de evidencia)"
+        }
+      ],
+      "value_measured": "10,12,15",
+      "type": "int-list",
+      "unit": "intentos",
+      "safe_min": 1,
+      "safe_max": 30,
+      "ceiling": {
+        "value": 30,
+        "why": "mas reintentos seguidos = tormenta contra el rate limit del proveedor -> 403/429",
+        "enforced_by": "provider"
+      },
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 1,
+        "ceiling": 30,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "NO perceptible: adelanta la descarga y acelera la recuperacion; no anade segundos detras del directo",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:122",
+      "symptom": "fallos intermitentes del proveedor",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad: subir buffer = ir mas detras del directo, jamas bajar imagen.",
+      "latency_class": "cheap",
+      "why_here": "Reintenta: convierte un fallo transitorio en un segmento mas, sin cortar."
+    },
+    {
+      "name": "X-Retry-Delay-Ms",
+      "side": "vps",
+      "group": "recarga",
+      "priority": 1,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "120,200,350",
+          "source": "EXTHTTP medido (canal 1, lista de evidencia)"
+        }
+      ],
+      "value_measured": "120,200,350",
+      "type": "int-list",
+      "unit": "ms",
+      "safe_min": 50,
+      "safe_max": 2000,
+      "ceiling": {
+        "value": 2000,
+        "why": "por encima de 2 s el reintento llega tarde para salvar el buffer",
+        "enforced_by": "protocol"
+      },
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 50,
+        "ceiling": 2000,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "NO perceptible: adelanta la descarga y acelera la recuperacion; no anade segundos detras del directo",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:123",
+      "symptom": "rafagas de 403/429 por reintentar rapido",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad: subir buffer = ir mas detras del directo, jamas bajar imagen.",
+      "latency_class": "cheap",
+      "why_here": "Espacia los reintentos para no chocar con el rate limit."
+    },
+    {
+      "name": "com.ape.live_sync.liveMaxLatencyDurationCount",
+      "side": "vps",
+      "group": "profundidad",
+      "priority": 2,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_measured": "10",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "10",
+          "source": "bloque #EXT-X-SESSION-DATA medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "segmentos",
+      "safe_min": 3,
+      "safe_max": 20,
+      "ceiling": {
+        "value": 20,
+        "why": "20 x 6 s = 2 min detras del directo: el zape se vuelve inusable",
+        "enforced_by": "protocol"
+      },
+      "step": {
+        "type": "absolute",
+        "value": 1,
+        "note": "un paso = una unidad de la escala"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "+1 unidad = +6 s detras de la emision",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:202",
+      "symptom": "directo que se va muy atras",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad.",
+      "latency_class": "costs_latency",
+      "latency_cost_s_per_unit": 6000,
+      "why_here": "Da margen real, pero se paga en segundos detras del directo."
+    },
+    {
+      "name": "com.ape.live_sync.maxLiveOffsetMs",
+      "side": "vps",
+      "group": "profundidad",
+      "priority": 2,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_measured": "12000",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "12000",
+          "source": "bloque #EXT-X-SESSION-DATA medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "ms",
+      "safe_min": 3000,
+      "safe_max": 60000,
+      "ceiling": {
+        "value": 60000,
+        "why": "= liveMaxLatencyDurationCount (10) x segmento (6 s)",
+        "enforced_by": "protocol"
+      },
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 3000,
+        "ceiling": 60000,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "CUESTA latencia: +1 ms de margen = +1 ms detras de la emision",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:202",
+      "symptom": "latencia del directo descontrolada",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad.",
+      "latency_class": "costs_latency",
+      "latency_cost_s_per_unit": 1,
+      "why_here": "Da margen real, pero se paga en segundos detras del directo."
+    },
+    {
+      "name": "exoplayer.load_control.maxBufferMs",
+      "side": "vps",
+      "group": "profundidad",
+      "priority": 2,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_measured": "30000",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "30000",
+          "source": "bloque #EXT-X-SESSION-DATA medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "ms",
+      "safe_min": 10000,
+      "safe_max": 60000,
+      "ceiling": {
+        "value": 60000,
+        "why": "60 s del bitrate 4K = 210 MB de RAM: por encima el SO mata el proceso",
+        "enforced_by": "memory"
+      },
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 10000,
+        "ceiling": 60000,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "CUESTA latencia: +1 ms de margen = +1 ms detras de la emision",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:8581",
+      "symptom": "rebuffer con red buena",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad.",
+      "latency_class": "costs_latency",
+      "latency_cost_s_per_unit": 1,
+      "why_here": "Da margen real, pero se paga en segundos detras del directo."
+    },
+    {
+      "name": "exoplayer.load_control.minBufferMs",
+      "side": "vps",
+      "group": "profundidad",
+      "priority": 2,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_measured": "20000",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "20000",
+          "source": "bloque #EXT-X-SESSION-DATA medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "ms",
+      "safe_min": 2000,
+      "safe_max": 30000,
+      "ceiling": {
+        "value": 30000,
+        "why": "no puede superar maxBufferMs",
+        "enforced_by": "player"
+      },
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 2000,
+        "ceiling": 30000,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "CUESTA latencia: +1 ms de margen = +1 ms detras de la emision",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:8581",
+      "symptom": "arranque lento",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad.",
+      "latency_class": "costs_latency",
+      "latency_cost_s_per_unit": 1,
+      "why_here": "Da margen real, pero se paga en segundos detras del directo."
+    },
+    {
+      "name": "X-Buffer-Max",
+      "side": "vps",
+      "group": "profundidad",
+      "priority": 2,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "200000",
+          "source": "EXTHTTP medido (canal 1, lista de evidencia)"
+        }
+      ],
+      "value_measured": "200000",
+      "type": "int",
+      "unit": "bytes",
+      "safe_min": 32000,
+      "safe_max": 110100480,
+      "ceiling": {
+        "value": 110100480,
+        "why": "mismo techo de memoria: 105 MiB a 28 Mbps",
+        "enforced_by": "memory"
+      },
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 32000,
+        "ceiling": 110100480,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "CUESTA latencia: +1 ms de margen = +1 ms detras de la emision",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:1333",
+      "symptom": "tirones tras un bache de red",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad: subir buffer = ir mas detras del directo, jamas bajar imagen.",
+      "latency_class": "costs_latency",
+      "latency_cost_s_per_unit": 1,
+      "why_here": "Da margen real, pero se paga en segundos detras del directo."
+    },
+    {
+      "name": "X-Buffer-Min",
+      "side": "vps",
+      "group": "profundidad",
+      "priority": 2,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "120000",
+          "source": "EXTHTTP medido (canal 1, lista de evidencia)"
+        }
+      ],
+      "value_measured": "120000",
+      "type": "int",
+      "unit": "bytes",
+      "safe_min": 16000,
+      "safe_max": 110100480,
+      "ceiling": {
+        "value": 110100480,
+        "why": "no puede superar X-Buffer-Size (invariante min <= size <= max)",
+        "enforced_by": "player"
+      },
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 16000,
+        "ceiling": 110100480,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "CUESTA latencia: +1 ms de margen = +1 ms detras de la emision",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:1334",
+      "symptom": "rebuffer con red inestable",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad: subir buffer = ir mas detras del directo, jamas bajar imagen.",
+      "latency_class": "costs_latency",
+      "latency_cost_s_per_unit": 1,
+      "why_here": "Da margen real, pero se paga en segundos detras del directo."
+    },
+    {
+      "name": "X-Buffer-Size",
+      "side": "vps",
+      "group": "profundidad",
+      "priority": 2,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "100000",
+          "source": "EXTHTTP medido (canal 1, lista de evidencia)"
+        }
+      ],
+      "value_measured": "100000",
+      "type": "int",
+      "unit": "bytes",
+      "safe_min": 16000,
+      "safe_max": 110100480,
+      "ceiling": {
+        "value": 110100480,
+        "why": "30 s del bitrate maximo del 4K (28 Mbps) = 105 MiB; mas no cabe en el buffer del player",
+        "enforced_by": "memory"
+      },
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 16000,
+        "ceiling": 110100480,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "CUESTA latencia: +1 ms de margen = +1 ms detras de la emision",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:1335",
+      "symptom": "rebuffer en canales de bitrate alto",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad: subir buffer = ir mas detras del directo, jamas bajar imagen.",
+      "latency_class": "costs_latency",
+      "latency_cost_s_per_unit": 1,
+      "why_here": "Da margen real, pero se paga en segundos detras del directo."
+    },
+    {
+      "name": "X-Buffer-Target",
+      "side": "vps",
+      "group": "profundidad",
+      "priority": 2,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "60000",
+          "source": "EXTHTTP medido (canal 1, lista de evidencia)"
+        },
+        {
+          "profile": "P5",
+          "value": "6667",
+          "source": "encargo del operador (perfil P5)"
+        }
+      ],
+      "value_measured": "60000",
+      "type": "int",
+      "unit": "ms",
+      "safe_min": 2000,
+      "safe_max": 30000,
+      "ceiling": {
+        "value": 30000,
+        "why": "el player deja de bufferear en maxBufferMs=30 s; por encima lo ignora y no gana nada",
+        "enforced_by": "player"
+      },
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 2000,
+        "ceiling": 30000,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "CUESTA latencia: +1 ms de margen = +1 ms detras de la emision",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:1332",
+      "symptom": "arranque lento o microcortes al zapear",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad: subir buffer = ir mas detras del directo, jamas bajar imagen.",
+      "latency_class": "costs_latency",
+      "latency_cost_s_per_unit": 1,
+      "why_here": "Da margen real, pero se paga en segundos detras del directo."
+    },
+    {
+      "name": "X-Live-Caching",
+      "side": "vps",
+      "group": "profundidad",
+      "priority": 2,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "120000",
+          "source": "EXTHTTP medido (canal 1, lista de evidencia)"
+        }
+      ],
+      "value_measured": "120000",
+      "type": "int",
+      "unit": "ms",
+      "safe_min": 1000,
+      "safe_max": 60000,
+      "ceiling": {
+        "value": 60000,
+        "why": "mismo techo: un minuto detras del directo es el limite practico",
+        "enforced_by": "player"
+      },
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 1000,
+        "ceiling": 60000,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "CUESTA latencia: +1 ms de margen = +1 ms detras de la emision",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:1330",
+      "symptom": "directo que se queda atras",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad: subir buffer = ir mas detras del directo, jamas bajar imagen.",
+      "latency_class": "costs_latency",
+      "latency_cost_s_per_unit": 1,
+      "why_here": "Da margen real, pero se paga en segundos detras del directo."
+    },
+    {
+      "name": "X-Max-Buffer-Time",
+      "side": "vps",
+      "group": "profundidad",
+      "priority": 2,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "12,18,25",
+          "source": "EXTHTTP medido (canal 1, lista de evidencia)"
+        }
+      ],
+      "value_measured": "12,18,25",
+      "type": "int-list",
+      "unit": "s",
+      "safe_min": 4,
+      "safe_max": 30,
+      "ceiling": {
+        "value": 30,
+        "why": "subirlo de 16 a 600 NO hace nada: el techo real es maxBufferMs del player (30 s)",
+        "enforced_by": "player"
+      },
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 4,
+        "ceiling": 30,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "+1 unidad = +1 s detras de la emision",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:1337",
+      "symptom": "rebuffer en picos de latencia",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad: subir buffer = ir mas detras del directo, jamas bajar imagen.",
+      "latency_class": "costs_latency",
+      "latency_cost_s_per_unit": 1000,
+      "why_here": "Da margen real, pero se paga en segundos detras del directo."
+    },
+    {
+      "name": "X-Min-Buffer-Time",
+      "side": "vps",
+      "group": "profundidad",
+      "priority": 2,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "2,4,6",
+          "source": "EXTHTTP medido (canal 1, lista de evidencia)"
+        }
+      ],
+      "value_measured": "2,4,6",
+      "type": "int-list",
+      "unit": "s",
+      "safe_min": 1,
+      "safe_max": 30,
+      "ceiling": {
+        "value": 20,
+        "why": "por encima del maxBufferMs del player no cambia nada; 20 s ya cubre 3 segmentos largos",
+        "enforced_by": "player"
+      },
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 1,
+        "ceiling": 30,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "+1 unidad = +1 s detras de la emision",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:1336",
+      "symptom": "congelacion al cambiar de canal",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad: subir buffer = ir mas detras del directo, jamas bajar imagen.",
+      "latency_class": "costs_latency",
+      "latency_cost_s_per_unit": 1000,
+      "why_here": "Da margen real, pero se paga en segundos detras del directo."
+    },
+    {
+      "name": "X-Network-Caching",
+      "side": "vps",
+      "group": "profundidad",
+      "priority": 2,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "120000",
+          "source": "EXTHTTP medido (canal 1, lista de evidencia)"
+        }
+      ],
+      "value_measured": "120000",
+      "type": "int",
+      "unit": "ms",
+      "safe_min": 1000,
+      "safe_max": 60000,
+      "ceiling": {
+        "value": 60000,
+        "why": "10 segmentos = 1 minuto de cache: mas y el zape es inusable",
+        "enforced_by": "player"
+      },
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 1000,
+        "ceiling": 60000,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "CUESTA latencia: +1 ms de margen = +1 ms detras de la emision",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:1329",
+      "symptom": "microcortes de red",
+      "anti_degradation": "Compra margen con LATENCIA, nunca con calidad: subir buffer = ir mas detras del directo, jamas bajar imagen.",
+      "latency_class": "costs_latency",
+      "latency_cost_s_per_unit": 1,
+      "why_here": "Da margen real, pero se paga en segundos detras del directo."
+    },
+    {
+      "name": "are_user_disabled_hdr_formats_allowed",
+      "side": "apk",
+      "group": "display",
+      "priority": 3,
+      "family": "hdr",
+      "set_by": "decision",
+      "value_measured": null,
+      "value_sources": [
+        {
+          "profile": "device",
+          "value": "0|1",
+          "source": "docs/audits/VPP_SOC_QUALITY_20261114.md filas 1-11"
+        }
+      ],
+      "type": "enum",
+      "unit": "bool",
+      "allowed_values": "0|1",
+      "step": {
+        "type": "discrete",
+        "note": "un salto a un valor valido; no hay intermedios"
+      },
+      "direction_prohibited": [
+        "up"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "write": "adb shell settings put global are_user_disabled_hdr_formats_allowed 1",
+      "verify": "adb shell settings get global are_user_disabled_hdr_formats_allowed",
+      "readers": [
+        "apk"
+      ],
+      "reader_evidence": "SettingsApplier.kt · VPP fila 10",
+      "symptom": "formatos HDR bloqueados",
+      "anti_degradation": "SOLO subir: 1080->2160 y 50->60 permitido; al reves es degradacion."
+    },
+    {
+      "name": "com.ape.abr_quality_policy",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "session_data",
+      "set_by": "decision",
+      "type": "json-object",
+      "unit": "objeto JSON",
+      "value_measured": "{\\\"preferHigherBitrate\\\":true,\\\"minStableTimeBeforeUpgradeMs\\\":15000,\\\"qualityDropThreshold\\\":0.65,\\\"qualityRiseThreshold\\\":0.85,\\\"smoothSwitching\\\":true,\\\"forbidDowngradeOnTransientStall\\\":true}",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "(ver sub-campos)",
+          "source": "bloque #EXT-X-SESSION-DATA medido"
+        }
+      ],
+      "step": {
+        "type": "per_subfield",
+        "note": "cada subcampo numerico <=25% por paso; los booleanos exigen recibo"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:205",
+      "symptom": "politica del daemon/APK",
+      "anti_degradation": "Bajar buffer o relajar resiliencia esta prohibido."
+    },
+    {
+      "name": "com.ape.codec_preferences",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "session_data",
+      "set_by": "decision",
+      "type": "json-object",
+      "unit": "objeto JSON",
+      "value_measured": "{\\\"preferredCodecs\\\":[\\\"dvh1\\\",\\\"hvc1.2\\\",\\\"av01\\\",\\\"avc1\\\"],\\\"hdrModes\\\":[\\\"PQ\\\",\\\"HLG\\\",\\\"DV\\\"],\\\"audioPassthrough\\\":[\\\"ec-3\\\",\\\"ac-3\\\",\\\"mp4a\\\"]}",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "(ver sub-campos)",
+          "source": "bloque #EXT-X-SESSION-DATA medido"
+        }
+      ],
+      "step": {
+        "type": "per_subfield",
+        "note": "cada subcampo numerico <=25% por paso; los booleanos exigen recibo"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:207",
+      "symptom": "politica del daemon/APK",
+      "anti_degradation": "Bajar buffer o relajar resiliencia esta prohibido."
+    },
+    {
+      "name": "com.ape.live_sync",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "session_data",
+      "set_by": "decision",
+      "type": "json-object",
+      "unit": "objeto JSON",
+      "value_measured": "{\\\"liveSyncDurationCount\\\":3,\\\"liveMaxLatencyDurationCount\\\":10,\\\"liveTargetOffsetMs\\\":3000,\\\"maxLiveOffsetMs\\\":12000}",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "(ver sub-campos)",
+          "source": "bloque #EXT-X-SESSION-DATA medido"
+        }
+      ],
+      "step": {
+        "type": "per_subfield",
+        "note": "cada subcampo numerico <=25% por paso; los booleanos exigen recibo"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:202",
+      "symptom": "politica del daemon/APK",
+      "anti_degradation": "Bajar buffer o relajar resiliencia esta prohibido."
+    },
+    {
+      "name": "com.ape.network_resilience",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "session_data",
+      "set_by": "decision",
+      "type": "json-object",
+      "unit": "objeto JSON",
+      "value_measured": "{\\\"connectionTimeoutMs\\\":8000,\\\"readTimeoutMs\\\":15000,\\\"retryCount\\\":5,\\\"retryBackoffMs\\\":500,\\\"retryBackoffFactor\\\":1.5,\\\"maxRetryBackoffMs\\\":4000,\\\"freezeDetectionMs\\\":3000,\\\"maxFreezeBeforeRestartMs\\\":15000,\\\"jumpToLi",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "(ver sub-campos)",
+          "source": "bloque #EXT-X-SESSION-DATA medido"
+        }
+      ],
+      "step": {
+        "type": "per_subfield",
+        "note": "cada subcampo numerico <=25% por paso; los booleanos exigen recibo"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:204",
+      "symptom": "politica del daemon/APK",
+      "anti_degradation": "Bajar buffer o relajar resiliencia esta prohibido."
+    },
+    {
+      "name": "com.ape.recovery_policy",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "session_data",
+      "set_by": "decision",
+      "type": "json-object",
+      "unit": "objeto JSON",
+      "value_measured": "{\\\"resumeFromLastPositionMs\\\":true,\\\"skipDuplicateSegments\\\":true,\\\"alignToProgramDateTime\\\":true,\\\"maxResumeDriftMs\\\":500,\\\"preserveBitrateOnResume\\\":true}",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "(ver sub-campos)",
+          "source": "bloque #EXT-X-SESSION-DATA medido"
+        }
+      ],
+      "step": {
+        "type": "per_subfield",
+        "note": "cada subcampo numerico <=25% por paso; los booleanos exigen recibo"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:203",
+      "symptom": "politica del daemon/APK",
+      "anti_degradation": "Bajar buffer o relajar resiliencia esta prohibido."
+    },
+    {
+      "name": "com.ape.universal_parity",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "session_data",
+      "set_by": "decision",
+      "type": "json-object",
+      "unit": "objeto JSON",
+      "value_measured": "{\\\"applyToResolutions\\\":[\\\"480p\\\",\\\"720p\\\",\\\"1080p\\\",\\\"1440p\\\",\\\"2160p\\\",\\\"4320p\\\"],\\\"sameBufferStrategy\\\":true,\\\"sameRecoveryPolicy\\\":true,\\\"sameLowLatencyMode\\\":true,\\\"sameABRPolicy\\\":true}",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "(ver sub-campos)",
+          "source": "bloque #EXT-X-SESSION-DATA medido"
+        }
+      ],
+      "step": {
+        "type": "per_subfield",
+        "note": "cada subcampo numerico <=25% por paso; los booleanos exigen recibo"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:206",
+      "symptom": "politica del daemon/APK",
+      "anti_degradation": "Bajar buffer o relajar resiliencia esta prohibido."
+    },
+    {
+      "name": "display_color_mode",
+      "side": "apk",
+      "group": "display",
+      "priority": 3,
+      "family": "display",
+      "set_by": "decision",
+      "value_measured": null,
+      "value_sources": [
+        {
+          "profile": "device",
+          "value": "0|1|3",
+          "source": "docs/audits/VPP_SOC_QUALITY_20261114.md filas 1-11"
+        }
+      ],
+      "type": "enum",
+      "unit": "modo",
+      "allowed_values": "0|1|3",
+      "step": {
+        "type": "discrete",
+        "note": "un salto a un valor valido; no hay intermedios"
+      },
+      "direction_prohibited": [
+        "guard"
+      ],
+      "direction_allowed": [
+        "guard"
+      ],
+      "write": "adb shell settings put secure display_color_mode {0|1|3}",
+      "verify": "adb shell settings get secure display_color_mode",
+      "readers": [
+        "apk"
+      ],
+      "reader_evidence": "SettingsApplier.kt · VPP fila 9",
+      "symptom": "color del sistema",
+      "anti_degradation": "Solo valores seguros; 3=FORCE HDR falso PROHIBIDO; nunca desactivar HDR."
+    },
+    {
+      "name": "display_mode_hdr",
+      "side": "apk",
+      "group": "display",
+      "priority": 3,
+      "family": "hdr",
+      "set_by": "decision",
+      "value_measured": null,
+      "value_sources": [
+        {
+          "profile": "device",
+          "value": "0|1",
+          "source": "docs/audits/VPP_SOC_QUALITY_20261114.md filas 1-11"
+        }
+      ],
+      "type": "enum",
+      "unit": "bool",
+      "allowed_values": "0|1",
+      "step": {
+        "type": "discrete",
+        "note": "un salto a un valor valido; no hay intermedios"
+      },
+      "direction_prohibited": [
+        "up"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "write": "adb shell settings put global display_mode_hdr 1",
+      "verify": "adb shell settings get global display_mode_hdr",
+      "readers": [
+        "apk"
+      ],
+      "reader_evidence": "SettingsApplier.kt · VPP fila 1",
+      "symptom": "HDR del sistema apagado",
+      "anti_degradation": "SOLO subir: 1080->2160 y 50->60 permitido; al reves es degradacion."
+    },
+    {
+      "name": "display_mode_refresh_rate",
+      "side": "apk",
+      "group": "display",
+      "priority": 3,
+      "family": "display",
+      "set_by": "decision",
+      "value_measured": null,
+      "value_sources": [
+        {
+          "profile": "device",
+          "value": "50|60",
+          "source": "docs/audits/VPP_SOC_QUALITY_20261114.md filas 1-11"
+        }
+      ],
+      "type": "enum",
+      "unit": "Hz",
+      "allowed_values": "50|60",
+      "step": {
+        "type": "discrete",
+        "note": "un salto a un valor valido; no hay intermedios"
+      },
+      "direction_prohibited": [
+        "up"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "write": "adb shell settings put global display_mode_refresh_rate {50|60}",
+      "verify": "adb shell settings get global display_mode_refresh_rate  · efecto: dumpsys display",
+      "readers": [
+        "apk"
+      ],
+      "reader_evidence": "SettingsApplier.kt · VPP fila 3",
+      "symptom": "judder o motion poco fluido",
+      "anti_degradation": "SOLO subir: 1080->2160 y 50->60 permitido; al reves es degradacion."
+    },
+    {
+      "name": "display_mode_resolution",
+      "side": "apk",
+      "group": "display",
+      "priority": 3,
+      "family": "display",
+      "set_by": "decision",
+      "value_measured": null,
+      "value_sources": [
+        {
+          "profile": "device",
+          "value": "1080|2160",
+          "source": "docs/audits/VPP_SOC_QUALITY_20261114.md filas 1-11"
+        }
+      ],
+      "type": "enum",
+      "unit": "px",
+      "allowed_values": "1080|2160",
+      "step": {
+        "type": "discrete",
+        "note": "un salto a un valor valido; no hay intermedios"
+      },
+      "direction_prohibited": [
+        "up"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "write": "adb shell settings put global display_mode_resolution {1080|2160}",
+      "verify": "adb shell settings get global display_mode_resolution",
+      "readers": [
+        "apk"
+      ],
+      "reader_evidence": "SettingsApplier.kt (Settings.Global.put) · VPP audit fila 2",
+      "symptom": "imagen borrosa o sobrerreducida",
+      "anti_degradation": "SOLO subir: 1080->2160 y 50->60 permitido; al reves es degradacion."
+    },
+    {
+      "name": "exoplayer.load_control",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "session_data",
+      "set_by": "decision",
+      "type": "json-object",
+      "unit": "objeto JSON",
+      "value_measured": "{\\\"minBufferMs\\\":20000,\\\"bufferForPlaybackMs\\\":1000,\\\"bufferForPlaybackAfterRebufferMs\\\":2000,\\\"maxBufferMs\\\":30000}",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "(ver sub-campos)",
+          "source": "bloque #EXT-X-SESSION-DATA medido"
+        }
+      ],
+      "step": {
+        "type": "per_subfield",
+        "note": "cada subcampo numerico <=25% por paso; los booleanos exigen recibo"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:8581",
+      "symptom": "buffer/ABR del player",
+      "anti_degradation": "Bajar buffer o relajar resiliencia esta prohibido."
+    },
+    {
+      "name": "exoplayer.load_control.bufferForPlaybackAfterRebufferMs",
+      "side": "vps",
+      "group": "recarga",
+      "priority": 3,
+      "family": "buffer",
+      "set_by": "decision",
+      "value_measured": "2000",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "2000",
+          "source": "bloque #EXT-X-SESSION-DATA exoplayer.load_control medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "ms",
+      "safe_min": 500,
+      "safe_max": 10000,
+      "ceiling": {
+        "value": 10000,
+        "why": "esperar mas de 10 s tras un rebuffer es un corte disfrazado: el spectador ya vio el spin",
+        "enforced_by": "player"
+      },
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 500,
+        "ceiling": 10000,
+        "note": "max 25% por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "latency_cost": "NO cuesta latencia en el directo: solo cambia cuanto se espera tras un rebuffer",
+      "latency_class": "cheap",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:8581",
+      "symptom": "spin largo o corte al recuperarse de un rebuffer",
+      "anti_degradation": "Bajarlo acorta la espera pero acepta un corte visible: bajar esta prohibido."
+    },
+    {
+      "name": "exoplayer.track_selection",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "session_data",
+      "set_by": "decision",
+      "type": "json-object",
+      "unit": "objeto JSON",
+      "value_measured": "{\\\"maxDurationForQualityDecreaseMs\\\":2000,\\\"minDurationForQualityIncreaseMs\\\":15000,\\\"bandwidthFraction\\\":0.65}",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "(ver sub-campos)",
+          "source": "bloque #EXT-X-SESSION-DATA medido"
+        }
+      ],
+      "step": {
+        "type": "per_subfield",
+        "note": "cada subcampo numerico <=25% por paso; los booleanos exigen recibo"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:199",
+      "symptom": "buffer/ABR del player",
+      "anti_degradation": "Bajar buffer o relajar resiliencia esta prohibido."
+    },
+    {
+      "name": "hdr_conversion_mode",
+      "side": "apk",
+      "group": "display",
+      "priority": 3,
+      "family": "hdr",
+      "set_by": "decision",
+      "value_measured": null,
+      "value_sources": [
+        {
+          "profile": "device",
+          "value": "0|1|2",
+          "source": "docs/audits/VPP_SOC_QUALITY_20261114.md filas 1-11"
+        }
+      ],
+      "type": "enum",
+      "unit": "modo",
+      "allowed_values": "0|1|2",
+      "step": {
+        "type": "discrete",
+        "note": "un salto a un valor valido; no hay intermedios"
+      },
+      "direction_prohibited": [
+        "guard"
+      ],
+      "direction_allowed": [
+        "guard"
+      ],
+      "write": "adb shell settings put global hdr_conversion_mode {0|1|2}",
+      "verify": "adb shell settings get global hdr_conversion_mode  · efecto: dumpsys SurfaceFlinger | grep -i dataspace (NO MEDIDO)",
+      "readers": [
+        "apk"
+      ],
+      "reader_evidence": "ExtShimOtt.kt:158,166 · VPP fila 7",
+      "symptom": "HDR real que no llega al panel",
+      "anti_degradation": "Solo valores seguros; 3=FORCE HDR falso PROHIBIDO; nunca desactivar HDR."
+    },
+    {
+      "name": "hdr_force_conversion_type",
+      "side": "apk",
+      "group": "display",
+      "priority": 3,
+      "family": "hdr",
+      "set_by": "decision",
+      "value_measured": null,
+      "value_sources": [
+        {
+          "profile": "device",
+          "value": "-1",
+          "source": "docs/audits/VPP_SOC_QUALITY_20261114.md filas 1-11"
+        }
+      ],
+      "type": "enum",
+      "unit": "modo",
+      "allowed_values": "-1",
+      "step": {
+        "type": "discrete",
+        "note": "un salto a un valor valido; no hay intermedios"
+      },
+      "direction_prohibited": [
+        "guard"
+      ],
+      "direction_allowed": [
+        "guard"
+      ],
+      "write": "adb shell settings put global hdr_force_conversion_type -1",
+      "verify": "adb shell settings get global hdr_force_conversion_type",
+      "readers": [
+        "apk"
+      ],
+      "reader_evidence": "SettingsApplier.kt · VPP fila 8",
+      "symptom": "conversion HDR forzada",
+      "anti_degradation": "Solo valores seguros; 3=FORCE HDR falso PROHIBIDO; nunca desactivar HDR."
+    },
+    {
+      "name": "user_disabled_hdr_formats",
+      "side": "apk",
+      "group": "display",
+      "priority": 3,
+      "family": "hdr",
+      "set_by": "decision",
+      "value_measured": null,
+      "value_sources": [
+        {
+          "profile": "device",
+          "value": "(vacio)",
+          "source": "docs/audits/VPP_SOC_QUALITY_20261114.md filas 1-11"
+        }
+      ],
+      "type": "list",
+      "unit": "formatos",
+      "allowed_values": "(vacio)",
+      "step": {
+        "type": "discrete",
+        "note": "un salto a un valor valido; no hay intermedios"
+      },
+      "direction_prohibited": [
+        "guard"
+      ],
+      "direction_allowed": [
+        "guard"
+      ],
+      "write": "adb shell settings put global user_disabled_hdr_formats \"\"",
+      "verify": "adb shell settings get global user_disabled_hdr_formats",
+      "readers": [
+        "apk"
+      ],
+      "reader_evidence": "SettingsApplier.kt · VPP fila 11",
+      "symptom": "lista de formatos HDR desactivados",
+      "anti_degradation": "Solo valores seguros; 3=FORCE HDR falso PROHIBIDO; nunca desactivar HDR."
+    },
+    {
+      "name": "user_preferred_refresh_rate",
+      "side": "apk",
+      "group": "display",
+      "priority": 3,
+      "family": "display",
+      "set_by": "decision",
+      "value_measured": null,
+      "value_sources": [
+        {
+          "profile": "device",
+          "value": "50|60",
+          "source": "docs/audits/VPP_SOC_QUALITY_20261114.md filas 1-11"
+        }
+      ],
+      "type": "enum",
+      "unit": "Hz",
+      "allowed_values": "50|60",
+      "step": {
+        "type": "discrete",
+        "note": "un salto a un valor valido; no hay intermedios"
+      },
+      "direction_prohibited": [
+        "up"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "write": "adb shell settings put global user_preferred_refresh_rate {50|60}",
+      "verify": "adb shell settings get global user_preferred_refresh_rate",
+      "readers": [
+        "apk"
+      ],
+      "reader_evidence": "SettingsApplier.kt · VPP fila 6",
+      "symptom": "fps bajo en la UI",
+      "anti_degradation": "SOLO subir: 1080->2160 y 50->60 permitido; al reves es degradacion."
+    },
+    {
+      "name": "user_preferred_resolution_height",
+      "side": "apk",
+      "group": "display",
+      "priority": 3,
+      "family": "display",
+      "set_by": "decision",
+      "value_measured": null,
+      "value_sources": [
+        {
+          "profile": "device",
+          "value": "720..2160",
+          "source": "docs/audits/VPP_SOC_QUALITY_20261114.md filas 1-11"
+        }
+      ],
+      "type": "enum",
+      "unit": "px",
+      "allowed_values": "720..2160",
+      "step": {
+        "type": "discrete",
+        "note": "un salto a un valor valido; no hay intermedios"
+      },
+      "direction_prohibited": [
+        "up"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "write": "adb shell settings put global user_preferred_resolution_height {720..2160}",
+      "verify": "adb shell settings get global user_preferred_resolution_height",
+      "readers": [
+        "apk"
+      ],
+      "reader_evidence": "SettingsApplier.kt · VPP fila 5 (dev.res_h)",
+      "symptom": "app arranca en resolucion baja",
+      "anti_degradation": "SOLO subir: 1080->2160 y 50->60 permitido; al reves es degradacion."
+    },
+    {
+      "name": "user_preferred_resolution_width",
+      "side": "apk",
+      "group": "display",
+      "priority": 3,
+      "family": "display",
+      "set_by": "decision",
+      "value_measured": null,
+      "value_sources": [
+        {
+          "profile": "device",
+          "value": "1280..3840",
+          "source": "docs/audits/VPP_SOC_QUALITY_20261114.md filas 1-11"
+        }
+      ],
+      "type": "enum",
+      "unit": "px",
+      "allowed_values": "1280..3840",
+      "step": {
+        "type": "discrete",
+        "note": "un salto a un valor valido; no hay intermedios"
+      },
+      "direction_prohibited": [
+        "up"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "write": "adb shell settings put global user_preferred_resolution_width {1280..3840}",
+      "verify": "adb shell settings get global user_preferred_resolution_width",
+      "readers": [
+        "apk"
+      ],
+      "reader_evidence": "SettingsApplier.kt · VPP fila 4 (dev.res_w)",
+      "symptom": "app arranca en resolucion baja",
+      "anti_degradation": "SOLO subir: 1080->2160 y 50->60 permitido; al reves es degradacion."
+    },
+    {
+      "name": "X-AI-Motion-Estimation",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "enhance",
+      "set_by": "decision",
+      "value_measured": "OPTICAL-FLOW",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "OPTICAL-FLOW",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "movimiento con judder",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-AI-SR-Artifact-Removal",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "enhance",
+      "set_by": "decision",
+      "value_measured": "enabled",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "enabled",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "artefactos de compresion",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-AI-SR-Enabled",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "enhance",
+      "set_by": "decision",
+      "value_measured": "true",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "true",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "imagen blanda en fuentes de baja resolucion",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-AI-SR-GPU-Acceleration",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "enhance",
+      "set_by": "decision",
+      "value_measured": "cuda",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "cuda",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "realce sin GPU",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-AI-SR-Model",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "enhance",
+      "set_by": "decision",
+      "value_measured": "esrgan-pro",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "esrgan-pro",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "modelo flojo para 4K",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-AI-SR-Noise-Reduction",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "enhance",
+      "set_by": "decision",
+      "value_measured": "auto",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "auto",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "ruido visible en sombras",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-AI-SR-Precision",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "enhance",
+      "set_by": "decision",
+      "value_measured": "FP16",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "FP16",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "precision que degrada el realce",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-AI-SR-Scale",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "enhance",
+      "set_by": "decision",
+      "value_measured": "4x",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "4x",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "x",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "upscale insuficiente",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-AI-SR-Tile-Size",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "enhance",
+      "set_by": "decision",
+      "value_measured": "256",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "256",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "px",
+      "safe_min": 64,
+      "safe_max": 512,
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 64,
+        "ceiling": 512,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "rendimiento del realce",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-Audio-Track-Selection",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "playback",
+      "set_by": "decision",
+      "value_measured": "default",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "default",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:116",
+      "symptom": "pista de audio por defecto",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-Bandwidth-Estimation",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "abr",
+      "set_by": "decision",
+      "value_measured": "adaptive,balanced,conservative",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "adaptive,balanced,conservative",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum-list",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:120",
+      "symptom": "estimacion de BW demasiado pesimista",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-Bandwidth-Preference",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "abr",
+      "set_by": "decision",
+      "value_measured": "unlimited",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "unlimited",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:90",
+      "symptom": "forzar limite de BW sin motivo",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-BW-Confidence-Threshold",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "abr",
+      "set_by": "decision",
+      "value_measured": "0.95",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "0.95",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "decimal",
+      "unit": "ratio",
+      "safe_min": 0.5,
+      "safe_max": 0.99,
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 0.5,
+        "ceiling": 0.99,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:92",
+      "symptom": "cambios de calidad a lo loco",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-BW-Estimation-Window",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "abr",
+      "set_by": "decision",
+      "value_measured": "10",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "10",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "muestras",
+      "safe_min": 3,
+      "safe_max": 60,
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 3,
+        "ceiling": 60,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:91",
+      "symptom": "ABR que baja de calidad con ruido",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-BW-Smooth-Factor",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "abr",
+      "set_by": "decision",
+      "value_measured": "0.05",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "0.05",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "decimal",
+      "unit": "ratio",
+      "safe_min": 0.01,
+      "safe_max": 0.5,
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 0.01,
+        "ceiling": 0.5,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "up"
+      ],
+      "direction_allowed": [
+        "down"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:93",
+      "symptom": "ABR que reacciona tarde a la caida",
+      "anti_degradation": "Ambas direcciones dentro del rango."
+    },
+    {
+      "name": "X-CMAF-Part-Target",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "segment",
+      "set_by": "decision",
+      "value_measured": "1.0",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "1.0",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "decimal",
+      "unit": "s",
+      "safe_min": 0.2,
+      "safe_max": 2,
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 0.2,
+        "ceiling": 2,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [],
+      "direction_allowed": [
+        "up",
+        "down"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "baja latencia en CMAF",
+      "anti_degradation": "Ambas direcciones dentro del rango."
+    },
+    {
+      "name": "X-Detail-Edge-Enhancement",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "enhance",
+      "set_by": "decision",
+      "value_measured": "adaptive",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "adaptive",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "bordes blandos",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-Detail-Enhancement",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "enhance",
+      "set_by": "decision",
+      "value_measured": "enabled",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "enabled",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "imagen plana",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-Detail-Enhancement-Level",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "enhance",
+      "set_by": "decision",
+      "value_measured": "high",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "high",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "nivel de detalle bajo",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-Detail-Noise-Threshold",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "enhance",
+      "set_by": "decision",
+      "value_measured": "0.02",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "0.02",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "decimal",
+      "unit": "ratio",
+      "safe_min": 0.01,
+      "safe_max": 0.1,
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 0.01,
+        "ceiling": 0.1,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "NR que no limpia el grano",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-Detail-Sharpen-Sigma",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "enhance",
+      "set_by": "decision",
+      "value_measured": "0.03",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "0.03",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "decimal",
+      "unit": "sigma",
+      "safe_min": 0.01,
+      "safe_max": 0.1,
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 0.01,
+        "ceiling": 0.1,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "nitidez insuficiente",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-Detail-Sharpening",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "enhance",
+      "set_by": "decision",
+      "value_measured": "adaptive-unsharp",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "adaptive-unsharp",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "falta de nitidez",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-Detail-Texture-Enhancement",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "enhance",
+      "set_by": "decision",
+      "value_measured": "auto",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "auto",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "texturas lavadas",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-EPG-Sync",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "playback",
+      "set_by": "decision",
+      "value_measured": "enabled",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "enabled",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:118",
+      "symptom": "desfase de EPG",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-Failover-Enabled",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "playback",
+      "set_by": "decision",
+      "value_measured": "true",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "true",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:160",
+      "symptom": "conmutacion a replica",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-File-Caching",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "cache",
+      "set_by": "decision",
+      "value_measured": "300000",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "300000",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "ms",
+      "safe_min": 1000,
+      "safe_max": 600000,
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 1000,
+        "ceiling": 600000,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:1331",
+      "symptom": "seek y trick-play lentos",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-Initial-Bitrate",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "abr",
+      "set_by": "decision",
+      "value_measured": "15000000",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "15000000",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "bps",
+      "safe_min": 1000000,
+      "safe_max": 80000000,
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 1000000,
+        "ceiling": 80000000,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:121",
+      "symptom": "primer segundo en calidad baja",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-LCEVC-B-Frames",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "lcevc",
+      "set_by": "decision",
+      "value_measured": "8",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "8",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "frames",
+      "safe_min": 1,
+      "safe_max": 16,
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 1,
+        "ceiling": 16,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "eficiencia de la capa de mejora",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-LCEVC-Lookahead",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "lcevc",
+      "set_by": "decision",
+      "value_measured": "60",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "60",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "frames",
+      "safe_min": 1,
+      "safe_max": 120,
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 1,
+        "ceiling": 120,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "decisiones de rate control",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-LCEVC-Psycho-Visual",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "lcevc",
+      "set_by": "decision",
+      "value_measured": "true",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "true",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "percepcion de calidad",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-LCEVC-Rate-Control",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "lcevc",
+      "set_by": "decision",
+      "value_measured": "CRF+VBR",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "CRF+VBR",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "bitrate mal repartido en LCEVC",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-LCEVC-Ref-Frames",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "lcevc",
+      "set_by": "decision",
+      "value_measured": "16",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "16",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "frames",
+      "safe_min": 1,
+      "safe_max": 32,
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 1,
+        "ceiling": 32,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "calidad temporal",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-LCEVC-Scale-Factor",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "lcevc",
+      "set_by": "decision",
+      "value_measured": "2x",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "2x",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "x",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "factor de escalado",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-LCEVC-Threads",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "lcevc",
+      "set_by": "decision",
+      "value_measured": "12",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "12",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "hilos",
+      "safe_min": 1,
+      "safe_max": 32,
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 1,
+        "ceiling": 32,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "encoding lento de la capa",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-PEVCE-Deinterlace",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "device",
+      "set_by": "decision",
+      "value_measured": "-1",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "-1",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "modo",
+      "safe_min": -1,
+      "safe_max": 1,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [],
+      "direction_allowed": [
+        "up",
+        "down"
+      ],
+      "readers": [
+        "generator"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5934",
+      "symptom": "fuentes entrelazadas",
+      "anti_degradation": "Ambas direcciones dentro del rango."
+    },
+    {
+      "name": "X-PEVCE-HW-Threads",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "device",
+      "set_by": "decision",
+      "value_measured": "0",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "0",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "hilos",
+      "safe_min": 0,
+      "safe_max": 16,
+      "step": {
+        "type": "absolute",
+        "value": 1,
+        "note": "un paso = una unidad de la escala"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "generator"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5930",
+      "symptom": "decoder sin hilos suficientes",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-PEVCE-Live-Caching",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "cache",
+      "set_by": "decision",
+      "value_measured": "3000",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "3000",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "ms",
+      "safe_min": 500,
+      "safe_max": 60000,
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 500,
+        "ceiling": 60000,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "generator"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5925",
+      "symptom": "desfase del directo con PEVCE",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-PEVCE-Network-Caching",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "cache",
+      "set_by": "decision",
+      "value_measured": "3000",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "3000",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "ms",
+      "safe_min": 500,
+      "safe_max": 60000,
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 500,
+        "ceiling": 60000,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "tirones con el motor PEVCE",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-PEVCE-Skip-Frame",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "device",
+      "set_by": "decision",
+      "value_measured": "0",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "0",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "bool",
+      "safe_min": 0,
+      "safe_max": 1,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [],
+      "direction_allowed": [
+        "up",
+        "down"
+      ],
+      "readers": [
+        "generator"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5931",
+      "symptom": "saltar frames cuando el SoC no da",
+      "anti_degradation": "Ambas direcciones dentro del rango."
+    },
+    {
+      "name": "X-PEVCE-Skip-Idct",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "device",
+      "set_by": "decision",
+      "value_measured": "0",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "0",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "bool",
+      "safe_min": 0,
+      "safe_max": 1,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [],
+      "direction_allowed": [
+        "up",
+        "down"
+      ],
+      "readers": [
+        "generator"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5932",
+      "symptom": "reducir carga de decoder",
+      "anti_degradation": "Ambas direcciones dentro del rango."
+    },
+    {
+      "name": "X-PEVCE-TCP-Caching",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "cache",
+      "set_by": "decision",
+      "value_measured": "3000",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "3000",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "ms",
+      "safe_min": 500,
+      "safe_max": 60000,
+      "step": {
+        "type": "fraction",
+        "value": 0.25,
+        "floor": 500,
+        "ceiling": 60000,
+        "note": "max 25% del valor actual por paso"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "generator"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5926",
+      "symptom": "reinicios de conexion con PEVCE",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-PEVCE-Timeshift-RAM",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "device",
+      "set_by": "decision",
+      "value_measured": "64MB",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "64MB",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "string-mem",
+      "unit": "MB",
+      "safe_min": 16,
+      "safe_max": 512,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "generator"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5933",
+      "symptom": "timeshift corto",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-Playback-Rate",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "playback",
+      "set_by": "decision",
+      "value_measured": "1.0,1.25,1.5",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "1.0,1.25,1.5",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum-list",
+      "unit": "x",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:103",
+      "symptom": "velocidades disponibles",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-Prefetch-Enabled",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "prefetch",
+      "set_by": "decision",
+      "value_measured": "true,adaptive,auto",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "true,adaptive,auto",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:1799",
+      "symptom": "arranque y zapeo lentos",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-Request-Priority",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "playback",
+      "set_by": "decision",
+      "value_measured": "ultra-high",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "ultra-high",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:107",
+      "symptom": "prioridad de peticiones",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-Segment-Duration",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "segment",
+      "set_by": "decision",
+      "value_measured": "2000",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "2000",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "int",
+      "unit": "ms",
+      "safe_min": 1000,
+      "safe_max": 6000,
+      "step": {
+        "type": "absolute",
+        "value": 1,
+        "note": "un paso = una unidad de la escala"
+      },
+      "direction_prohibited": [],
+      "direction_allowed": [
+        "up",
+        "down"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:1340",
+      "symptom": "latencia alta o exceso de peticiones",
+      "anti_degradation": "Ambas direcciones dentro del rango."
+    },
+    {
+      "name": "X-Subtitle-Track-Selection",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "playback",
+      "set_by": "decision",
+      "value_measured": "off",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "off",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "enum",
+      "unit": "-",
+      "safe_min": null,
+      "safe_max": null,
+      "step": {
+        "type": "discrete",
+        "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:117",
+      "symptom": "subtitulos por defecto",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    },
+    {
+      "name": "X-Trick-Play-Rates",
+      "side": "vps",
+      "group": "qoe",
+      "priority": 3,
+      "family": "playback",
+      "set_by": "decision",
+      "value_measured": "2,4,8,16,32",
+      "value_sources": [
+        {
+          "profile": "P3",
+          "value": "2,4,8,16,32",
+          "source": "EXTHTTP medido (canal 1)"
+        }
+      ],
+      "type": "int-list",
+      "unit": "x",
+      "safe_min": 1,
+      "safe_max": 32,
+      "step": {
+        "type": "absolute",
+        "value": 1,
+        "note": "un paso = una unidad de la escala"
+      },
+      "direction_prohibited": [
+        "down"
+      ],
+      "direction_allowed": [
+        "up"
+      ],
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "symptom": "seek rapido",
+      "anti_degradation": "BAJAR prohibido (Ley Anti-Degradacion)."
+    }
+  ],
+  "blacklist": [
+    {
+      "name": "X-APE-Profile",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "P3",
+      "class": "structure_declaration",
+      "reason": "DECLARA la fuente real: moverlo no cambia el bitstream, cambia lo que el player cree recibir.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:6686",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-APE-Tier",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "T6",
+      "class": "structure_declaration",
+      "reason": "DECLARA la fuente real: moverlo no cambia el bitstream, cambia lo que el player cree recibir.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/bin/ape-6k-premium.sh:15",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "User-Agent",
+      "side": "vps",
+      "set_by": "identity",
+      "measured": "Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.6045.213 Safari/537.36 WebAppManager",
+      "class": "identity_anti_cache",
+      "reason": "Identidad/anti-cache/proveedor: rompe idempotencia o dispara bloqueo.",
+      "readers": [
+        "apk"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/ExtShimOtt.kt:139",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Device-Capabilities",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "fhd=true,hevc=true,fps60=true",
+      "class": "device_fact",
+      "reason": "Hecho del dispositivo: falsearlo sirve lo que no decodifica.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Video-Range",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "SDR",
+      "class": "structure_declaration",
+      "reason": "DECLARA la fuente real: moverlo no cambia el bitstream, cambia lo que el player cree recibir.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR-Nits",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "400",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/bin/ape-metapack.sh:15",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Codec-Full",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "hvc1.2.4.L123.B0",
+      "class": "structure_declaration",
+      "reason": "DECLARA la fuente real: moverlo no cambia el bitstream, cambia lo que el player cree recibir.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:1322",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Audio-Codec-Preferred",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "",
+      "class": "codec_family_declaration",
+      "reason": "Familia de codec/audio/DRM que el proveedor sirve (Ley Cardinal 1).",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Resolution",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "1920x1080",
+      "class": "structure_declaration",
+      "reason": "DECLARA la fuente real: moverlo no cambia el bitstream, cambia lo que el player cree recibir.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/bin/ape-metapack.sh:15",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Framerate",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "60",
+      "class": "structure_declaration",
+      "reason": "DECLARA la fuente real: moverlo no cambia el bitstream, cambia lo que el player cree recibir.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Expected-Bitrate",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "15000000",
+      "class": "structure_declaration",
+      "reason": "DECLARA la fuente real: moverlo no cambia el bitstream, cambia lo que el player cree recibir.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Average-Bitrate",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "12750000",
+      "class": "structure_declaration",
+      "reason": "DECLARA la fuente real: moverlo no cambia el bitstream, cambia lo que el player cree recibir.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Request-Id",
+      "side": "vps",
+      "set_by": "identity",
+      "measured": "omega-unknown-mvtf2z1d",
+      "class": "identity_anti_cache",
+      "reason": "Identidad/anti-cache/proveedor: rompe idempotencia o dispara bloqueo.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:169",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Session-Id",
+      "side": "vps",
+      "set_by": "identity",
+      "measured": "c8e0e7080a71bc00_54lf3r0z7e81_f8hoh",
+      "class": "identity_anti_cache",
+      "reason": "Identidad/anti-cache/proveedor: rompe idempotencia o dispara bloqueo.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/bin/ape-metapack.sh:13",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Playback-Session-Id",
+      "side": "vps",
+      "set_by": "identity",
+      "measured": "6f05ac4a-6f05-4f05-af05-000d71afdcf6",
+      "class": "identity_anti_cache",
+      "reason": "Identidad/anti-cache/proveedor: rompe idempotencia o dispara bloqueo.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:98",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "Accept",
+      "side": "vps",
+      "set_by": "identity",
+      "measured": "*/*",
+      "class": "identity_anti_cache",
+      "reason": "Identidad/anti-cache/proveedor: rompe idempotencia o dispara bloqueo.",
+      "readers": [
+        "apk"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/FeedForwardClient.kt:56",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "Accept-Language",
+      "side": "vps",
+      "set_by": "identity",
+      "measured": "es-ES, en-US",
+      "class": "identity_anti_cache",
+      "reason": "Identidad/anti-cache/proveedor: rompe idempotencia o dispara bloqueo.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:73",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "Accept-Encoding",
+      "side": "vps",
+      "set_by": "identity",
+      "measured": "gzip, deflate",
+      "class": "identity_anti_cache",
+      "reason": "Identidad/anti-cache/proveedor: rompe idempotencia o dispara bloqueo.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:4375",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "DNT",
+      "side": "vps",
+      "set_by": "identity",
+      "measured": "1",
+      "class": "identity_anti_cache",
+      "reason": "Identidad/anti-cache/proveedor: rompe idempotencia o dispara bloqueo.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:323",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "Sec-GPC",
+      "side": "vps",
+      "set_by": "identity",
+      "measured": "1",
+      "class": "identity_anti_cache",
+      "reason": "Identidad/anti-cache/proveedor: rompe idempotencia o dispara bloqueo.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "Cache-Control",
+      "side": "vps",
+      "set_by": "identity",
+      "measured": "no-cache",
+      "class": "identity_anti_cache",
+      "reason": "Identidad/anti-cache/proveedor: rompe idempotencia o dispara bloqueo.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:4381",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "Pragma",
+      "side": "vps",
+      "set_by": "identity",
+      "measured": "no-cache",
+      "class": "identity_anti_cache",
+      "reason": "Identidad/anti-cache/proveedor: rompe idempotencia o dispara bloqueo.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:4387",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "Origin",
+      "side": "vps",
+      "set_by": "identity",
+      "measured": "https://www.netflix.com",
+      "class": "identity_anti_cache",
+      "reason": "Identidad/anti-cache/proveedor: rompe idempotencia o dispara bloqueo.",
+      "readers": [
+        "apk"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/rea/ReaHdrBridge.java:108",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "Referer",
+      "side": "vps",
+      "set_by": "identity",
+      "measured": "https://www.netflix.com/",
+      "class": "identity_anti_cache",
+      "reason": "Identidad/anti-cache/proveedor: rompe idempotencia o dispara bloqueo.",
+      "readers": [
+        "apk"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/ExtShimOtt.kt:141",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-App-Version",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "8.80.0",
+      "class": "device_fact",
+      "reason": "Hecho del dispositivo: falsearlo sirve lo que no decodifica.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:97",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Device-Id",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "DEV_jk2gxoax6wb77h0t",
+      "class": "device_fact",
+      "reason": "Hecho del dispositivo: falsearlo sirve lo que no decodifica.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:99",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Client-Timestamp",
+      "side": "vps",
+      "set_by": "identity",
+      "measured": "1793270972",
+      "class": "identity_anti_cache",
+      "reason": "Identidad/anti-cache/proveedor: rompe idempotencia o dispara bloqueo.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:168",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Stream-Type",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "hls,dash",
+      "class": "structure_declaration",
+      "reason": "DECLARA la fuente real: moverlo no cambia el bitstream, cambia lo que el player cree recibir.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:100",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Quality-Preference",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "codec-hevc,profile-main-12,main-10,tier-high;codec-hev1,profile-main-10,tier-high;codec-hvc1,profile-main-10,tier-high;codec-h265,profile-main-10,tier-high;codec-h.265,profile-main-10,tier-high;codec-H265,profile-main-10,tier-high;codec-H.265,profile-main-10,tier-high;codec-h264,profile-high,tier-high;codec-h.264,profile-high,tier-high;codec-H264,profile-high,tier-high;codec-H.264,profile-high,tier-high;codec-avc,profile-high,tier-high;codec-avc1,profile-high,tier-high;codec-AVC,profile-high,tier-high;codec-av1,profile-main-12,main-10,main,tier-high",
+      "class": "structure_declaration",
+      "reason": "DECLARA la fuente real: moverlo no cambia el bitstream, cambia lo que el player cree recibir.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:1348",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-CMAF-Server-Control",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "CAN-BLOCK-RELOAD=YES",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-CMAF-Playlist-Type",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "LIVE",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-CMAF-Delta-Playlist",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "true",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-CMAF-Program-Date-Time",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "2026-10-29T10:49:32.033Z",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/bin/ape-metapack.sh:14",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-FMP4-Edit-List",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "true",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-FMP4-EMSG-Box",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "true",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-FMP4-PSSH-Box",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "true",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-FMP4-Client-Data",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "true",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Cortex-AI-Super-Resolution",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "REALESRGAN_X4PLUS_LITE",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Cortex-AI-Spatial-Denoise",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "NLMEANS_OPTICAL",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Cortex-LCEVC",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "PHASE_4_FP16",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Cortex-Temporal-Artifact-Repair",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "ACTIVATED",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Cortex-Constant-Frame-Rate",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "CFR_60_ANCHOR_LOCKED",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Cortex-Optical-Flow-Minterpolate",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "120FPS_ACTIVATED",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Luma-Precision",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "12-BIT-FLOATING",
+      "class": "structure_declaration",
+      "reason": "DECLARA la fuente real: moverlo no cambia el bitstream, cambia lo que el player cree recibir.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Cortex-Device-Type",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "universal",
+      "class": "device_fact",
+      "reason": "Hecho del dispositivo: falsearlo sirve lo que no decodifica.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Cortex-Device-HDR",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "hdr10:hdr10plus:dolbyvision:hlg",
+      "class": "device_fact",
+      "reason": "Hecho del dispositivo: falsearlo sirve lo que no decodifica.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Cortex-Idempotency",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "deterministic",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Cortex-Bidirectional",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "resolve>enrich>override>update",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-LCEVC-Enabled",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "true",
+      "class": "declared_other",
+      "reason": "Metadata declarativa sin efecto en reproduccion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-LCEVC-Version",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "1.0",
+      "class": "declared_other",
+      "reason": "Metadata declarativa sin efecto en reproduccion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-LCEVC-Enhancement-Type",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "mpeg5-part2",
+      "class": "declared_other",
+      "reason": "Metadata declarativa sin efecto en reproduccion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-LCEVC-Base-Codec",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "hevc",
+      "class": "declared_other",
+      "reason": "Metadata declarativa sin efecto en reproduccion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-LCEVC-L1-Block",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "4X4",
+      "class": "declared_other",
+      "reason": "Metadata declarativa sin efecto en reproduccion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-LCEVC-L2-Block",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "2X2",
+      "class": "declared_other",
+      "reason": "Metadata declarativa sin efecto en reproduccion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-LCEVC-HW-Acceleration",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "required",
+      "class": "declared_other",
+      "reason": "Metadata declarativa sin efecto en reproduccion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-AI-Content-Type",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "GENERAL",
+      "class": "declared_other",
+      "reason": "Metadata declarativa sin efecto en reproduccion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-VVC-Toolset",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "FULL",
+      "class": "codec_family_declaration",
+      "reason": "Familia de codec/audio/DRM que el proveedor sirve (Ley Cardinal 1).",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-VVC-Subpictures",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "true",
+      "class": "codec_family_declaration",
+      "reason": "Familia de codec/audio/DRM que el proveedor sirve (Ley Cardinal 1).",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-VVC-LMCS",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "true",
+      "class": "codec_family_declaration",
+      "reason": "Familia de codec/audio/DRM que el proveedor sirve (Ley Cardinal 1).",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-EVC-Level",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "5.1",
+      "class": "codec_family_declaration",
+      "reason": "Familia de codec/audio/DRM que el proveedor sirve (Ley Cardinal 1).",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-EVC-Toolset",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "MAIN",
+      "class": "codec_family_declaration",
+      "reason": "Familia de codec/audio/DRM que el proveedor sirve (Ley Cardinal 1).",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR-MaxCLL",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "5000",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/cmaf_engine/modules/ai_super_resolution_engine.php:761",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR-MaxFALL",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "800",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/cmaf_engine/modules/ai_super_resolution_engine.php:791",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR-Mastering-Display",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "G(0.680,0.320)B(0.150,0.060)R(0.640,0.330)WP(0.3127,0.3290)L(5000,0.0005)",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR-Reference-White",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "203nits",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR-Vivid",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "true",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR-Filmmaker-Mode",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "true",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR-Extended-Range",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "true",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR-Peak-Nit-Engine",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "v1.0-5000cd",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR-PQ-EOTF",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "ST2084",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR-PQ-Target-Code",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "3765",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR-Pixel-Format",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "yuv420p10le",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR-Local-Dimming",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "AGGRESSIVE,FULL-ARRAY,HIGH",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/cmaf_engine/modules/ai_super_resolution_engine.php:855",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR-Specular-Boost",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "quantum-5000nit-per-pixel",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR-Highlight-Rolloff",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "NONE",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR-Bloom-Effect",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "natural-hdr-glow",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR-Film-Grain-Synthesis",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "neural-mpeg-standard",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR10-Plus",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "enabled",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR10-Plus-Version",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "1.0",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR10-Plus-MaxLuminance",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "5000",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR10-Plus-MinLuminance",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "0.0005",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR10-Plus-Dynamic-Tone-Mapping",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "per-scene",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR10-Plus-Scene-Analysis",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "auto",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR10-Plus-L1-MinMaxAvg",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "0.0005,5000,800",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HDR10-Plus-L6-MaxSCL",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "5000,5000,5000",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Dolby-Vision-Profile",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "5,8,7",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Dolby-Vision-Level",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "6.1",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Dolby-Vision-RPU",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "present",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Dolby-Vision-Compatibility",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "hdr10-backward-compatible",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Dolby-Vision-Max-Luminance",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "5000",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Dolby-Vision-Min-Luminance",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "0.0005",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HLG-Enabled",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "true",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HLG-Version",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "v2",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HLG-Reference-White",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "203",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-HLG-Alternative-Transfer",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "pq-fallback",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Color-Volume-Primaries",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "bt2020",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Color-Volume-Transfer",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "smpte-st2084",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Color-Volume-Matrix",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "bt2020nc",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Color-Volume-Range",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "narrow",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Color-Volume-Signal",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "pq",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Color-Volume-Metadata",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "static+dynamic",
+      "class": "hdr_declaration",
+      "reason": "Metadata HDR/color derivada del bitstream. Apagarla o subirla a mano es degradacion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Audio-Bitrate",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "640kbps",
+      "class": "codec_family_declaration",
+      "reason": "Familia de codec/audio/DRM que el proveedor sirve (Ley Cardinal 1).",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Audio-Objects",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "128",
+      "class": "codec_family_declaration",
+      "reason": "Familia de codec/audio/DRM que el proveedor sirve (Ley Cardinal 1).",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Audio-TrueHD",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "true",
+      "class": "codec_family_declaration",
+      "reason": "Familia de codec/audio/DRM que el proveedor sirve (Ley Cardinal 1).",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Audio-DRC-Profile",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "FILM-STANDARD",
+      "class": "codec_family_declaration",
+      "reason": "Familia de codec/audio/DRM que el proveedor sirve (Ley Cardinal 1).",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Thumbnail-Format",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "WebP+JPEG+AVIF",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Chapter-Markers",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "true",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-SCTE35-PID",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "0x0086",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-SCTE35-Segmentation-Type",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "PROGRAM_START",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-SCTE35-Blackout-Override",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "true",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Video-Codecs",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "hvc1, hev1, avc1, av01, dvh1, dvhe",
+      "class": "structure_declaration",
+      "reason": "DECLARA la fuente real: moverlo no cambia el bitstream, cambia lo que el player cree recibir.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:1320",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Audio-Codecs",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "mp4a.40.2, ac-3, mp4a.40.5, opus, flac",
+      "class": "codec_family_declaration",
+      "reason": "Familia de codec/audio/DRM que el proveedor sirve (Ley Cardinal 1).",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:110",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-DRM-Support",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "widevine,playready,fairplay",
+      "class": "codec_family_declaration",
+      "reason": "Familia de codec/audio/DRM que el proveedor sirve (Ley Cardinal 1).",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:111",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Codec-Support",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "av1",
+      "class": "codec_family_declaration",
+      "reason": "Familia de codec/audio/DRM que el proveedor sirve (Ley Cardinal 1).",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-CDN-Provider",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "auto",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:159",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Buffer-Strategy",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "ultra-aggressive",
+      "class": "declared_other",
+      "reason": "Metadata declarativa sin efecto en reproduccion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:1347",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Buffer-Underrun-Strategy",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "aggressive-refill",
+      "class": "declared_other",
+      "reason": "Metadata declarativa sin efecto en reproduccion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:88",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Device-Type",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "smart-tv",
+      "class": "device_fact",
+      "reason": "Hecho del dispositivo: falsearlo sirve lo que no decodifica.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:170",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Screen-Resolution",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "1920x1080",
+      "class": "device_fact",
+      "reason": "Hecho del dispositivo: falsearlo sirve lo que no decodifica.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:1308",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Network-Type",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "wifi",
+      "class": "device_fact",
+      "reason": "Hecho del dispositivo: falsearlo sirve lo que no decodifica.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:172",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "Accept-CH",
+      "side": "vps",
+      "set_by": "identity",
+      "measured": "DPR, Viewport-Width, Width, Device-Memory, RTT, Downlink, ECT",
+      "class": "identity_anti_cache",
+      "reason": "Identidad/anti-cache/proveedor: rompe idempotencia o dispara bloqueo.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php:219",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-OTT-Navigator-Version",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "1.7.0.0-aggressive-extreme",
+      "class": "device_fact",
+      "reason": "Hecho del dispositivo: falsearlo sirve lo que no decodifica.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:113",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Player-Type",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "exoplayer-ultra-extreme,vlc-pro,kodi-pro",
+      "class": "device_fact",
+      "reason": "Hecho del dispositivo: falsearlo sirve lo que no decodifica.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:114",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-PEVCE-HTTP-Reconnect",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "true",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "generator"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5927",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-PEVCE-HTTP-Continuous",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "true",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "generator"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5928",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-PEVCE-HW-Decode",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "any",
+      "class": "declared_other",
+      "reason": "Metadata declarativa sin efecto en reproduccion.",
+      "readers": [
+        "generator"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5929",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-PEVCE-Force-HDR",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "true",
+      "class": "declared_other",
+      "reason": "Metadata declarativa sin efecto en reproduccion.",
+      "readers": [
+        "generator"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5935",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Hardware-Decode",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "true",
+      "class": "device_fact",
+      "reason": "Hecho del dispositivo: falsearlo sirve lo que no decodifica.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:115",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Tunneling-Enabled",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "off",
+      "class": "device_fact",
+      "reason": "Hecho del dispositivo: falsearlo sirve lo que no decodifica.",
+      "readers": [
+        "generator"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-lab-v8-profiles.js:197",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Catchup-Support",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "flussonic-ultra",
+      "class": "media_feature_declaration",
+      "reason": "CMAF/EMSG/SCTE/CDN declarados: sin bitstream real esta prohibido.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:119",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    },
+    {
+      "name": "X-Reconnect-On-Error",
+      "side": "vps",
+      "set_by": "measurement",
+      "measured": "true,immediate,adaptive",
+      "class": "declared_other",
+      "reason": "Metadata declarativa sin efecto en reproduccion.",
+      "readers": [
+        "vps"
+      ],
+      "reader_evidence": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:85",
+      "detection": "Fuera de la superficie escribible: E_NOT_A_KNOB."
+    }
+  ],
+  "dead_knobs_excluded": [
+    {
+      "name": "X-PEVCE-Live-Caching",
+      "kind": "exhttp",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5925",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "X-PEVCE-TCP-Caching",
+      "kind": "exhttp",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5926",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "X-PEVCE-HTTP-Reconnect",
+      "kind": "exhttp",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5927",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "X-PEVCE-HTTP-Continuous",
+      "kind": "exhttp",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5928",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "X-PEVCE-HW-Decode",
+      "kind": "exhttp",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5929",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "X-PEVCE-HW-Threads",
+      "kind": "exhttp",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5930",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "X-PEVCE-Skip-Frame",
+      "kind": "exhttp",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5931",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "X-PEVCE-Skip-Idct",
+      "kind": "exhttp",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5932",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "X-PEVCE-Timeshift-RAM",
+      "kind": "exhttp",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5933",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "X-PEVCE-Deinterlace",
+      "kind": "exhttp",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5934",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "X-PEVCE-Force-HDR",
+      "kind": "exhttp",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:5935",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "X-Tunneling-Enabled",
+      "kind": "exhttp",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-lab-v8-profiles.js:197",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "com.ape.lab.schema",
+      "kind": "session_data",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:3347",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "com.ape.lab.exported_at",
+      "kind": "session_data",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:3348",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "com.ape.lab.bulletproof",
+      "kind": "session_data",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:3349",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "com.ape.lab.filename",
+      "kind": "session_data",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:3350",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "com.ape.profile.master",
+      "kind": "session_data",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:3353",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "com.ape.profile.master_name",
+      "kind": "session_data",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:3356",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "com.ape.profile.master_role",
+      "kind": "session_data",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:3357",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "com.ape.codec.chain.player_pref",
+      "kind": "session_data",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:3359",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "com.ape.codec.chain.audio",
+      "kind": "session_data",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:3360",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "com.ape.codec.chain.hdr",
+      "kind": "session_data",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:3361",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "com.ape.codec.chain.video_family",
+      "kind": "session_data",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:3362",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "com.ape.qos.target_mos",
+      "kind": "session_data",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:3365",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "com.ape.zapping.max_ms",
+      "kind": "session_data",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:3366",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "com.ape.startup.max_ms",
+      "kind": "session_data",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:3367",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "com.ape.rebuffer.tolerance",
+      "kind": "session_data",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:3368",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    },
+    {
+      "name": "com.ape.build",
+      "kind": "session_data",
+      "evidence": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:3554",
+      "why": "Solo aparece en el generador, que la ESCRIBE; ningun consumidor runtime la nombra => moverla no cambia nada."
+    }
+  ],
+  "not_available": [
+    {
+      "name": "aipq_enable",
+      "what": "setting AI-PQ del SoC",
+      "reason": "null en system y global: NO EXISTE en este firmware",
+      "evidence": "docs/audits/VPP_SOC_QUALITY_20261114.md:37",
+      "policy": "NO entra: no se puede mover lo que no existe."
+    },
+    {
+      "name": "aisr_enable",
+      "what": "setting AI-SR del SoC",
+      "reason": "null: NO EXISTE",
+      "evidence": "docs/audits/VPP_SOC_QUALITY_20261114.md:37",
+      "policy": "NO entra: no se puede mover lo que no existe."
+    },
+    {
+      "name": "ai_pq_mode",
+      "what": "modo AI-PQ",
+      "reason": "null: NO EXISTE (el codigo lo nombra en SettingsApplier.kt:318, el setting no existe)",
+      "evidence": "docs/audits/VPP_SOC_QUALITY_20261114.md:37",
+      "policy": "NO entra: no se puede mover lo que no existe."
+    },
+    {
+      "name": "ai_sr_mode",
+      "what": "modo AI-SR",
+      "reason": "null: NO EXISTE",
+      "evidence": "docs/audits/VPP_SOC_QUALITY_20261114.md:37",
+      "policy": "NO entra: no se puede mover lo que no existe."
+    },
+    {
+      "name": "ai_pic_mode",
+      "what": "modo AI picture",
+      "reason": "null: NO EXISTE",
+      "evidence": "docs/audits/VPP_SOC_QUALITY_20261114.md:38",
+      "policy": "NO entra: no se puede mover lo que no existe."
+    },
+    {
+      "name": "ai_sr_level",
+      "what": "nivel AI-SR",
+      "reason": "null: NO EXISTE (codigo en DeviceSampler.kt:21)",
+      "evidence": "docs/audits/VPP_SOC_QUALITY_20261114.md:38",
+      "policy": "NO entra: no se puede mover lo que no existe."
+    },
+    {
+      "name": "pq_sharpness_enable",
+      "what": "sharpness del SoC",
+      "reason": "null: NO EXISTE (codigo en SettingsApplier.kt:351)",
+      "evidence": "docs/audits/VPP_SOC_QUALITY_20261114.md:37-38",
+      "policy": "NO entra: no se puede mover lo que no existe."
+    },
+    {
+      "name": "pq_hdr_*",
+      "what": "familia HDR del SoC",
+      "reason": "null: NO EXISTE (codigo en SettingsApplier.kt:354)",
+      "evidence": "docs/audits/VPP_SOC_QUALITY_20261114.md:37-40",
+      "policy": "NO entra: no se puede mover lo que no existe."
+    },
+    {
+      "name": "pq_video_dnr / pq_*_dnr",
+      "what": "denoise del SoC",
+      "reason": "no aparece ni en el codigo (90 .kt/.java) ni en el firmware",
+      "evidence": "grep recursivo sobre la APK: SIN COINCIDENCIAS",
+      "policy": "NO entra: no se puede mover lo que no existe."
+    },
+    {
+      "name": "always_hdr",
+      "what": "HDR siempre",
+      "reason": "null: NO EXISTE",
+      "evidence": "docs/audits/VPP_SOC_QUALITY_20261114.md:39",
+      "policy": "NO entra: no se puede mover lo que no existe."
+    },
+    {
+      "name": "hdr_output_type",
+      "what": "tipo de salida HDR",
+      "reason": "null: NO EXISTE",
+      "evidence": "docs/audits/VPP_SOC_QUALITY_20261114.md:40",
+      "policy": "NO entra: no se puede mover lo que no existe."
+    },
+    {
+      "name": "sr_unsharp_f32 (TFLite)",
+      "what": "modelo AI-SR",
+      "reason": "TFL3 valido pero 1.580 B: no es red de inferencia real",
+      "evidence": ".../assets/sr_unsharp_f32.tflite sha256 0d192994028f…",
+      "policy": "NO entra: no se puede mover lo que no existe."
+    },
+    {
+      "name": "car_denoise_f32 (TFLite)",
+      "what": "modelo denoise",
+      "reason": "TFL3 valido pero 1.676 B: stub",
+      "evidence": ".../assets/car_denoise_f32.tflite sha256 2f26b5f17389…",
+      "policy": "NO entra: no se puede mover lo que no existe."
+    },
+    {
+      "name": "rife_blend_f32 (TFLite)",
+      "what": "modelo interpolacion",
+      "reason": "TFL3 valido pero 1.484 B: stub",
+      "evidence": ".../assets/rife_blend_f32.tflite sha256 aaad0ed9b911…",
+      "policy": "NO entra: no se puede mover lo que no existe."
+    },
+    {
+      "name": "minterpolate",
+      "what": "interpolacion de frames",
+      "reason": "no esta en la APK: es filtro ffmpeg (lado VPS/EXTVLCOPT)",
+      "evidence": "grep .kt/.java: SIN COINCIDENCIAS",
+      "policy": "NO entra: no se puede mover lo que no existe."
+    },
+    {
+      "name": "display improvement (di)",
+      "what": "mejora de display",
+      "reason": "no implementado en la APK",
+      "evidence": "grep display_improvement: SIN COINCIDENCIAS",
+      "policy": "NO entra: no se puede mover lo que no existe."
+    },
+    {
+      "name": "LCEVC sintetico",
+      "what": "capa LCEVC sintetica",
+      "reason": "implementado (LcevcSyntheticPipeline.kt) pero SIN lever de escritura: no hay setting ni API que el operario mueva",
+      "evidence": "LcevcSyntheticPipeline.kt:8,11",
+      "policy": "NO entra: no se puede mover lo que no existe."
+    }
+  ],
+  "blacklist_structure": [
+    {
+      "tag": "#EXTINF",
+      "measured_per_list": 11,
+      "detection": "sha256 del bloque normalizado por canal"
+    },
+    {
+      "tag": "#EXT-X-STREAM-INF",
+      "measured_per_list": 22,
+      "detection": "sha256 + cruce con el probe"
+    },
+    {
+      "tag": "#EXTSHIMOTT",
+      "measured_per_list": 11,
+      "detection": "tools/quality/validate_extshimott.js"
+    },
+    {
+      "tag": "URL del canal",
+      "measured_per_list": 11,
+      "detection": "sha256 de la linea"
+    },
+    {
+      "tag": "#EXT-X-APE-PROFILE-TEMPLATE",
+      "measured_per_list": 9,
+      "detection": "hash por canal"
+    },
+    {
+      "tag": "#EXT-X-APE-LAB-METADATA",
+      "measured_per_list": 31,
+      "detection": "hash de la concatenacion de chunks"
+    },
+    {
+      "tag": "codigo de la APK (.kt/.java/.gradle), pipeline, workflows, modulos",
+      "measured_per_list": 90,
+      "detection": "sha256 del arbol + git status => E_APK_CODE_TOUCHED"
+    }
+  ],
+  "detection": {
+    "knob_out_of_range": "E_KNOB_RANGE",
+    "knob_step_too_large": "E_STEP_TOO_LARGE",
+    "knob_above_ceiling": "E_ABOVE_CEILING (supera el techo real declarado)",
+    "knob_prohibited_direction": "E_KNOB_DEGRADATION",
+    "profile_downgrade": "E_PROFILE_DOWNGRADE",
+    "profile_conflict": "E_PROFILE_CONFLICT",
+    "unknown_name": "E_NOT_A_KNOB",
+    "structure": "E_STRUCTURE_TOUCHED",
+    "apk_code": "E_APK_CODE_TOUCHED",
+    "no_evidence": "E_NO_EVIDENCE",
+    "no_receipt": "E_NO_RECEIPT"
+  },
+  "not_computed": [
+    "El valor de cada perilla en los perfiles que no son P3 ni P5: los valores son por perfil; lo que el contrato fija son los rangos y los techos.",
+    "El efecto en pantalla de display_mode_* y hdr_conversion_mode: el audit VPP lo declara NO MEDIDO (§4.3).",
+    "Que ExoPlayer/VLC lean EXTHTTP: no lo leen. El EXTHTTP lo consume el VPS/shim.",
+    "Los 8 SESSION-DATA se marcan lado VPS porque el VPS los re-emite (ape_hls_generators.php:199-207, server.js:8581); que un player los aplique por su cuenta no esta medido.",
+    "La latencia de punta a punta al subir cada perilla de buffer: se declara el coste por unidad, no se ha medido en reproduccion real.",
+    "El techo real de X-Prefetch-Segments depende de la ventana viva de cada canal, que no se mide aqui: 16 es el doble de la ventana tipica medida en el ecosistema."
+  ],
+  "buffer_order_rule": {
+    "rule": "RECARGA primero (prioridad 1), PROFUNDIDAD despues (prioridad 2), QoE al final (3).",
+    "why": "Recargar evita el corte sin coste; profundizar da margen pero se paga en segundos detras del directo. Con el objetivo \"infinito = nunca se acaba, aunque sea con 3/4/5 s de ventaja\", primero se agota lo gratis y solo despues se paga latencia.",
+    "operator_objective_literal": "INFINITO ES QUE NUNCA PERMITA QUE LA REPRODUCCION SE ACABE, ASI SEA CON VENTAJA DE 3, 4, 5 SEGUNDOS... Y SI PUEDE SUBIR MAS SIN SACRIFICAR SEGUNDOS O LATENCIA QUE LO HAGA",
+    "reading": "Primero se sube todo lo de RECARGA hasta su techo (es gratis). Solo si aun se corta se sube PROFUNDIDAD, y ahi el operario ve exactamente cuantos segundos paga por unidad."
+  },
+  "invariants": [
+    {
+      "name": "X-Concurrent-Downloads",
+      "value": "8",
+      "is_knob": false,
+      "ssot": true,
+      "why": "NO es una perilla: es SSOT del perfil. AGENTS.md (§Ultimos cambios 2026-11-01) documenta que 256/200 saturaban el proveedor. Subirlo no da buffer: satura y provoca 403/429.",
+      "policy": "SALE de la lista de candidatas. Si el LLM lo propone, se rechaza con E_INVARIANT_TOUCHED.",
+      "detection": "E_INVARIANT_TOUCHED (intento de escribir un nombre declarado invariante)"
+    }
+  ],
+  "traps": [
+    {
+      "id": "T1",
+      "title": "Bajar timeouts \"para fallar rapido\" mata segmentos que solo iban lentos",
+      "explanation": "Un timeout agresivo convierte una conexion lenta en un fallo, y el fallo en un reintento: el segmento se pide dos veces y se tarda mas que dejandolo terminar. Hay un punto donde la agresividad se vuelve contraproducente: cuando el timeout baja de 2x el p95 del tiempo de conexion observado, o el retry-delay baja de ~100 ms (el proveedor responde 403/429).",
+      "crossing_point": "X-Connection-Timeout-Ms por debajo de ~2000 ms o X-Retry-Delay-Ms por debajo de ~100 ms en una red con p95 alto.",
+      "detect": "Si la tasa de timeouts por intento supera el 30 % con bytes ya recibidos, o si los 403/429 aparecen en rafaga, se cruzo la linea: se sube el timeout y se espacia el retry, nunca se baja mas.",
+      "code": "E_TIMEOUT_TOO_AGGRESSIVE / E_RATE_LIMITED"
+    },
+    {
+      "id": "T2",
+      "title": "Degradar imagen para salvar el buffer esta PROHIBIDO por ley",
+      "explanation": "Bajar resolucion, bitrate maximo, fps o apagar HDR para \"estabilizar\" es exactamente lo que la LEY ANTI-DEGRADACION (AGENTS.md) prohibe. Esas no son perillas: son intentos de degradacion.",
+      "detect": "Los nombres que declararian menos calidad estan en la lista negra (measurement) y responden E_NOT_A_KNOB; un perfil mas bajo responde E_PROFILE_DOWNGRADE; el gate del repo (check_anti_degradation_policy.js) es la ultima barrera.",
+      "code": "E_KNOB_DEGRADATION / E_PROFILE_DOWNGRADE"
+    }
+  ]
+}

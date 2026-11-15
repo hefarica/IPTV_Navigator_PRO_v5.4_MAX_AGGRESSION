@@ -2057,3 +2057,46 @@ HALLAZGO CRITICO QUE ESTO DESTAPA
   el APK y es una decision de diseño del operador. Se reporta con la evidencia.
 
   Y P4 de line.tivi-ott.net mide MPEG-2 (544x576): un codec que ningun perfil APE declara.
+---
+
+## Hecho 39 · El loadMap del JIT: 92% de un endpoint era parsear un JSON quieto
+
+DESCUBIERTO POR t74, MEDIDO Y DESPLEGADO 2026-11-15.
+
+EL DEFECTO
+  loadMap() hacia JSON.parse(fs.readFileSync(MAP_FILE)) en CADA llamada, y esa
+  funcion se invoca desde NUEVE puntos del camino de peticion (4038, 5582, 6579,
+  6628, 6692, 6711, 8006, 9436 y 9461).
+
+MEDIDO SOBRE EL FICHERO REAL DE PRODUCCION
+  MAP_FILE = /opt/ape-jit/current/channels.json · 4.944.656 B · 21.224 canales
+  mtime 2026-11-13 11:07 — llevaba DOS DIAS sin cambiar.
+    JSON.parse + readFileSync ... p50 12,76 ms · p95 22,63 · min 12,17 · max 30,88 (N=30)
+    readFile solo ............... p50  3,78 ms
+    statSync .................... p50   2,9 us   (4.400x mas barato que parsear)
+    GET /go/ (1 loadMap) ........ p50 15,32 ms · p95 20,70 (N=40)
+  => de los 15,32 ms de /go/, 12,76 eran parsear un JSON que no habia cambiado.
+     El 83% del endpoint.
+
+CORRECCION DE UN DATO HEREDADO
+  t74 reporto p50 53,3-70,5 ms para loadMap y 77x-105x en el A/B. Su cifra salio de
+  un banco SINTETICO. La medicion contra el fichero de produccion da 12,76 ms. El
+  defecto es real, pero 4-5x menor de lo reportado. Se corrigio al miembro antes de
+  que construyera sobre el dato falso.
+
+EL ARREGLO
+  Cache por identidad fisica del fichero (dev:ino:size:mtimeMs). statSync cuesta
+  ~2,9 us; el parse paga UNA vez por version, no por peticion. Fail-safe: en error
+  devuelve el ultimo mapa bueno (MAP_STALE) o {} solo si nunca se pudo leer, con
+  MAP_ERROR visible. No cambia el formato del mapa ni el contrato que lee el APK.
+
+DESPLEGADO Y MEDIDO
+  ANTES  /go/ p50 15,32 ms · p95 20,70 ms   (N=40)
+  AHORA  /go/ p50  0,54-1,21 ms · p95  1,69 ms (N=20-40)
+  MEJORA p50: 92-96%
+  Log de arranque: MAP_LOADED bytes=4944656 key=2049:389940:4944656:1794568030373.457
+  — UNA sola vez, como se diseno. Tres peticiones seguidas: 1,62 -> 1,27 -> 0,95 ms.
+  Manifest real por HTTPS tras el deploy: 200 · 3.984 B · 0,489 s.
+  Backup para rollback: /opt/ape-jit/server.js.bak-loadmap-20261115T150700Z (470.702 B).
+  Gate: PASS 11/11. El gate habia bajado a 10/11 SOLO por disco al 90%; liberados
+  553 MB de backups reproducibles (88%, 4,5G libres) y volvio a 11/11.

@@ -4724,9 +4724,74 @@ async function ensureOutputTruth(state) {
   }).catch(() => null).finally(() => { state.outputProbePromise = null; });
   return state.outputProbePromise;
 }
+/* ────────────────────────────────────────────────────────────────────────────
+ * CACHE DEL MAPA POR IDENTIDAD FISICA (t77) — el `loadMap()` del camino caliente
+ * ────────────────────────────────────────────────────────────────────────────
+ * ANTES: `JSON.parse(fs.readFileSync(MAP_FILE,'utf8'))` en CADA llamada, y esta
+ * funcion se invoca NUEVE veces desde el camino de peticion (4038, 5582, 6579,
+ * 6628, 6692, 6711, 8006, 9436 y 9461). MEDIDO sobre el fichero real de
+ * produccion (MAP_FILE=/opt/ape-jit/current/channels.json, 4.944.656 B, 21.224
+ * canales, mtime 13-nov):
+ *     JSON.parse + readFileSync  p50 12,76 ms · p95 22,63 ms · max 30,88 ms (N=30)
+ *     readFile solo              p50  3,78 ms
+ *     statSync                   p50   2,9 us      <- 4.400x mas barato que parsear
+ *     GET /go/<id> (1 loadMap)   p50 15,32 ms · p95 20,70 ms (N=40)
+ *   => de los 15,32 ms de /go/, 12,76 son parsear un JSON QUE NO HA CAMBIADO EN
+ *      DOS DIAS. El 83 % del endpoint era releer un fichero quieto.
+ *
+ * AHORA: se precarga una vez y se reutiliza mientras la identidad fisica del
+ * fichero no cambie (dev:ino:size:mtimeMs). El coste por acceso pasa a UN
+ * statSync (~2,9 us) y el parseo se paga UNA vez por version del fichero, no por
+ * peticion. Mismo patron que ya usa listSha256() para la lista de canales.
+ *
+ * NO cambia el formato del mapa ni el contrato que lee el APK: se devuelve el
+ * MISMO objeto que devolvia JSON.parse (mismas claves, mismos tipos) y ninguna
+ * llamada lo muta (verificado: no hay `map[...] =` ni `delete map[...]` sobre el
+ * valor devuelto; los `profileMatrix[...] =` son de OTRA estructura).
+ *
+ * FAIL-SAFE, nunca lanza: si el fichero no se puede leer o parsear se sirve el
+ * ULTIMO mapa bueno si existe (y se registra MAP_STALE) o `{}` como antes, con
+ * MAP_ERROR visible en el log. Un mapa roto no puede tumbar la sintonizacion.
+ */
+let _mapCache = { key: null, value: null };
+const _mapStats = { hits: 0, parses: 0, stale: 0, errors: 0, lastKey: null };
+
+function mapFileKey() {
+  const st = fs.statSync(MAP_FILE);          // ~2,9 us; lanza si no existe
+  return st.dev + ':' + st.ino + ':' + st.size + ':' + st.mtimeMs;
+}
+
 function loadMap() {
-  try { return JSON.parse(fs.readFileSync(MAP_FILE, 'utf8')); }
-  catch (e) { log('MAP_ERROR', e.message); return {}; }
+  let key = null;
+  try { key = mapFileKey(); } catch (_) { key = null; }
+  if (key !== null && _mapCache.key === key && _mapCache.value !== null) {
+    _mapStats.hits++;
+    return _mapCache.value;
+  }
+  try {
+    const raw = fs.readFileSync(MAP_FILE, 'utf8');
+    const value = JSON.parse(raw);
+    _mapCache = { key: key, value: value };
+    _mapStats.parses++;
+    if (_mapStats.lastKey !== key) {
+      _mapStats.lastKey = key;
+      log('MAP_LOADED', 'bytes=' + raw.length, 'key=' + key);
+    }
+    return value;
+  } catch (e) {
+    _mapStats.errors++;
+    log('MAP_ERROR', e.message);
+    if (_mapCache.value !== null) { _mapStats.stale++; return _mapCache.value; }
+    return {};
+  }
+}
+
+/** Solo lectura: cifras de la cache para /health y para el test. */
+function mapCacheStats() {
+  return {
+    hits: _mapStats.hits, parses: _mapStats.parses, stale: _mapStats.stale,
+    errors: _mapStats.errors, cached: _mapCache.value !== null, key: _mapCache.key,
+  };
 }
 function safeId(id) { return /^[A-Za-z0-9_.-]{1,80}$/.test(id) ? id : null; }
 

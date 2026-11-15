@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ape.realtime.profile_table.v1",
+  "title": "Tabla de decision de perfil en tiempo real (lookup, no medicion)",
+  "description": "Contrato de la tabla FIRMA -> perfil medida una vez en segundo plano, para que la decision al sintonizar sea un lookup determinista (<5 ms, p99) y no un probe (1.653 ms, t75). No describe la escalera de perfiles: esa vive en vps/bin/ape-profile-classifier.js:250-273 y aqui solo se cita para que la tabla y el clasificador no puedan divergir.",
+  "type": "object",
+  "required": ["ver", "firma", "entrada", "decision"],
+  "additionalProperties": false,
+  "properties": {
+    "ver": { "const": 1, "description": "Version del contrato de la tabla." },
+    "firma": { "$ref": "#/$defs/firma" },
+    "entrada": { "$ref": "#/$defs/entrada" },
+    "decision": { "$ref": "#/$defs/decision" },
+    "tabla": { "$ref": "#/$defs/tabla" }
+  },
+  "$defs": {
+    "firma": {
+      "type": "object",
+      "description": "Identidad ESTABLE del canal: lo que se usa como clave para buscar en la tabla.",
+      "required": ["clave", "tvg_id"],
+      "additionalProperties": false,
+      "properties": {
+        "clave": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9:_.@-]{2,159}$",
+          "description": "Clave canonica: 'tvg:<tvg-id>' cuando hay tvg-id, 'prov:<host>/<slug>' cuando no. Minusculas, sin credenciales, sin query."
+        },
+        "tvg_id": { "type": ["string", "null"], "maxLength": 128, "description": "tvg-id normalizado (trim + minusculas). MEDIDO: 10.631/10.631 canales lo traen, 0 duplicados." },
+        "provider_host": { "type": ["string", "null"], "maxLength": 253, "description": "Host del proveedor extraido del path envuelto (la URL de la lista apunta al proxy; el proveedor real vive dentro). Contexto, no clave." },
+        "path_family": { "type": ["string", "null"], "maxLength": 256, "pattern": "^[A-Za-z0-9._/<>:-]*$", "description": "Forma del path con credenciales y id enmascarados: live/<user>/<pass>/<id> -> live/<u>/<p>/<id>. NUNCA lleva el usuario/password reales." },
+        "group_norm": { "type": ["string", "null"], "maxLength": 64, "description": "group-title normalizado. Contexto y desempate, no clave: se recategoriza." },
+        "campos_excluidos": {
+          "type": "array",
+          "description": "Lo que NO entra en la clave porque no es estable, con la razon. Se declara para que nadie lo meta despues.",
+          "items": { "type": "object", "required": ["campo", "razon"], "additionalProperties": false,
+            "properties": { "campo": { "type": "string" }, "razon": { "type": "string" } } }
+        }
+      }
+    },
+    "entrada": {
+      "type": "object",
+      "description": "Una fila de la tabla: lo que se midio una vez y se reutiliza.",
+      "required": ["clave", "valor", "procedencia", "confianza", "ts", "ver_contrato"],
+      "additionalProperties": false,
+      "properties": {
+        "clave": { "type": "string", "pattern": "^[a-z0-9][a-z0-9:_.@-]{2,159}$" },
+        "valor": {
+          "type": "object", "required": ["height", "hdr", "fps"],
+          "additionalProperties": false,
+          "properties": {
+            "width": { "type": ["integer", "null"], "minimum": 1, "maximum": 7680 },
+            "height": { "type": "integer", "minimum": 1, "maximum": 4320 },
+            "fps": { "type": ["number", "null"], "minimum": 0, "maximum": 240 },
+            "hdr": { "type": "string", "enum": ["sdr", "hdr10", "hdr10plus", "dolby_vision", "hlg", "unknown"] },
+            "codec": { "type": ["string", "null"], "maxLength": 40 },
+            "bitrate": { "type": ["integer", "null"], "minimum": 0 }
+          }
+        },
+        "procedencia": {
+          "type": "string",
+          "enum": ["probe", "classifier", "operator", "declared"],
+          "description": "Quien produjo el valor: probe = medicion real en segundo plano; classifier = el clasificador del repo; operator = firmado por el operador; declared = leido de los atributos del #EXTINF (no es verdad medida)."
+        },
+        "confianza": { "type": "integer", "minimum": 0, "maximum": 100, "description": "0 = sin evidencia; >=60 = entra en la decision como medida. MEDIDO hoy: solo 44,1% de los canales llega a >=60." },
+        "ts": { "type": "string", "format": "date-time", "description": "Cuando se produjo el valor (ISO 8601 UTC)." },
+        "ver_contrato": { "const": 1 },
+        "invalidacion": {
+          "type": "object", "required": ["ttl_s", "invalidado_por"],
+          "additionalProperties": false,
+          "properties": {
+            "ttl_s": { "type": "integer", "minimum": 60, "maximum": 2592000 },
+            "invalidado_por": { "type": "array", "items": { "type": "string", "enum": ["cambio_de_url", "cambio_de_host", "probe_contradice", "operador", "version_de_contrato", "ttl"] } },
+            "expira_en": { "type": ["string", "null"], "format": "date-time" }
+          }
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "description": "Salida del lookup. Determinista: mismos campos, mismo perfil.",
+      "required": ["perfil", "origen", "resuelto", "ms_lookup"],
+      "additionalProperties": false,
+      "properties": {
+        "perfil": { "type": "string", "enum": ["P0", "P1", "P2", "P3", "P4", "P5"] },
+        "origen": { "type": "string", "enum": ["tabla", "defecto", "declarada"] },
+        "resuelto": { "type": "boolean", "description": "true solo si vino de una entrada con confianza >= 60 y no caducada." },
+        "confianza": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "marcador": { "type": ["string", "null"], "enum": ["UNRESOLVED", "STALE", "CONFLICT", null] },
+        "clave": { "type": "string" },
+        "ms_lookup": { "type": "number", "minimum": 0, "description": "Tiempo del lookup medido en el proceso, sin contar la entrega al player." },
+        "regla": { "type": "string", "description": "Traza de que rama decidio, p.ej. 'tabla:confianza=90' o 'defecto:sin_entrada'." }
+      }
+    },
+    "tabla": {
+      "type": "object",
+      "required": ["entradas"],
+      "additionalProperties": false,
+      "properties": {
+        "entradas": { "type": "array", "items": { "$ref": "#/$defs/entrada" }, "maxItems": 50000 },
+        "generado": { "type": "string", "format": "date-time" },
+        "ver_contrato": { "const": 1 }
+      }
+    }
+  },
+  "x-ape": {
+    "contract": "ape.realtime.profile_table.v1",
+    "proposito": "Convertir la decision de perfil en un LOOKUP. La medicion (1,653 s p50 por canal, t75) se hace UNA vez en segundo plano y se guarda; la decision al sintonizar es leer una fila.",
+    "escalera": {
+      "fuente": "IPTV_v5.4_MAX_AGGRESSION/vps/bin/ape-profile-classifier.js:250-273",
+      "nota": "La tabla NO redefine la escalera: alimenta la rama verificada del clasificador (L382 pVerified, L390) para que existing floor/fallback sigan aplicando.",
+      "ramas": [
+        { "si": "height >= 4320", "perfil": "P0", "banda": "8k" },
+        { "si": "height >= 3240", "perfil": "P0", "banda": "6k-as-8k-ceiling-guard" },
+        { "si": "height >= 2160 y (hdr != sdr o fps >= 50)", "perfil": "P1", "banda": "4k" },
+        { "si": "height >= 2160 y no lo anterior", "perfil": "P2", "banda": "4k" },
+        { "si": "height >= 1080", "perfil": "P3", "banda": "fhd" },
+        { "si": "height >= 720", "perfil": "P4", "banda": "hd" },
+        { "si": "resto", "perfil": "P5", "banda": "sd" }
+      ],
+      "matiz_medido": "fps desconocido (null) NO cuenta como >=50: un 4K sin fps cae en P2, no en P1 (L266)."
+    },
+    "almacen": {
+      "permitido": ["apcu", "sqlite"],
+      "prohibido": ["json_decode_del_indice_en_el_camino", "leer_y_parsear_el_mapa_por_peticion"],
+      "por_que": "t74: loadMap() relee y parsea 21.224 canales por peticion (server.js:4727-4730 desde 9461) = p50 53,3-70,5 ms, p99 89,9-241,4 ms; A/B 77x-105x. En PHP json_decode del indice = 4,041 ms p50 / 6,606 p99 = 80,8% del presupuesto del VPS.",
+      "coste_medido": { "apcu_ms": 0.000, "sqlite_ms": 0.0029, "json_decode_ms": 4.041 }
+    },
+    "sin_entrada": {
+      "politica": "fail_open",
+      "perfil_por_defecto": "P3",
+      "marcador": "UNRESOLVED",
+      "confianza": 0,
+      "por_que": "Fail-closed no sirve nada sin fila: con la tabla vacia el dia 1 se quedan fuera los 21.224 canales de la lista servida (y los 10.631 del listado de evidencia). La ley del repo es COVERAGE ALWAYS / NO CHANNEL LOSS. P3 es un perfil real y reproducible (FHD), no una mentira: se declara como no resuelto y se encola el probe en segundo plano.",
+      "coste": "Fail-open cuesta honestidad declarada (marcador UNRESOLVED en cada respuesta). Fail-closed cuesta canales: 100% fuera el dia 1."
+    },
+    "latencia": {
+      "objetivo_p50_ms": 1.76,
+      "objetivo_p99_ms": 4.46,
+      "presupuesto_ms": 5,
+      "percentil_de_aceptacion": "p99",
+      "n": 10000,
+      "metodo": "Instrumentar el lookup con process.hrtime.bigint(), 10.000 decisiones sobre firmas reales de la lista, reportar p50/p95/p99/max y fallar si p99 > 5 ms. Gate adicional: el codigo del camino no puede contener json_decode ni relectura del mapa.",
+      "fuente_medida": "t74: p50 0,97-1,76 ms · p99 2,79-4,46 ms en este host"
+    },
+    "evidencia_medida": {
+      "lista": "ara-x/evidence/APE_LISTA_4K_ARA-X_once.m3u8",
+      "bytes": 572171381,
+      "sha256": "c8b5039ed8624b3d586bf60a85d1d15248475082f7552878e051ec1ae0d1ea07",
+      "canales": 10631,
+      "con_tvg_id": 10631,
+      "tvg_id_distintos": 10631,
+      "tvg_id_duplicados": 0,
+      "con_ape_profile": 10631,
+      "reparto_perfiles": { "P1": 808, "P3": 2300, "P4": 7523, "P0": 0, "P2": 0, "P5": 0 },
+      "hosts_distintos": 1,
+      "familias_de_path": 75,
+      "nota": "Esta lista de evidencia tiene 10.631 canales; la servida medida en t52 tiene 21.224. El hallazgo estructural (P0 y P2 vacios) se cumple en ambas."
+    },
+    "no_computado": [
+      "La unicidad de tvg-id en la lista SERVIDA (21.224): medida solo en la de evidencia (10.631, 0 duplicados).",
+      "La tasa real de acierto de la tabla: no hay tabla poblada todavia.",
+      "El ciclo de recarga del player (cada cuanto vuelve a pedir el manifest): no medido; metodo dado en el doc.",
+      "Que el APK lea la tabla: hoy lee ape-profile='Px', #EXT-X-APE-LAB-METADATA y fields.*, no la tabla."
+    ]
+  }
+}

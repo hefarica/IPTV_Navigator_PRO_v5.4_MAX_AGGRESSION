@@ -1,0 +1,4442 @@
+{
+ "schema": "ape.llm.operator.v1",
+ "contract_id": "llm-operator-contract-v1",
+ "ver": 1,
+ "revision": 1,
+ "status": "SPECIFIED_NOT_IMPLEMENTED",
+ "date": "2026-11-15",
+ "purpose": "Contrato del operario LLM: QUE VE en cada vuelta, QUE EMITE (solo deltas del catalogo), CADENCIA por lado, LIMITE DE SUTILEZA, REVERSION, RASTRO DE AUDITORIA, presupuesto de latencia y garantia de que NO puede tocar estructura.",
+ "operator": {
+  "objective_literal": "INFINITO ES QUE NUNCA PERMITA QUE LA REPRODUCCION SE ACABE, ASI SEA CON VENTAJA DE 3, 4, 5 SEGUNDOS, EL TIENE QUE AJUSTAR PARA QUE ESO SE MANTENGA BAJO CUALQUIER CONDICION Y SI PUEDE SUBIR MAS SIN SACRIFICAR SEGUNDOS O LATENCIA QUE LO HAGA, PARA EL MEJOR",
+  "boundary_literal": "el LLM es un operario en tiempo real que ajusta variables y configuraciones, mas no modificara las estructuras de las listas, ni VPS, ni APK... de una manera sutil y progresiva",
+  "may": [
+   "mover valores de las 90 perillas del catalogo, dentro de rango, techo, paso y direccion",
+   "elegir el momento de subir (nunca de bajar) el perfil",
+   "abstenerse: no cambiar nada es una decision valida y se registra",
+   "proponer una reversion"
+  ],
+  "may_not": [
+   "escribir texto libre, ficheros, rutas, comandos, SQL, parches ni cuerpos",
+   "tocar nombres de la lista negra (131), invariantes (X-Concurrent-Downloads) ni etiquetas de estructura",
+   "modificar el codigo de la APK, las listas servidas ni la configuracion del VPS",
+   "bajar resolucion, codec, fps, bitrate maximo, apagar HDR o hacer ABR downshift",
+   "decidir por si mismo si su cambio mejoro: eso lo decide el juez deterministico"
+  ]
+ },
+ "inherits": {
+  "knobs": {
+   "path": "contracts/llm_operator_knobs_v1.json",
+   "bytes": 185609,
+   "sha256": "4b8ac25b9d3b47ec39ca480990df811699213c2de781e309a22eba295f45f1dd",
+   "contract_id": "llm-operator-knobs-v4",
+   "ver": 4,
+   "revision": 1,
+   "knobs": 90,
+   "blacklist": 131,
+   "dead_excluded": 28,
+   "not_available": 17,
+   "rule": "ESTE contrato no define perillas: las HEREDA de ahi. Si el catalogo cambia de sha256, este contrato queda STALE y hay que regenerarlo."
+  },
+  "catalog_doc": {
+   "path": "docs/audits/KNOB_CATALOG_20261115.md",
+   "bytes": 38848,
+   "sha256": "85bad0e64770d053183f5e04cd0dc23b956206f3d02705fc03ab04dfdabdfae0"
+  },
+  "realtime_budget": {
+   "path": "docs/audits/REALTIME_LATENCY_BUDGET_20261115.md",
+   "bytes": 66039,
+   "sha256": "fcbf39809bc8c0ced4784d6038afabcde372af95e82ae42d1cf0bec47a28d21b"
+  },
+  "probe_latency": {
+   "path": "docs/audits/PROBE_LATENCY_MEASURED_20261115.md",
+   "bytes": 17311,
+   "sha256": "9da83ed864539cef764787e285f0a740f762c62ab0806e18189eecd88a6dc1ce"
+  }
+ },
+ "see": {
+  "schema_version": "ape.llm.operator.input/1",
+  "round_shape": [
+   "round_id",
+   "channel_id",
+   "device_id",
+   "ts",
+   "trigger",
+   "metrics",
+   "capture",
+   "levers_now",
+   "history",
+   "policy_version"
+  ],
+  "sources": [
+   {
+    "name": "buffer_ms",
+    "what": "buffer del PLAYER (ExoPlayer totalBufferedDuration)",
+    "exists_today": true,
+    "unit": "ms",
+    "freshness_ms": 10000,
+    "provenance": "measured_device",
+    "evidence": [
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/ApePlayer.kt:458",
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/DeviceSampler.kt:116"
+    ]
+   },
+   {
+    "name": "frame_drop_count",
+    "what": "frames descartados (AnalyticsListener.onDroppedVideoFrames)",
+    "exists_today": true,
+    "unit": "frames",
+    "freshness_ms": 30000,
+    "provenance": "measured_device",
+    "evidence": [
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/ApePlayer.kt:467-469",
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/DeviceSampler.kt:132"
+    ]
+   },
+   {
+    "name": "bitrate_bps",
+    "what": "bitrate REAL medido por el guard (bytes del DataSource, nunca Format.bitrate)",
+    "exists_today": true,
+    "unit": "bps",
+    "freshness_ms": 15000,
+    "provenance": "measured_device",
+    "evidence": [
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/DeviceSampler.kt:141-143",
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/BitrateGuard.kt"
+    ]
+   },
+   {
+    "name": "fps_declared",
+    "what": "fps del track en reproduccion",
+    "exists_today": true,
+    "unit": "fps",
+    "freshness_ms": 30000,
+    "provenance": "measured_device",
+    "evidence": [
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/DeviceSampler.kt:126"
+    ]
+   },
+   {
+    "name": "pm_thermal_status",
+    "what": "estado termico del dispositivo",
+    "exists_today": true,
+    "unit": "enum",
+    "freshness_ms": 60000,
+    "provenance": "measured_device",
+    "evidence": [
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/DeviceSampler.kt:100-104"
+    ]
+   },
+   {
+    "name": "ram_available_pct",
+    "what": "RAM disponible",
+    "exists_today": true,
+    "unit": "%",
+    "freshness_ms": 60000,
+    "provenance": "measured_device",
+    "evidence": [
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/DeviceSampler.kt:106-111"
+    ]
+   },
+   {
+    "name": "ai_sr",
+    "what": "capacidad AI-SR del SoC SONDEADA (1/0/null)",
+    "exists_today": true,
+    "unit": "bool",
+    "freshness_ms": 600000,
+    "provenance": "measured_device",
+    "evidence": [
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/DeviceSampler.kt:153-160"
+    ]
+   },
+   {
+    "name": "capture.freeze_ms",
+    "what": "congelacion detectada por el capturador (ms sin cambio)",
+    "exists_today": true,
+    "unit": "ms",
+    "freshness_ms": 2000,
+    "provenance": "measured_capture",
+    "evidence": [
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/ScreenCaptureService.kt:153",
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/StatePublisher.kt:51"
+    ]
+   },
+   {
+    "name": "capture.fps",
+    "what": "fps medidos por el capturador",
+    "exists_today": true,
+    "unit": "fps",
+    "freshness_ms": 2000,
+    "provenance": "measured_capture",
+    "evidence": [
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/StatePublisher.kt:50"
+    ]
+   },
+   {
+    "name": "capture.luma",
+    "what": "luminancia media del frame compuesto",
+    "exists_today": true,
+    "unit": "0..255",
+    "freshness_ms": 2000,
+    "provenance": "measured_capture",
+    "evidence": [
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/StatePublisher.kt:45"
+    ]
+   },
+   {
+    "name": "capture.lap",
+    "what": "varianza laplaciana (proxy de nitidez)",
+    "exists_today": true,
+    "unit": "ratio",
+    "freshness_ms": 2000,
+    "provenance": "measured_capture",
+    "evidence": [
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/StatePublisher.kt:46"
+    ]
+   },
+   {
+    "name": "capture.motion",
+    "what": "movimiento medido entre frames",
+    "exists_today": true,
+    "unit": "ratio",
+    "freshness_ms": 2000,
+    "provenance": "measured_capture",
+    "evidence": [
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/StatePublisher.kt:47"
+    ]
+   },
+   {
+    "name": "capture.frame_gap_ms",
+    "what": "hueco entre frames consecutivos",
+    "exists_today": true,
+    "unit": "ms",
+    "freshness_ms": 2000,
+    "provenance": "measured_capture",
+    "evidence": [
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/StatePublisher.kt:49"
+    ]
+   },
+   {
+    "name": "capture.stalls",
+    "what": "stalls del capturador",
+    "exists_today": true,
+    "unit": "count",
+    "freshness_ms": 2000,
+    "provenance": "measured_capture",
+    "evidence": [
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/StatePublisher.kt:52"
+    ]
+   },
+   {
+    "name": "levers_now",
+    "what": "valor ACTUAL de cada perilla (leido de vuelta)",
+    "exists_today": false,
+    "unit": "map",
+    "freshness_ms": 15000,
+    "provenance": "readback",
+    "evidence": [
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/StatePublisher.kt:41"
+    ],
+    "gap": "se publica como JSONObject VACIO: hoy NO hay estado de perillas en la telemetria"
+   },
+   {
+    "name": "first_frame_ms",
+    "what": "tiempo hasta el primer frame",
+    "exists_today": false,
+    "unit": "ms",
+    "freshness_ms": 60000,
+    "provenance": "would_be_measured_device",
+    "evidence": [
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/ApePlayer.kt:115"
+    ],
+    "gap": "el hook onRenderedFirstFrame existe pero SOLO loguea y limpia un flag de trial: no mide latencia"
+   },
+   {
+    "name": "rebuffer_count",
+    "what": "numero de episodios de rebuffer",
+    "exists_today": false,
+    "unit": "count",
+    "freshness_ms": 60000,
+    "provenance": "would_be_measured_device",
+    "evidence": [
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/ApePlayer.kt:422-452"
+    ],
+    "gap": "existe un watchdog de stall a 3.500 ms que ademas auto-degrada efectos; NO hay contador de episodios ni tiempo total"
+   },
+   {
+    "name": "rebuffer_total_ms",
+    "what": "tiempo total en rebuffer",
+    "exists_today": false,
+    "unit": "ms",
+    "freshness_ms": 60000,
+    "provenance": "would_be_measured_device",
+    "evidence": [
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/ApePlayer.kt:422-452"
+    ],
+    "gap": "no producido"
+   },
+   {
+    "name": "cpu_temp_c",
+    "what": "temperatura CPU",
+    "exists_today": false,
+    "unit": "C",
+    "freshness_ms": 60000,
+    "provenance": "unavailable_by_design",
+    "evidence": [
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/DeviceSampler.kt:148-151"
+    ],
+    "gap": "ADB-only: el APK no puede medirlo y se declara ausente (nunca un 0 falso)"
+   },
+   {
+    "name": "gpu_load_pct",
+    "what": "carga GPU",
+    "exists_today": false,
+    "unit": "%",
+    "freshness_ms": 60000,
+    "provenance": "unavailable_by_design",
+    "evidence": [
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/DeviceSampler.kt:148-151"
+    ],
+    "gap": "ADB-only"
+   },
+   {
+    "name": "vpu_load_pct",
+    "what": "carga VPU",
+    "exists_today": false,
+    "unit": "%",
+    "freshness_ms": 60000,
+    "provenance": "unavailable_by_design",
+    "evidence": [
+     "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/DeviceSampler.kt:148-151"
+    ],
+    "gap": "ADB-only"
+   }
+  ],
+  "today_summary": {
+   "exists": [
+    "buffer_ms",
+    "frame_drop_count",
+    "bitrate_bps",
+    "fps_declared",
+    "pm_thermal_status",
+    "ram_available_pct",
+    "ai_sr",
+    "capture.freeze_ms",
+    "capture.fps",
+    "capture.luma",
+    "capture.lap",
+    "capture.motion",
+    "capture.frame_gap_ms",
+    "capture.stalls"
+   ],
+   "does_not_exist": [
+    "levers_now",
+    "first_frame_ms",
+    "rebuffer_count",
+    "rebuffer_total_ms",
+    "cpu_temp_c",
+    "gpu_load_pct",
+    "vpu_load_pct"
+   ]
+  },
+  "min_required_for_any_change": [
+   "buffer_ms",
+   "fps_declared",
+   "levers_now"
+  ],
+  "min_required_per_group": {
+   "recarga": [
+    "buffer_ms",
+    "capture.freeze_ms"
+   ],
+   "profundidad": [
+    "buffer_ms",
+    "fps_declared"
+   ],
+   "qoe": [
+    "buffer_ms",
+    "fps_declared"
+   ],
+   "display": [
+    "levers_now",
+    "capture.fps"
+   ]
+  },
+  "rules": [
+   "Un dato con provenance \"unavailable\" NO es un cero: no se puede usar como si lo fuera (E_NO_EVIDENCE).",
+   "Un dato mas viejo que su freshness_ms se presenta como stale y NO autoriza cambios que dependan de el.",
+   "levers_now es OBLIGATORIO para cualquier delta: sin el valor actual no hay delta calculable, solo una intencion.",
+   "capture.* mide el frame COMPUESTO: no ve el post-proceso VPP ni la salida HDMI (ver capture_fidelity)."
+  ],
+  "capture_fidelity": {
+   "can_see": [
+    "congelacion (freeze_ms)",
+    "fps efectivos",
+    "movimiento",
+    "luminancia media",
+    "proxy de nitidez (varianza laplaciana)"
+   ],
+   "cannot_see": [
+    "efecto del VPP del SoC (sharpness/denoise/AI-SR)",
+    "salida HDMI final"
+   ],
+   "evidence": [
+    "docs/audits/VPP_SOC_QUALITY_20261114.md:68",
+    "docs/audits/SEGMENT_PROXY_FIX_20261114.md:66-68"
+   ],
+   "consequence": "El operario puede AFINAR lo que se ve en el frame compuesto; no puede certificar mejora de VPP con el capturador. Afirmarlo seria el falso positivo que el repo ya documenta."
+  }
+ },
+ "emit": {
+  "schema_version": "ape.llm.operator.output/1",
+  "shape": "UN objeto JSON por vuelta. Nunca texto libre, nunca un fichero, nunca un comando.",
+  "json_schema": {
+   "$schema": "http://json-schema.org/draft-07/schema#",
+   "title": "ape.llm.operator.output/1",
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "round_id",
+    "schema_version",
+    "side",
+    "decision"
+   ],
+   "properties": {
+    "round_id": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_.:-]{8,64}$"
+    },
+    "schema_version": {
+     "const": "ape.llm.operator.output/1"
+    },
+    "side": {
+     "enum": [
+      "vps",
+      "apk"
+     ]
+    },
+    "decision": {
+     "oneOf": [
+      {
+       "type": "object",
+       "additionalProperties": false,
+       "required": [
+        "kind",
+        "deltas"
+       ],
+       "properties": {
+        "kind": {
+         "const": "change"
+        },
+        "deltas": {
+         "type": "array",
+         "minItems": 1,
+         "maxItems": 5,
+         "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+           "knob",
+           "to",
+           "reason_code",
+           "metric",
+           "expect"
+          ],
+          "properties": {
+           "knob": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]{3,96}$"
+           },
+           "to": {
+            "oneOf": [
+             {
+              "type": "number"
+             },
+             {
+              "type": "string",
+              "maxLength": 64
+             },
+             {
+              "type": "boolean"
+             },
+             {
+              "type": "object"
+             }
+            ]
+           },
+           "reason_code": {
+            "enum": [
+             "FREEZE_DETECTED",
+             "BUFFER_BELOW_FLOOR",
+             "LOW_FPS_MEASURED",
+             "DROPPED_FRAMES_HIGH",
+             "CAPTURE_QUALITY_LOW",
+             "RECOVERY_AFTER_FALLBACK",
+             "PROFILE_ELEVATION",
+             "ROUTINE_REFINE"
+            ]
+           },
+           "metric": {
+            "enum": [
+             "buffer_ms",
+             "capture.freeze_ms",
+             "capture.fps",
+             "capture.lap",
+             "capture.luma",
+             "capture.motion",
+             "fps_declared",
+             "frame_drop_count",
+             "bitrate_bps",
+             "capture.stalls"
+            ]
+           },
+           "expect": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+             "direction",
+             "deadband"
+            ],
+            "properties": {
+             "direction": {
+              "enum": [
+               "increase",
+               "decrease",
+               "hold"
+              ]
+             },
+             "deadband": {
+              "type": "number",
+              "minimum": 0
+             }
+            }
+           },
+           "proposed_profile": {
+            "enum": [
+             "P0",
+             "P1",
+             "P2",
+             "P3",
+             "P4",
+             "P5"
+            ]
+           }
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "object",
+       "additionalProperties": false,
+       "required": [
+        "kind",
+        "reason_code"
+       ],
+       "properties": {
+        "kind": {
+         "const": "abstain"
+        },
+        "reason_code": {
+         "enum": [
+          "NO_TRIGGER",
+          "EVIDENCE_INSUFFICIENT",
+          "AT_CEILING",
+          "COOLDOWN",
+          "BUDGET_EXHAUSTED",
+          "ALREADY_OPTIMAL"
+         ]
+        }
+       }
+      },
+      {
+       "type": "object",
+       "additionalProperties": false,
+       "required": [
+        "kind",
+        "revert_of",
+        "reason_code"
+       ],
+       "properties": {
+        "kind": {
+         "const": "revert"
+        },
+        "revert_of": {
+         "type": "string",
+         "pattern": "^[A-Za-z0-9_.:-]{8,64}$"
+        },
+        "reason_code": {
+         "enum": [
+          "METRIC_WORSENED",
+          "FREEZE_INTRODUCED",
+          "FPS_DROPPED",
+          "BUFFER_DRAINED"
+         ]
+        }
+       }
+      }
+     ]
+    }
+   }
+  },
+  "forbidden_shapes": [
+   "claves desconocidas (additionalProperties:false) => E_SCHEMA",
+   "cualquier campo de texto libre: no existe en el esquema",
+   "campos de tipo ruta/fichero/comando/sql/parche/cuerpo: no existen en el esquema",
+   "valor string con //, \\\\, ../, salto de linea, ;, $(, backtick => E_STRUCTURE_TOUCHED",
+   "el delta NO lleva \"from\": el valor actual lo pone el servidor desde levers_now (el LLM no puede mentir sobre el estado)"
+  ],
+  "reason_codes_note": "Los reason_code son un ENUM cerrado: el operario elige de una lista, no redacta."
+ },
+ "validation": {
+  "fail_closed": true,
+  "atomic_round": true,
+  "atomic_round_note": "Si UN delta de la vuelta falla, NO se aplica ninguno: una vuelta es una decision, y aplicarla a medias hace imposible atribuir el resultado. Se registra el rechazo con su codigo.",
+  "pipeline": [
+   {
+    "step": 1,
+    "name": "schema",
+    "code": "E_SCHEMA",
+    "what": "JSON Schema draft-07, additionalProperties:false"
+   },
+   {
+    "step": 2,
+    "name": "side_match",
+    "code": "E_SIDE_MISMATCH",
+    "what": "el side de la vuelta debe ser el side declarado de cada perilla"
+   },
+   {
+    "step": 3,
+    "name": "allowlist",
+    "code": "E_NOT_A_KNOB",
+    "what": "el nombre debe estar entre las 90 perillas heredadas; si esta en la lista negra (131) es el mismo codigo con razon declarada"
+   },
+   {
+    "step": 4,
+    "name": "invariant",
+    "code": "E_INVARIANT_TOUCHED",
+    "what": "X-Concurrent-Downloads y cualquier nombre declarado invariante"
+   },
+   {
+    "step": 5,
+    "name": "structure",
+    "code": "E_STRUCTURE_TOUCHED",
+    "what": "etiquetas de estructura, rutas, URLs, comandos"
+   },
+   {
+    "step": 6,
+    "name": "apk_code",
+    "code": "E_APK_CODE_TOUCHED",
+    "what": "sha256 del arbol de la APK + git status"
+   },
+   {
+    "step": 7,
+    "name": "type",
+    "code": "E_TYPE",
+    "what": "tipo y unidad declarados por la perilla"
+   },
+   {
+    "step": 7.5,
+    "name": "subfields",
+    "code": "E_SUBFIELDS_UNKNOWN",
+    "what": "un objeto JSON solo admite los sub-campos derivados del catalogo; si el catalogo trae el valor truncado, la perilla NO se puede mover"
+   },
+   {
+    "step": 8,
+    "name": "range",
+    "code": "E_KNOB_RANGE",
+    "what": "safe_min..safe_max"
+   },
+   {
+    "step": 9,
+    "name": "ceiling",
+    "code": "E_ABOVE_CEILING",
+    "what": "techo REAL declarado (no solo el rango)"
+   },
+   {
+    "step": 10,
+    "name": "step",
+    "code": "E_STEP_TOO_LARGE",
+    "what": "fraccion 25% / absoluto 1 unidad / discreto un salto / por subcampo 25%"
+   },
+   {
+    "step": 11,
+    "name": "direction",
+    "code": "E_KNOB_DEGRADATION",
+    "what": "direccion prohibida por la perilla"
+   },
+   {
+    "step": 12,
+    "name": "profile",
+    "code": "E_PROFILE_DOWNGRADE / E_PROFILE_CONFLICT",
+    "what": "solo se sube de perfil; el resto de campos declarados los manda la tabla"
+   },
+   {
+    "step": 13,
+    "name": "cadence",
+    "code": "E_CADENCE",
+    "what": "periodo de vuelta, cooldowns, tope por minuto y por hora"
+   },
+   {
+    "step": 14,
+    "name": "evidence",
+    "code": "E_NO_EVIDENCE",
+    "what": "min_required_*, frescura y metrica citada existente hoy"
+   },
+   {
+    "step": 15,
+    "name": "budget",
+    "code": "E_BUDGET",
+    "what": "llamadas/tokens por hora"
+   },
+   {
+    "step": 16,
+    "name": "apply_and_receipt",
+    "code": "E_NO_RECEIPT",
+    "what": "aplicar y LEER DE VUELTA; sin recibo el cambio no cuenta como aplicado"
+   }
+  ],
+  "codes": {
+   "E_SCHEMA": "la salida no valida contra el esquema",
+   "E_SIDE_MISMATCH": "la perilla no pertenece al lado de la vuelta",
+   "E_NOT_A_KNOB": "nombre fuera de las 90 / en la lista negra / muerta / no disponible",
+   "E_INVARIANT_TOUCHED": "intento de escribir un invariante (X-Concurrent-Downloads)",
+   "E_STRUCTURE_TOUCHED": "intento de tocar estructura (etiquetas, rutas, URLs, comandos)",
+   "E_APK_CODE_TOUCHED": "intento de tocar codigo de la APK",
+   "E_TYPE": "tipo o unidad incorrectos",
+   "E_SUBFIELDS_UNKNOWN": "sub-campo no declarado, o perilla json-object cuyo value_measured viene truncado en el catalogo, o sub-campo de tipo objeto (no validable)",
+   "E_KNOB_RANGE": "fuera de safe_min..safe_max",
+   "E_ABOVE_CEILING": "supera el techo real declarado",
+   "E_STEP_TOO_LARGE": "paso mayor que el limite de sutileza",
+   "E_KNOB_DEGRADATION": "direccion prohibida (bajaria calidad o empeoraria QoE)",
+   "E_PROFILE_DOWNGRADE": "intento de bajar de perfil",
+   "E_PROFILE_CONFLICT": "conflicto en campos declarados: gana la tabla",
+   "E_CADENCE": "periodo, cooldown o tope por minuto/hora incumplido",
+   "E_NO_EVIDENCE": "falta levers_now, el dato esta stale, o la metrica citada no existe hoy",
+   "E_BUDGET": "presupuesto de llamadas/tokens agotado",
+   "E_NO_RECEIPT": "no se pudo leer de vuelta el valor aplicado",
+   "E_REVERSAL_LOOP": "dos reversiones consecutivas de la misma perilla: se congela",
+   "E_OPERATOR_HALTED": "demasiados intentos prohibidos: el operario queda detenido"
+  },
+  "on_reject": {
+   "log": true,
+   "apply": false,
+   "count_attempt": true,
+   "halt_after": {
+    "attempts": 3,
+    "window_ms": 86400000,
+    "code": "E_OPERATOR_HALTED"
+   }
+  }
+ },
+ "knob_policy": {
+  "source": "contracts/llm_operator_knobs_v1.json",
+  "source_sha256": "4b8ac25b9d3b47ec39ca480990df811699213c2de781e309a22eba295f45f1dd",
+  "count": 90,
+  "by_side": {
+   "vps": 79,
+   "apk": 11
+  },
+  "by_group": {
+   "recarga": 11,
+   "profundidad": 12,
+   "display": 11,
+   "qoe": 56
+  },
+  "knobs": [
+   {
+    "name": "com.ape.network_resilience.retryBackoffMs",
+    "side": "vps",
+    "group": "recarga",
+    "priority": 1,
+    "family": "buffer",
+    "type": "int",
+    "unit": "ms",
+    "set_by": "decision",
+    "safe_min": 100,
+    "safe_max": 5000,
+    "ceiling": {
+     "value": 5000,
+     "why": "mas de 5 s el reintento llega cuando el buffer ya se vacio",
+     "enforced_by": "protocol"
+    },
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "cheap"
+   },
+   {
+    "name": "com.ape.network_resilience.retryCount",
+    "side": "vps",
+    "group": "recarga",
+    "priority": 1,
+    "family": "buffer",
+    "type": "int",
+    "unit": "intentos",
+    "set_by": "decision",
+    "safe_min": 1,
+    "safe_max": 15,
+    "ceiling": {
+     "value": 15,
+     "why": "el VPS y el player reintentan a la vez: mas de 15 duplica la presion sobre el proveedor",
+     "enforced_by": "provider"
+    },
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "cheap"
+   },
+   {
+    "name": "X-Connection-Timeout-Ms",
+    "side": "vps",
+    "group": "recarga",
+    "priority": 1,
+    "family": "buffer",
+    "type": "int-list",
+    "unit": "ms",
+    "set_by": "decision",
+    "safe_min": 1000,
+    "safe_max": 15000,
+    "ceiling": {
+     "value": 15000,
+     "why": "mas que eso y el player abandona antes que nosotros",
+     "enforced_by": "player"
+    },
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "cheap"
+   },
+   {
+    "name": "X-Max-Reconnect-Attempts",
+    "side": "vps",
+    "group": "recarga",
+    "priority": 1,
+    "family": "buffer",
+    "type": "int",
+    "unit": "intentos",
+    "set_by": "decision",
+    "safe_min": 1,
+    "safe_max": 100,
+    "ceiling": {
+     "value": 100,
+     "why": "por encima, el bucle de reconexion es indistinguible de un ban y empeora el bloqueo",
+     "enforced_by": "provider"
+    },
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "cheap"
+   },
+   {
+    "name": "X-Parallel-Segments",
+    "side": "vps",
+    "group": "recarga",
+    "priority": 1,
+    "family": "buffer",
+    "type": "int",
+    "unit": "segmentos",
+    "set_by": "decision",
+    "safe_min": 1,
+    "safe_max": 8,
+    "ceiling": {
+     "value": 8,
+     "why": "no tiene sentido pedir mas segmentos en paralelo que descargas concurrentes permitidas (X-Concurrent-Downloads=8)",
+     "enforced_by": "protocol"
+    },
+    "step": {
+     "type": "absolute",
+     "value": 1,
+     "note": "un paso = una unidad de la escala"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "cheap"
+   },
+   {
+    "name": "X-Prefetch-Segments",
+    "side": "vps",
+    "group": "recarga",
+    "priority": 1,
+    "family": "buffer",
+    "type": "int",
+    "unit": "segmentos",
+    "set_by": "decision",
+    "safe_min": 1,
+    "safe_max": 16,
+    "ceiling": {
+     "value": 16,
+     "why": "el doble de la ventana viva tipica (8): por encima, los fetches caen fuera del playlist y vuelven 404",
+     "enforced_by": "protocol"
+    },
+    "step": {
+     "type": "absolute",
+     "value": 1,
+     "note": "un paso = una unidad de la escala"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "cheap"
+   },
+   {
+    "name": "X-Read-Timeout-Ms",
+    "side": "vps",
+    "group": "recarga",
+    "priority": 1,
+    "family": "buffer",
+    "type": "int-list",
+    "unit": "ms",
+    "set_by": "decision",
+    "safe_min": 3000,
+    "safe_max": 30000,
+    "ceiling": {
+     "value": 30000,
+     "why": "por encima de 30 s la lectura ya no salva el segmento: el buffer se vacia igual",
+     "enforced_by": "player"
+    },
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "cheap"
+   },
+   {
+    "name": "X-Reconnect-Delay-Ms",
+    "side": "vps",
+    "group": "recarga",
+    "priority": 1,
+    "family": "buffer",
+    "type": "int-list",
+    "unit": "ms",
+    "set_by": "decision",
+    "safe_min": 25,
+    "safe_max": 1000,
+    "ceiling": {
+     "value": 1000,
+     "why": "un segundo entre reconexiones ya es conservador; mas retrasa la vuelta",
+     "enforced_by": "protocol"
+    },
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "cheap"
+   },
+   {
+    "name": "X-Retry-Count",
+    "side": "vps",
+    "group": "recarga",
+    "priority": 1,
+    "family": "buffer",
+    "type": "int-list",
+    "unit": "intentos",
+    "set_by": "decision",
+    "safe_min": 1,
+    "safe_max": 30,
+    "ceiling": {
+     "value": 30,
+     "why": "mas reintentos seguidos = tormenta contra el rate limit del proveedor -> 403/429",
+     "enforced_by": "provider"
+    },
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "cheap"
+   },
+   {
+    "name": "X-Retry-Delay-Ms",
+    "side": "vps",
+    "group": "recarga",
+    "priority": 1,
+    "family": "buffer",
+    "type": "int-list",
+    "unit": "ms",
+    "set_by": "decision",
+    "safe_min": 50,
+    "safe_max": 2000,
+    "ceiling": {
+     "value": 2000,
+     "why": "por encima de 2 s el reintento llega tarde para salvar el buffer",
+     "enforced_by": "protocol"
+    },
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "cheap"
+   },
+   {
+    "name": "com.ape.live_sync.liveMaxLatencyDurationCount",
+    "side": "vps",
+    "group": "profundidad",
+    "priority": 2,
+    "family": "buffer",
+    "type": "int",
+    "unit": "segmentos",
+    "set_by": "decision",
+    "safe_min": 3,
+    "safe_max": 20,
+    "ceiling": {
+     "value": 20,
+     "why": "20 x 6 s = 2 min detras del directo: el zape se vuelve inusable",
+     "enforced_by": "protocol"
+    },
+    "step": {
+     "type": "absolute",
+     "value": 1,
+     "note": "un paso = una unidad de la escala"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "costs_latency"
+   },
+   {
+    "name": "com.ape.live_sync.maxLiveOffsetMs",
+    "side": "vps",
+    "group": "profundidad",
+    "priority": 2,
+    "family": "buffer",
+    "type": "int",
+    "unit": "ms",
+    "set_by": "decision",
+    "safe_min": 3000,
+    "safe_max": 60000,
+    "ceiling": {
+     "value": 60000,
+     "why": "= liveMaxLatencyDurationCount (10) x segmento (6 s)",
+     "enforced_by": "protocol"
+    },
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "costs_latency"
+   },
+   {
+    "name": "exoplayer.load_control.maxBufferMs",
+    "side": "vps",
+    "group": "profundidad",
+    "priority": 2,
+    "family": "buffer",
+    "type": "int",
+    "unit": "ms",
+    "set_by": "decision",
+    "safe_min": 10000,
+    "safe_max": 60000,
+    "ceiling": {
+     "value": 60000,
+     "why": "60 s del bitrate 4K = 210 MB de RAM: por encima el SO mata el proceso",
+     "enforced_by": "memory"
+    },
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "costs_latency"
+   },
+   {
+    "name": "exoplayer.load_control.minBufferMs",
+    "side": "vps",
+    "group": "profundidad",
+    "priority": 2,
+    "family": "buffer",
+    "type": "int",
+    "unit": "ms",
+    "set_by": "decision",
+    "safe_min": 2000,
+    "safe_max": 30000,
+    "ceiling": {
+     "value": 30000,
+     "why": "no puede superar maxBufferMs",
+     "enforced_by": "player"
+    },
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "costs_latency"
+   },
+   {
+    "name": "X-Buffer-Max",
+    "side": "vps",
+    "group": "profundidad",
+    "priority": 2,
+    "family": "buffer",
+    "type": "int",
+    "unit": "bytes",
+    "set_by": "decision",
+    "safe_min": 32000,
+    "safe_max": 110100480,
+    "ceiling": {
+     "value": 110100480,
+     "why": "mismo techo de memoria: 105 MiB a 28 Mbps",
+     "enforced_by": "memory"
+    },
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "costs_latency"
+   },
+   {
+    "name": "X-Buffer-Min",
+    "side": "vps",
+    "group": "profundidad",
+    "priority": 2,
+    "family": "buffer",
+    "type": "int",
+    "unit": "bytes",
+    "set_by": "decision",
+    "safe_min": 16000,
+    "safe_max": 110100480,
+    "ceiling": {
+     "value": 110100480,
+     "why": "no puede superar X-Buffer-Size (invariante min <= size <= max)",
+     "enforced_by": "player"
+    },
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "costs_latency"
+   },
+   {
+    "name": "X-Buffer-Size",
+    "side": "vps",
+    "group": "profundidad",
+    "priority": 2,
+    "family": "buffer",
+    "type": "int",
+    "unit": "bytes",
+    "set_by": "decision",
+    "safe_min": 16000,
+    "safe_max": 110100480,
+    "ceiling": {
+     "value": 110100480,
+     "why": "30 s del bitrate maximo del 4K (28 Mbps) = 105 MiB; mas no cabe en el buffer del player",
+     "enforced_by": "memory"
+    },
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "costs_latency"
+   },
+   {
+    "name": "X-Buffer-Target",
+    "side": "vps",
+    "group": "profundidad",
+    "priority": 2,
+    "family": "buffer",
+    "type": "int",
+    "unit": "ms",
+    "set_by": "decision",
+    "safe_min": 2000,
+    "safe_max": 30000,
+    "ceiling": {
+     "value": 30000,
+     "why": "el player deja de bufferear en maxBufferMs=30 s; por encima lo ignora y no gana nada",
+     "enforced_by": "player"
+    },
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "costs_latency"
+   },
+   {
+    "name": "X-Live-Caching",
+    "side": "vps",
+    "group": "profundidad",
+    "priority": 2,
+    "family": "buffer",
+    "type": "int",
+    "unit": "ms",
+    "set_by": "decision",
+    "safe_min": 1000,
+    "safe_max": 60000,
+    "ceiling": {
+     "value": 60000,
+     "why": "mismo techo: un minuto detras del directo es el limite practico",
+     "enforced_by": "player"
+    },
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "costs_latency"
+   },
+   {
+    "name": "X-Max-Buffer-Time",
+    "side": "vps",
+    "group": "profundidad",
+    "priority": 2,
+    "family": "buffer",
+    "type": "int-list",
+    "unit": "s",
+    "set_by": "decision",
+    "safe_min": 4,
+    "safe_max": 30,
+    "ceiling": {
+     "value": 30,
+     "why": "subirlo de 16 a 600 NO hace nada: el techo real es maxBufferMs del player (30 s)",
+     "enforced_by": "player"
+    },
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "costs_latency"
+   },
+   {
+    "name": "X-Min-Buffer-Time",
+    "side": "vps",
+    "group": "profundidad",
+    "priority": 2,
+    "family": "buffer",
+    "type": "int-list",
+    "unit": "s",
+    "set_by": "decision",
+    "safe_min": 1,
+    "safe_max": 30,
+    "ceiling": {
+     "value": 20,
+     "why": "por encima del maxBufferMs del player no cambia nada; 20 s ya cubre 3 segmentos largos",
+     "enforced_by": "player"
+    },
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "costs_latency"
+   },
+   {
+    "name": "X-Network-Caching",
+    "side": "vps",
+    "group": "profundidad",
+    "priority": 2,
+    "family": "buffer",
+    "type": "int",
+    "unit": "ms",
+    "set_by": "decision",
+    "safe_min": 1000,
+    "safe_max": 60000,
+    "ceiling": {
+     "value": 60000,
+     "why": "10 segmentos = 1 minuto de cache: mas y el zape es inusable",
+     "enforced_by": "player"
+    },
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "costs_latency"
+   },
+   {
+    "name": "are_user_disabled_hdr_formats_allowed",
+    "side": "apk",
+    "group": "display",
+    "priority": 3,
+    "family": "hdr",
+    "type": "enum",
+    "unit": "bool",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un salto a un valor valido; no hay intermedios"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "up"
+    ],
+    "latency_class": null,
+    "allowed_values": "0|1",
+    "write_class": "settings"
+   },
+   {
+    "name": "com.ape.abr_quality_policy",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "session_data",
+    "type": "json-object",
+    "unit": "objeto JSON",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "per_subfield",
+     "value": null,
+     "note": "cada subcampo numerico <=25% por paso; los booleanos exigen recibo"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null,
+    "sub_fields": {
+     "preferHigherBitrate": "boolean",
+     "minStableTimeBeforeUpgradeMs": "number",
+     "qualityDropThreshold": "number",
+     "qualityRiseThreshold": "number",
+     "smoothSwitching": "boolean",
+     "forbidDowngradeOnTransientStall": "boolean"
+    },
+    "sub_fields_status": "DERIVED_FROM_MEASURED"
+   },
+   {
+    "name": "com.ape.codec_preferences",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "session_data",
+    "type": "json-object",
+    "unit": "objeto JSON",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "per_subfield",
+     "value": null,
+     "note": "cada subcampo numerico <=25% por paso; los booleanos exigen recibo"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null,
+    "sub_fields": {
+     "preferredCodecs": "object",
+     "hdrModes": "object",
+     "audioPassthrough": "object"
+    },
+    "sub_fields_status": "DERIVED_FROM_MEASURED"
+   },
+   {
+    "name": "com.ape.live_sync",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "session_data",
+    "type": "json-object",
+    "unit": "objeto JSON",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "per_subfield",
+     "value": null,
+     "note": "cada subcampo numerico <=25% por paso; los booleanos exigen recibo"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null,
+    "sub_fields": {
+     "liveSyncDurationCount": "number",
+     "liveMaxLatencyDurationCount": "number",
+     "liveTargetOffsetMs": "number",
+     "maxLiveOffsetMs": "number"
+    },
+    "sub_fields_status": "DERIVED_FROM_MEASURED"
+   },
+   {
+    "name": "com.ape.network_resilience",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "session_data",
+    "type": "json-object",
+    "unit": "objeto JSON",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "per_subfield",
+     "value": null,
+     "note": "cada subcampo numerico <=25% por paso; los booleanos exigen recibo"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null,
+    "sub_fields": null,
+    "sub_fields_status": "NOT_COMPUTED_IN_CATALOG"
+   },
+   {
+    "name": "com.ape.recovery_policy",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "session_data",
+    "type": "json-object",
+    "unit": "objeto JSON",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "per_subfield",
+     "value": null,
+     "note": "cada subcampo numerico <=25% por paso; los booleanos exigen recibo"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null,
+    "sub_fields": {
+     "resumeFromLastPositionMs": "boolean",
+     "skipDuplicateSegments": "boolean",
+     "alignToProgramDateTime": "boolean",
+     "maxResumeDriftMs": "number",
+     "preserveBitrateOnResume": "boolean"
+    },
+    "sub_fields_status": "DERIVED_FROM_MEASURED"
+   },
+   {
+    "name": "com.ape.universal_parity",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "session_data",
+    "type": "json-object",
+    "unit": "objeto JSON",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "per_subfield",
+     "value": null,
+     "note": "cada subcampo numerico <=25% por paso; los booleanos exigen recibo"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null,
+    "sub_fields": {
+     "applyToResolutions": "object",
+     "sameBufferStrategy": "boolean",
+     "sameRecoveryPolicy": "boolean",
+     "sameLowLatencyMode": "boolean",
+     "sameABRPolicy": "boolean"
+    },
+    "sub_fields_status": "DERIVED_FROM_MEASURED"
+   },
+   {
+    "name": "display_color_mode",
+    "side": "apk",
+    "group": "display",
+    "priority": 3,
+    "family": "display",
+    "type": "enum",
+    "unit": "modo",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un salto a un valor valido; no hay intermedios"
+    },
+    "direction_allowed": [
+     "guard"
+    ],
+    "direction_prohibited": [
+     "guard"
+    ],
+    "latency_class": null,
+    "allowed_values": "0|1|3",
+    "write_class": "settings"
+   },
+   {
+    "name": "display_mode_hdr",
+    "side": "apk",
+    "group": "display",
+    "priority": 3,
+    "family": "hdr",
+    "type": "enum",
+    "unit": "bool",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un salto a un valor valido; no hay intermedios"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "up"
+    ],
+    "latency_class": null,
+    "allowed_values": "0|1",
+    "write_class": "settings"
+   },
+   {
+    "name": "display_mode_refresh_rate",
+    "side": "apk",
+    "group": "display",
+    "priority": 3,
+    "family": "display",
+    "type": "enum",
+    "unit": "Hz",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un salto a un valor valido; no hay intermedios"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "up"
+    ],
+    "latency_class": null,
+    "allowed_values": "50|60",
+    "write_class": "settings"
+   },
+   {
+    "name": "display_mode_resolution",
+    "side": "apk",
+    "group": "display",
+    "priority": 3,
+    "family": "display",
+    "type": "enum",
+    "unit": "px",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un salto a un valor valido; no hay intermedios"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "up"
+    ],
+    "latency_class": null,
+    "allowed_values": "1080|2160",
+    "write_class": "settings"
+   },
+   {
+    "name": "exoplayer.load_control",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "session_data",
+    "type": "json-object",
+    "unit": "objeto JSON",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "per_subfield",
+     "value": null,
+     "note": "cada subcampo numerico <=25% por paso; los booleanos exigen recibo"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null,
+    "sub_fields": {
+     "minBufferMs": "number",
+     "bufferForPlaybackMs": "number",
+     "bufferForPlaybackAfterRebufferMs": "number",
+     "maxBufferMs": "number"
+    },
+    "sub_fields_status": "DERIVED_FROM_MEASURED"
+   },
+   {
+    "name": "exoplayer.load_control.bufferForPlaybackAfterRebufferMs",
+    "side": "vps",
+    "group": "recarga",
+    "priority": 3,
+    "family": "buffer",
+    "type": "int",
+    "unit": "ms",
+    "set_by": "decision",
+    "safe_min": 500,
+    "safe_max": 10000,
+    "ceiling": {
+     "value": 10000,
+     "why": "esperar mas de 10 s tras un rebuffer es un corte disfrazado: el spectador ya vio el spin",
+     "enforced_by": "player"
+    },
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": "cheap"
+   },
+   {
+    "name": "exoplayer.track_selection",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "session_data",
+    "type": "json-object",
+    "unit": "objeto JSON",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "per_subfield",
+     "value": null,
+     "note": "cada subcampo numerico <=25% por paso; los booleanos exigen recibo"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null,
+    "sub_fields": {
+     "maxDurationForQualityDecreaseMs": "number",
+     "minDurationForQualityIncreaseMs": "number",
+     "bandwidthFraction": "number"
+    },
+    "sub_fields_status": "DERIVED_FROM_MEASURED"
+   },
+   {
+    "name": "hdr_conversion_mode",
+    "side": "apk",
+    "group": "display",
+    "priority": 3,
+    "family": "hdr",
+    "type": "enum",
+    "unit": "modo",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un salto a un valor valido; no hay intermedios"
+    },
+    "direction_allowed": [
+     "guard"
+    ],
+    "direction_prohibited": [
+     "guard"
+    ],
+    "latency_class": null,
+    "allowed_values": "0|1|2",
+    "write_class": "settings"
+   },
+   {
+    "name": "hdr_force_conversion_type",
+    "side": "apk",
+    "group": "display",
+    "priority": 3,
+    "family": "hdr",
+    "type": "enum",
+    "unit": "modo",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un salto a un valor valido; no hay intermedios"
+    },
+    "direction_allowed": [
+     "guard"
+    ],
+    "direction_prohibited": [
+     "guard"
+    ],
+    "latency_class": null,
+    "allowed_values": "-1",
+    "write_class": "settings"
+   },
+   {
+    "name": "user_disabled_hdr_formats",
+    "side": "apk",
+    "group": "display",
+    "priority": 3,
+    "family": "hdr",
+    "type": "list",
+    "unit": "formatos",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un salto a un valor valido; no hay intermedios"
+    },
+    "direction_allowed": [
+     "guard"
+    ],
+    "direction_prohibited": [
+     "guard"
+    ],
+    "latency_class": null,
+    "allowed_values": "(vacio)",
+    "write_class": "settings"
+   },
+   {
+    "name": "user_preferred_refresh_rate",
+    "side": "apk",
+    "group": "display",
+    "priority": 3,
+    "family": "display",
+    "type": "enum",
+    "unit": "Hz",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un salto a un valor valido; no hay intermedios"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "up"
+    ],
+    "latency_class": null,
+    "allowed_values": "50|60",
+    "write_class": "settings"
+   },
+   {
+    "name": "user_preferred_resolution_height",
+    "side": "apk",
+    "group": "display",
+    "priority": 3,
+    "family": "display",
+    "type": "enum",
+    "unit": "px",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un salto a un valor valido; no hay intermedios"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "up"
+    ],
+    "latency_class": null,
+    "allowed_values": "720..2160",
+    "write_class": "settings"
+   },
+   {
+    "name": "user_preferred_resolution_width",
+    "side": "apk",
+    "group": "display",
+    "priority": 3,
+    "family": "display",
+    "type": "enum",
+    "unit": "px",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un salto a un valor valido; no hay intermedios"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "up"
+    ],
+    "latency_class": null,
+    "allowed_values": "1280..3840",
+    "write_class": "settings"
+   },
+   {
+    "name": "X-AI-Motion-Estimation",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "enhance",
+    "type": "enum",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-AI-SR-Artifact-Removal",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "enhance",
+    "type": "enum",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-AI-SR-Enabled",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "enhance",
+    "type": "enum",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-AI-SR-GPU-Acceleration",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "enhance",
+    "type": "enum",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-AI-SR-Model",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "enhance",
+    "type": "enum",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-AI-SR-Noise-Reduction",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "enhance",
+    "type": "enum",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-AI-SR-Precision",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "enhance",
+    "type": "enum",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-AI-SR-Scale",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "enhance",
+    "type": "enum",
+    "unit": "x",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-AI-SR-Tile-Size",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "enhance",
+    "type": "int",
+    "unit": "px",
+    "set_by": "decision",
+    "safe_min": 64,
+    "safe_max": 512,
+    "ceiling": null,
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-Audio-Track-Selection",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "playback",
+    "type": "enum",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-Bandwidth-Estimation",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "abr",
+    "type": "enum-list",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-Bandwidth-Preference",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "abr",
+    "type": "enum",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-BW-Confidence-Threshold",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "abr",
+    "type": "decimal",
+    "unit": "ratio",
+    "set_by": "decision",
+    "safe_min": 0.5,
+    "safe_max": 0.99,
+    "ceiling": null,
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-BW-Estimation-Window",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "abr",
+    "type": "int",
+    "unit": "muestras",
+    "set_by": "decision",
+    "safe_min": 3,
+    "safe_max": 60,
+    "ceiling": null,
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-BW-Smooth-Factor",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "abr",
+    "type": "decimal",
+    "unit": "ratio",
+    "set_by": "decision",
+    "safe_min": 0.01,
+    "safe_max": 0.5,
+    "ceiling": null,
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "down"
+    ],
+    "direction_prohibited": [
+     "up"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-CMAF-Part-Target",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "segment",
+    "type": "decimal",
+    "unit": "s",
+    "set_by": "decision",
+    "safe_min": 0.2,
+    "safe_max": 2,
+    "ceiling": null,
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up",
+     "down"
+    ],
+    "direction_prohibited": [],
+    "latency_class": null
+   },
+   {
+    "name": "X-Detail-Edge-Enhancement",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "enhance",
+    "type": "enum",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-Detail-Enhancement",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "enhance",
+    "type": "enum",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-Detail-Enhancement-Level",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "enhance",
+    "type": "enum",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-Detail-Noise-Threshold",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "enhance",
+    "type": "decimal",
+    "unit": "ratio",
+    "set_by": "decision",
+    "safe_min": 0.01,
+    "safe_max": 0.1,
+    "ceiling": null,
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-Detail-Sharpen-Sigma",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "enhance",
+    "type": "decimal",
+    "unit": "sigma",
+    "set_by": "decision",
+    "safe_min": 0.01,
+    "safe_max": 0.1,
+    "ceiling": null,
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-Detail-Sharpening",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "enhance",
+    "type": "enum",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-Detail-Texture-Enhancement",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "enhance",
+    "type": "enum",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-EPG-Sync",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "playback",
+    "type": "enum",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-Failover-Enabled",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "playback",
+    "type": "enum",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-File-Caching",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "cache",
+    "type": "int",
+    "unit": "ms",
+    "set_by": "decision",
+    "safe_min": 1000,
+    "safe_max": 600000,
+    "ceiling": null,
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-Initial-Bitrate",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "abr",
+    "type": "int",
+    "unit": "bps",
+    "set_by": "decision",
+    "safe_min": 1000000,
+    "safe_max": 80000000,
+    "ceiling": null,
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-LCEVC-B-Frames",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "lcevc",
+    "type": "int",
+    "unit": "frames",
+    "set_by": "decision",
+    "safe_min": 1,
+    "safe_max": 16,
+    "ceiling": null,
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-LCEVC-Lookahead",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "lcevc",
+    "type": "int",
+    "unit": "frames",
+    "set_by": "decision",
+    "safe_min": 1,
+    "safe_max": 120,
+    "ceiling": null,
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-LCEVC-Psycho-Visual",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "lcevc",
+    "type": "enum",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-LCEVC-Rate-Control",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "lcevc",
+    "type": "enum",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-LCEVC-Ref-Frames",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "lcevc",
+    "type": "int",
+    "unit": "frames",
+    "set_by": "decision",
+    "safe_min": 1,
+    "safe_max": 32,
+    "ceiling": null,
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-LCEVC-Scale-Factor",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "lcevc",
+    "type": "enum",
+    "unit": "x",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-LCEVC-Threads",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "lcevc",
+    "type": "int",
+    "unit": "hilos",
+    "set_by": "decision",
+    "safe_min": 1,
+    "safe_max": 32,
+    "ceiling": null,
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-PEVCE-Deinterlace",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "device",
+    "type": "int",
+    "unit": "modo",
+    "set_by": "decision",
+    "safe_min": -1,
+    "safe_max": 1,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up",
+     "down"
+    ],
+    "direction_prohibited": [],
+    "latency_class": null
+   },
+   {
+    "name": "X-PEVCE-HW-Threads",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "device",
+    "type": "int",
+    "unit": "hilos",
+    "set_by": "decision",
+    "safe_min": 0,
+    "safe_max": 16,
+    "ceiling": null,
+    "step": {
+     "type": "absolute",
+     "value": 1,
+     "note": "un paso = una unidad de la escala"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-PEVCE-Live-Caching",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "cache",
+    "type": "int",
+    "unit": "ms",
+    "set_by": "decision",
+    "safe_min": 500,
+    "safe_max": 60000,
+    "ceiling": null,
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-PEVCE-Network-Caching",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "cache",
+    "type": "int",
+    "unit": "ms",
+    "set_by": "decision",
+    "safe_min": 500,
+    "safe_max": 60000,
+    "ceiling": null,
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-PEVCE-Skip-Frame",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "device",
+    "type": "int",
+    "unit": "bool",
+    "set_by": "decision",
+    "safe_min": 0,
+    "safe_max": 1,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up",
+     "down"
+    ],
+    "direction_prohibited": [],
+    "latency_class": null
+   },
+   {
+    "name": "X-PEVCE-Skip-Idct",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "device",
+    "type": "int",
+    "unit": "bool",
+    "set_by": "decision",
+    "safe_min": 0,
+    "safe_max": 1,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up",
+     "down"
+    ],
+    "direction_prohibited": [],
+    "latency_class": null
+   },
+   {
+    "name": "X-PEVCE-TCP-Caching",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "cache",
+    "type": "int",
+    "unit": "ms",
+    "set_by": "decision",
+    "safe_min": 500,
+    "safe_max": 60000,
+    "ceiling": null,
+    "step": {
+     "type": "fraction",
+     "value": 0.25,
+     "note": "max 25% del valor actual por paso"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-PEVCE-Timeshift-RAM",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "device",
+    "type": "string-mem",
+    "unit": "MB",
+    "set_by": "decision",
+    "safe_min": 16,
+    "safe_max": 512,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-Playback-Rate",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "playback",
+    "type": "enum-list",
+    "unit": "x",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-Prefetch-Enabled",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "prefetch",
+    "type": "enum",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-Request-Priority",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "playback",
+    "type": "enum",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-Segment-Duration",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "segment",
+    "type": "int",
+    "unit": "ms",
+    "set_by": "decision",
+    "safe_min": 1000,
+    "safe_max": 6000,
+    "ceiling": null,
+    "step": {
+     "type": "absolute",
+     "value": 1,
+     "note": "un paso = una unidad de la escala"
+    },
+    "direction_allowed": [
+     "up",
+     "down"
+    ],
+    "direction_prohibited": [],
+    "latency_class": null
+   },
+   {
+    "name": "X-Subtitle-Track-Selection",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "playback",
+    "type": "enum",
+    "unit": "-",
+    "set_by": "decision",
+    "safe_min": null,
+    "safe_max": null,
+    "ceiling": null,
+    "step": {
+     "type": "discrete",
+     "value": null,
+     "note": "un paso = un valor completo del vocabulario; nunca un intermedio"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   },
+   {
+    "name": "X-Trick-Play-Rates",
+    "side": "vps",
+    "group": "qoe",
+    "priority": 3,
+    "family": "playback",
+    "type": "int-list",
+    "unit": "x",
+    "set_by": "decision",
+    "safe_min": 1,
+    "safe_max": 32,
+    "ceiling": null,
+    "step": {
+     "type": "absolute",
+     "value": 1,
+     "note": "un paso = una unidad de la escala"
+    },
+    "direction_allowed": [
+     "up"
+    ],
+    "direction_prohibited": [
+     "down"
+    ],
+    "latency_class": null
+   }
+  ]
+ },
+ "coverage": {
+  "knobs_total": 90,
+  "movable_now": 66,
+  "blocked_now": 24,
+  "blocked_enum_without_vocabulary": {
+   "count": 23,
+   "names": [
+    "X-AI-Motion-Estimation",
+    "X-AI-SR-Artifact-Removal",
+    "X-AI-SR-Enabled",
+    "X-AI-SR-GPU-Acceleration",
+    "X-AI-SR-Model",
+    "X-AI-SR-Noise-Reduction",
+    "X-AI-SR-Precision",
+    "X-AI-SR-Scale",
+    "X-Audio-Track-Selection",
+    "X-Bandwidth-Preference",
+    "X-Detail-Edge-Enhancement",
+    "X-Detail-Enhancement",
+    "X-Detail-Enhancement-Level",
+    "X-Detail-Sharpening",
+    "X-Detail-Texture-Enhancement",
+    "X-EPG-Sync",
+    "X-Failover-Enabled",
+    "X-LCEVC-Psycho-Visual",
+    "X-LCEVC-Rate-Control",
+    "X-LCEVC-Scale-Factor",
+    "X-Prefetch-Enabled",
+    "X-Request-Priority",
+    "X-Subtitle-Track-Selection"
+   ],
+   "code": "E_NO_EVIDENCE",
+   "why": "el catalogo declara el enum pero NO su vocabulario: sin vocabulario no hay validacion posible, y sin validacion no se escribe"
+  },
+  "blocked_json_catalog_truncated": {
+   "count": 1,
+   "names": [
+    "com.ape.network_resilience"
+   ],
+   "code": "E_SUBFIELDS_UNKNOWN",
+   "why": "el value_measured del catalogo viene truncado: no se derivan los sub-campos"
+  },
+  "honest_note": "Una perilla declarada que no se puede validar NO se habilita: se declara bloqueada. Asi el operario no puede escribir a ciegas."
+ },
+ "cadence": {
+  "round_period_ms": {
+   "apk": 15000,
+   "vps": 30000
+  },
+  "why": {
+   "formula": "periodo >= 1,25 x tiempo_muerto, redondeado",
+   "dead_time_ms": {
+    "apk": 6000,
+    "vps": 11000
+   },
+   "dead_time_terms": {
+    "observacion": "el capturador publica como maximo 1 muestra cada 500 ms (StatePublisher.kt:31) => una ventana menor que 2 muestras (1.000 ms) no tiene senal",
+    "efecto_buffer": "el nivel de buffer cambia a granularidad de segmento: 2 s del JIT y 10 s del proveedor (#EXTINF:10)",
+    "recarga_manifest": "un cambio del lado VPS solo se observa tras la siguiente recarga: max-age 2 s (media) / 5 s (master) del motor",
+    "llamada_llm": "timeout declarado 2.000 ms (no medido): se cuenta como tiempo muerto del lazo"
+   },
+   "apk_terms": "0,5 s muestreo + 4 s de efecto visible (2 fetches p95 1,25 s) + 2 s de LLM = 6,5 s -> 6 s redondeado a la baja y x1,25 = 7,5 s; se publica 15 s para tener 2 ventanas de evidencia",
+   "vps_terms": "5 s (max-age master) + 4 s de efecto + 2 s de LLM = 11 s; x1,25 = 13,75 s; se publica 30 s (2 vueltas de evidencia)",
+   "instability_rule": "si el periodo baja del tiempo muerto, el lazo es inestable: se actua antes de poder ver el resultado del cambio anterior, y la oscilacion es garantia aritmetica, no opinion"
+  },
+  "max_deltas_per_round": {
+   "vps": 3,
+   "apk": 5
+  },
+  "cooldown_rounds_same_knob": {
+   "vps": 2,
+   "apk": 1
+  },
+  "max_writes_per_minute": {
+   "vps": 6,
+   "apk": 20
+  },
+  "max_changes_per_knob_per_minute": {
+   "vps": 1,
+   "apk": 4
+  },
+  "max_changes_per_knob_per_hour": {
+   "vps": 10,
+   "apk": 30
+  },
+  "profile_elevation_min_interval_ms": 600000,
+  "event_triggers": [
+   {
+    "trigger": "FREEZE_DETECTED",
+    "condition": "capture.freeze_ms > 0",
+    "can_start_early_round": true,
+    "hard_floor_ms": 10000
+   },
+   {
+    "trigger": "BUFFER_BELOW_FLOOR",
+    "condition": "buffer_ms < 4000",
+    "can_start_early_round": true,
+    "hard_floor_ms": 10000
+   },
+   {
+    "trigger": "ZAP",
+    "condition": "channel_id cambia",
+    "can_start_early_round": true,
+    "hard_floor_ms": 5000
+   },
+   {
+    "trigger": "FALLBACK",
+    "condition": "fallback_chain cambia",
+    "can_start_early_round": true,
+    "hard_floor_ms": 10000
+   }
+  ],
+  "early_round_rule": "un trigger puede abrir una vuelta antes del periodo, pero NUNCA antes del hard_floor_ms ni saltandose cooldowns ni topes por hora",
+  "stops": [
+   {
+    "condition": "3 rechazos consecutivos",
+    "action": "detener al operario y pedir revision",
+    "code": "E_OPERATOR_HALTED"
+   },
+   {
+    "condition": "presupuesto de LLM agotado",
+    "action": "seguir con la ultima politica deterministicamente",
+    "code": "E_BUDGET"
+   }
+  ]
+ },
+ "subtlety": {
+  "per_side_from_catalog": {
+   "vps": {
+    "applies": "en la siguiente recarga de manifest (NO inmediato)",
+    "cost": "una recarga de manifest por cambio",
+    "step_policy": {
+     "max_knobs_per_iteration": 3,
+     "cooldown_iterations": 2,
+     "fraction": 0.25,
+     "rule": "max 3 perillas por iteracion, <=25% cada una, 2 iteraciones de espera entre cambios de la MISMA perilla. Duplicar un valor exige >=4 pasos."
+    }
+   },
+   "apk": {
+    "applies": "INMEDIATO (settings put)",
+    "cost": "ninguno: no hay recarga",
+    "step_policy": {
+     "max_knobs_per_iteration": 5,
+     "cooldown_iterations": 1,
+     "discrete_only": true,
+     "rule": "max 5 perillas por iteracion, 1 iteracion de espera, un salto a un valor valido del vocabulario. Se verifica leyendo el setting tras cada escritura."
+    }
+   }
+  },
+  "caps": {
+   "fraction_of_current": 0.25,
+   "absolute_units": 1,
+   "discrete": "un salto a un valor valido del vocabulario, sin intermedios",
+   "per_subfield": 0.25
+  },
+  "doubling_requires_steps": 4,
+  "json_object_rule": {
+   "numeric_subfield": "max 25 % por paso, numero finito; sin rango por sub-campo en el catalogo, el techo es el de la perilla si lo declara",
+   "boolean_subfield": "permitido, exige recibo (readback)",
+   "object_subfield": "PROHIBIDO: no es validable (E_SUBFIELDS_UNKNOWN)",
+   "note": "un objeto JSON no es una puerta trasera: sus claves son las que el catalogo midio, y solo sus numericos se mueven"
+  },
+  "on_exceed": {
+   "code": "E_STEP_TOO_LARGE",
+   "action": "rechazar la vuelta completa (atomica), registrar y no aplicar nada",
+   "retry_after_ms": 15000
+  },
+  "hysteresis": "una perilla que ya se movio en la direccion pedida no se vuelve a mover hasta que la metrica objetivo se estabilice en 2 vueltas"
+ },
+ "reversal": {
+  "judge": "deterministico",
+  "judge_note": "NO decide el LLM: el que propone no puede ser el juez. El juez evalua la metrica declarada ANTES del cambio, contra la ventana de verificacion, y aplica las bandas muertas.",
+  "window_ms": {
+   "apk": 15000,
+   "vps": 30000
+  },
+  "deadbands": {
+   "buffer_ms_drop_gt": 1000,
+   "freeze_ms_gt": 0,
+   "frame_drop_count_increase_gt_pct": 10,
+   "fps_measured_drop_gt_pct": 5
+  },
+  "not_a_revert_trigger": [
+   "bitrate_bps (puede caer por el proveedor y no por el cambio: se registra como diagnostico, no como veredicto)"
+  ],
+  "max_revert_latency_ms": {
+   "apk": 15000,
+   "vps": 35000
+  },
+  "max_revert_latency_note": "una vuelta de evidencia + el coste de aplicar; en VPS se suma la recarga de manifest (5 s master)",
+  "authority": "el juez revierte por codigo; el LLM puede proponer una reversion y se registra, pero si discrepan gana el juez",
+  "revert_counts_as_step": true,
+  "loop_guard": {
+   "consecutive_reverts": 2,
+   "action": "congelar la perilla 30 min",
+   "code": "E_REVERSAL_LOOP"
+  },
+  "after_revert": "la perilla vuelve EXACTAMENTE al valor anterior auditado y queda marcada como no-tocar hasta que cambie la evidencia"
+ },
+ "audit": {
+  "append_only": true,
+  "format": "JSONL, un registro por delta aplicado y uno por vuelta rechazada",
+  "record_max_bytes": 4096,
+  "rotation": {
+   "max_bytes": 67108864,
+   "max_days": 30,
+   "rule": "rotar; NUNCA crecer sin cota (leccion de misses.log)"
+  },
+  "required_fields": [
+   "decision_id",
+   "round_id",
+   "ts",
+   "device_id",
+   "channel_id",
+   "side",
+   "knob",
+   "from",
+   "to",
+   "reason_code",
+   "metric",
+   "metric_value",
+   "metric_unit",
+   "expect_direction",
+   "expect_deadband",
+   "evidence_refs",
+   "llm_model",
+   "llm_tokens_out",
+   "llm_latency_ms",
+   "llm_timeout_hit",
+   "validation_ok",
+   "validation_code",
+   "applied_at",
+   "readback",
+   "readback_ok",
+   "verify_window_ms",
+   "observed_value",
+   "outcome",
+   "revert_of"
+  ],
+  "outcome_enum": [
+   "improved",
+   "neutral",
+   "worsened",
+   "unverified"
+  ],
+  "unverified_rule": "sin ventana de verificacion completa el resultado es \"unverified\", nunca \"improved\"",
+  "query": [
+   "por canal",
+   "por perilla",
+   "por resultado",
+   "por dia"
+  ],
+  "receipt_rule": "un cambio sin readback_ok no cuenta como aplicado: es E_NO_RECEIPT"
+ },
+ "structure_protection": {
+  "allowlist_only": true,
+  "allowlist_count": 90,
+  "invariants": [
+   {
+    "name": "X-Concurrent-Downloads",
+    "value": "8",
+    "policy": "SALE de la lista de candidatas. Si el LLM lo propone, se rechaza con E_INVARIANT_TOUCHED.",
+    "detection": "E_INVARIANT_TOUCHED (intento de escribir un nombre declarado invariante)"
+   }
+  ],
+  "blacklist": {
+   "count": 131,
+   "by_class": {
+    "structure_declaration": 12,
+    "identity_anti_cache": 15,
+    "device_fact": 12,
+    "hdr_declaration": 41,
+    "codec_family_declaration": 13,
+    "media_feature_declaration": 25,
+    "declared_other": 13
+   },
+   "names": [
+    "X-APE-Profile",
+    "X-APE-Tier",
+    "User-Agent",
+    "X-Device-Capabilities",
+    "X-Video-Range",
+    "X-HDR-Nits",
+    "X-Codec-Full",
+    "X-Audio-Codec-Preferred",
+    "X-Resolution",
+    "X-Framerate",
+    "X-Expected-Bitrate",
+    "X-Average-Bitrate",
+    "X-Request-Id",
+    "X-Session-Id",
+    "X-Playback-Session-Id",
+    "Accept",
+    "Accept-Language",
+    "Accept-Encoding",
+    "DNT",
+    "Sec-GPC",
+    "Cache-Control",
+    "Pragma",
+    "Origin",
+    "Referer",
+    "X-App-Version",
+    "X-Device-Id",
+    "X-Client-Timestamp",
+    "X-Stream-Type",
+    "X-Quality-Preference",
+    "X-CMAF-Server-Control",
+    "X-CMAF-Playlist-Type",
+    "X-CMAF-Delta-Playlist",
+    "X-CMAF-Program-Date-Time",
+    "X-FMP4-Edit-List",
+    "X-FMP4-EMSG-Box",
+    "X-FMP4-PSSH-Box",
+    "X-FMP4-Client-Data",
+    "X-Cortex-AI-Super-Resolution",
+    "X-Cortex-AI-Spatial-Denoise",
+    "X-Cortex-LCEVC",
+    "X-Cortex-Temporal-Artifact-Repair",
+    "X-Cortex-Constant-Frame-Rate",
+    "X-Cortex-Optical-Flow-Minterpolate",
+    "X-Luma-Precision",
+    "X-Cortex-Device-Type",
+    "X-Cortex-Device-HDR",
+    "X-Cortex-Idempotency",
+    "X-Cortex-Bidirectional",
+    "X-LCEVC-Enabled",
+    "X-LCEVC-Version",
+    "X-LCEVC-Enhancement-Type",
+    "X-LCEVC-Base-Codec",
+    "X-LCEVC-L1-Block",
+    "X-LCEVC-L2-Block",
+    "X-LCEVC-HW-Acceleration",
+    "X-AI-Content-Type",
+    "X-VVC-Toolset",
+    "X-VVC-Subpictures",
+    "X-VVC-LMCS",
+    "X-EVC-Level",
+    "X-EVC-Toolset",
+    "X-HDR-MaxCLL",
+    "X-HDR-MaxFALL",
+    "X-HDR-Mastering-Display",
+    "X-HDR-Reference-White",
+    "X-HDR-Vivid",
+    "X-HDR-Filmmaker-Mode",
+    "X-HDR-Extended-Range",
+    "X-HDR-Peak-Nit-Engine",
+    "X-HDR-PQ-EOTF",
+    "X-HDR-PQ-Target-Code",
+    "X-HDR-Pixel-Format",
+    "X-HDR-Local-Dimming",
+    "X-HDR-Specular-Boost",
+    "X-HDR-Highlight-Rolloff",
+    "X-HDR-Bloom-Effect",
+    "X-HDR-Film-Grain-Synthesis",
+    "X-HDR10-Plus",
+    "X-HDR10-Plus-Version",
+    "X-HDR10-Plus-MaxLuminance",
+    "X-HDR10-Plus-MinLuminance",
+    "X-HDR10-Plus-Dynamic-Tone-Mapping",
+    "X-HDR10-Plus-Scene-Analysis",
+    "X-HDR10-Plus-L1-MinMaxAvg",
+    "X-HDR10-Plus-L6-MaxSCL",
+    "X-Dolby-Vision-Profile",
+    "X-Dolby-Vision-Level",
+    "X-Dolby-Vision-RPU",
+    "X-Dolby-Vision-Compatibility",
+    "X-Dolby-Vision-Max-Luminance",
+    "X-Dolby-Vision-Min-Luminance",
+    "X-HLG-Enabled",
+    "X-HLG-Version",
+    "X-HLG-Reference-White",
+    "X-HLG-Alternative-Transfer",
+    "X-Color-Volume-Primaries",
+    "X-Color-Volume-Transfer",
+    "X-Color-Volume-Matrix",
+    "X-Color-Volume-Range",
+    "X-Color-Volume-Signal",
+    "X-Color-Volume-Metadata",
+    "X-Audio-Bitrate",
+    "X-Audio-Objects",
+    "X-Audio-TrueHD",
+    "X-Audio-DRC-Profile",
+    "X-Thumbnail-Format",
+    "X-Chapter-Markers",
+    "X-SCTE35-PID",
+    "X-SCTE35-Segmentation-Type",
+    "X-SCTE35-Blackout-Override",
+    "X-Video-Codecs",
+    "X-Audio-Codecs",
+    "X-DRM-Support",
+    "X-Codec-Support",
+    "X-CDN-Provider",
+    "X-Buffer-Strategy",
+    "X-Buffer-Underrun-Strategy",
+    "X-Device-Type",
+    "X-Screen-Resolution",
+    "X-Network-Type",
+    "Accept-CH",
+    "X-OTT-Navigator-Version",
+    "X-Player-Type",
+    "X-PEVCE-HTTP-Reconnect",
+    "X-PEVCE-HTTP-Continuous",
+    "X-PEVCE-HW-Decode",
+    "X-PEVCE-Force-HDR",
+    "X-Hardware-Decode",
+    "X-Tunneling-Enabled",
+    "X-Catchup-Support",
+    "X-Reconnect-On-Error"
+   ]
+  },
+  "blacklist_names_detail": [
+   {
+    "name": "X-APE-Profile",
+    "class": "structure_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-APE-Tier",
+    "class": "structure_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "User-Agent",
+    "class": "identity_anti_cache",
+    "set_by": "identity"
+   },
+   {
+    "name": "X-Device-Capabilities",
+    "class": "device_fact",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Video-Range",
+    "class": "structure_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR-Nits",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Codec-Full",
+    "class": "structure_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Audio-Codec-Preferred",
+    "class": "codec_family_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Resolution",
+    "class": "structure_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Framerate",
+    "class": "structure_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Expected-Bitrate",
+    "class": "structure_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Average-Bitrate",
+    "class": "structure_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Request-Id",
+    "class": "identity_anti_cache",
+    "set_by": "identity"
+   },
+   {
+    "name": "X-Session-Id",
+    "class": "identity_anti_cache",
+    "set_by": "identity"
+   },
+   {
+    "name": "X-Playback-Session-Id",
+    "class": "identity_anti_cache",
+    "set_by": "identity"
+   },
+   {
+    "name": "Accept",
+    "class": "identity_anti_cache",
+    "set_by": "identity"
+   },
+   {
+    "name": "Accept-Language",
+    "class": "identity_anti_cache",
+    "set_by": "identity"
+   },
+   {
+    "name": "Accept-Encoding",
+    "class": "identity_anti_cache",
+    "set_by": "identity"
+   },
+   {
+    "name": "DNT",
+    "class": "identity_anti_cache",
+    "set_by": "identity"
+   },
+   {
+    "name": "Sec-GPC",
+    "class": "identity_anti_cache",
+    "set_by": "identity"
+   },
+   {
+    "name": "Cache-Control",
+    "class": "identity_anti_cache",
+    "set_by": "identity"
+   },
+   {
+    "name": "Pragma",
+    "class": "identity_anti_cache",
+    "set_by": "identity"
+   },
+   {
+    "name": "Origin",
+    "class": "identity_anti_cache",
+    "set_by": "identity"
+   },
+   {
+    "name": "Referer",
+    "class": "identity_anti_cache",
+    "set_by": "identity"
+   },
+   {
+    "name": "X-App-Version",
+    "class": "device_fact",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Device-Id",
+    "class": "device_fact",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Client-Timestamp",
+    "class": "identity_anti_cache",
+    "set_by": "identity"
+   },
+   {
+    "name": "X-Stream-Type",
+    "class": "structure_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Quality-Preference",
+    "class": "structure_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-CMAF-Server-Control",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-CMAF-Playlist-Type",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-CMAF-Delta-Playlist",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-CMAF-Program-Date-Time",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-FMP4-Edit-List",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-FMP4-EMSG-Box",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-FMP4-PSSH-Box",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-FMP4-Client-Data",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Cortex-AI-Super-Resolution",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Cortex-AI-Spatial-Denoise",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Cortex-LCEVC",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Cortex-Temporal-Artifact-Repair",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Cortex-Constant-Frame-Rate",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Cortex-Optical-Flow-Minterpolate",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Luma-Precision",
+    "class": "structure_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Cortex-Device-Type",
+    "class": "device_fact",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Cortex-Device-HDR",
+    "class": "device_fact",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Cortex-Idempotency",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Cortex-Bidirectional",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-LCEVC-Enabled",
+    "class": "declared_other",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-LCEVC-Version",
+    "class": "declared_other",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-LCEVC-Enhancement-Type",
+    "class": "declared_other",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-LCEVC-Base-Codec",
+    "class": "declared_other",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-LCEVC-L1-Block",
+    "class": "declared_other",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-LCEVC-L2-Block",
+    "class": "declared_other",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-LCEVC-HW-Acceleration",
+    "class": "declared_other",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-AI-Content-Type",
+    "class": "declared_other",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-VVC-Toolset",
+    "class": "codec_family_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-VVC-Subpictures",
+    "class": "codec_family_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-VVC-LMCS",
+    "class": "codec_family_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-EVC-Level",
+    "class": "codec_family_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-EVC-Toolset",
+    "class": "codec_family_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR-MaxCLL",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR-MaxFALL",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR-Mastering-Display",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR-Reference-White",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR-Vivid",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR-Filmmaker-Mode",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR-Extended-Range",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR-Peak-Nit-Engine",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR-PQ-EOTF",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR-PQ-Target-Code",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR-Pixel-Format",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR-Local-Dimming",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR-Specular-Boost",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR-Highlight-Rolloff",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR-Bloom-Effect",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR-Film-Grain-Synthesis",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR10-Plus",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR10-Plus-Version",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR10-Plus-MaxLuminance",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR10-Plus-MinLuminance",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR10-Plus-Dynamic-Tone-Mapping",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR10-Plus-Scene-Analysis",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR10-Plus-L1-MinMaxAvg",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HDR10-Plus-L6-MaxSCL",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Dolby-Vision-Profile",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Dolby-Vision-Level",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Dolby-Vision-RPU",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Dolby-Vision-Compatibility",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Dolby-Vision-Max-Luminance",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Dolby-Vision-Min-Luminance",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HLG-Enabled",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HLG-Version",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HLG-Reference-White",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-HLG-Alternative-Transfer",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Color-Volume-Primaries",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Color-Volume-Transfer",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Color-Volume-Matrix",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Color-Volume-Range",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Color-Volume-Signal",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Color-Volume-Metadata",
+    "class": "hdr_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Audio-Bitrate",
+    "class": "codec_family_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Audio-Objects",
+    "class": "codec_family_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Audio-TrueHD",
+    "class": "codec_family_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Audio-DRC-Profile",
+    "class": "codec_family_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Thumbnail-Format",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Chapter-Markers",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-SCTE35-PID",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-SCTE35-Segmentation-Type",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-SCTE35-Blackout-Override",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Video-Codecs",
+    "class": "structure_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Audio-Codecs",
+    "class": "codec_family_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-DRM-Support",
+    "class": "codec_family_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Codec-Support",
+    "class": "codec_family_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-CDN-Provider",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Buffer-Strategy",
+    "class": "declared_other",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Buffer-Underrun-Strategy",
+    "class": "declared_other",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Device-Type",
+    "class": "device_fact",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Screen-Resolution",
+    "class": "device_fact",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Network-Type",
+    "class": "device_fact",
+    "set_by": "measurement"
+   },
+   {
+    "name": "Accept-CH",
+    "class": "identity_anti_cache",
+    "set_by": "identity"
+   },
+   {
+    "name": "X-OTT-Navigator-Version",
+    "class": "device_fact",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Player-Type",
+    "class": "device_fact",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-PEVCE-HTTP-Reconnect",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-PEVCE-HTTP-Continuous",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-PEVCE-HW-Decode",
+    "class": "declared_other",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-PEVCE-Force-HDR",
+    "class": "declared_other",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Hardware-Decode",
+    "class": "device_fact",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Tunneling-Enabled",
+    "class": "device_fact",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Catchup-Support",
+    "class": "media_feature_declaration",
+    "set_by": "measurement"
+   },
+   {
+    "name": "X-Reconnect-On-Error",
+    "class": "declared_other",
+    "set_by": "measurement"
+   }
+  ],
+  "structure_tags": [
+   {
+    "tag": "#EXTINF",
+    "detection": "sha256 del bloque normalizado por canal"
+   },
+   {
+    "tag": "#EXT-X-STREAM-INF",
+    "detection": "sha256 + cruce con el probe"
+   },
+   {
+    "tag": "#EXTSHIMOTT",
+    "detection": "tools/quality/validate_extshimott.js"
+   },
+   {
+    "tag": "URL del canal",
+    "detection": "sha256 de la linea"
+   },
+   {
+    "tag": "#EXT-X-APE-PROFILE-TEMPLATE",
+    "detection": "hash por canal"
+   },
+   {
+    "tag": "#EXT-X-APE-LAB-METADATA",
+    "detection": "hash de la concatenacion de chunks"
+   },
+   {
+    "tag": "codigo de la APK (.kt/.java/.gradle), pipeline, workflows, modulos",
+    "detection": "sha256 del arbol + git status => E_APK_CODE_TOUCHED"
+   }
+  ],
+  "known_non_writable": {
+   "dead_excluded": {
+    "count": 28,
+    "names": [
+     "X-PEVCE-Live-Caching",
+     "X-PEVCE-TCP-Caching",
+     "X-PEVCE-HTTP-Reconnect",
+     "X-PEVCE-HTTP-Continuous",
+     "X-PEVCE-HW-Decode",
+     "X-PEVCE-HW-Threads",
+     "X-PEVCE-Skip-Frame",
+     "X-PEVCE-Skip-Idct",
+     "X-PEVCE-Timeshift-RAM",
+     "X-PEVCE-Deinterlace",
+     "X-PEVCE-Force-HDR",
+     "X-Tunneling-Enabled",
+     "com.ape.lab.schema",
+     "com.ape.lab.exported_at",
+     "com.ape.lab.bulletproof",
+     "com.ape.lab.filename",
+     "com.ape.profile.master",
+     "com.ape.profile.master_name",
+     "com.ape.profile.master_role",
+     "com.ape.codec.chain.player_pref",
+     "com.ape.codec.chain.audio",
+     "com.ape.codec.chain.hdr",
+     "com.ape.codec.chain.video_family",
+     "com.ape.qos.target_mos",
+     "com.ape.zapping.max_ms",
+     "com.ape.startup.max_ms",
+     "com.ape.rebuffer.tolerance",
+     "com.ape.build"
+    ]
+   },
+   "not_available": {
+    "count": 17,
+    "names": [
+     "aipq_enable",
+     "aisr_enable",
+     "ai_pq_mode",
+     "ai_sr_mode",
+     "ai_pic_mode",
+     "ai_sr_level",
+     "pq_sharpness_enable",
+     "pq_hdr_*",
+     "pq_video_dnr / pq_*_dnr",
+     "always_hdr",
+     "hdr_output_type",
+     "sr_unsharp_f32 (TFLite)",
+     "car_denoise_f32 (TFLite)",
+     "rife_blend_f32 (TFLite)",
+     "minterpolate",
+     "display improvement (di)",
+     "LCEVC sintetico"
+    ]
+   }
+  },
+  "apk_code_guard": {
+   "what": "sha256 del arbol .kt/.java/.gradle + git status",
+   "code": "E_APK_CODE_TOUCHED"
+  },
+  "value_shape_guard": {
+   "forbidden_patterns": [
+    "//",
+    "\\\\",
+    "../",
+    "\n",
+    "\r",
+    ";",
+    "$(",
+    "`",
+    "file:",
+    "cmd:"
+   ],
+   "code": "E_STRUCTURE_TOUCHED"
+  },
+  "on_attempt": {
+   "apply": false,
+   "log": true,
+   "alert_operator": true,
+   "count_attempt": true,
+   "halt_after_attempts": 3
+  },
+  "why_it_is_structural": "no es solo un validador: el ESQUEMA DE SALIDA no tiene ninguna forma de expresar \"escribe este fichero\" ni \"ejecuta esto\". El operario no puede pedirlo porque el idioma no lo tiene."
+ },
+ "degradation_gate": {
+  "prohibited": [
+   "Bajar resolucion (4K->FHD/HD/SD) para \"estabilizar\"",
+   "Bajar el bitrate maximo",
+   "Reducir fps (50/60 -> 25/30)",
+   "Apagar HDR o poner hdr_conversion_mode=3 (HDR falso)",
+   "Comprar estabilidad con calidad: el buffer se compra con latencia"
+  ],
+  "extra_prohibited": [
+   "ABR downshift (bajar de variante) para salvar el buffer",
+   "caer a F5 / ORIGINAL_DIRECT_SAFE",
+   "recortar el bitrate maximo declarado"
+  ],
+  "codes": [
+   "E_KNOB_DEGRADATION",
+   "E_PROFILE_DOWNGRADE",
+   "E_INVARIANT_TOUCHED"
+  ],
+  "enforcement_points": [
+   "esquema de salida",
+   "validador del servidor (pasos 11-12)",
+   "gate del repo check_anti_degradation_policy.js"
+  ],
+  "law_quote": "El rebuffering se corrige con JIT nativo, ruta/proxy, buffer/prefetch o metadatos honestos, NUNCA degradando"
+ },
+ "latency": {
+  "decision_by_lookup": {
+   "us_p99": 2,
+   "evidence": "Map.get 121-174 ns; APCu 0,000 ms; SQLite 0,0029 ms"
+  },
+  "hot_path": {
+   "p99_us": 5000,
+   "measured_p99_us": [
+    2790,
+    4460
+   ],
+   "source": "docs/audits/REALTIME_LATENCY_BUDGET_20261115.md"
+  },
+  "llm_call": {
+   "timeout_ms": 2000,
+   "hard_cap_ms": 4000,
+   "vs_5ms_ratio": 400,
+   "in_hot_path": false
+  },
+  "probe": {
+   "p50_ms": 1653,
+   "ratio_vs_5ms": 330.6,
+   "in_hot_path": false
+  },
+  "apply": {
+   "apk": {
+    "mode": "inmediato",
+    "mechanism": "settings put + settings get",
+    "cost": "NO COMPUTADO en esta tarea",
+    "in_hot_path": false
+   },
+   "vps": {
+    "mode": "siguiente recarga de manifest",
+    "floor_ms": {
+     "media": 2000,
+     "master": 5000
+    },
+    "in_hot_path": false
+   }
+  },
+  "never_in_hot_path": [
+   "llm_call",
+   "probe",
+   "json_decode del indice",
+   "fs",
+   "settings_io"
+  ],
+  "conclusion": "La DECISION por lookup cabe en <5 ms. La decision por LLM no cabe NUNCA (400x el presupuesto por timeout declarado). La APLICACION no cabe en <5 ms en ningun lado: APK es inmediata pero fuera del camino, y VPS espera a la siguiente recarga (>=2 s)."
+ },
+ "budget": {
+  "max_llm_calls_per_round": 1,
+  "max_llm_calls_per_hour_per_channel": 60,
+  "max_tokens_out": 512,
+  "default_mode": "determinista: se ejecuta la ultima politica aprobada; el LLM se invoca por trigger o cada 4 vueltas",
+  "on_budget_exhausted": {
+   "action": "seguir con la ultima politica",
+   "code": "E_BUDGET",
+   "alert": false
+  },
+  "cost_note": "el coste por vuelta no se convierte a dinero aqui porque el precio del proveedor no esta medido: se acota en llamadas y tokens, que SI se pueden medir."
+ },
+ "not_computed": [
+  "El coste real de aplicar cada perilla del lado APK (settings put + get) y del lado VPS: no medido en esta tarea.",
+  "La latencia p50 de la llamada al LLM: no medida; solo se declara su timeout (2.000 ms recomendado, 4.000 de techo).",
+  "El efecto en pantalla de display_mode_* y hdr_conversion_mode: el audit VPP lo declara NO MEDIDO.",
+  "La mejora de imagen atribuible a un cambio: el capturador no ve el VPP; se mide el frame compuesto, no la salida HDMI.",
+  "El valor de cada perilla en perfiles distintos de P3/P5: el contrato fija rangos y techos, no el valor por perfil.",
+  "El techo real de X-Prefetch-Segments depende de la ventana viva de cada canal, que no se mide aqui.",
+  "Los sub-campos de com.ape.network_resilience: el catalogo de t81 trae su value_measured TRUNCADO (\"...jumpToLi\"), asi que no se derivan. El contrato PROHIBE mover esa perilla (E_SUBFIELDS_UNKNOWN) hasta que el catalogo traiga el objeto completo."
+ ],
+ "open_questions_for_operator": [
+  "Quien es el dueno del juez de reversion: el mismo VPS que aplica, o un proceso separado que solo escribe el veredicto?",
+  "El presupuesto de 60 llamadas/hora/canal: se acepta o se baja? Es el unico limite economico que hoy se puede medir sin precio del proveedor.",
+  "Un canal NOT_MEASURABLE (403/406/407) admite vueltas del operario o queda congelado hasta que haya medida?"
+ ]
+}
