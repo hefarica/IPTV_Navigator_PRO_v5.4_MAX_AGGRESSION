@@ -1039,3 +1039,60 @@ responde a `python`.
 ```
 Los 23 sin `.php` son historicos (tu IP, hace 3 horas); el widget actual usa `.php`. No se
 toca nginx por eso.
+---
+
+## Hecho 22 · El `d=` de cada canal declara SU resolucion, no el default 1080p30
+
+EL BUG
+Todas las URLs de la lista llevaban el mismo parametro:
+```
+d = {"t":"generic","s":"unknown","r":2048,"w":1920,"h":1080,"f":30}
+```
+Un canal 4K real (548065, P1+T9) incluido. Se originaba en dos sitios:
+- el generador lo escribe como constante (m3u8-typed-arrays-ultimate.js:13213)
+- el wrap pasaba `deviceType:'generic'`, y ese perfil del ApeUrlBuilder es
+  `{maxRes:[1920,1080], hdr:'sdr', fps:30}` (ape-url-builder.js:77)
+
+EL FIX, en el wrap (que es capa nuestra, no el generador)
+`rebuildDeviceData(url)` reescribe el `d=` con w/h/f del `#EXT-X-APE-STREAM-TRUTH`
+del canal. Se aplica ANTES del early-return de ALREADY — las listas cableadas ya
+traen URLs /pulse/ y sin eso el fix no llegaba nunca (medido: wrapped=0, d_rebuilt=None).
+No se toca `hdr`: el fichero documenta que no se declara HDR desde `pq=1`.
+
+VERIFICADO, canal a canal
+```
+canal 4K (548065) : d= {"w":3840,"h":2160,"f":60}
+                    truth: src=real,w=3840,h=2160,fps=60  -> COINCIDE
+canal FHD (1)     : d= {"w":1920,"h":1080,"f":60}
+                    truth: src=fake-4k,w=1920,h=1080,fps=60 -> COINCIDE
+```
+
+ESTADO
+```
+LIGHT : 241.369.147 B · gz 13.682.971 B · 21.224 canales · 9 plantillas · 21.224 tags
+P1    :  12.062.307 B · gz    960.567 B ·    933 canales 4K reales
+P3    : 228.720.957 B · gz 12.613.740 B · 20.222 canales
+P4    :   1.157.469 B · gz    322.609 B ·     58 canales
+P5    :     499.539 B · gz    282.668 B ·     11 canales
+gate  : PASS 10/10 · vigilante OK · servicios NRestarts=0
+```
+
+EL ZAPEO MEDIDO, y su fecha importa
+```
+06:15:58 -> 06:20:54  canal 548065
+  12 manifiestos · 112 segmentos · 984,0 MB · ~53 Mbps · 1,01-1,33 s por segmento
+```
+Ese zapeo funciono, pero fue con la lista de ANTES del fix. Despues el operador
+pidio la lista tres veces (07:24, 08:25, 09:26, todas 200) y no volvio a zapear.
+El fix se aplico a las 09:58. **La lista con el `d=` correcto aun no se ha probado
+en el televisor.** No se declara probada.
+
+FALSO POSITIVO CONOCIDO DEL VERIFICADOR
+`verify-light` devuelve ok:false con lineas_distintas=21224 en la linea 1040 (la URL),
+porque el `d=` nuevo cambio la URI y el verificador compara byte a byte contra el
+origen. Las 1.040 lineas de metadata siguen saliendo de las plantillas + mp.
+No se relaja el verificador para que diga lo que conviene.
+
+PENDIENTE, y es de la APK
+El shim manda su PROPIO `d=` al pedir, con defaults. Este fix arregla el de la LISTA;
+el del shim necesita recompilar (v675) e instalar. No se hizo sin autorizacion.
