@@ -3052,6 +3052,9 @@ function objective(inp) {
   const inW = Math.max(16, Math.round(Number(o.inW) || 1280));
   const inH = Math.max(16, Math.round(Number(o.inH) || 720));
   const inFps = Number(o.inFps) || 30;
+  // [FIX 2026-11-15] fps de salida: si el operador o el target lo fijan, manda;
+  // si no, se conserva el de entrada (no se inventan fotogramas).
+  const outFps = Number(o.outFps) > 0 ? Number(o.outFps) : inFps;
   const outW = Math.max(16, Math.round(Number(o.outW) || 3840));
   const outH = Math.max(16, Math.round(Number(o.outH) || 2160));
   const mode = String(o.mode || 'real') === 'emulado' ? 'emulado' : 'real';
@@ -3231,11 +3234,17 @@ function objective(inp) {
       ? 'EMULADO: sintesis maxima (denoise proporcional, debanding, CAS, interpolacion). Se declara emulada.'
       : 'REAL: solo lo sostenido y sin sintesis que pueda empeorar. Se promete lo que se entrega.',
     input: { width: inW, height: inH, fps: inFps, pixels: inPx },
-    output: { width: outW, height: outH, pixels: outPx },
+    // [FIX 2026-11-15] output no llevaba fps. El panel lee r.fields.outFps.value
+    // para rellenar el campo SALIDA fps; al no existir, el input quedaba vacio y
+    // al declarar llegaba '' -> disparaba el bug de "fps invalido: ".
+    output: { width: outW, height: outH, fps: outFps, pixels: outPx },
     areaRatio: Number(areaRatio.toFixed(2)),
     linearRatio: Number(linearRatio.toFixed(2)),
     exceedsDecoder,
     fields: {
+      outFps: { value: outFps, reason: outFps === inFps
+        ? 'se conserva el fps de entrada: no se inventan fotogramas'
+        : 'fijado por el operador o por el target' },
       codec: { value: codec, reason: 'el mejor que ' + caps.label + ' decodifica para ' + outW + 'x' + outH },
       preset: { value: preset, reason: 'el mas lento que el host sostiene con ' + relCost + 'x de coste' },
       crf: { value: crf, reason: isEmu ? 'emulado: CRF bajo porque hay mas pixeles inventados que proteger' : 'real: CRF moderado, el bitrate no se infla' },
@@ -4188,25 +4197,42 @@ function normalizeImageConfig(patch) {
     c.target = pick(p.target, IMAGE_LIMITS.targets, c.target);
     if (c.target !== String(p.target)) errors.push('target invalido: ' + p.target);
   }
-  if (p.recipe !== undefined) {
+  // [FIX 2026-11-15] igual que los otros cuatro: un campo VACIO no es invalido.
+  if (p.recipe !== undefined && p.recipe !== null && String(p.recipe).trim() !== '') {
     c.recipe = pick(p.recipe, IMAGE_LIMITS.recipes, c.recipe);
-    if (c.recipe !== String(p.recipe)) errors.push('recipe invalida: ' + p.recipe);
+    if (c.recipe !== String(p.recipe)) errors.push('recipe invalida: ' + JSON.stringify(p.recipe));
   }
-  if (p.codec !== undefined) {
+  // [FIX 2026-11-15] Un campo VACIO no es un campo invalido: el panel manda ''
+  // cuando el operador no ha tocado el campo todavia. Antes pick('') devolvia el
+  // default y c.codec !== String('') era true, asi que se reportaba
+  // 'codec invalido: ' con el valor EN BLANCO (medido en el log del panel).
+  if (p.codec !== undefined && p.codec !== null && String(p.codec).trim() !== '') {
     c.codec = pick(p.codec, IMAGE_LIMITS.codecs, c.codec);
-    if (c.codec !== String(p.codec)) errors.push('codec invalido: ' + p.codec);
+    if (c.codec !== String(p.codec)) errors.push('codec invalido: ' + JSON.stringify(p.codec));
   }
-  if (p.preset !== undefined) {
+  // [FIX 2026-11-15] Un campo VACIO no es un campo invalido: el panel manda ''
+  // cuando el operador no ha tocado el campo todavia. Antes pick('') devolvia el
+  // default y c.preset !== String('') era true, asi que se reportaba
+  // 'preset invalido: ' con el valor EN BLANCO (medido en el log del panel).
+  if (p.preset !== undefined && p.preset !== null && String(p.preset).trim() !== '') {
     c.preset = pick(p.preset, IMAGE_LIMITS.presets, c.preset);
-    if (c.preset !== String(p.preset)) errors.push('preset invalido: ' + p.preset);
+    if (c.preset !== String(p.preset)) errors.push('preset invalido: ' + JSON.stringify(p.preset));
   }
-  if (p.fps !== undefined) {
+  // [FIX 2026-11-15] Un campo VACIO no es un campo invalido: el panel manda ''
+  // cuando el operador no ha tocado el campo todavia. Antes pick('') devolvia el
+  // default y c.fps !== String('') era true, asi que se reportaba
+  // 'fps invalido: ' con el valor EN BLANCO (medido en el log del panel).
+  if (p.fps !== undefined && p.fps !== null && String(p.fps).trim() !== '') {
     c.fps = pick(p.fps, IMAGE_LIMITS.fps, c.fps);
-    if (c.fps !== String(p.fps)) errors.push('fps invalido: ' + p.fps);
+    if (c.fps !== String(p.fps)) errors.push('fps invalido: ' + JSON.stringify(p.fps));
   }
-  if (p.audio !== undefined) {
+  // [FIX 2026-11-15] Un campo VACIO no es un campo invalido: el panel manda ''
+  // cuando el operador no ha tocado el campo todavia. Antes pick('') devolvia el
+  // default y c.audio !== String('') era true, asi que se reportaba
+  // 'audio invalido: ' con el valor EN BLANCO (medido en el log del panel).
+  if (p.audio !== undefined && p.audio !== null && String(p.audio).trim() !== '') {
     c.audio = pick(p.audio, IMAGE_LIMITS.audio, c.audio);
-    if (c.audio !== String(p.audio)) errors.push('audio invalido: ' + p.audio);
+    if (c.audio !== String(p.audio)) errors.push('audio invalido: ' + JSON.stringify(p.audio));
   }
 
   if (p.crf !== undefined) c.crf = clampInt(p.crf, 0, 51, c.crf);
@@ -7866,6 +7892,9 @@ function loadFromGestorProfile(gp) {
     const r = objective({
       inW: q.get('inW'), inH: q.get('inH'), inFps: q.get('inFps'),
       outW: q.get('outW'), outH: q.get('outH'),
+      // [FIX 2026-11-15] el GET no leia outFps: objective() lo aceptaba desde el POST
+      // pero no desde la query, asi que ?outFps=25 se ignoraba en silencio.
+      outFps: q.get('outFps'),
       player: q.get('player') || 'onn-4k', mode: q.get('mode') || 'real'
     });
     setBaseHeaders(res); setNoCacheHeaders(res);
