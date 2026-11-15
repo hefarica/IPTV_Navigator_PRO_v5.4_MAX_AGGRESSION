@@ -143,16 +143,31 @@ code=${r%%|*}
 bytes=${r#*|}; bytes=${bytes%%|*}
 if [ "$code" = "200" ] && [ "${bytes:-0}" -gt 100 ]; then
   add_row "pulse-canal" "ok" "$r"
-elif [ "$code" = "502" ] || [ "$code" = "461" ] || [ "$code" = "000" ]; then
-  # El canal puede estar caido (proveedor). NO se reinicia php por eso.
+elif [ "$code" = "502" ] || [ "$code" = "461" ] || [ "$code" = "000" ] \
+  || [ "$code" = "403" ] || [ "$code" = "407" ] || [ "$code" = "404" ] \
+  || [ "$code" = "429" ] || [ "$code" = "451" ]; then
+  # El canal puede estar caido o bloqueado POR EL PROVEEDOR. NO se reinicia php por
+  # eso: php-fpm esta contestando, y contestar 407 es contestar.
+  #
+  # MEDIDO el 2026-11-15: el canal de prueba 1312008 paso a devolver 407 y el
+  # vigilante marco VERDICT=DEGRADADO con nginx y php-fpm `active`. Ese falso
+  # positivo es peor que no vigilar: entrena a ignorar el panel.
+  #
+  # 407 = el codigo propio de bloqueo de este proveedor (medido en esta sesion).
   add_row "pulse-canal" "sin-muestra" "$r (upstream del canal, no el modulo)"
 else
   add_row "pulse-canal" "fail" "$r"
 fi
 
 # ── 6. ZAPPING EN LA VENTANA (senal real, sin molestar al player) ────────────
-zaps=$(tail -2000 /var/log/nginx/access.log 2>/dev/null | grep -c 'GET /pulse/' || echo 0)
-last=$(tail -2000 /var/log/nginx/access.log 2>/dev/null | grep 'GET /pulse/' | tail -1 | grep -oE '/pulse/[0-9]+' | head -1 || true)
+# [FIX 2026-11-15] playlist_access.log, NO access.log.
+# nginx manda /pulse/ a un access_log propio (sites-enabled/default:82, formato
+# ape_playlist). Medido: access.log tenia 3 peticiones de /pulse/ y
+# playlist_access.log 2.929. El vigilante contaba el fichero equivocado y el
+# "zapping" salia casi siempre 0 — un instrumento que no medía nada.
+ZLOG="${APE_PLAYLIST_LOG:-/var/log/nginx/playlist_access.log}"
+zaps=$(tail -2000 "$ZLOG" 2>/dev/null | grep -c 'GET /pulse/' || echo 0)
+last=$(tail -2000 "$ZLOG" 2>/dev/null | grep 'GET /pulse/' | tail -1 | grep -oE '/pulse/[0-9]+' | head -1 || true)
 add_row "zapping" "ok" "$zaps peticiones /pulse/ en las ultimas 2000 lineas; ultimo=${last:-ninguno}"
 
 # ── 7. ESTADO ────────────────────────────────────────────────────────────────
