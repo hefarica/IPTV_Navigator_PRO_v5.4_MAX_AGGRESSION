@@ -1860,3 +1860,56 @@ DE PASO, UNA OBSERVACION DE HIGIENE
   /var/www/html/js/ape-v9/ tiene ~110 copias del panel con nombres .bak_2026*, desde 33.950 B
   hasta 68.443 B. No se borro ninguna. Con el disco al 89% es candidato a limpieza previa
   autorizacion.
+---
+
+## Hecho 36 · Cada perfil aplica su 6K como premium inicial, con fallback y notas para el LLM
+
+Lo pidio el operador: "CADA PERFIL DEBE APLICAR SU PERFIL 6K COMO ALTERNATIVA PREMIUM INICIAL,
+SIEMPRE Y EL FALLBACK ES EL PERFIL HABITUAL AL QUE CAERA, SI HAY ALGUN PROBLEMA EN REPRODUCCION,
+TOMAR NOTAS EN LOS LOGS Y CONTEMPLARA MEJORAS PARA QUE EL LLM LOS APLIQUE EN LA PROXIMA
+OPORTUNIDAD".
+
+LO QUE HABIA, MEDIDO EN P5
+  El #EXT-X-STREAM-INF ya declaraba RESOLUTION=5760x3240 y FRAME-RATE=60 (6K), pero el perfil
+  por canal seguia diciendo P5:
+    #EXTINF:... ape-profile="P5" ...
+    #EXTHTTP:{"X-APE-Profile":"P5","X-APE-Tier":"T5",...}
+    #EXTSHIMOTT:{...,"mp":{"p":"P5+T5"},...}
+  O sea: la resolucion era 6K pero NADA declaraba que fuera una variante premium, y no habia
+  marca de fallback. El APK no podia saber a que caer si el 6K fallaba.
+
+LO QUE SE CONSTRUYO
+  /opt/ape-pulse/ape-6k-premium.sh  (desde vps/bin/)
+  Por cada canal de la lista Px:
+    1) ape-profile="Px"                -> ape-profile="Px.5"
+    2) "X-APE-Profile":"Px"            -> "X-APE-Profile":"Px.5"
+    3) anade "X-APE-Fallback-Profile":"Px"  (el habitual, al que cae)
+    4) anade #EXT-X-APE-PREMIUM-PROFILE:6K;PROFILE=Px.5;FALLBACK=Px;TARGET=5760x3240;
+             REASON=alternativa_premium_inicial
+    5) "mp":{"p":"Px+Tn"} del EXTSHIMOTT -> "Px.5+Tn"
+  Y escribe una nota JSONL por canal en /var/lib/ape/6k-premium.jsonl para que el LLM la lea:
+    {ts, channel, profile_from, profile_to, fallback, ok, note}
+
+MEDIDO, LAS CUATRO LISTAS
+  LISTA  BYTES        CANALES  PREMIUM  FALLBACK  MARCA   URLs
+  P1     12.626.267       933      933       933    933   identicas
+  P3    240.723.972    20.222   20.222    20.222 20.222   identicas
+  P4      1.199.352        58       58        58     58   identicas
+  P5        514.440        11       11        11     11   identicas
+  Y 21.235 notas para el LLM (5,9 MB) en /var/lib/ape/6k-premium.jsonl,
+  contadas por perfil: P1.5=933 · P3.5=20.222 · P4.5=58 · P5.5=22.
+  El script es idempotente (2a pasada dice "sin cambios"), fail-closed (si canales/urls/premium
+  /fallback no cuadran, NO publica) y guarda .bak-6k-<stamp>.
+
+P0 Y P2 SIGUEN SIN EXISTIR COMO FICHERO, Y ESTA VEZ TAMBIEN SUS .5
+  El generador nunca emitio P0 ni P2. No se fabrican: un P0 de mentira seria peor que su
+  ausencia. Lo que si queda listo es el aplicador: en cuanto existan P0.m3u8 y P2.m3u8,
+  una pasada de ape-6k-premium.sh les pone su P0.5 / P2.5 con fallback.
+
+DE PASO, EL GATE ESTABA FALLANDO POR EL DISCO
+  gate 10/11 con "90% usado · 3.9G libre (>=90%: riesgo real de caida de servicios)".
+  Se limpio SOLO lo justificable: los 12 backups de los cambios de hoy (1,4 GB, todos
+  reproducibles desde el repo), el duplicado APE_..._CABLEADA_LIGHT_CABLEADA.m3u8 (241 MB,
+  misma lista sin el modulo) y 482 backups del panel (156 MB, la version actual esta versionada).
+  90% -> 86% · 3,9G -> 5,3G libres · 1.490 MB liberados · gate PASS 11/11.
+  NO se toco ninguna lista servida ni la _CABLEADA fuente.
