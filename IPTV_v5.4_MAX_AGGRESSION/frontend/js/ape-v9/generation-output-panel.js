@@ -990,41 +990,64 @@
       });
       generationResultStatus(result, 'LIGHT: base CDN lista · proyectando…');
 
-      // 2) proyeccion en el VPS
+      // 2) PUBLICACION ATOMICA EN EL VPS
+      // [2026-11-15] ANTES se llamaba a list-light-project.php, que hacia SOLO la
+      // proyeccion. El problema: este boton genera la base y acto seguido pide la
+      // proyeccion, pero la base todavia NO esta en el VPS — se sube aparte. El
+      // endpoint respondia E_LISTA_NO_EXISTE y el navegador lo mostraba como
+      // "Failed to fetch" porque CORS se come el cuerpo del 404.
+      //
+      // AHORA se llama a list-publish.php, que encadena los pasos 3-6 en UNA sola
+      // operacion: proyeccion -> plantillas -> verificacion del contrato -> enlace.
+      // Falla cerrado: si cualquier paso o el contrato fallan, responde ok:false con
+      // la razon literal y NO publica. Si la base no esta en el VPS lo dice con
+      // E_LISTA_NO_EXISTE y el mensaje explica que falta subirla.
       var base = lightBaseUrl();
-      setLightState('proyectando…', '#e879f9');
-      var pr = await fetch(VPS_BASE + '/prisma/api/list-light-project.php', {
+      setLightState('publicando en el VPS…', '#e879f9');
+      var pr = await fetch(VPS_BASE + '/prisma/api/list-publish.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lista: base })
       });
+      var pj = null;
+      try { pj = await pr.json(); } catch (_) { pj = null; }
+
       if (pr.status === 404) {
-        setLightState('NOT_AVAILABLE · endpoint ausente', '#f59e0b');
-        status('LIGHT: el endpoint de proyección no está desplegado (404). La base CDN SÍ se generó.', '#f59e0b');
-        toast('LIGHT: base generada, proyección no disponible (404 honesto)', 'warning');
+        setLightState('FALTA SUBIR · la base no está en el VPS', '#f59e0b');
+        status('LIGHT: la base ' + base + ' no está en el VPS. SUBILA y vuelve a pulsar. ' +
+               '(La base CDN SÍ se generó y está descargada.)', '#f59e0b');
+        toast('LIGHT: sube la base al VPS antes de proyectar', 'warning');
         return;
       }
-      if (!pr.ok) {
-        setLightState('FALLÓ · HTTP ' + pr.status, '#ef4444');
-        status('LIGHT: proyección falló con HTTP ' + pr.status, '#ef4444');
+      if (pr.status === 422 && pj && pj.reason === 'E_CONTRATO_INCUMPLIDO') {
+        var errs = (pj.errores || []).join(' · ');
+        var med = pj.medido || {};
+        setLightState('RECHAZADA · contrato incumplido', '#ef4444');
+        status('LIGHT RECHAZADA: ' + errs + ' · medido: ' +
+               (med.canales || '?') + ' canales · ' + (med.plantillas || '?') + ' plantillas · ' +
+               (med.ape_en_cuerpo === undefined ? '?' : med.ape_en_cuerpo) + ' APE en cuerpo', '#ef4444');
+        toast('LIGHT no cumple el contrato: ' + errs, 'error');
+        return;
+      }
+      if (!pr.ok || !pj || pj.ok !== true) {
+        var rz = (pj && (pj.reason || pj.error)) || ('HTTP ' + pr.status);
+        setLightState('FALLÓ · ' + rz, '#ef4444');
+        status('LIGHT falló en el paso ' + ((pj && pj.paso) || '?') + ': ' + rz, '#ef4444');
+        toast('LIGHT falló: ' + rz, 'error');
         return;
       }
 
-      // 3) validacion fail-closed del contrato
-      setLightState('validando…', '#38bdf8');
-      var v = await validateLight();
-      if (v.ok) {
-        setLightState('VALIDADA · ' + (v.raw.canales || '?') + ' canales · ' + (v.raw.plantillas || '?') + ' plantillas', '#22c55e');
-        status('LIGHT VALIDADA: ' + (v.raw.canales || '?') + ' canales · ' + (v.raw.plantillas || '?') + ' plantillas · ' +
-               (v.raw.ape_cuerpo === 0 ? '0 APE en cuerpo' : 'APE en cuerpo: ' + v.raw.ape_cuerpo) +
-               ' · ' + (v.raw.lineas_por_canal ? v.raw.lineas_por_canal + ' lineas/canal' : 'lineas/canal N/D') + ' · ' + (v.raw.bytes ? Math.round(v.raw.bytes / 1048576) + ' MB' : 'bytes N/D'), '#22c55e');
-        toast('LIGHT validada: contrato cumplido', 'success');
-      } else {
-        var why = v.reason + (v.fallos ? ' · ' + v.fallos.join(' · ') : '');
-        setLightState('NO VALIDADA · ' + v.reason, '#ef4444');
-        status('LIGHT NO VALIDADA: ' + why, '#ef4444');
-        toast('LIGHT no cumple el contrato: ' + why, 'error');
-      }
+      // 3) publicado: el endpoint ya verifico el contrato antes de enlazar
+      var m = pj.medido || {};
+      setLightState('PUBLICADA · ' + (m.canales || '?') + ' canales · ' + (m.plantillas || '?') + ' plantillas', '#22c55e');
+      status('LIGHT PUBLICADA: ' + (m.canales || '?') + ' canales · ' + (m.plantillas || '?') + ' plantillas · ' +
+             (m.indice || '?') + ' índice · ' + (m.ape_en_cuerpo === undefined ? '?' : m.ape_en_cuerpo) + ' APE en cuerpo · ' +
+             (m.lab ? m.lab + ' LAB · ' : '') +
+             (pj.placeholder_bytes ? Math.round(pj.placeholder_bytes / 1048576) + ' MB' : '?') + ' (' +
+             (pj.placeholder_gz_bytes ? Math.round(pj.placeholder_gz_bytes / 1048576) + ' MB gz' : '? gz') + ')' +
+             ' · enlace de ' + (pj.enlace_bytes || '?') + ' B · ' + ((pj.ms || 0) / 1000).toFixed(1) + ' s', '#22c55e');
+      if (pj.url) status('LIGHT URL: ' + pj.url, '#22c55e');
+      toast('LIGHT publicada y verificada', 'success');
     } catch (e) {
       setLightState('FALLÓ · ' + e.message, '#ef4444');
       status('LIGHT falló: ' + e.message, '#ef4444');
