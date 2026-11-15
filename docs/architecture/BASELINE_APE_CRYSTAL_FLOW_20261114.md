@@ -1239,3 +1239,89 @@ El "VPP" que pide el operador no tiene palancas en este hardware. No es un fallo
 shim: es el SoC. Y ApeUltraEnhance declara `fps=30->60` como HINT del VPS, que no esta
 medido: si el badge muestra SIMULADA xN es coherente; si muestra REAL (nativa), el hint
 no se materializo y el badge dira la verdad. No se declara aplicado sin recibo.
+---
+
+## Hecho 25 · Inventario de la data viva: seis tipos de artefacto, y siete .json muertos que no estaban caídos
+
+Lo pidio el operador: "haz una captura de toda la data que cada modulo este generando en vivo,
+como funcionan los archivos .json, los php, los lua". Medido el 2026-11-15 10:21-10:26 UTC.
+
+### LA URL DEL OPERADOR FUNCIONA
+```
+https://iptv-ape.duckdns.org/lists/APE_LISTA_1794100720046.m3u8
+  200 · 1.311.467.322 B · application/vnd.apple.mpegurl · 21.224 canales
+  #EXTM3U x-tvg-url="" ... catchup="flussonic" · #EXT-X-VERSION:9
+```
+Y el fichero en disco es un STUB de 8 B (`#EXTM3U\n`): nginx sirve el contenido real.
+Un listado por `ls -la` habria hecho creer que la lista esta vacia. No lo esta.
+
+### JSON (8 ficheros en /var/lib/ape)
+```
+module-watchdog.json       640 B  2026-11-15 10:21  verdict=OK fallos=0   <- VIVO
+device_capabilities.json   803 B  2026-06-27                            <- huerfano
+health_status.json         226 B  2026-06-27                            <- huerfano
+qoe_last.json              720 B  2026-06-27                            <- huerfano
+visual_policy_last.json   1928 B  2026-06-27                            <- huerfano
+omega_tune_last.json      3031 B  2026-06-18                            <- huerfano
+last_visual_policy_*.json 1917/1910 B 2026-06-12                        <- huerfanos
+```
+DIAGNOSTICO, y la distincion importa: los cinco modulos asociados
+(ape-visual-policy, ape-qoe, ape-health, ape-device-caps, ape-omega-tune)
+NO EXISTEN como unidad systemd (`not-found`) y NO tienen escritor en /opt/ape-pulse.
+No son "servicios caidos": son ficheros de estado de modulos que nunca se instalaron.
+No hay nada que reiniciar. `ape-quality-sync` si tiene timer activo.
+
+### PHP del panel (medidos con curl, no leidos en disco)
+```
+ape-module-status.php       200 | 1529 B   {"ok":true,"verdict":"UP","down":[]}
+sentinel-status.php         200 |  217 B
+telemetry-full.php          200 | 2568 B
+canary-resolve.php          400 |   35 B   <- correcto: exige el parametro u=
+ape-last-channel.php        200 |  243 B
+ape-feedforward-stream.php  200 |   84 B
+```
+
+### Lua (25 ficheros en /etc/nginx/lua)
+ape_gateway · ape_rebase_lib · ape_profile_resolver · ape_header · ape_lab_api ·
+quality_realtime · qoe_flush_worker · ape_wake_on_manifest · floor_lock_filter ·
+bandwidth_reactor_api · ...
+
+### M3U8 servidos (15 en /var/www/lists, 7,4 GB)
+```
+APE_LISTA_1794100720046.m3u8             8 B (stub) · .gz 352.103.394 B · 21.224 canales
+APE_LISTA_1794100720046_CABLEADA.m3u8    1.298.222.092 B · 21.224 canales
+APE_LISTA_1794100720046_CABLEADA_LIGHT   241.369.147 B · gz 13.682.971 B · 9 plantillas
+APE_LISTA_1794100720046_P1                12.062.307 B · gz    960.893 B · 933 canales
+APE_LISTA_1794100720046_P3               228.720.957 B · 20.222 canales
+APE_LISTA_1794100720046_P4/P5              1.157.411 / 499.517 B
+APE_LISTA_1793787155230 / _1793926685925   8 B stub + .gz 187/184 MB   <- listas viejas
+APE_PRUEBA_ORDER_OK / _PERFILES          163.187 B x2                   <- pruebas
+```
+
+### JIT
+```
+/opt/ape-jit/current/channels.json   4.944.656 B
+/dev/shm/ape-jit/  con los directorios 3 y 1174213
+escucha en 127.0.0.1:3099 (no 8084, que nunca existio); nginx en 8088
+```
+
+### TIMERS (7, la senal de zapping en segundo plano)
+```
+ape-pulse-canary.timer        cada 20 s
+ape-meta-watchdog.timer       cada 60 s
+ape-module-watchdog.timer     cada 60 s
+ape-pulse-sync.timer          cada  5 min
+ape-quality-sync.timer        cada  5 min
+ape-jit-reconcile.timer       cada  5 min
+ape-list-light.timer          cada 10 min   (idempotente: dice "sin cambios")
+ape-cablear-auto.timer        cada 15 min
+```
+
+### DEUDA MEDIDA, no ejecutada
+```
+/var/www/lists = 7,4 GB · disco 86% · 5,0 GB libres
+  ~371 MB en listas viejas (1793787155230, 1793926685925) con sus .gz
+  duplicados: _LIGHT_CABLEADA (241 MB) y _P5_CABLEADA (499 KB)
+  APE_PRUEBA_ORDER_OK y _PERFILES (163 KB x2)
+```
+NO se purga: borrar sin pedido explicito del dueño viola la doctrina del repo. Queda medido.
