@@ -1096,3 +1096,65 @@ No se relaja el verificador para que diga lo que conviene.
 PENDIENTE, y es de la APK
 El shim manda su PROPIO `d=` al pedir, con defaults. Este fix arregla el de la LISTA;
 el del shim necesita recompilar (v675) e instalar. No se hizo sin autorizacion.
+---
+
+## Hecho 23 · El canary decía «ok» sobre un canal muerto
+
+EL DEFECTO, MEDIDO
+El canal de prueba estaba hardcodeado en tres sitios y murió (407 del proveedor):
+```
+module-watchdog.sh:58    CH_PROBE  (configurable por APE_CH_PROBE)
+module-watchdog.sh:127   canary-resolve?u=...1312008   <- hardcodeado
+gate_ape_crystal_flow.sh:97,108                        <- hardcodeado
+```
+Medido: 662 peticiones en 10 h al 1312008, 661 de ellas del propio VPS.
+
+Y el daño real no era el ruido:
+```
+el canary probaba canary-resolve.php?u=...1312008
+ese endpoint devuelve 302 (redirige al upstream)
+el codigo acepta 302 como EXITO
+=> el canary PASABA con el canal muerto
+```
+Un instrumento que dice «ok» sobre un canal que el proveedor tiene bloqueado.
+Es el mismo patrón que los otros cuatro: declarar un estado sin comprobarlo.
+
+EL FIX
+```
+drop-in /etc/systemd/system/ape-module-watchdog.service.d/ch-probe.conf
+  Environment=APE_CH_PROBE -> canal 27 (medido 200 · 3.886 B · 0,52 s)
+sed 1312008 -> 27 en la URL de prueba del watchdog L127 y del gate L97/L108
+  (solo la URL, no la logica)
+backups .bak_chprobe_20261115T1015Z de ambos scripts en el VPS
+```
+
+VERIFICADO EN PRODUCCION
+```
+bash -n (paths POSIX) : OK en los 4 scripts tocados
+watchdog              : exit=0 · verdict=OK · fallos=0
+gate                  : PASS · 11/11   (antes 10/10: el canary ahora pasa de verdad)
+canal muerto 1312008  : 710 -> 710 peticiones en 130 s  (+0)
+canal vivo 27         :   6 ->   8 en 130 s  (+2, las del watchdog)
+servicios             : nginx/php/jit active
+```
+
+ROLLBACK
+```
+cp /opt/ape-pulse/<script>.bak_chprobe_20261115T1015Z /opt/ape-pulse/<script>
+rm /etc/systemd/system/ape-module-watchdog.service.d/ch-probe.conf && systemctl daemon-reload
+```
+
+RESTO DE LOS 4xx/5xx REVISADOS, y su veredicto
+```
+662 x 407 /pulse/1312008        -> canal de prueba muerto      RESUELTO (este Hecho)
+ 42 x 404 ape-module-status.php -> anteriores a crear el fichero; ahora 200
+153 x 404 sentinel-status       -> cliente viejo sin .php; con .php 200
+152 x 404 telemetry-full        -> idem
+ 39 x 503 /jit/live/*           -> CORRECTO: gate=player_active, slot del proveedor
+                                   ocupado; el JIT se aborta y cae a provider-direct
+ 50 x 403 /                     -> directorio sin index publico; normal
+  1 x lua tcp socket read timed out (06:44) -> aislado, 1 sola vez en 10 h
+```
+
+El JIT escucha en 127.0.0.1:3099 (no en 8084, que nunca existió) y nginx en 8088.
+Lo dice el propio CLAUDE.md y ahora está verificado en vivo.
