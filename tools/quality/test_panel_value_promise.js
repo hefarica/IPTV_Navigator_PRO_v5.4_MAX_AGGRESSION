@@ -261,6 +261,43 @@ bootPanel(BASE_SEED, function (win, els) {
     check('H6 el boton Aplicar del panel esta cableado', /ape-delta-apply'\)[\s\S]{0,120}applyDelta\(true\)/.test(panelSrc));
     check('H7 applyDelta es alcanzable desde la superficie de prueba', typeof H.applyDelta === 'function');
 
+    console.log('\n═══ J · LOS ROTULOS NOMBRAN LO QUE DE VERDAD PASA ═══\n');
+
+    // Un rotulo que nombra la funcion equivocada, o que usa "d=" para dos cosas
+    // distintas, es una promesa rota aunque el boton funcione.
+
+    // J1 — VPS dice "_CDN.m3u8" y dual:'cdn' produce el sufijo CDN.
+    // Se ancla al boton de la tarjeta: el rotulo va justo antes de el.
+    const vpsAt = panelSrc.indexOf('data-ape-run="vps"');
+    const vpsBlock = vpsAt > 0 ? panelSrc.slice(Math.max(0, vpsAt - 700), vpsAt) : '';
+    check('J1 el rotulo de VPS nombra _CDN.m3u8', /_CDN\.m3u8/.test(vpsBlock), vpsBlock.slice(-90) || 'no encontrado');
+    check('J2 dual:"cdn" es el modo por defecto del controlador',
+        /dualMode\s*=\s*options\.dual === undefined \|\| options\.dual === true \? 'cdn'/.test(ctrlSrc));
+    check('J3 el sufijo CDN se aplica al nombre del fichero',
+        /_apeOutputName\(stamp[\s\S]{0,120}'CDN'/.test(ctrlSrc));
+
+    // J2 — DIRECTO no puede nombrar una funcion que no se llama
+    check('J4 DIRECTO nombra prepublishAndGenerateDirect, no la generica',
+        /prepublishAndGenerateDirect/.test(panelSrc) &&
+        !/prepublishAndGenerate\(\) · URLs del proveedor/.test(panelSrc));
+    check('J5 prepublishAndGenerateDirect es prepublishAndGenerateDual con dual:false',
+        /function prepublishAndGenerateDirect[\s\S]{0,200}dual:\s*false/.test(ctrlSrc));
+
+    // J3 — el rotulo de LIGHT desambigua los dos "d="
+    check('J6 LIGHT distingue el d= de la URL del delta de buffer',
+        /URL d= desde STREAM-TRUTH/.test(panelSrc) && /delta de buffer desde el panel/.test(panelSrc));
+    check('J7 el envoltorio SI reescribe el d= desde STREAM-TRUTH',
+        (function () {
+            const wrap = path.join(ROOT, 'tools', 'pulse', 'ape-pulse-wrap.js');
+            if (!fs.existsSync(wrap)) return false;
+            const w = fs.readFileSync(wrap, 'utf8');
+            return /EXT-X-APE-STREAM-TRUTH/.test(w) && /replace\(\/\(\[\?&\]\)d=\[\^&\]\*/.test(w);
+        })(), 'tools/pulse/ape-pulse-wrap.js');
+    check('J8 el delta de buffer NO viene de STREAM-TRUTH',
+        /function normalizeDeltaArray/.test(panelSrc) && /APE_OUTPUT_DELTA_ARRAY/.test(panelSrc));
+    check('J9 el rotulo ya no promete un numero fijo de lineas sin medida',
+        !/1\.040 lineas por canal desde 9 plantillas/.test(panelSrc));
+
     console.log('\n═══ I · SINTAXIS DE LO TOCADO ═══\n');
     for (const [label, src] of [['generation-output-panel.js', panelSrc], ['generation-controller.js', ctrlSrc]]) {
         let ok = true, err = '';

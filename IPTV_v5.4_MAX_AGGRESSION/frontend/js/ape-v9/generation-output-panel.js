@@ -1189,12 +1189,15 @@
       '<label style="cursor:pointer;" title="Usar rutas /jit/live/ del catálogo JIT"><input type="checkbox" id="ape-out-jit" style="accent-color:#f59e0b;"> JIT</label>' +
       // [LIGHT 2026-11-15] Cuarta salida: proyeccion por perfil. NO la produce ninguna
       // de las tres tarjetas existentes: nace de la CABLEADA y la transforma
-      //  1) ape-pulse-wrap.js reescribe d= desde #EXT-X-APE-STREAM-TRUTH
+      //  1) ape-pulse-wrap.js reescribe el d= DE LA URL desde #EXT-X-APE-STREAM-TRUTH
+      //     (tools/pulse/ape-pulse-wrap.js:334-364 — el d= lleva la resolucion real
+      //     del canal, no una constante). OJO: ese d= NO es el "Delta por perfil";
+      //     son dos cosas distintas y el rotulo lo decia ambiguo.
       //  2) ape-profile-project.js light escribe 9 plantillas + 1 indice en cabecera
-      //  3) resultado: 1.040 lineas por canal recuperables desde 9 plantillas
-      //     21.224 canales - 241.369.147 B - 0 APE en cuerpo
+      //  3) resultado: ~1.037 lineas por canal recuperables desde 9 plantillas
+      //     (medido sobre APE_LISTA_1794758247679_CDN: 21.224 canales, 1.037/canal)
       // El checkbox VALIDA (gate fail-closed) y no solo genera.
-      '<label style="cursor:pointer;" title="Proyeccion LIGHT por perfil: 1.040 lineas por canal desde 9 plantillas, d= desde STREAM-TRUTH"><input type="checkbox" id="ape-out-light" style="accent-color:#e879f9;"> LIGHT</label>' +
+      '<label style="cursor:pointer;" title="Proyeccion LIGHT por perfil: ~1.037 lineas por canal recuperables desde 9 plantillas. El d= de cada URL /pulse sale del #EXT-X-APE-STREAM-TRUTH (resolucion real del canal). El &quot;Delta por perfil&quot; de abajo es otra cosa: el margen de buffer."><input type="checkbox" id="ape-out-light" style="accent-color:#e879f9;"> LIGHT</label>' +
       '<label style="cursor:pointer;" title="Modo HDR de salida">HDR <select id="ape-out-hdr" style="accent-color:#ef4444;background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:5px;padding:2px 4px;font-size:.78rem;">' +
       '<option value="auto">Auto</option><option value="pq">PQ</option><option value="sdr">SDR</option></select></label>' +
       '</div>' +
@@ -1217,7 +1220,11 @@
       // DIRECTO
       '<div style="background:rgba(2,6,23,.38);border:1px solid rgba(168,85,247,.45);border-radius:11px;padding:11px;">' +
       '<div style="font-weight:800;color:#c4b5fd;font-size:1.05rem;">DIRECTO · Lista limpia</div>' +
-      '<div style="font-size:.8rem;color:#94a3b8;margin:4px 0 7px;">prepublishAndGenerate() · URLs del proveedor</div>' +
+      // [2026-11-15] El rotulo nombraba prepublishAndGenerate(), pero runDirect llama a
+      // prepublishAndGenerateDirect (que es prepublishAndGenerateDual con dual:false,
+      // generation-controller.js:1796-1797). Se describe la OPERACION, que es lo que el
+      // operador necesita saber, y el nombre real va entre parentesis.
+      '<div style="font-size:.8rem;color:#94a3b8;margin:4px 0 7px;">URLs del proveedor · sin CDN (prepublishAndGenerateDirect)</div>' +
       '<button data-ape-run="direct" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:0;border-radius:7px;padding:7px 12px;font-size:.82rem;font-weight:800;cursor:pointer;">Generar DIRECTO</button>' +
       '<span style="font-size:.84rem;color:#64748b;margin-left:7px;">sin VPS</span></div>' +
       // AMBAS
@@ -1229,7 +1236,10 @@
       // LIGHT
       '<div style="background:rgba(2,6,23,.38);border:1px solid rgba(232,121,249,.45);border-radius:11px;padding:11px;">' +
       '<div style="font-weight:800;color:#f0abfc;font-size:1.05rem;">LIGHT · proyección por perfil</div>' +
-      '<div style="font-size:.8rem;color:#94a3b8;margin:4px 0 7px;">9 plantillas + índice · d= desde STREAM-TRUTH · valida antes de entregar</div>' +
+      // [2026-11-15] "d= desde STREAM-TRUTH" era ambiguo: hay DOS d=. El de la URL
+      // (/pulse/<id>?…&d=<b64>) lo reescribe el envoltorio desde STREAM-TRUTH; el
+      // "Delta por perfil" del panel NO. Se dice cual es cual y de donde sale cada uno.
+      '<div style="font-size:.8rem;color:#94a3b8;margin:4px 0 7px;">9 plantillas + índice · URL d= desde STREAM-TRUTH · delta de buffer desde el panel · valida antes de entregar</div>' +
       '<button data-ape-run="light" style="background:linear-gradient(135deg,#a21caf,#e879f9);color:#fff;border:0;border-radius:7px;padding:7px 12px;font-size:.82rem;font-weight:800;cursor:pointer;">Generar LIGHT</button>' +
       '<span id="ape-light-state" style="font-size:.84rem;color:#64748b;margin-left:7px;">sin validar</span></div>' +
       '</div>' +
