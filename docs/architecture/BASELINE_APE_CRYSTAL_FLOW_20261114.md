@@ -573,3 +573,85 @@ al lado de cada una, que es precisamente para lo que sirven.
 **Antes de dar por buena una mejora, correr el comando que está al lado del número.** Si el número
 baja, es regresión aunque compile, aunque el gate pase y aunque el informe diga que está arreglado.
 
+
+---
+
+## Hecho 15 · El generador es LOCAL, no del VPS — y el manifest tenia 4 huecos
+
+El operador lo corrigio: *«EL GENERADOR ESTA EN LOCAL LA APP IPTV NAVIGATOR»*. Tenia
+razon y esto lo deja escrito para que no se repita.
+
+**Donde vive el generador de verdad**
+```
+repo (app local) : IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js
+                   949.737 B · EXTSHIMOTT=11 · ejecuta el tag de verdad
+VPS (servido)    : /var/www/html/js/ape-v9/m3u8-typed-arrays-ultimate.js
+                   ahora 949.737 B · EXTSHIMOTT=7
+```
+El operador abre `frontend/index-v4.html` (296.806 B) y genera desde ahi. El VPS solo
+lo sirve si se abre la app por URL.
+
+**LOS CUATRO HUECOS DEL MANIFEST** (`_vps_stage/deploy/manifest.tsv`), todos medidos
+y cerrados en esta sesion:
+| # | Fichero | Sintoma medido antes |
+|---|---|---|
+| 1 | `ape-pulse-sync.sh` | mi exclusion `*_LIGHT*` nunca llego al VPS; la lista se seguia secuestrando |
+| 2 | `ape-pulse-wrap.js` | VPS 14.040 B (13-nov) vs repo 23.407 B: el tag no se emitia en ninguna lista |
+| 3 | `ape-shimott-emit.php` | `php -l` post-deploy decia "NO EXISTE" |
+| 4 | `m3u8-typed-arrays-ultimate.js` + `index-v4.html` | el generador con el tag no llegaba y el cache-buster no cambiaba |
+Repro de cualquiera: `grep <fichero> _vps_stage/deploy/manifest.tsv` (vacio = no se
+despliega) y luego `stat -c%s` en el VPS contra el tamano del repo.
+
+**EL CACHE-BUSTER ERA UN SEGUNDO MURO**
+```
+antes : <script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20261107-rea">
+ahora : <script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20261115-extshimott">
+```
+Sin subir el `?v=`, el fichero servido puede tener el tag y el navegador seguir
+ejecutando el viejo. **Desplegar no es servir; servir no es ejecutar.**
+
+**PRUEBA DE QUE EL GENERADOR EMITE (no solo comenta)**
+Se extrajeron las 11 funciones (`_apeAppendExtshimottTag` + 10 auxiliares) y se
+ejecutaron con Node. Salida real:
+```
+#EXTINF:-1 tvg-id="test.4k" group-title="Deportes",TEST 4K
+#EXTHTTP:{"User-Agent":"VLC/3.0","Referer":"http://ref.example/"}
+#EXTSHIMOTT:{"ver":1,"id":"ch_1","v":{"c":"hevc","w":3840,"h":2160,"f":50},"a":{"c":"ec-3","ch":6,"l":"es"},"hdr":{"ua":"VLC/3.0","rf":"http://ref.example/"},"dev":{"hdr_c":1,"mcr":2,"mmp":0,"res_w":3840,"res_h":2160},"tgt":"ott|vlc|kod"}
+http://proveedor/canal.m3u8
+```
+238 chars · JSON parsea · EXTINF/EXTHTTP/URL intactos · tag justo antes de la URL ·
+idempotente · sin EXTINF no emite.
+
+**LECCION DE METODO (me equivoque en mi propia prueba)**
+La primera extraccion tomo SOLO `_apeAppendExtshimottTag`, sin sus auxiliares. El
+`catch (_eShim)` atrapo el `ReferenceError` y devolvio el texto original: el test dijo
+`tag presente: false` y el codigo estaba bien. **Un catch que protege la generacion
+tambien protege al test de fallar: hay que probar con las dependencias completas o el
+verde es falso.**
+
+**`ape-deploy-frontend.yml` NO ARRANCA**
+```
+43670875744 · failure 03:07
+43670881892 · failure 03:07  ("workflow file issue", 0 jobs)
+43672046248 · cancelled 03:22 (28 min en pending)
+43674131702 · pending 03:50
+43674613977 · pending 03:57
+```
+Se corrigio un YAML invalido que YO habia dejado (un `with:` huerfano del
+`actions/checkout` pegado a un step con solo `run:`; el dispatch daba HTTP 422
+`Unexpected value 'with'` en L72 y L764). **Tras el arreglo el dispatch se acepta pero
+los runs se quedan en `pending` sin jobs: ese workflow hay que revisarlo aparte.** El
+generador se despliega por `deploy-vps.yml`, que si corre (9 jobs, success).
+**Ojo:** `python yaml.safe_load` aceptaba el fichero roto; el validador de GitHub no.
+Un gate de YAML tiene que usar el criterio de GitHub.
+
+**ESTADO DE LA CADENA AL CERRAR ESTE HECHO**
+```
+app local        index-v4.html 296.806 B · cache-buster 20261115-extshimott
+generador repo   949.737 B · EXTSHIMOTT=11
+generador VPS    949.737 B · EXTSHIMOTT=7    (servido == local salvo comentarios)
+wrap VPS         23.407 B  · EXTSHIMOTT=9
+proyeccion       conserva el tag (ape-list-project.sh L97-101)
+APK device       v673 · log "ApeExtShimOtt: sink instalado"
+lista en disco   1.298.222.092 B · 0 tags  <-- generada ANTES; hay que regenerarla
+```

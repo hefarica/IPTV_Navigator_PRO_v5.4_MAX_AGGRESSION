@@ -163,3 +163,33 @@ Fuente de la arquitectura: `docs/architecture/APE_CRYSTAL_FLOW.md:24-118` (ese d
 ## 8. Regla para el futuro (una línea)
 
 **Antes de dar por buena una mejora, ejecutar el comando que está al lado del número. Si el número baja, es regresión — aunque compile, aunque el gate pase y aunque el informe diga que está arreglado.**
+
+---
+
+## Addendum 2026-11-15 · La cadena #EXTSHIMOTT, medida
+
+**Que es.** Un tag HLS de una linea por canal que los players IGNOTAN por RFC 8216 y que
+el shim de la APK lee para aplicar ajustes de dispositivo y routing. Es ADITIVO: no
+sustituye a CODECS=/RESOLUTION= ni a los EXTHTTP/EXTVLCOPT/KODIPROP/#EXT-X-APE-.
+
+**Estado de cada eslabon (medido, no declarado):**
+| Eslabon | Estado | Evidencia |
+|---|---|---|
+| Contrato | REAL | `contracts/extshimott_contract.json` 39 campos con consumidor; validador exit 1 con el fixture malo |
+| Generador local | REAL | 949.737 B · emite con 238 chars, JSON valido, idempotente |
+| Generador servido | REAL | VPS 949.737 B · EXTSHIMOTT=7 · cache-buster 20261115-extshimott |
+| Wrap VPS | REAL | 23.407 B · 18/18 checks de `test_extshimott_wrap.js` |
+| Proyeccion OTT | REAL | conserva el tag (ape-list-project.sh L97-101) |
+| Parser en la APK | REAL (instalado) | v673 · log `ApeExtShimOtt: sink instalado` |
+| Lista generada CON el tag | **NO** | la lista en disco es anterior: 0 tags de 21.224 canales |
+| El shim aplicando un tag real | **NO MEDIDO** | necesita una lista nueva y un zapeo |
+
+**Lo que falta y por que no lo puedo cerrar yo:** el operador tiene que regenerar la
+lista desde la app y zappear. Hasta entonces el ultimo eslabon esta sin medir, y no se
+reporta como verde.
+
+**Lo que NO es cierto y conviene no repetir:** que el tag "mejore la imagen". No lo hace.
+`dev.*` y `ott.*` son ajustes de dispositivo que el agente ya aplicaba por ADB;
+`flt` es para el pipeline VPS/VLC y OTT no lo toca; `v`/`a`/`hdr` son declaraciones de
+la fuente. El valor del tag es que la lista LLEVE su propia calibracion y el device no
+dependa de una DB externa.
