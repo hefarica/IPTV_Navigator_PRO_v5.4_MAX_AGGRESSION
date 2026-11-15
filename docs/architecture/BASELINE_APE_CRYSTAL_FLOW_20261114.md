@@ -960,3 +960,82 @@ No hay Intent publico de OTT para registrarlo solo.
 **El ultimo paso del objetivo es manual POR DISENO DE OTT, y esta escrito en la app.**
 No es una carencia del sistema: es una limitacion del reproductor, documentada donde el
 operador la va a leer.
+---
+
+## Hecho 21 · La eficiencia por perfil llega a la lista servida (241 MB con las 1.040 lineas dentro)
+
+El operador lo pidio asi: "que cuando el canal viaje, se lleve las mas de mil lineas con el
+que corresponda a cada perfil". Esto es lo que se hizo y lo que costo.
+
+LO QUE VIAJA AHORA
+```
+lista servida : 241.369.227 B · gzip 13.679.788 B
+canales       : 21.224 · tags #EXTSHIMOTT: 21.224 · URLs: 21.224
+plantillas    : 9 en la cabecera (una por par Perfil+Tier real)
+APE en cuerpo : 0
+lineas/canal  : las 1.040, disponibles via plantilla + los 9 nonces del canal
+```
+
+LAS 9 PLANTILLAS, Y POR QUE SON 9 Y NO 12
+La lista real usa 9 combinaciones (medido): P3+T5 14462, P3+T6 4405, P3+T7 1320, P1+T8 672,
+P1+T9 255, P3+T9 35, P4+T5 58, P1+T5 6, P5+T5 11. Los 12 perfiles existen en el contrato
+(6 canonicos + 6 emulados 6K), pero solo 9 pares tienen canales.
+
+LA PRUEBA
+  verify-light sobre los 21.224 canales: 0 lineas distintas contra el origen.
+  Tres perfiles comprobados por sha256: P1+T9 1.041 lineas, P3+T7 1.044, P4+T5 1.047.
+  Y un reconstructor INDEPENDIENTE que no importa el tool confirma lo mismo.
+
+EL COSTE, SIN MAQUILLAJE
+```
+                crudo          gzip        servida
+antes       186.789.613 B   4.023.576 B   200 · 14 ms
+ahora       241.369.227 B  13.679.788 B   200 · 33 ms
+             +29,22 %          3,40x
+```
+Se paga 9,7 MB mas de gzip a cambio de devolverle a cada canal sus 1.040 lineas. Es la
+decision que el operador pidio; el rollback esta en el backup del 093743Z.
+
+## El mismo defecto de clase en TRES sitios, y el tercero casi tira el trabajo
+
+Los tres comparaban metadata de CABECERA como si fuera metadata POR CANAL:
+
+| Sitio | Sintoma | Fix |
+|---|---|---|
+| `gate_ape_crystal_flow.sh` | `proyeccion FAIL ape=10` | `awk '/^#EXTINF/{f=1} f && /^#EXT-X-APE-/'` |
+| `ape-module-watchdog.sh` | idem, habria marcado DEGRADADO | idem |
+| `ape-list-light.sh` L103 y L174 | decia REPARAR y REGENERABA la LIGHT | idem en las dos |
+
+EL TERCERO, MEDIDO EN VIVO (2026-11-15)
+```
+09:40:38  el timer corrio
+09:40:39  "REPARAR: la lista no cuadra"
+09:41:17  "wrap 38s" -> regenero la LIGHT (186 MB)
+```
+La metapack-light duro 10 minutos. Si no se revisa, la mejora se pierde en silencio cada
+vez que corre el timer. Tras el fix:
+```
+09:44:31  "sin cambios: ... ya corresponde al origen Y SU CONTENIDO CUADRA"
+```
+
+## Incidente: CRLF en el VPS
+
+Al desplegar los checks con `scp` desde Windows llegaron con CRLF y **el gate y el vigilante
+quedaron rotos** en produccion (`syntax error near unexpected token $'do\r'`). Restaurado en
+el mismo turno con `sed -i 's/\r$//'` y verificado con `bash -n` + ejecucion real.
+**Regla: un .sh que viaja a Linux se normaliza a LF antes de subirlo.**
+
+Nota de entorno: en este Windows `python3` es el stub de WindowsApps; el interprete real
+responde a `python`.
+
+## Los 4xx/5xx al cierre
+```
+5xx: 0
+4xx: 435 en las ultimas 3000 lineas del log
+  230  407 /pulse/1312008.m3u8   -> el canal de prueba, bloqueado por el proveedor
+   26  403 /                     -> escaneo de bots
+   12  404 /prisma/api/sentinel-status   -> SIN .php, de una version vieja del cliente (06:57)
+   11  404 /prisma/api/telemetry-full    -> idem
+```
+Los 23 sin `.php` son historicos (tu IP, hace 3 horas); el widget actual usa `.php`. No se
+toca nginx por eso.
