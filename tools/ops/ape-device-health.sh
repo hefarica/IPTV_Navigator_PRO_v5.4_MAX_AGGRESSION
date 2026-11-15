@@ -41,6 +41,9 @@ PASS=0; FAIL=0; WARN=0; rows=""
 ok()   { PASS=$((PASS+1)); rows="${rows}{\"check\":\"$1\",\"status\":\"PASS\",\"detail\":\"$2\"},"; }
 bad()  { FAIL=$((FAIL+1)); rows="${rows}{\"check\":\"$1\",\"status\":\"FAIL\",\"detail\":\"$2\"},"; }
 warn() { WARN=$((WARN+1)); rows="${rows}{\"check\":\"$1\",\"status\":\"WARN\",\"detail\":\"$2\"},"; }
+# SKIP = no se pudo evaluar (p.ej. no hay reproduccion). NO es PASS ni FAIL:
+# contarlo como PASS seria fingir que se midio, y como FAIL seria un falso positivo.
+skip() { rows="${rows}{\"check\":\"$1\",\"status\":\"SKIP\",\"detail\":\"$2\"},"; }
 
 # El binario de adb: por defecto el del PATH. Desde WSL se puede apuntar al de
 # Windows con ADB=adb.exe (requiere que el device sea alcanzable por red) o dejar
@@ -111,6 +114,25 @@ fi
 UBA=$(adb_ "dumpsys activity activities | grep -c 'UpscaleBadgeActivity'")
 if [ "${UBA:-0}" -eq 0 ]; then ok "badge-sin-Activity" "0 en la pila"
 else bad "badge-sin-Activity" "$UBA en la pila: el overlay vuelve por Activity"; fi
+
+# ── [8] COHERENCIA DE CADENCIA (contenido vs panel) ─────────────────────────
+# El canal 4K medido sirve 50 fps. Si el panel esta a 59,94 Hz, cada fotograma
+# dura 1,199 refrescos y eso es judder por cadencia. match_content_frame_rate=2
+# deberia cambiar el panel a 50 Hz; MEDIDO el 2026-11-15: no lo hacia.
+# Solo se puede comprobar con OTT reproduciendo (se usa age_s para saberlo).
+FPS_C=$(curl -sk -m 12 "$VPS/prisma/api/ape-last-channel.php" 2>/dev/null \
+        | grep -oE '"fps":"[0-9]+/[0-9]+"' | grep -oE '[0-9]+/[0-9]+' | head -1)
+REF=$(adb_ "dumpsys SurfaceFlinger | grep -E 'activeMode=' | head -1 | grep -oE '[0-9.]+ Hz' | head -1 | grep -oE '[0-9.]+'")
+if [ -n "$FPS_C" ] && [ -n "$REF" ] && [ "$AGE" -ge 0 ] && [ "$AGE" -le 120 ]; then
+  N=${FPS_C%/*}; D=${FPS_C#*/}
+  # ratio = refrescos / fotograma. Entero (1, 2, 3...) = sin judder.
+  COH=$(awk -v r="$REF" -v n="$N" -v d="$D" 'BEGIN{ if(d==0){print "?";exit} x=r*d/n; printf "%d", (x - int(x) < 0.02 || int(x) - x < 0.02) }')
+  DET=$(awk -v r="$REF" -v n="$N" -v d="$D" 'BEGIN{printf "contenido %.2f fps · panel %.2f Hz · %.3f refrescos/fotograma", n/d, r, r*d/n}')
+  if [ "$COH" = "1" ]; then ok "cadencia" "$DET (multiplo entero)"
+  else warn "cadencia" "$DET — desajuste: judder por cadencia"; fi
+else
+  skip "cadencia" "sin OTT reproduciendo ahora (age_s=$AGE)"
+fi
 
 rows="[${rows%,}]"
 verdict="PASS"; [ "$FAIL" -gt 0 ] && verdict="FAIL"
