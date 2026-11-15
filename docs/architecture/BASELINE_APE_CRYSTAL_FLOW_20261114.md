@@ -1666,3 +1666,50 @@ LO QUE NO ESTA HECHO
   cualquier lista como argumento, pero solo se ejecuto sobre las dos LIGHT.
   Y la sincronizacion inversa (meter las 9 plantillas en /jit/image/lineup) no se toco: el
   lineup lo regenera el JIT en cada peticion y habria que editar server.js.
+---
+
+## Hecho 32 · Todas las salidas sincronizadas con el modulo de imagen
+
+El operador pidio que la sincronizacion no fuera solo para la LIGHT: "DEBE HACERSE
+PERFECTAMENTE PARA TODAS LAS SALIDAS INCLUYENDO LA VARIANTE LIGHT".
+
+QUE HABIA, MEDIDO
+  Solo existen CUATRO listas de perfil en /var/www/lists:
+    P1  12.062.307 B ·   933 canales · 9 plantillas · GOV 0 · ENG 0 · LAB 0
+    P3 228.720.957 B · 20.222 canales · 9 plantillas · GOV 0 · ENG 0 · LAB 0
+    P4   1.157.411 B ·    58 canales · 9 plantillas · GOV 0 · ENG 0 · LAB 0
+    P5     499.517 B ·    11 canales · 9 plantillas · GOV 0 · ENG 0 · LAB 0
+  P0 y P2 NO EXISTEN como fichero. Las emuladas .5 (P0.5..P5.5) tampoco existen como fichero.
+  No se crean aqui: el generador no las emitio y fabricarlas seria inventar.
+
+LAS SEIS LISTAS, DESPUES
+  LISTA                          BYTES  CANALES   GOV  ENG  LAB
+  P1                        12.492.848      933     1    1   31
+  P3                       237.832.226   20.222     1    1   31
+  P4                         1.191.058       58     1    1   31
+  P5                           512.867       11     1    1   31
+  CABLEADA_LIGHT           250.932.706   21.224     1    1   31
+  P5_CABLEADA_LIGHT            156.045       11     1    1   31
+  gate PASS 11/11
+
+VERIFICACION POR LISTA (no solo el exit code)
+  En las CUATRO de perfil el script comprobo, antes y despues:
+    canales      iguales
+    plantillas   iguales
+    sha256 de TODAS las lineas http(s)   igual
+  Y el propio script aborta (die 4) si cualquiera de los tres no cuadra.
+
+LO QUE ESTA SINCRONIZADO Y LO QUE NO
+  SI: GOVERNANCE, ENGINE y los 31 chunks de LAB-METADATA (el plan Prisma de los 12 perfiles)
+      estan ahora en las seis listas servidas.
+  NO: la sincronizacion INVERSA. Las 9 plantillas de perfil siguen sin entrar en
+      /jit/image/lineup, porque ese endpoint lo regenera server.js en cada peticion
+      (server.js:7742 y siguientes). Editarlo es tocar el motor: queda pendiente de que el
+      operador lo autorice.
+
+LOS TRES BUGS DEL MODULO, SIGUEN ABIERTOS
+  1. fps ignorado: GET /jit/image/optimize?...&fps=25 devuelve input.fps=30.
+  2. outFps vacio: "FALLO al aplicar: fps invalido: " (5 veces en el log del panel).
+  3. HTML en vez de JSON: "Unexpected token '<'".
+  Los tres viven en server.js. No se tocaron: son el motor de imagen y el operador no ha
+  autorizado editarlo. Se reportan con su evidencia para que los decida.
