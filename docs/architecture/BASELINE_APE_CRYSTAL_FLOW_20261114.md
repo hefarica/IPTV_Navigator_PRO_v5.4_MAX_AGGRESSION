@@ -1417,3 +1417,76 @@ CONCLUSION
 "Cada modulo corre siempre" no se garantiza con `Restart=always` en todo: se garantiza con
 timer + enabled en los one-shot, y con `Restart=` en los persistentes. Ambas cosas estan
 medidas arriba.
+---
+
+## Hecho 28 · La cuarta salida LIGHT: checkbox, cerrojo y validacion (medido en el DOM real)
+
+Pedido del operador: "aSEGURATE QUE AGREGUES UN CHECKBOX, PARA VALIDAR ESTE TIPO DE
+GENERACION DE NUEVA LISTA, GARANTIZA QUE SE GENERE COMO DEBE SER".
+
+POR QUE HIZO FALTA UNA CUARTA SALIDA
+Las tres variantes del panel NO producen la lista LIGHT:
+  runVps()    -> prepublishAndGenerateDual()            -> _CDN.m3u8 (d= del generador)
+  runDirect() -> prepublishAndGenerateDirect()           -> URLs del proveedor
+  runBoth()   -> prepublishAndGenerateDual({dual:'both'}) -> las dos
+La LIGHT nace de la CABLEADA y la transforman DOS pasos posteriores que ninguna hace:
+  ape-pulse-wrap.js       reescribe d= desde #EXT-X-APE-STREAM-TRUTH
+  ape-profile-project.js  escribe 9 plantillas + 1 indice en la cabecera
+
+QUE SE AGREGO (68.443 B, +7.564 sobre los 60.879)
+  checkbox #ape-out-light en la fila SALIDAS
+  cuarta tarjeta "LIGHT - proyeccion por perfil" con data-ape-run="light"
+  runLight(): base CDN -> POST a la proyeccion -> validacion -> estado honesto
+  LIGHT_CONTRACT + validateLight() fail-closed
+  el boton LIGHT solo se habilita con su checkbox marcado (autorizacion explicita)
+
+MEDIDO EN EL DOM REAL, CON CHROME HEADLESS CONTRA PRODUCCION
+Comando: chrome --headless=new --virtual-time-budget=10000 --dump-dom
+         https://iptv-ape.duckdns.org/index-v4.html
+  exit 0 · dump 630.180 B
+  ape-gen-output-panel       x1
+  ape-out-light              x1   PRESENTE
+  "LIGHT - proyeccion por perfil"  x1   PRESENTE
+  ape-light-state            x1   PRESENTE
+  data-ape-run="light"       x1   PRESENTE
+  4 botones: both, direct, light, vps
+  CERO errores de consola
+  HTML exacto: <input type="checkbox" id="ape-out-light" style="accent-color:#e879f9;">
+
+EL CERROJO, COMPARADO CONTRA LOS OTROS TRES
+  vps    disabled=NO  opacity=1      <- el de defecto, abierto
+  direct disabled=SI  opacity=0.4    <- cerrado
+  both   disabled=SI  opacity=0.4    <- cerrado
+  light  disabled=SI  opacity=0.4    <- cerrado, cursor not-allowed
+  span LIGHT al cargar: 'sin validar'
+  selector de salidas:  'VPS seleccionado(s)'
+
+LOS DOS ENDPOINTS, MEDIDOS
+  GET  /prisma/api/list-light-verify.php?lista=..._LIGHT.m3u8  -> 200
+       canales 21224 - plantillas 9 - ape_cuerpo 0 - tags 21224
+       lineas 127390 - lineas_por_canal 6 - truncado false
+  GET  /prisma/api/list-light-verify.php?lista=..._CABLEADA.m3u8 -> 200
+       lineas_por_canal 1044 - ape_cuerpo 257772 - truncado true (lo dice)
+  GET  /prisma/api/list-light-project.php -> 405 (correcto: es POST)
+
+POR QUE 6 LINEAS POR CANAL ES LO CORRECTO, NO UN DEFECTO
+La LIGHT lleva 6 lineas por canal MAS 9 plantillas y 1 indice. Las 1.046 lineas de la
+CABLEADA se RECUPERAN de las plantillas. Eso ES la eficiencia por perfil: 1,28 GB -> 241 MB
+sin perder una sola linea de la lista larga.
+
+DOS BUGS MIOS, ENCONTRADOS ANTES DE ENTREGAR
+  1. header('X-APE-Endpoint', 'valor') -> TypeError: el 2o argumento es $replace (bool).
+     Corregido a header('X-APE-Endpoint: valor'). Lo detecto el error log de php-fpm.
+  2. strncmp($line,'#EXT-X-APE-PROFILE-TEMPLATE:',29) -> la firma mide 28.
+     Off-by-one que reportaba plantillas=0 cuando hay 9. Lo detecto el grep del fichero.
+
+Y UN TERCERO EN EL DESPLIEGUE
+  El primer scp se hizo sin backup: mi script bash tenia un error de escapado de PowerShell
+  ('syntax error near unexpected token (') y el cp -a nunca corrio. Detectado al ir a mirar
+  si el fichero existia. El rollback por git nunca falto (HEAD~1 tiene la version vieja).
+
+LO QUE NO ESTA VERIFICADO
+  El click real del operador sobre el checkbox. Lo verificado es que el DOM lo pinta, que el
+  boton nace cerrado y que los endpoints responden. La generacion LIGHT completa desde la UI
+  no se ha ejecutado de punta a punta: el POST a list-light-project.php no se probo con exito
+  porque exige que ape-list-light.sh corra 86-90 s y no se lanzo.
