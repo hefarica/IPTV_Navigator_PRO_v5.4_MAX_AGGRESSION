@@ -55,7 +55,7 @@ if (is_readable($log)) {
             $id = $last[1];
             $u  = urldecode($last[2]);
         }
-        // [2026-11-14] Edad del ultimo zapeo.
+        // [2026-11-14] Edad del ultimo zapeo DEL OPERADOR (no del propio VPS).
         //
         // POR QUE: el ticker del agente detecta reproduccion con
         // AudioManager.isMusicActive(), que es GLOBAL: si el operador pone YouTube TV
@@ -63,20 +63,39 @@ if (is_readable($log)) {
         // minutos. Medido en vivo: "canal=|UK| TNT SPORTS ULTIMATE 4K entrada=3840x2160"
         // mientras el foco estaba en youtube.tv.
         //
-        // Con age_s la app puede exigir que el /pulse/ sea RECIENTE para creerse que
-        // OTT esta reproduciendo. Si el ultimo manifiesto tiene mas de 120 s, no hay
-        // OTT delante y el badge no debe salir.
+        // Y NO BASTA CON age_s a secas: el vigilante de modulos prueba su endpoint
+        // /pulse/ cada 60 s desde el propio VPS (medido: 00:09:49, 00:10:50,
+        // 00:11:50...). Si se contaran esas, age_s nunca pasaria de 120 y el badge
+        // saldria siempre, que es justo el bug que se quiere cerrar.
         //
-        // Se calcula solo si la linea del ultimo match trae su timestamp.
-        if (preg_match_all('#\[(\d{2})/([A-Za-z]{3})/(\d{4}):(\d{2}):(\d{2}):(\d{2})[^\]]*\][^\n]*?GET /pulse/#', $tail, $tm, PREG_SET_ORDER)) {
-            $lt = end($tm);
+        // Por eso se exige ademas que la peticion venga de FUERA: se descartan
+        // loopback, RFC1918 y la propia IP publica del VPS. Solo un cliente externo
+        // (el televisor del operador) cuenta como "OTT esta reproduciendo".
+        $esExterna = static function (string $ip): bool {
+            if ($ip === '' || $ip === '127.0.0.1' || $ip === '::1') return false;
+            // La propia IP del servidor: sus pruebas (vigilante, gate, curl manual)
+            // no son zapeo del operador. Se toma de SERVER_ADDR, que en este VPS es
+            // la publica, y de APE_SELF_IP por si algun dia hay proxy delante.
+            $self = array_filter(array(
+                $_SERVER['SERVER_ADDR'] ?? '',
+                getenv('APE_SELF_IP') ?: '',
+            ));
+            if (in_array($ip, $self, true)) return false;
+            // RFC1918 / CGNAT / link-local no son el televisor.
+            if (preg_match('#^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.|169\.254\.|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.)#', $ip)) return false;
+            return true;
+        };
+        if (preg_match_all('#^([0-9.]+) - - \[(\d{2})/([A-Za-z]{3})/(\d{4}):(\d{2}):(\d{2}):(\d{2})[^\]]*\][^\n]*?GET /pulse/#m', $tail, $tm, PREG_SET_ORDER)) {
             $meses = array('Jan'=>1,'Feb'=>2,'Mar'=>3,'Apr'=>4,'May'=>5,'Jun'=>6,
                            'Jul'=>7,'Aug'=>8,'Sep'=>9,'Oct'=>10,'Nov'=>11,'Dec'=>12);
-            $mo = $meses[$lt[2]] ?? 0;
-            if ($mo > 0) {
-                // El log de nginx esta en UTC (+0000 en el formato).
-                $epoch = gmmktime((int)$lt[4], (int)$lt[5], (int)$lt[6], $mo, (int)$lt[1], (int)$lt[3]);
-                if ($epoch > 0) $ageS = max(0, time() - $epoch);
+            // Se recorre de atras hacia delante: el primer match externo es el ultimo zapeo real.
+            for ($k = count($tm) - 1; $k >= 0; $k--) {
+                $lt = $tm[$k];
+                if (!$esExterna($lt[1])) continue;
+                $mo = $meses[$lt[3]] ?? 0;
+                if ($mo <= 0) continue;
+                $epoch = gmmktime((int)$lt[5], (int)$lt[6], (int)$lt[7], $mo, (int)$lt[2], (int)$lt[4]);
+                if ($epoch > 0) { $ageS = max(0, time() - $epoch); break; }
             }
         }
     }
