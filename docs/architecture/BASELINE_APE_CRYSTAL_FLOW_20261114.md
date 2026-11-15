@@ -1596,3 +1596,73 @@ LA LISTA GRANDE SE PERDIO Y SE RESTAURO
   con una de 186 MB SIN plantillas. Se recupero de APE_LISTA_..._CABLEADA_LIGHT_CABLEADA.m3u8
   (241.369.147 B, 9 plantillas), se reinstalo, y se verifico con el endpoint. El backup del
   fichero malo queda en .bak-sin-plantillas-20261115T134709Z.
+---
+
+## Hecho 31 · Sincronizacion LIGHT <-> Modulo de Imagen (JIT APE)
+
+El operador paso el HTML completo del MODULO DE IMAGEN y pidio: "ESTE SISTEMA APE CRYSTAL FLOW
+DEBE ESTAR ACTUALIZADO Y SINCRONIZADO CON ESTE MODULO ... Y DEBE HACERSE PERFECTAMENTE PARA
+TODAS LAS SALIDAS INCLUYENDO LA VARIANTE LIGHT".
+
+LA DESINCRONIZACION MEDIDA ERA BIDIRECCIONAL Y EXACTA
+  /jit/image/lineup (10,7 MB · 21.224 canales)        APE_..._CABLEADA_LIGHT.m3u8 (241 MB)
+    EXT-X-APE-GOVERNANCE  x1                            GOVERNANCE   0
+    EXT-X-APE-ENGINE      x1                            ENGINE       0
+    EXT-X-APE-PROFILE     por canal                     PROFILE      0
+    EXT-X-APE-TARGET      por canal                     TARGET       0
+    EXT-X-APE-PROCESSING  por canal                     PROCESSING   0
+    EXT-X-APE-WARNING     por canal                     WARNING      0
+    EXT-X-APE-PROFILE-TEMPLATE  0   <- no lo tiene      PROFILE-TEMPLATE  9  <- si
+    EXT-X-APE-LAB-METADATA      0   <- no lo emite      LAB-METADATA      0  <- ninguno
+  Cada superficie tenia exactamente lo que a la otra le faltaba.
+
+EL PLAN PRISMA DE LOS 12 PERFILES SI EXISTE, EN EL JIT
+  GET /jit/image/prisma/emit-all  ->  ok · defaultProfile P4.5
+      5.497 B json · 7.332 B base64 · 31 chunks de 240 chars
+      doc = { profile:'ALL', fields:{ prisma:{P0..P5.5}, gl:{...} } }
+      lines = ['#EXT-X-APE-LAB-METADATA:i/n:<b64>', ...]  (31)
+  Es EXACTAMENTE el mismo payload que pinta el panel (5.497 B json · 7.332 B base64 · 31 chunks).
+  El codigo: server.js:5905 prismaEmitLabMetadata(), server.js:7742 ruta /image/prisma/emit,
+  y /image/prisma/emit-all para los 12.
+
+LO QUE SE CONSTRUYO
+  /opt/ape-pulse/ape-light-sync-image-module.sh  (desde vps/bin/)
+  Inyecta en la LIGHT, SOLO en la cabecera y sin tocar un canal:
+    1) #EXT-X-APE-GOVERNANCE  (leido del JIT, no inventado)
+    2) #EXT-X-APE-ENGINE      (idem)
+    3) los 31 #EXT-X-APE-LAB-METADATA (idem)
+  Orden final: #EXTM3U, GOVERNANCE, ENGINE, #EXT-X-* de playlist, 31 LAB-METADATA,
+  PROFILE-INDEX, PROFILE-TEMPLATE xN, cuerpo intacto.
+  Idempotente (2a pasada dice "sin cambios"), fail-closed (si canales/urls/plantillas no
+  cuadran o el JIT no responde, NO publica), y hace backup .bak-presync-<stamp>.
+
+MEDIDO, PUNTA A PUNTA
+  P5_CABLEADA_LIGHT (11 canales)
+    antes  147.629 B · TMPL 1 · GOV 0 · LAB 0
+    despues 156.045 B · TMPL 1 · GOV 1 · LAB 31 · ENG 1 · URLs IDENTICAS
+  CABLEADA_LIGHT (21.224 canales)
+    antes  241.369.147 B · TMPL 9 · GOV 0 · LAB 0 · ENG 0
+    despues 250.932.706 B · TMPL 9 · GOV 1 · LAB 31 · ENG 1 · 4,5 s · gz 13.862.781 B
+    sha256 de las URLs: 7dd8ce1598a9be8eb4f9a33abf65c498142ec185c925010a294b5116110f8e4e
+    -> EL MISMO antes y despues. No se toco ni una URL.
+  Y el JSON se reconstruye de verdad desde los 31 chunks:
+    profile ALL · 12 perfiles · default_profile P4.5
+    P0 decode 8294400 fps 60 glsl 1 ai_sr 0 · P3 decode 2073600 fps 60 · P5 decode 409920 fps 30 ai_sr 1
+  verify: canales 21224 · plantillas 9 · ape_cuerpo 0 · truncado false · gate PASS 11/11
+
+DOS BUGS REALES DEL MODULO, VISTOS EN EL LOG DEL PANEL
+  1. "FALLO al aplicar: fps invalido: " (5 veces: 02:52:49, 02:53:39, 03:07:01, 03:12:02, 03:12:22)
+     El campo outFps llega VACIO al endpoint. No es un fallo de red: el mensaje incluye el valor
+     y el valor esta en blanco. La validacion del campo no distingue "vacio" de "no numerico".
+  2. "optimizar: Unexpected token '<', "<html> <h"... is not valid JSON" (02:53:55)
+     El endpoint devolvio HTML (una pagina de error), no JSON. El cliente intenta JSON.parse y
+     explota. Falta comprobar el Content-Type antes de parsear.
+  Y un tercero, medido ahora: GET /jit/image/optimize?width=1920&height=1080&fps=25&mode=real
+  devuelve input.fps = 30, NO 25. El parametro fps SE IGNORA. Eso explica que el panel proponga
+  siempre 30 y que "Aplicar al JIT" reciba un fps que no es el pedido.
+
+LO QUE NO ESTA HECHO
+  Las listas P1/P3/P4/P5 (no LIGHT) siguen SIN los tags del modulo. El sincronizador acepta
+  cualquier lista como argumento, pero solo se ejecuto sobre las dos LIGHT.
+  Y la sincronizacion inversa (meter las 9 plantillas en /jit/image/lineup) no se toco: el
+  lineup lo regenera el JIT en cada peticion y habria que editar server.js.
