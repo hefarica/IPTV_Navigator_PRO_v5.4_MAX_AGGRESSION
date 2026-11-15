@@ -1325,3 +1325,35 @@ ape-cablear-auto.timer        cada 15 min
   APE_PRUEBA_ORDER_OK y _PERFILES (163 KB x2)
 ```
 NO se purga: borrar sin pedido explicito del dueño viola la doctrina del repo. Queda medido.
+---
+
+## Hecho 26 · Tiempo de zapping medido: 0,21 s en el VPS (y corrección de los 66 s del Hecho 19)
+
+EL NUMERO
+```
+canal 27, tres muestras, 2026-11-15 10:23Z:
+  muestra 1: manifest 6,810 ms · 822 B · 200  ->  primer segmento 202,587 ms · 2.729.008 B
+  muestra 2: manifest 6,989 ms · 822 B · 200  ->  primer segmento 220,267 ms · 2.729.008 B
+  muestra 3: manifest 639,900 ms · 822 B · 200 ->  primer segmento 192,584 ms · 2.238.892 B
+```
+2,7 MB en 0,20 s = 13 MB/s ~= 104 Mbps. El canal 548065 daba 8 MB en 1,2 s (53 Mbps):
+el canal 27 es el doble de rapido, por eso es mejor canal de prueba.
+
+CORRECCION HONESTA DE UN NUMERO ANTERIOR
+En el Hecho 19 se reportaron "66 s de arranque" del zapeo del 06:18. Ese numero NO era el
+tiempo de zapping del VPS: era la distancia en el log entre el primer manifest y el primer
+segmento de una sesion que incluia navegacion entre canales. El VPS tarda 0,21 s en servir
+manifest + primer segmento. Medir el intervalo entre dos lineas del log no es medir el
+zapping, y presentarlo como tal fue un error de lectura.
+
+LO QUE ESTE NUMERO NO INCLUYE
+El arranque del decoder en el televisor (MediaCodec init, superficie, primer frame). Eso no
+se mide desde el VPS y no se declara. El unico dato honesto del lado device seria
+`logcat` del player con su propio timestamp de first-frame, que no existe en este stack.
+
+ESTADO AL MEDIRLO
+```
+/pulse/ externas en 1 h : 0        (el operador no habia zapeado)
+gate : PASS 11/11 · vig : OK 0 fallos
+lista: 241.369.147 B · disco 86% · 5,0 GB libres
+```
