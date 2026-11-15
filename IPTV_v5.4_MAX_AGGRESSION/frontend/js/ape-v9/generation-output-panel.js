@@ -910,11 +910,21 @@
   // ── LIGHT · proyeccion por perfil (cuarta salida) ───────────────────────────
   // Contrato que se VALIDA antes de dar por buena la lista. Si algo no cuadra,
   // se dice y NO se entrega como verde. Ningun numero se inventa.
+  // OJO: el NUMERO de canales es el RESULTADO DEL FILTRO, no un invariante.
+  // 100 canales filtrados con LIGHT marcado deben salir LIGHT. Vetar por conteo
+  // seria vetar el filtro del operador. Solo se exige que haya al menos 1.
+  // SOLO tres cosas son ESTRUCTURALES de una lista LIGHT:
+  //   - 9 plantillas y 1 indice en la cabecera
+  //   - 0 lineas #EXT-X-APE- en el cuerpo
+  //   - al menos un canal (si no, no hay lista)
+  // NO son invariantes, y por tanto NO se gatean:
+  //   - el NUMERO de canales: lo fija el FILTRO del operador (100 o 21.224, da igual)
+  //   - las LINEAS POR CANAL: medido 6 en P1, 7 en P4 y 10 en P5, porque cada canal
+  //     arrastra sus propias lineas extra. Exigir un valor fijo veta listas validas.
   var LIGHT_CONTRACT = {
-    canalesMin: 20000,        // medido 21.224
-    plantillas: 9,            // medido 9
-    apeEnCuerpo: 0,           // 0 lineas #EXT-X-APE- despues del primer #EXTINF
-    lineasPorCanal: 1040
+    canalesMin: 1,
+    plantillas: 9,
+    apeEnCuerpo: 0
   };
 
   function setLightState(text, color) {
@@ -950,12 +960,10 @@
     try { j = await r.json(); } catch (e) { return { ok: false, reason: 'VERIFY_NOT_JSON' }; }
 
     var fallos = [];
-    if (!(j.canales >= LIGHT_CONTRACT.canalesMin)) fallos.push('canales=' + j.canales + ' < ' + LIGHT_CONTRACT.canalesMin);
+    if (!(j.canales >= LIGHT_CONTRACT.canalesMin)) fallos.push('canales=' + j.canales + ' < ' + LIGHT_CONTRACT.canalesMin + ' (la lista esta vacia)');
     if (j.plantillas !== LIGHT_CONTRACT.plantillas) fallos.push('plantillas=' + j.plantillas + ' != ' + LIGHT_CONTRACT.plantillas);
     if ((j.ape_cuerpo || 0) !== LIGHT_CONTRACT.apeEnCuerpo) fallos.push('ape_cuerpo=' + j.ape_cuerpo + ' != 0');
-    if (j.lineas_por_canal && j.lineas_por_canal !== LIGHT_CONTRACT.lineasPorCanal) {
-      fallos.push('lineas_por_canal=' + j.lineas_por_canal + ' != ' + LIGHT_CONTRACT.lineasPorCanal);
-    }
+
     if (fallos.length) return { ok: false, reason: 'CONTRACT_FAIL', fallos: fallos, raw: j };
     return { ok: true, raw: j };
   }
@@ -1008,7 +1016,7 @@
         setLightState('VALIDADA · ' + (v.raw.canales || '?') + ' canales · ' + (v.raw.plantillas || '?') + ' plantillas', '#22c55e');
         status('LIGHT VALIDADA: ' + (v.raw.canales || '?') + ' canales · ' + (v.raw.plantillas || '?') + ' plantillas · ' +
                (v.raw.ape_cuerpo === 0 ? '0 APE en cuerpo' : 'APE en cuerpo: ' + v.raw.ape_cuerpo) +
-               ' · ' + (v.raw.bytes ? Math.round(v.raw.bytes / 1048576) + ' MB' : 'bytes N/D'), '#22c55e');
+               ' · ' + (v.raw.lineas_por_canal ? v.raw.lineas_por_canal + ' lineas/canal' : 'lineas/canal N/D') + ' · ' + (v.raw.bytes ? Math.round(v.raw.bytes / 1048576) + ' MB' : 'bytes N/D'), '#22c55e');
         toast('LIGHT validada: contrato cumplido', 'success');
       } else {
         var why = v.reason + (v.fallos ? ' · ' + v.fallos.join(' · ') : '');

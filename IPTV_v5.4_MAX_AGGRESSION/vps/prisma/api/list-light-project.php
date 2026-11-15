@@ -120,7 +120,9 @@ if (!is_array($v)) {
 }
 
 $fallos = [];
-if (!(($v['canales'] ?? 0) >= 20000)) { $fallos[] = 'canales=' . ($v['canales'] ?? 'N/D') . ' < 20000'; }
+// El numero de canales lo fija el filtro del operador, no este contrato.
+// Solo se exige que la lista no este vacia.
+if (($v['canales'] ?? 0) < 1) { $fallos[] = 'canales=' . ($v['canales'] ?? 'N/D') . ' (lista vacia)'; }
 if (($v['plantillas'] ?? 0) !== 9)    { $fallos[] = 'plantillas=' . ($v['plantillas'] ?? 'N/D') . ' != 9'; }
 if (($v['ape_cuerpo'] ?? -1) !== 0)   { $fallos[] = 'ape_cuerpo=' . ($v['ape_cuerpo'] ?? 'N/D') . ' != 0'; }
 if (($v['truncado'] ?? false) === true) { $fallos[] = 'muestra truncada: el conteo no cubre la lista entera'; }

@@ -143,10 +143,10 @@ $out = [
     'truncado'        => $truncado,
     'measured_at'     => gmdate('Y-m-d\TH:i:s\Z'),
     'contrato'        => [
-        'canalesMin'      => 20000,
+        'canalesMin'      => 1,       // el numero lo fija el FILTRO del operador, no el formato
         'plantillas'      => 9,
         'apeEnCuerpo'     => 0,
-        'lineasPorCanal'  => 6,   // la LIGHT lleva 6; las 1.040 se RECUPERAN de las 9 plantillas
+        'lineasPorCanal'  => null,  // INFORMATIVO: medido 6 en P1, 7 en P4, 10 en P5 - no es un gate
     ],
 ];
 echo json_encode($out, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);

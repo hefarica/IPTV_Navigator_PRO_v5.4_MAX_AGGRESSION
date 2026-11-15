@@ -1490,3 +1490,50 @@ LO QUE NO ESTA VERIFICADO
   boton nace cerrado y que los endpoints responden. La generacion LIGHT completa desde la UI
   no se ha ejecutado de punta a punta: el POST a list-light-project.php no se probo con exito
   porque exige que ape-list-light.sh corra 86-90 s y no se lanzo.
+---
+
+## Hecho 29 · El contrato LIGHT NO depende del numero de canales (correccion del operador)
+
+Lo dijo el operador: "ESTA LISTAS NO ESTA SUJETA A NINGUN NUMERO DE CANALES, ESTOS SON
+CORRESPONDIENTES AL FILTRO, SI QUIERO 100 CANALES Y ESTOS CON EL CHECK MARCADO DE LIGHT,
+DEBE SALIR LA VERSION MARCADA".
+
+EL DEFECTO QUE EL SEÑALO
+El Hecho 28 dejo el contrato con `canalesMin: 20000` y `lineasPorCanal: 6`. Eran DOS
+candados mal puestos, y los dos vetaban listas validas:
+  - el NUMERO de canales lo fija el FILTRO del operador, no el formato. 100 canales
+    filtrados con LIGHT marcado tienen que salir LIGHT.
+  - las LINEAS POR CANAL no son constantes: medidas 6 en P1, 7 en P4 y 10 en P5, porque
+    cada canal arrastra sus propias lineas extra. Exigir un valor fijo veta listas vivas.
+
+LO QUE QUEDA COMO GATE (solo lo ESTRUCTURAL)
+  canales    >= 1     la lista existe y no esta vacia
+  plantillas == 9     9 plantillas + 1 indice, o no es una proyeccion LIGHT
+  ape_cuerpo == 0     0 lineas #EXT-X-APE- despues del primer #EXTINF
+  truncado   == false el conteo cubre la lista entera, no una muestra
+`lineas_por_canal` se publica como DATO INFORMATIVO y no veta.
+
+MEDIDO: EL GATE APLICADO A CADA TAMANO DE LISTA
+  CANALES   PLANTILLAS  APE_CUERPO  LINEAS/CANAL  GATE
+  11        9           0           10            PASA   <- el caso del operador
+  58        9           0           7             PASA
+  933       9           0           6             PASA
+  20.222    9           0           6             PASA
+  21.224    9           0           6             PASA
+Comando: GET /prisma/api/list-light-verify.php?lista=<cada lista>
+
+Y EL 502 QUE BAJO EL GATE A 10/11, DIAGNOSTICADO
+El gate fallo con `502|122|12.262603`. No era un defecto del codigo: el canal 27, que
+era el probe, quedo INTERMITENTE en el proveedor.
+   upstream sin seguir redirect : 302|0|1,416 s
+   upstream siguiendo redirect  : 200|503 B|0,770 s
+   pulse/27 en el log           : 200 a las 13:39:06, 13:39:20, 13:41:40
+                                  502 a las 13:40:30, 13:40:33, 13:40:57, 13:41:10
+El gate lo pillo en un 502. El probe se movio al canal 1256710, el que el operador usa:
+   pulse/1256710 -> 200|4.015 B|0,42 s (y 3 intentos seguidos: 2,23 s / 0,45 s / 2,26 s)
+Resultado: gate VERDICT PASS · pass 11 · fail 0.
+
+LO QUE NO ESTA VERIFICADO
+  El POST real a list-light-project.php con una lista pequena. Exige que ape-list-light.sh
+  corra 86-90 s y no se lanzo. Lo verificado es el gate de verificacion, que es el que
+  decide, y que las cinco listas de distinto tamano lo pasan.
