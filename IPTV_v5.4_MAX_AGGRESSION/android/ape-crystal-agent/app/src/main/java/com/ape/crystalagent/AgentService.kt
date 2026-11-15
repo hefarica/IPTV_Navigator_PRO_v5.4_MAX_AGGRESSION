@@ -270,53 +270,51 @@ class AgentService : Service() {
                                 )
                             }
                             if (!badgeShown) {
+                                // [2026-11-14] PRIMERO se pregunta al VPS si OTT sigue ahi.
+                                //
+                                // `isMusicActive()` es GLOBAL: si el operador pone YouTube TV
+                                // con audio, el ticker cree que OTT reproduce. MEDIDO en vivo:
+                                //     foco = youtube.tv · audio = 1 · badge = 3
+                                //     log  = "canal=|UK| TNT SPORTS ULTIMATE 4K entrada=3840x2160"
+                                // Es decir: el badge salia sobre YouTube TV con los datos de un
+                                // canal OTT que se habia visto 20 minutos antes.
+                                //
+                                // El endpoint devuelve age_s = segundos desde el ultimo
+                                // GET /pulse/. Si ese manifiesto tiene mas de 120 s, no hay OTT
+                                // reproduciendo delante y NO se monta el overlay. Es la unica
+                                // senal de "OTT esta aqui" que se puede medir sin root y sin
+                                // tocar otras apps (la LEY #1 prohibe abrir nada para averiguarlo).
+                                var nombre = titulo
+                                var entradaVps: String? = null
+                                var ageS = -1
+                                try {
+                                    val url = java.net.URL(
+                                        cfg.vpsBase.trimEnd('/') +
+                                            "/prisma/api/ape-last-channel.php"
+                                    )
+                                    val jo = org.json.JSONObject(url.readText(Charsets.UTF_8))
+                                    ageS = jo.optInt("age_s", -1)
+                                    jo.optString("resolution", "")
+                                        .trim()
+                                        .takeIf { it.matches(Regex("^\\d{3,4}x\\d{3,4}$")) }
+                                        ?.let { entradaVps = it }
+                                    jo.optString("name", "")
+                                        .trim()
+                                        .takeIf { it.isNotEmpty() }
+                                        ?.let { nombre = it }
+                                } catch (t: Throwable) {
+                                    Log.w(TAG, "consulta canal: ${t.message}")
+                                }
+
+                                // ageS < 0 => el VPS no pudo leer el log: no se puede afirmar
+                                // que OTT este reproduciendo. Se es conservador y NO se monta
+                                // (antes de este cambio salia el badge con datos rancios).
+                                val ottReciente = ageS in 0..120
+                                if (!ottReciente) {
+                                    Log.i(TAG, "audio activo pero OTT no reciente (age_s=$ageS) -> sin badge")
+                                } else {
                                 badgeShown = true
                                 try {
-                                    // [2026-11-14] Nombre del canal REAL.
-                                    //
-                                    // OTT no publica MediaSession, asi que `titulo` casi
-                                    // siempre viene null ("canal=sin titulo" en el log).
-                                    // El VPS SI sabe que /pulse/<id> se acaba de pedir:
-                                    // /prisma/api/ape-last-channel.php lo traduce con el
-                                    // indice de la lista (21.224 canales, 993 KB).
-                                    // Se intenta primero la sesion (si existe, es mas
-                                    // exacta) y si no, el VPS. Si ninguno responde, el
-                                    // badge sale sin nombre: no se inventa.
-                                    var nombre = titulo
-                                    // [2026-11-14] Del MISMO endpoint sale tambien la
-                                    // resolucion de ENTRADA, medida por el VPS con
-                                    // ffprobe sobre un segmento real del canal.
-                                    //
-                                    // POR QUE AQUI Y NO DEL SSE: el `resolution_hint` del
-                                    // SSE es circular (el agente lo manda al VPS y el VPS
-                                    // lo devuelve) y, como ARA no reproduce -usar su
-                                    // player esta prohibido-, llega vacio. ffprobe en el
-                                    // VPS es la unica medida real posible sin root.
-                                    //
-                                    // Fail-honest: si el endpoint devuelve resolution=null
-                                    // (canal bloqueado, timeout, sin cache), se queda en
-                                    // N/D. No se estima nunca.
-                                    var entradaVps: String? = null
-                                    if (nombre.isNullOrBlank() || entradaVps == null) {
-                                        nombre = try {
-                                            val url = java.net.URL(
-                                                cfg.vpsBase.trimEnd('/') +
-                                                    "/prisma/api/ape-last-channel.php"
-                                            )
-                                            val body = url.readText(Charsets.UTF_8)
-                                            val jo = org.json.JSONObject(body)
-                                            jo.optString("resolution", "")
-                                                .trim()
-                                                .takeIf { it.matches(Regex("^\\d{3,4}x\\d{3,4}$")) }
-                                                ?.let { entradaVps = it }
-                                            jo.optString("name", "")
-                                                .trim()
-                                                .takeIf { it.isNotEmpty() } ?: nombre
-                                        } catch (t: Throwable) {
-                                            Log.w(TAG, "nombre de canal: ${t.message}")
-                                            nombre
-                                        }
-                                    }
                                     if (entradaVps != null) {
                                         AraStatus.sourceResolution = entradaVps!!
                                         AraStatus.sourceResolutionAt = System.currentTimeMillis()
@@ -355,6 +353,7 @@ class AgentService : Service() {
                                 } catch (t: Throwable) {
                                     Log.w(TAG, "badge OTT: ${t.message}")
                                 }
+                                }   // cierra el else de ottReciente
                             }
                         } else if (badgeShown) {
                             badgeShown = false

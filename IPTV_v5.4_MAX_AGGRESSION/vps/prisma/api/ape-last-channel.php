@@ -42,6 +42,7 @@ $ua      = 'OTT Navigator/1.7.3.3';
 // ── 1. Ultimo canal pedido + su u= ──────────────────────────────────────────
 $id = null;
 $u  = null;
+$ageS = null;   // segundos desde el ultimo /pulse/ — para saber si OTT sigue ahi
 if (is_readable($log)) {
     $fh = @fopen($log, 'r');
     if ($fh) {
@@ -53,6 +54,30 @@ if (is_readable($log)) {
             $last = end($m);
             $id = $last[1];
             $u  = urldecode($last[2]);
+        }
+        // [2026-11-14] Edad del ultimo zapeo.
+        //
+        // POR QUE: el ticker del agente detecta reproduccion con
+        // AudioManager.isMusicActive(), que es GLOBAL: si el operador pone YouTube TV
+        // con audio, el badge salia igual con datos de un canal OTT de hacia 20
+        // minutos. Medido en vivo: "canal=|UK| TNT SPORTS ULTIMATE 4K entrada=3840x2160"
+        // mientras el foco estaba en youtube.tv.
+        //
+        // Con age_s la app puede exigir que el /pulse/ sea RECIENTE para creerse que
+        // OTT esta reproduciendo. Si el ultimo manifiesto tiene mas de 120 s, no hay
+        // OTT delante y el badge no debe salir.
+        //
+        // Se calcula solo si la linea del ultimo match trae su timestamp.
+        if (preg_match_all('#\[(\d{2})/([A-Za-z]{3})/(\d{4}):(\d{2}):(\d{2}):(\d{2})[^\]]*\][^\n]*?GET /pulse/#', $tail, $tm, PREG_SET_ORDER)) {
+            $lt = end($tm);
+            $meses = array('Jan'=>1,'Feb'=>2,'Mar'=>3,'Apr'=>4,'May'=>5,'Jun'=>6,
+                           'Jul'=>7,'Aug'=>8,'Sep'=>9,'Oct'=>10,'Nov'=>11,'Dec'=>12);
+            $mo = $meses[$lt[2]] ?? 0;
+            if ($mo > 0) {
+                // El log de nginx esta en UTC (+0000 en el formato).
+                $epoch = gmmktime((int)$lt[4], (int)$lt[5], (int)$lt[6], $mo, (int)$lt[1], (int)$lt[3]);
+                if ($epoch > 0) $ageS = max(0, time() - $epoch);
+            }
         }
     }
 }
@@ -164,6 +189,11 @@ echo json_encode(array(
     'codec'      => $medido['codec']   ?? null,
     'profile'    => $medido['profile'] ?? null,
     'fps'        => $medido['fps']     ?? null,
+    // Segundos desde el ultimo GET /pulse/. null = no se pudo leer del log.
+    // La app exige <=120 s para creerse que OTT esta reproduciendo AHORA: sin esto,
+    // el badge salia sobre YouTube TV con datos de un canal OTT de hace 20 minutos
+    // (medido en vivo el 2026-11-14).
+    'age_s'      => $ageS,
     'cache_hit'  => $cacheHit,
     'source'     => 'playlist_access.log + channel_index.json + ffprobe',
     'measured'   => true,
