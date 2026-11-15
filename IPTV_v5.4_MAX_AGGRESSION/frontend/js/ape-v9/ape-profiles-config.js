@@ -610,7 +610,7 @@
                 "brightness": "1.0",
                 "saturation": "1.06",
                 "gamma": "1.0",
-                "video-filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full",
+                "video-filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:transfer=smpte2084:primaries=bt2020:matrix=bt2020nc:dither=error_diffusion:range=full",
                 "audio-codec-priority": "eac3,ac3,aac",
                 "audio-spatializer": "passthrough",
                 "adaptive-logic": "highest",
@@ -898,7 +898,7 @@
                     "resolution": "7680x4320",
                     "bitrate_mbps": 200,
                     "hdr": "hdr10plus",
-                    "video_filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full"
+                    "video_filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:transfer=smpte2084:primaries=bt2020:matrix=bt2020nc:dither=error_diffusion:range=full"
                 },
                 "L2": {
                     "label": "SUPREME_4K",
@@ -906,7 +906,7 @@
                     "resolution": "3840x2160",
                     "bitrate_mbps": 100,
                     "hdr": "hdr10",
-                    "video_filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full"
+                    "video_filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:transfer=smpte2084:primaries=bt2020:matrix=bt2020nc:dither=error_diffusion:range=full"
                 },
                 "L3": {
                     "label": "ULTRA_1080P",
@@ -914,7 +914,7 @@
                     "resolution": "1920x1080",
                     "bitrate_mbps": 40,
                     "hdr": "hdr10",
-                    "video_filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full"
+                    "video_filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full"
                 },
                 "L4": {
                     "label": "HIGH_720P",
@@ -922,7 +922,7 @@
                     "resolution": "1280x720",
                     "bitrate_mbps": 20,
                     "hdr": "hlg",
-                    "video_filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0"
+                    "video_filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0"
                 },
                 "L5": {
                     "label": "STANDARD_480P",
@@ -1245,7 +1245,7 @@
                 "brightness": "1.0",
                 "saturation": "1.05",
                 "gamma": "1.0",
-                "video-filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full",
+                "video-filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:transfer=smpte2084:primaries=bt2020:matrix=bt2020nc:dither=error_diffusion:range=full",
                 "audio-codec-priority": "eac3,ac3,aac",
                 "audio-spatializer": "passthrough",
                 "adaptive-logic": "highest",
@@ -1532,7 +1532,7 @@
                     "resolution": "3840x2160",
                     "bitrate_mbps": 100,
                     "hdr": "hdr10plus",
-                    "video_filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full"
+                    "video_filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:transfer=smpte2084:primaries=bt2020:matrix=bt2020nc:dither=error_diffusion:range=full"
                 },
                 "L2": {
                     "label": "ULTRA_1080P",
@@ -1540,7 +1540,7 @@
                     "resolution": "1920x1080",
                     "bitrate_mbps": 40,
                     "hdr": "hdr10",
-                    "video_filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full"
+                    "video_filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full"
                 },
                 "L3": {
                     "label": "HIGH_720P",
@@ -1548,7 +1548,7 @@
                     "resolution": "1280x720",
                     "bitrate_mbps": 20,
                     "hdr": "hlg",
-                    "video_filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0"
+                    "video_filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0"
                 },
                 "L4": {
                     "label": "STANDARD_480P",
@@ -2373,7 +2373,7 @@
                 "brightness": "1.0",
                 "saturation": "1.03",
                 "gamma": "1.0",
-                "video-filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full",
+                "video-filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full",
                 "audio-codec-priority": "eac3,aac",
                 "adaptive-logic": "highest",
                 "adaptive-maxwidth": "1920",
@@ -2659,7 +2659,7 @@
                     "resolution": "1920x1080",
                     "bitrate_mbps": 40,
                     "hdr": "hdr10",
-                    "video_filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full"
+                    "video_filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full"
                 },
                 "L2": {
                     "label": "HIGH_720P",
@@ -2667,7 +2667,7 @@
                     "resolution": "1280x720",
                     "bitrate_mbps": 20,
                     "hdr": "hlg",
-                    "video_filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0"
+                    "video_filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0"
                 },
                 "L3": {
                     "label": "STANDARD_480P",
@@ -3007,7 +3007,7 @@
                 "brightness": "1.0",
                 "saturation": "1.02",
                 "gamma": "1.0",
-                "video-filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0",
+                "video-filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0",
                 "audio-codec-priority": "aac",
                 "adaptive-logic": "highest",
                 "adaptive-maxwidth": "1280",
@@ -3292,7 +3292,7 @@
                     "resolution": "1280x720",
                     "bitrate_mbps": 20,
                     "hdr": "hlg",
-                    "video_filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0"
+                    "video_filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0"
                 },
                 "L2": {
                     "label": "STANDARD_480P",

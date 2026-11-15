@@ -85,7 +85,7 @@ window.APE_LAB_V8_PROFILES = {
    "brightness": "1.0",
    "saturation": "1.06",
    "gamma": "1.0",
-   "video-filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=5",
+   "video-filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:transfer=smpte2084:primaries=bt2020:matrix=bt2020nc:dither=error_diffusion:range=full,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=1",
    "disc-caching": "60000",
    "tcp-caching": "60000",
    "sout-mux-caching": "60000",
@@ -652,7 +652,7 @@ window.APE_LAB_V8_PROFILES = {
     "resolution": "7680x4320",
     "bitrate_mbps": 200,
     "hdr": "hdr10plus",
-    "video_filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full"
+    "video_filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:transfer=smpte2084:primaries=bt2020:matrix=bt2020nc:dither=error_diffusion:range=full"
    },
    "L2": {
     "label": "SUPREME_4K",
@@ -660,7 +660,7 @@ window.APE_LAB_V8_PROFILES = {
     "resolution": "3840x2160",
     "bitrate_mbps": 100,
     "hdr": "hdr10",
-    "video_filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full"
+    "video_filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:transfer=smpte2084:primaries=bt2020:matrix=bt2020nc:dither=error_diffusion:range=full"
    },
    "L3": {
     "label": "ULTRA_1080P",
@@ -668,7 +668,7 @@ window.APE_LAB_V8_PROFILES = {
     "resolution": "1920x1080",
     "bitrate_mbps": 40,
     "hdr": "hdr10",
-    "video_filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full"
+    "video_filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full"
    },
    "L4": {
     "label": "HIGH_720P",
@@ -676,7 +676,7 @@ window.APE_LAB_V8_PROFILES = {
     "resolution": "1280x720",
     "bitrate_mbps": 20,
     "hdr": "hlg",
-    "video_filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0"
+    "video_filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0"
    },
    "L5": {
     "label": "STANDARD_480P",
@@ -1031,7 +1031,7 @@ window.APE_LAB_V8_PROFILES = {
    "brightness": "1.0",
    "saturation": "1.05",
    "gamma": "1.0",
-   "video-filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=5",
+   "video-filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:transfer=smpte2084:primaries=bt2020:matrix=bt2020nc:dither=error_diffusion:range=full,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=1",
    "disc-caching": "45000",
    "tcp-caching": "45000",
    "sout-mux-caching": "45000",
@@ -1598,7 +1598,7 @@ window.APE_LAB_V8_PROFILES = {
     "resolution": "3840x2160",
     "bitrate_mbps": 100,
     "hdr": "hdr10plus",
-    "video_filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full"
+    "video_filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:transfer=smpte2084:primaries=bt2020:matrix=bt2020nc:dither=error_diffusion:range=full"
    },
    "L2": {
     "label": "ULTRA_1080P",
@@ -1606,7 +1606,7 @@ window.APE_LAB_V8_PROFILES = {
     "resolution": "1920x1080",
     "bitrate_mbps": 40,
     "hdr": "hdr10",
-    "video_filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full"
+    "video_filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full"
    },
    "L3": {
     "label": "HIGH_720P",
@@ -1614,7 +1614,7 @@ window.APE_LAB_V8_PROFILES = {
     "resolution": "1280x720",
     "bitrate_mbps": 20,
     "hdr": "hlg",
-    "video_filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0"
+    "video_filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0"
    },
    "L4": {
     "label": "STANDARD_480P",
@@ -1977,7 +1977,7 @@ window.APE_LAB_V8_PROFILES = {
    "brightness": "1.0",
    "saturation": "1.04",
    "gamma": "1.0",
-   "video-filter": "minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=5",
+   "video-filter": "minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=1",
    "disc-caching": "30000",
    "tcp-caching": "30000",
    "sout-mux-caching": "30000",
@@ -2544,7 +2544,7 @@ window.APE_LAB_V8_PROFILES = {
     "resolution": "3840x2160",
     "bitrate_mbps": 80,
     "hdr": "hdr10plus",
-    "video_filter": "nlmeans=s=2.8:p=6:r=13,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=14:strength=0.9,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.35:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full"
+    "video_filter": "nlmeans=s=2.8:p=6:r=13,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=14:strength=0.9,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.35:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:transfer=smpte2084:primaries=bt2020:matrix=bt2020nc:dither=error_diffusion:range=full"
    },
    "L2": {
     "label": "ULTRA_1080P",
@@ -2552,7 +2552,7 @@ window.APE_LAB_V8_PROFILES = {
     "resolution": "1920x1080",
     "bitrate_mbps": 35,
     "hdr": "hdr10",
-    "video_filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full"
+    "video_filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full"
    },
    "L3": {
     "label": "HIGH_720P",
@@ -2560,7 +2560,7 @@ window.APE_LAB_V8_PROFILES = {
     "resolution": "1280x720",
     "bitrate_mbps": 18,
     "hdr": "hlg",
-    "video_filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0"
+    "video_filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0"
    },
    "L4": {
     "label": "STANDARD_480P",
@@ -2921,7 +2921,7 @@ window.APE_LAB_V8_PROFILES = {
    "brightness": "1.0",
    "saturation": "1.03",
    "gamma": "1.0",
-   "video-filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0",
+   "video-filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0",
    "disc-caching": "20000",
    "tcp-caching": "20000",
    "sout-mux-caching": "20000",
@@ -3486,7 +3486,7 @@ window.APE_LAB_V8_PROFILES = {
     "resolution": "1920x1080",
     "bitrate_mbps": 40,
     "hdr": "hdr10",
-    "video_filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full"
+    "video_filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full"
    },
    "L2": {
     "label": "HIGH_720P",
@@ -3494,7 +3494,7 @@ window.APE_LAB_V8_PROFILES = {
     "resolution": "1280x720",
     "bitrate_mbps": 20,
     "hdr": "hlg",
-    "video_filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0"
+    "video_filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0"
    },
    "L3": {
     "label": "STANDARD_480P",
@@ -3864,7 +3864,7 @@ window.APE_LAB_V8_PROFILES = {
    "brightness": "1.0",
    "saturation": "1.02",
    "gamma": "1.0",
-   "video-filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0",
+   "video-filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0",
    "disc-caching": "15000",
    "tcp-caching": "15000",
    "sout-mux-caching": "15000",
@@ -4429,7 +4429,7 @@ window.APE_LAB_V8_PROFILES = {
     "resolution": "1280x720",
     "bitrate_mbps": 20,
     "hdr": "hlg",
-    "video_filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0"
+    "video_filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0"
    },
    "L2": {
     "label": "STANDARD_480P",

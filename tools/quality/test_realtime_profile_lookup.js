@@ -97,14 +97,20 @@ const TARGET_BYTES = 4944656;
       profile: 'P' + (i % 5), ua: 'VLC/3.0.19 LibVLC/3.0.19',
     };
   }
-  let json = JSON.stringify(m);
-  /* Ajuste fino por entrada para clavar el tamaño real (sin cambiar la forma). */
-  let extra = Math.max(0, Math.floor((TARGET_BYTES - json.length) / N_CH));
-  if (extra > 0) {
-    for (const k of Object.keys(m)) { m[k].pad = pad(extra); }
-    json = JSON.stringify(m);
+  const base = JSON.stringify(m);          // sin relleno: referencia limpia
+  /* Busqueda binaria del relleno exacto: el tamano tiene que clavar los
+   * 4.944.656 B reales para que el A/B mida el mismo trabajo. */
+  const lenWith = (e) => { for (const k of Object.keys(m)) { m[k].pad = pad(e); } return JSON.stringify(m).length; };
+  let lo = 0, hi = 400, bestE = 0, bestLen = base.length;
+  for (let it = 0; it < 20; it++) {
+    const mid = (lo + hi) >> 1;
+    const L = lenWith(mid);
+    if (Math.abs(L - TARGET_BYTES) < Math.abs(bestLen - TARGET_BYTES)) { bestE = mid; bestLen = L; }
+    if (L < TARGET_BYTES) { lo = mid + 1; } else { hi = mid - 1; }
+    if (lo > hi) { break; }
   }
-  fs.writeFileSync(MAP, json, 'utf8');
+  lenWith(bestE);
+  fs.writeFileSync(MAP, JSON.stringify(m), 'utf8');
 })();
 const MAP_BYTES = fs.statSync(MAP).size;
 
@@ -189,9 +195,15 @@ ok('cambiar la identidad fisica del fichero provoca UNA sola relectura', after =
 console.log('\n== A) cobertura del arreglo ==');
 const calls = (SRC.match(/loadMap\(\)/g) || []).length - 1;   // -1: la definicion
 ok('todas las invocaciones usan la funcion cacheada (>=9 sitios)', calls >= 9, 'invocaciones=' + calls);
-const directReads = (SRC.match(/readFileSync\(MAP_FILE/g) || []).length;
-ok('no queda ninguna lectura directa de MAP_FILE fuera de loadMap()', directReads === 1,
-  'readFileSync(MAP_FILE) =' + directReads + ' (solo dentro de loadMap)');
+/* Cuenta solo las apariciones EJECUTABLES (una mencion dentro de un comentario
+ * no lee ningun fichero). */
+const execLines = SRC.split('\n').filter((l) => {
+  const t = l.trim();
+  return !t.startsWith('*') && !t.startsWith('//') && !t.startsWith('/*');
+});
+const directReads = execLines.join('\n').match(/readFileSync\(MAP_FILE/g) || [];
+ok('no queda ninguna lectura directa de MAP_FILE fuera de loadMap()', directReads.length === 1,
+  'readFileSync(MAP_FILE) ejecutables=' + directReads.length + ' (la unica dentro de loadMap)');
 
 /* Integridad del contrato: el mapa se devuelve identico. */
 console.log('\n== A) formato del mapa intacto ==');
