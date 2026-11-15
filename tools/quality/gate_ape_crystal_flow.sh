@@ -168,6 +168,26 @@ else
   skip "vigilante-fresco" "sin $WD"
 fi
 
+# ── [11] PROYECCION: el fichero servido tiene 1 tag por canal y 0 APE ─────────
+# POR QUE: medido 2026-11-15 05:59, la proyeccion paso a 171.893.544 B con CERO tags
+# (ape-cablear-auto la reescribio) y ni el vigilante ni este gate la miraban. El gate
+# se corre a mano antes de declarar un despliegue bueno: si la lista servida no lleva
+# los tags, el despliegue NO esta bueno aunque todos los endpoints respondan 200.
+LIGHT="${APE_LIGHT_FILE:-/var/www/html/lists/APE_LISTA_1794100720046_CABLEADA_LIGHT.m3u8}"
+if [ -f "$LIGHT" ]; then
+  g_ch=$(grep -c '^#EXTINF'       "$LIGHT" 2>/dev/null); g_ch=${g_ch:-0}
+  g_tag=$(grep -c '^#EXTSHIMOTT:' "$LIGHT" 2>/dev/null); g_tag=${g_tag:-0}
+  g_ape=$(grep -c '^#EXT-X-APE-'  "$LIGHT" 2>/dev/null); g_ape=${g_ape:-0}
+  g_sz=$(stat -c%s "$LIGHT" 2>/dev/null || echo 0)
+  if [ "$g_ch" -gt 0 ] && [ "$g_tag" -eq "$g_ch" ] && [ "$g_ape" -eq 0 ]; then
+    ok "proyeccion" "${g_sz}B · ${g_ch} canales · ${g_tag} tags · 0 APE"
+  else
+    bad "proyeccion" "${g_sz}B · canales=${g_ch} tags=${g_tag} ape=${g_ape} (se espera 1 tag/canal y 0 APE)"
+  fi
+else
+  skip "proyeccion" "no existe $LIGHT"
+fi
+
 rows="[${rows%,}]"
 verdict="PASS"
 [ "$FAIL" -gt 0 ] && verdict="FAIL"
