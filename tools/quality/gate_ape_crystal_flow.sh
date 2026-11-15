@@ -125,6 +125,49 @@ if [ "$c" = "200" ]; then ok "endpoint-canal" "$r"; else bad "endpoint-canal" "$
 r=$(probe "$BASE/prisma/api/ape-module-status.php"); c=${r%%|*}
 if [ "$c" = "200" ]; then ok "vigilante" "$r"; else skip "vigilante" "sin endpoint publico ($c)"; fi
 
+# ── [8] DISCO ────────────────────────────────────────────────────────────────
+# MEDIDO el 2026-11-14: el disco llego al 91% mientras el vigilante decia "OK ·
+# 0 fallos". Con 3,4 GB libres, un log grande llena el disco y nginx/php-fpm se
+# caen "de manera inadvertida" — exactamente lo que el operador denuncia.
+# El vigilante mide sus endpoints; no mide si queda sitio para servir.
+if [ -d /var/www/html ]; then
+  uso=$(df -P /var/www/html 2>/dev/null | awk 'NR==2{gsub("%","",$5); print $5}')
+  libre=$(df -h /var/www/html 2>/dev/null | awk 'NR==2{print $4}')
+  if [ -n "$uso" ] && [ "$uso" -lt 90 ]; then ok "disco" "$uso% usado · $libre libre"
+  else bad "disco" "${uso:-?}% usado · ${libre:-?} libre (>=90%: riesgo real de caida de servicios)"; fi
+else
+  skip "disco" "sin /var/www/html (no es el VPS)"
+fi
+
+# ── [9] CACHE DE RESOLUCION ─────────────────────────────────────────────────
+# El badge depende de esta cache para no descargar 3 MB en cada zapeo. Si se
+# corrompe, el badge vuelve a "entrada: N/D" y nadie se entera.
+CACHE=/var/www/html/prisma/db/resolution_cache.json
+if [ -r "$CACHE" ]; then
+  n=$(grep -o '"width"' "$CACHE" 2>/dev/null | wc -l | tr -d ' ')
+  if python3 -c "import json,sys; json.load(open('$CACHE'))" 2>/dev/null; then
+    ok "cache-resolucion" "JSON valido · $n canales medidos"
+  else
+    bad "cache-resolucion" "JSON invalido: el badge perdera la entrada"
+  fi
+else
+  skip "cache-resolucion" "aun no existe (se crea al primer zapeo con ffprobe)"
+fi
+
+# ── [10] FRESCURA DEL VIGILANTE ─────────────────────────────────────────────
+# Un watchdog con estado rancio es un watchdog muerto disfrazado: el JSON sigue
+# ahi y dice "OK", pero nadie lo reescribio. Se exige < 180 s (el timer es 60 s).
+WD=/var/lib/ape/module-watchdog.json
+if [ -r "$WD" ]; then
+  edad=$(( $(date +%s) - $(stat -c %Y "$WD" 2>/dev/null || echo 0) ))
+  v=$(python3 -c "import json;print(json.load(open('$WD')).get('verdict','?'))" 2>/dev/null || echo "?")
+  if [ "$edad" -lt 180 ] && [ "$v" = "OK" ]; then ok "vigilante-fresco" "$v · escrito hace ${edad}s"
+  elif [ "$edad" -ge 180 ]; then bad "vigilante-fresco" "estado de hace ${edad}s (timer 60 s): puede estar muerto"
+  else bad "vigilante-fresco" "verdict=$v"; fi
+else
+  skip "vigilante-fresco" "sin $WD"
+fi
+
 rows="[${rows%,}]"
 verdict="PASS"
 [ "$FAIL" -gt 0 ] && verdict="FAIL"
