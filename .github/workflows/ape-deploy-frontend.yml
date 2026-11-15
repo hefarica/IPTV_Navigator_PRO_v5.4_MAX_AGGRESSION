@@ -69,8 +69,6 @@ jobs:
       # CaptureWatchdogService o BootReceiver (las 3 causas del 2026-11-14).
       - name: Gate anti-robo-de-foco
         run: bash tools/quality/gate_no_focus_steal.sh
-        with:
-          ref: ${{ github.sha }}
 
       - name: Preparar SSH
         run: |
@@ -761,8 +759,6 @@ jobs:
       # CaptureWatchdogService o BootReceiver (las 3 causas del 2026-11-14).
       - name: Gate anti-robo-de-foco
         run: bash tools/quality/gate_no_focus_steal.sh
-        with:
-          ref: ${{ github.sha }}
 
       - name: Preparar SSH
         run: |
