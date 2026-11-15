@@ -12,8 +12,8 @@
   const HEALTH_ENDPOINT    = `${BASE_URL}/prisma/api/prisma-health.php`;
   const CONTROL_ENDPOINT   = `${BASE_URL}/prisma/api/prisma-control.php`;
   const ADB_ENDPOINT       = `${BASE_URL}/prisma/api/prisma-adb-telemetry.php`;
-  const SENTINEL_ENDPOINT  = `${BASE_URL}/prisma/api/sentinel-status`;
-  const TELESCOPE_ENDPOINT = `${BASE_URL}/prisma/api/telemetry-full`;
+  const SENTINEL_ENDPOINT  = `${BASE_URL}/prisma/api/sentinel-status.php`;
+  const TELESCOPE_ENDPOINT = `${BASE_URL}/prisma/api/telemetry-full.php`;
   const POLL_MS = 30_000;
   const PANIC_THRESHOLD = 3; // consecutive unhealthy polls before auto-panic
 
