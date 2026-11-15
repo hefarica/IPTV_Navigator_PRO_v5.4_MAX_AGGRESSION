@@ -103,8 +103,14 @@ processed=0; skipped=0; failed=0
 shopt -s nullglob
 for src in "$LISTS"/*.m3u8; do
   base="$(basename "$src" .m3u8)"
+  # [2026-11-15] Mismo filtro que el bucle de arriba: las proyecciones _LIGHT NO se
+  # envuelven. Este es el bucle PRINCIPAL (el que escribe en $OUT), y era el que
+  # seguia copiando la proyeccion ligera a /pulse/ anadiendole las APE: 171.893.544 B
+  # limpios se servian como 181.614.136 B con 169.792 lineas #EXT-X-APE-, porque el
+  # try_files de url2-cartridge.conf prefiere /lists/pulse/X sobre /lists/X.
+  # Arreglar solo el primer case no bastaba; hay DOS bucles con su propio case.
   case "$base" in
-    *pulse*|*.bak*|*_SHIELDED*) continue ;;
+    *pulse*|*.bak*|*_SHIELDED*|*_LIGHT*) continue ;;
   esac
   if [ -n "$ONLY" ] && [ "$base" != "$ONLY" ]; then continue; fi
 
