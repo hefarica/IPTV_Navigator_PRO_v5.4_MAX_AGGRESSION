@@ -64,7 +64,20 @@ if [ "$BACKFILL" -eq 1 ]; then
   n=0
   for src in "$LISTS"/*.m3u8; do
     base="$(basename "$src" .m3u8)"
-    case "$base" in *pulse*|*.bak*|*_SHIELDED*) continue ;; esac
+    # [2026-11-15] Tambien se excluyen las proyecciones _LIGHT.
+  #
+  # POR QUE, medido: este sync copia $LISTS/*.m3u8 a $LISTS/pulse/ envolviendo las
+  # URLs y AÑADIENDO las directivas APE. Y nginx sirve /lists/<x>.m3u8 con
+  #     try_files /lists/pulse/<x>.m3u8 /lists/<x>.m3u8 =404;
+  # o sea: la copia de /pulse/ GANA sobre el original de /lists/.
+  #
+  # Consecuencia: la proyeccion ligera (171.893.544 B, sin #EXT-X-APE-) se copiaba a
+  # /pulse/ convertida en 181.614.136 B CON 169.792 lineas #EXT-X-APE-, y era esa
+  # copia la que se servia. La proyeccion perdia todo su sentido: 10 MB de vuelta.
+  #
+  # Lo delato el header X-APE-List-Source que pone url2-cartridge.conf y la
+  # comparacion de sha256 entre el fichero en disco y lo descargado.
+  case "$base" in *pulse*|*.bak*|*_SHIELDED*|*_LIGHT*) continue ;; esac
     [ -n "$ONLY" ] && [ "$base" != "$ONLY" ] && continue
     size=$(stat -c%s "$src" 2>/dev/null || echo 0)
     if [ "$size" -le 32 ] && [ -f "$src.gz" ]; then real="$src.gz"; rsize=$(stat -c%s "$real"); else real="$src"; rsize=$size; fi
