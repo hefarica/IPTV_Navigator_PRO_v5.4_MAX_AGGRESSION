@@ -20,15 +20,26 @@
 #
 # LAS DOS PROYECCIONES
 #   <nombre>_FULL.m3u8   todo tal cual (para VLC/Kodi, que si usan el recetario)
-#   <nombre>_OTT_LIGHT.m3u8   #EXTINF + #EXTHTTP + URL (lo que OTT necesita)
+#   <nombre>_CABLEADA_LIGHT.m3u8   #EXTINF + #EXTHTTP + URL (lo que OTT necesita)
 #
-# OJO CON EL NOMBRE: NO se puede llamar _CABLEADA_OTT.m3u8.
-# MEDIDO el 2026-11-15: /opt/ape-pulse/ape-pulse-sync.sh YA genera
-# /var/www/lists/pulse/<base>_CABLEADA_OTT.m3u8 y le inyecta las directivas APE
-# (181.614.136 B frente a los 171.893.544 B de esta proyeccion). Los dos scripts
-# peleaban por el mismo nombre y ganaba el ultimo en escribir: la URL servia un
-# fichero con #EXT-X-APE- que esta proyeccion habia quitado. El sufijo _LIGHT deja
-# claro que es la proyeccion delgada y evita la colision.
+# OJO CON EL NOMBRE — esto costo tres intentos y esta medido.
+#
+# 1) NO puede llamarse <base>_CABLEADA_OTT.m3u8: /opt/ape-pulse/ape-pulse-sync.sh
+#    ya usa ese nombre y le inyecta las directivas APE (181.614.136 B frente a los
+#    171.893.544 B de esta proyeccion). Los dos peleaban por el mismo fichero.
+#
+# 2) TAMPOCO <base>_CABLEADA_OTT_LIGHT.m3u8. Medido con pruebas controladas:
+#      _prueba1.m3u8                                     -> 171.893.544 B  OK
+#      <base>_OTT_LIGHT.m3u8                             -> 171.893.544 B  OK
+#      <base>_CABLEADA_LIGHT.m3u8                        -> 171.893.544 B  OK
+#      <base>_CABLEADA_OTT_LIGHT.m3u8                    -> 181.614.136 B  MAL
+#    El MISMO contenido, cuatro nombres, y solo ese falla. El sync deja una copia
+#    en /var/www/lists/pulse/ con ese nombre y 181.614.136 B, y la peticion a
+#    /lists/<ese nombre> acaba sirviendo la copia de /pulse/ en vez del fichero.
+#    No se encontro la regla en /etc/nginx/** ni en los .lua: el mecanismo no esta
+#    documentado todavia, pero el NOMBRE QUE FUNCIONA si esta verificado.
+#
+# Por eso: <base>_CABLEADA_LIGHT.m3u8. sha256 disco == sha256 servido, 0 APE.
 #
 # QUE CONSERVA LA PROYECCION OTT
 #   · #EXTINF completo (tvg-id, tvg-name, tvg-logo, group-title) -> EPG y caratulas
@@ -65,7 +76,7 @@ fi
 
 base="${SRC%_CABLEADA.m3u8}"
 OUT_FULL="${base}_CABLEADA_FULL.m3u8"
-OUT_OTT="${base}_CABLEADA_OTT_LIGHT.m3u8"
+OUT_OTT="${base}_CABLEADA_LIGHT.m3u8"
 
 echo "origen: $(basename "$SRC") ($(stat -c%s "$SRC" 2>/dev/null) B)" >&2
 
