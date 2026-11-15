@@ -170,6 +170,28 @@ zaps=$(tail -2000 "$ZLOG" 2>/dev/null | grep -c 'GET /pulse/' || echo 0)
 last=$(tail -2000 "$ZLOG" 2>/dev/null | grep 'GET /pulse/' | tail -1 | grep -oE '/pulse/[0-9]+' | head -1 || true)
 add_row "zapping" "ok" "$zaps peticiones /pulse/ en las ultimas 2000 lineas; ultimo=${last:-ninguno}"
 
+# ── 6b. PROYECCION OTT: 1 tag por canal, 0 APE ───────────────────────────────
+# POR QUE EXISTE, y es el mismo defecto de clase que arregle en el timer ese mismo dia.
+# Medido 2026-11-15 05:59: la proyeccion paso a 171.893.544 B con CERO tags
+# (ape-cablear-auto la reescribio) y el sistema entero la daba por buena: el .stamp
+# comparaba el ORIGEN, que no habia cambiado. El vigilante tampoco la miraba.
+# Comprobar el fichero servido es lo unico que detecta una corrupcion del RESULTADO.
+LIGHT="${APE_LIGHT_FILE:-/var/www/html/lists/APE_LISTA_1794100720046_CABLEADA_LIGHT.m3u8}"
+if [ -f "$LIGHT" ]; then
+  l_ch=$(grep -c '^#EXTINF'      "$LIGHT" 2>/dev/null); l_ch=${l_ch:-0}
+  l_tag=$(grep -c '^#EXTSHIMOTT:' "$LIGHT" 2>/dev/null); l_tag=${l_tag:-0}
+  l_ape=$(grep -c '^#EXT-X-APE-'  "$LIGHT" 2>/dev/null); l_ape=${l_ape:-0}
+  l_sz=$(stat -c%s "$LIGHT" 2>/dev/null || echo 0)
+  l_age=$(( $(date +%s) - $(stat -c%Y "$LIGHT" 2>/dev/null || date +%s) ))
+  if [ "$l_ch" -gt 0 ] && [ "$l_tag" -eq "$l_ch" ] && [ "$l_ape" -eq 0 ]; then
+    add_row "proyeccion" "ok" "${l_sz}B · ${l_ch} canales · ${l_tag} tags · ${l_age}s"
+  else
+    add_row "proyeccion" "fail" "${l_sz}B · canales=${l_ch} tags=${l_tag} ape=${l_ape} (se espera 1 tag/canal y 0 APE) · ${l_age}s"
+  fi
+else
+  add_row "proyeccion" "fail" "no existe $LIGHT"
+fi
+
 # ── 7. ESTADO ────────────────────────────────────────────────────────────────
 status="OK"
 [ "$fails" -gt 0 ] && status="DEGRADADO"
