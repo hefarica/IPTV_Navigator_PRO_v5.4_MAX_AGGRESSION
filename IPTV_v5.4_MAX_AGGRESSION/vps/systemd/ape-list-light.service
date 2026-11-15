@@ -1,0 +1,20 @@
+[Unit]
+Description=APE list-light — proyeccion OTT con #EXTSHIMOTT (idempotente)
+After=network-online.target ape-jit.service
+
+[Service]
+Type=oneshot
+# [2026-11-15] El script solo mira si cambio el ORIGEN (via .stamp). Cuando el generador
+# produce una _CABLEADA nueva, REGENERA la LIGHT y esa regeneracion NO lleva:
+#   - las plantillas de perfil (las pone ape-profile-project.js, no este script)
+#   - el plan Prisma (#EXT-X-APE-LAB-METADATA)
+#   - la cabecera de gobierno (#EXT-X-APE-GOVERNANCE / ENGINE)
+# Medido: el 13:26 sobrescribio la LIGHT buena de 241 MB con una de 186 MB sin plantillas.
+# ExecStartPost vuelve a inyectar las tres piezas DESPUES de cada regeneracion, de forma
+# idempotente (si ya estan, el sincronizador dice "sin cambios" y sale 0).
+ExecStart=/bin/bash /opt/ape-pulse/ape-list-light.sh
+ExecStartPost=/bin/bash /opt/ape-pulse/ape-light-sync-image-module.sh /var/www/lists/APE_LISTA_1794100720046_CABLEADA_LIGHT.m3u8
+TimeoutStartSec=600
+
+[Install]
+WantedBy=multi-user.target

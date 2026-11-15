@@ -1776,3 +1776,38 @@ PENDIENTE, Y SE DICE
   tools/lab/ape-jit/server.js sigue en 468.210 B, SIN los parches: es la copia de laboratorio
   y no se toco. Si esa copia es la que se redespliega algun dia, los tres bugs vuelven.
   Decidir cual es la fuente es del operador.
+---
+
+## Hecho 34 · El timer ya no puede borrar lo que el modulo inyecta
+
+RIESGO REAL, NO HIPOTETICO
+  ape-list-light.timer corre cada ~10 min y lanza ape-list-light.sh. Ese script solo mira si
+  cambio el ORIGEN: compara el tamano y el mtime de la _CABLEADA con el .stamp. Si el origen no
+  cambio, dice "sin cambios" y no toca nada. Pero cuando el generador produce una _CABLEADA
+  nueva, REGENERA la LIGHT, y esa regeneracion NO lleva:
+    - las plantillas de perfil (las pone ape-profile-project.js, no ese script)
+    - el plan Prisma (#EXT-X-APE-LAB-METADATA)
+    - la cabecera de gobierno (#EXT-X-APE-GOVERNANCE / ENGINE)
+  Ya paso una vez: a las 13:26 la LIGHT buena de 241 MB quedo sustituida por una de 186 MB
+  sin plantillas. Se recupero de APE_..._CABLEADA_LIGHT_CABLEADA.m3u8.
+
+EL ARREGLO
+  /etc/systemd/system/ape-list-light.service  gana un ExecStartPost:
+    ExecStart=/bin/bash /opt/ape-pulse/ape-list-light.sh
+    ExecStartPost=/bin/bash /opt/ape-pulse/ape-light-sync-image-module.sh \
+      /var/www/lists/APE_LISTA_1794100720046_CABLEADA_LIGHT.m3u8
+  Asi, cada vez que el script regenere, el sincronizador vuelve a inyectar las tres piezas.
+  Los dos pasos son idempotentes, en ambos sentidos.
+  Se anadio tambien After=ape-jit.service, porque el sincronizador lee del motor y antes
+  podia arrancar cuando el JIT aun no estaba listo.
+
+MEDIDO: ejecucion forzada a las 14:00:23
+  1) ape-list-light.sh        -> "sin cambios" (el .stamp del origen coincide)
+  2) ExecStartPost            -> "sin cambios: ya tiene GOVERNANCE y LAB-METADATA"
+  LIGHT: 250.932.706 -> 250.932.706 B · TMPL 9 · GOV 1 · LAB 31
+  Result del servicio: success · gate PASS 11/11
+  Y con un origen nuevo: el paso 1 la regenera, el paso 2 re-inyecta. Nadie tiene que
+  acordarse de correr el sincronizador a mano.
+
+ESPEJADO AL REPO
+  IPTV_v5.4_MAX_AGGRESSION/vps/systemd/ape-list-light.service
