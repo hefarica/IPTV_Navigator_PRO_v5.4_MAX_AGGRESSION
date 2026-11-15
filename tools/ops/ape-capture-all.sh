@@ -82,7 +82,7 @@ fi
 sec "2. PULSE + SEG (rutas de reproduccion)"
 curl -s -o /dev/null -w "  /pulse/<id>  -> http=%{http_code} ttfb=%{time_starttransfer}s\n" -m 15 \
   -H "User-Agent: OTT Navigator/1.7.3.3" \
-  "http://127.0.0.1/pulse/1312008.m3u8?u=http%3A%2F%2Fline.tivi-ott.net%2Flive%2F3JHFTC%2FU56BDP%2F1312008.m3u8&d=eyJ0IjoiZ2VuZXJpYyJ9" 2>/dev/null || no_computado "curl a /pulse fallo"
+  "http://127.0.0.1/pulse/27.m3u8?u=http%3A%2F%2Fline.tivi-ott.net%2Flive%2F3JHFTC%2FU56BDP%2F27.m3u8&d=eyJ0IjoiZ2VuZXJpYyJ9" 2>/dev/null || no_computado "curl a /pulse fallo"
 segHits=$(grep -h "/seg/" "$NGINX_LOGS"/playlist_access.log 2>/dev/null | wc -l)
 echo "  /seg/ hits historicos (playlist_access.log): ${segHits:-NO_COMPUTADO}"
 segLast=$(grep -h "/seg/" "$NGINX_LOGS"/playlist_access.log 2>/dev/null | tail -1 | awk '{print $9, $10}')
@@ -127,7 +127,7 @@ echo "    DENY : $(tail -200 "$GATE_LOG" 2>/dev/null | grep -c 'decision=DENY' |
 sec "6. URL2 (metadata cartridge)"
 echo "  nginx: $(grep -c 'location \^~ /url2/' /etc/nginx/snippets/url2-cartridge.conf 2>/dev/null || echo NO_COMPUTADO) location(es)"
 echo "  sha conf: $(sha256sum /etc/nginx/snippets/url2-cartridge.conf 2>/dev/null | cut -d' ' -f1)"
-u2=$(curl -s -o /dev/null -w "%{http_code}" -m 12 -H "User-Agent: OTT Navigator/1.7.3.3" "http://127.0.0.1/url2/1312008.m3u8?u=http%3A%2F%2Fline.tivi-ott.net%2Flive%2F3JHFTC%2FU56BDP%2F1312008.m3u8" 2>/dev/null)
+u2=$(curl -s -o /dev/null -w "%{http_code}" -m 12 -H "User-Agent: OTT Navigator/1.7.3.3" "http://127.0.0.1/url2/1312008.m3u8?u=http%3A%2F%2Fline.tivi-ott.net%2Flive%2F3JHFTC%2FU56BDP%2F27.m3u8" 2>/dev/null)
 echo "  /url2/<id> -> http=${u2:-NO_COMPUTADO}"
 
 # ── 7. NGINX: 4xx y 5xx (el analisis de errores) ─────────────────────────────

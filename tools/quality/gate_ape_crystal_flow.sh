@@ -94,7 +94,7 @@ else bad "lista-cableada" "http=$code"; fi
 rm -f /tmp/_gl.$$
 
 # ── [4] canary (302 es EXITO: redirige al upstream) ──────────────────────────
-CAN="$BASE/prisma/api/canary-resolve.php?u=http%3A%2F%2Fline.tivi-ott.net%2Flive%2F3JHFTC%2FU56BDP%2F1312008.m3u8"
+CAN="$BASE/prisma/api/canary-resolve.php?u=http%3A%2F%2Fline.tivi-ott.net%2Flive%2F3JHFTC%2FU56BDP%2F27.m3u8"
 r=$(probe "$CAN"); c=${r%%|*}
 case "$c" in
   200|301|302) ok "canary" "$r" ;;
@@ -105,7 +105,7 @@ esac
 
 # ── [5] pulse de un canal real ───────────────────────────────────────────────
 # UA de player OBLIGATORIO: el proveedor responde 461 al UA de curl (medido).
-CH="${APE_CH:-$BASE/pulse/1312008.m3u8?u=http%3A%2F%2Fline.tivi-ott.net%2Flive%2F3JHFTC%2FU56BDP%2F1312008.m3u8&d=eyJ0IjoiZ2VuZXJpYyJ9}"
+CH="${APE_CH:-$BASE/pulse/27.m3u8?u=http%3A%2F%2Fline.tivi-ott.net%2Flive%2F3JHFTC%2FU56BDP%2F27.m3u8&d=eyJ0IjoiZ2VuZXJpYyJ9}"
 r=$(probe "$CH"); c=${r%%|*}
 if [ "$c" = "200" ]; then
   segs=$(grep -c '^/seg/' /tmp/_gf.$$ 2>/dev/null || echo 0)

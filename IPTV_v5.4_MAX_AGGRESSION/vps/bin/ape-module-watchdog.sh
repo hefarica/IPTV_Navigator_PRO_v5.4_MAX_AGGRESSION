@@ -55,7 +55,7 @@ mkdir -p "$STATE_DIR" 2>/dev/null || true
 # No se usa para "reproducir": solo para comprobar que el pulse puede hablar con
 # el proveedor. Si este canal muere, el modulo NO se declara roto por el: se
 # declara sin muestra. Un canal caido no es un modulo caido.
-CH_PROBE="${APE_CH_PROBE:-https://iptv-ape.duckdns.org/pulse/1312008.m3u8?u=http%3A%2F%2Fline.tivi-ott.net%2Flive%2F3JHFTC%2FU56BDP%2F1312008.m3u8&d=eyJ0IjoiZ2VuZXJpYyIsInMiOiJ1bmtub3duIiwiciI6MjA0OCx3IjoxOTIwLCJoIjoxMDgwLCJmIjozMH0}"
+CH_PROBE="${APE_CH_PROBE:-https://iptv-ape.duckdns.org/pulse/27.m3u8?u=http%3A%2F%2Fline.tivi-ott.net%2Flive%2F3JHFTC%2FU56BDP%2F27.m3u8&d=eyJ0IjoiZ2VuZXJpYyIsInMiOiJ1bmtub3duIiwiciI6MjA0OCx3IjoxOTIwLCJoIjoxMDgwLCJmIjozMH0}"
 
 html() { printf '%s' "$1" | tr -d '\r\n' | head -c 200; }
 
@@ -124,7 +124,7 @@ fi
 # ── 4. CANARY ────────────────────────────────────────────────────────────────
 # Un 302/301 es EXITO (redirige al upstream). Un 5xx o un cuerpo con
 # "Call to undefined function" es FALLO: el endpoint existe pero esta roto.
-r=$(probe "$BASE/prisma/api/canary-resolve.php?u=http%3A%2F%2Fline.tivi-ott.net%2Flive%2F3JHFTC%2FU56BDP%2F1312008.m3u8")
+r=$(probe "$BASE/prisma/api/canary-resolve.php?u=http%3A%2F%2Fline.tivi-ott.net%2Flive%2F3JHFTC%2FU56BDP%2F27.m3u8")
 code=${r%%|*}
 if [ "$code" = "200" ] || [ "$code" = "301" ] || [ "$code" = "302" ]; then
   add_row "canary" "ok" "$r"
