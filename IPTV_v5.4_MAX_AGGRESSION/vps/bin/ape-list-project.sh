@@ -94,6 +94,11 @@ awk '
   /^#EXT-X-(VERSION|TARGETDURATION|MEDIA-SEQUENCE|PLAYLIST-TYPE|INDEPENDENT-SEGMENTS|ALLOW-CACHE)/ { print; next }
   /^#EXTINF/                 { print; next }
   /^#EXTHTTP/                { print; next }
+  # [2026-11-15] #EXTSHIMOTT SI se conserva. Es el tag que el shim del APK lee
+  # para aplicar los ajustes de dispositivo y el routing por canal; sin el, el
+  # parser ExtShimOtt.kt (instalado en el device, v673) no tiene nada que leer.
+  # Es ADITIVO: RFC 8216 manda ignorarlo a los players que no lo conocen.
+  /^#EXTSHIMOTT:/            { print; next }
   /^https?:\/\//             { print; next }
   /^#EXT-X-APE-/             { next }   # 56,6% del fichero: OTT los ignora
   /^#EXTVLCOPT/              { next }   # opciones de VLC
