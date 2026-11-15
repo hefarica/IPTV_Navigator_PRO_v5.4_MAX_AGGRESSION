@@ -239,11 +239,33 @@ bootPanel(BASE_SEED, function (win, els) {
     check('G4 el error del MPD incluye el motivo del servidor', /await r\.text\(\)\)\.slice\(0, 160\)/.test(panelSrc) || /PROVIDER_SLOT/.test(panelSrc));
     check('G5 el "no hay canal activo" dice el conteo', /no hay canal JIT activo \(0 de /.test(panelSrc));
 
-    console.log('\n═══ H · SINTAXIS DE LO TOCADO ═══\n');
+    console.log('\n═══ H · CONDICION DE BUFFER: mide, avisa y llega al generador ═══\n');
+
+    // El panel promete "Entrada requerida >= salida solicitada × (1 + delta)".
+    // Eso solo se puede sostener si hay una medicion real; sin ella el guard NO debe
+    // inventar un veredicto, y checkGeneration debe decirlo.
+    const g = H.guard();
+    check('H1 guard devuelve el contrato completo',
+        g && typeof g.has === 'boolean' && typeof g.ok === 'boolean' && typeof g.canStart === 'boolean',
+        JSON.stringify(g && { has: g.has, ok: g.ok, canStart: g.canStart }));
+    const sug = H.sugerirAjuste();
+    check('H2 sugerirAjuste lleva inM/outM/floorM para poder pintarlos',
+        sug && 'inM' in sug && 'outM' in sug && 'floorM' in sug,
+        JSON.stringify(sug && { inM: sug.inM, outM: sug.outM, floorM: sug.floorM }));
+    check('H3 sin medicion el veredicto es has=false, no un si optimista', g.has === false ? sug.bloquea === false : true,
+        'has=' + g.has + ' bloquea=' + sug.bloquea);
+    check('H4 checkGeneration deja generar aunque no haya medicion',
+        (function () { try { return H.checkGeneration() === true; } catch (e) { return false; } })());
+    check('H5 el delta vive en una variable que el generador lee',
+        /APE_DELTA/.test(genSrc), 'APE_DELTA en el generador: ' + (/APE_DELTA/.test(genSrc) ? 'si' : 'NO'));
+    check('H6 el boton Aplicar del panel esta cableado', /ape-delta-apply'\)[\s\S]{0,120}applyDelta\(true\)/.test(panelSrc));
+    check('H7 applyDelta es alcanzable desde la superficie de prueba', typeof H.applyDelta === 'function');
+
+    console.log('\n═══ I · SINTAXIS DE LO TOCADO ═══\n');
     for (const [label, src] of [['generation-output-panel.js', panelSrc], ['generation-controller.js', ctrlSrc]]) {
         let ok = true, err = '';
         try { new Function(src); } catch (e) { ok = false; err = e.message; }
-        check('H ' + label + ' parsea', ok, err);
+        check('I ' + label + ' parsea', ok, err);
     }
 
     console.log('\n─────────────────────────────────────────────');
