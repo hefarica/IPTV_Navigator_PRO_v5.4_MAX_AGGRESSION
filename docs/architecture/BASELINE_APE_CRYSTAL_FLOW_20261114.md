@@ -655,3 +655,61 @@ proyeccion       conserva el tag (ape-list-project.sh L97-101)
 APK device       v673 · log "ApeExtShimOtt: sink instalado"
 lista en disco   1.298.222.092 B · 0 tags  <-- generada ANTES; hay que regenerarla
 ```
+---
+
+## Hecho 16 · La proyeccion baja a 186 MB con 21.224 tags — y el error de metodo que lo causo
+
+LA LISTA SERVIDA AHORA
+```
+https://iptv-ape.duckdns.org/lists/APE_LISTA_1794100720046_CABLEADA_LIGHT.m3u8
+1.298.222.092 B -> 186.789.613 B   (-85,6 %)
+  gzip 352.804.883 B -> 4.023.576 B (-98,9 %)
+  21.224 canales · 21.224 #EXTSHIMOTT · APE=0 · PHANTOM=0 · VNOVA=0 · CMAF=0
+  servida con gzip: 200 · 4.023.576 B · 0,0147 s
+Desglose: EXTHTTP 157,3 MB (SE CONSERVA: el player si usa esas cabeceras) ·
+          EXTINF 10,2 MB · tags 5,3 MB · URLs 4,4 MB · #EXT-X-* estandar 9,6 MB
+```
+
+EL ERROR DE METODO, Y ES EL APRENDIZAJE DEL DIA
+Se recorto en tres pasadas persiguiendo tags uno a uno:
+```
+sin #EXT-X-APE-              ->  -735 MB
+sin #EXT-X-VNOVA-LCEVC-*     ->   -90 MB   (6 tags x 21.224 = 127.344 lineas)
+sin #EXT-X-PHANTOM-HYDRA-*   ->   -94 MB   (6 tags x 21.224 mas)
+```
+Cada pasada parecia la definitiva y quedaba otra familia. El generador emite ~10 familias
+de metadata propietaria por canal. **Con lista negra el trabajo no termina nunca.**
+Se invirtio a LISTA BLANCA: 29 tags de RFC 8216 y cae todo lo que no este. Un solo cambio,
+resultado estable. `STANDARD_TAGS` vive en `ape-list-light.sh`.
+
+CUATRO BUGS MIOS, TODOS DE BASH, TODOS MEDIDOS
+| # | Bug | Sintoma |
+|---|---|---|
+| 1 | `sed` con `.*` GREEDY | capturaba `shimott_present` (0) en vez de `shimott` (21.224) |
+| 2 | `grep` con coma final | el JSON acaba en `"errors":0}` SIN coma → no matchea → aborta |
+| 3 | `ls -1t` ordena por FECHA | tomo la lista de 3 canales de prueba, no la de 21.224 |
+| 4 | `grep -c` imprime el conteo Y sale 1 | con `|| echo 0` queda `"0 0"` → la comparacion revienta |
+Se quito ademas la dependencia de `ape-list-project.sh`: compone el nombre de salida a
+partir del de su origen y con sufijos encadenados (`_CABLEADA`, `_OTT_CABLEADA`, `_LIGHT`)
+**no coincidia nunca**. Fueron tres intentos antes de verlo.
+
+EL SCRIPT Y SU TIMER
+`/opt/ape-pulse/ape-list-light.sh` (manifest -> /opt/ape-pulse/)
+```
+origen -> wrap (#EXTSHIMOTT) -> lista blanca RFC 8216 -> instala atomico -> .gz
+IDEMPOTENTE: .stamp con mtime+tamano del origen. Medido: 2a ejecucion dice
+             "sin cambios: ya corresponde al origen" y sale 0.
+FAIL-CLOSED : exit 3 wrap con errors>0 · exit 4 si no hay 1 tag por canal, 1 URL por
+              canal, o quedan APE · exit 5 sin disco. NO instala nada en esos casos.
+              Nunca se publica una lista a medias.
+ATOMICO     : escribe .tmp y hace mv, para que nginx no lea un fichero a medio escribir.
+```
+`ape-list-light.timer` corre cada 10 min y en el arranque. Si la lista no cambio, el
+script no hace nada: no hay coste. **Era la pieza que faltaba para que esto no se caiga
+de manera inadvertida**, que es lo que el operador viene denunciando.
+
+LO QUE SIGUE SIN MEDIR
+El shim aplicando un tag real. La lista lo tiene y el parser esta instalado (v673, log
+`ApeExtShimOtt: sink instalado`), pero hace falta reproducir y zapear. Medido el
+2026-11-15 04:5x: el device estaba en Paramount+, 0 peticiones externas a la lista nueva.
+**No se declara verde.**
