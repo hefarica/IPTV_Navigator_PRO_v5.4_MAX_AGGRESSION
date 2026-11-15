@@ -1,0 +1,75 @@
+{
+  "url": "https://iptv-ape.duckdns.org/index-v4.html",
+  "steps": [
+    {
+      "name": "chrome arranca",
+      "ok": true,
+      "detail": "puerto 9612"
+    },
+    {
+      "name": "navega",
+      "ok": true,
+      "detail": "https://iptv-ape.duckdns.org/index-v4.html"
+    },
+    {
+      "name": "el panel se monta",
+      "ok": true,
+      "detail": "9063 ms"
+    },
+    {
+      "name": "checkbox existe",
+      "ok": true,
+      "detail": "si"
+    },
+    {
+      "name": "boton existe",
+      "ok": true,
+      "detail": "si"
+    },
+    {
+      "name": "boton nace CERRADO",
+      "ok": true,
+      "detail": "disabled=true opacity=0.4 cursor=not-allowed"
+    },
+    {
+      "name": "estado inicial honesto",
+      "ok": true,
+      "detail": "\"sin validar\""
+    },
+    {
+      "name": "click en el checkbox",
+      "ok": true,
+      "detail": "checked=true"
+    },
+    {
+      "name": "al marcar, el boton se HABILITA",
+      "ok": true,
+      "detail": "disabled=false opacity=1 cursor=pointer"
+    },
+    {
+      "name": "el estado cambia al marcar",
+      "ok": true,
+      "detail": "\"seleccionada · sin validar\""
+    },
+    {
+      "name": "click en Generar LIGHT",
+      "ok": true,
+      "detail": "estado inmediato \"seleccionada · sin validar\""
+    },
+    {
+      "name": "el panel REPORTA algo tras el click",
+      "ok": true,
+      "detail": "20214 ms · \"seleccionada · sin validar\""
+    },
+    {
+      "name": "la barra de estado del panel",
+      "ok": true,
+      "detail": "\"BLOQUEADO: el perfil activo no cumple el delta 15% · Abre la propuesta y apruébala.\""
+    },
+    {
+      "name": "sin excepciones JS",
+      "ok": true,
+      "detail": "ninguna"
+    }
+  ]
+}
