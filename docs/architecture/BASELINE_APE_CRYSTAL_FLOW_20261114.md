@@ -1988,3 +1988,72 @@ LO QUE QUEDA ABIERTO, Y ES LO IMPORTANTE
   ese campo no discrimina nada: solo confirma que el 6K de presentacion excede el
   decoder. Con el probe al 44%, la siguiente mejora real no es tocar perfiles: es
   SUBIR LA COBERTURA DEL PROBE, que hoy no marca ni un solo canal como verificado.
+---
+
+## Hecho 38 · El probe: por que nunca verificaba, y lo que la medicion real destapo
+
+Se ataco la cobertura del probe (44,1% de evidencia fuerte, cero canales verificados).
+El diagnostico estaba en dos muros encadenados, y el segundo destapo un problema mayor
+que el probe.
+
+MURO 1 · EL PROBE DEL NAVEGADOR NO PUEDE FUNCIONAR
+  ape-quality-prober.js hace:
+    fetch(url, { headers: { 'User-Agent': '...SHIELD...' }, mode: 'cors' })
+  Dos imposibilidades del navegador:
+    - User-Agent es un header PROHIBIDO en fetch: el navegador lo descarta en silencio.
+      Y el proveedor bloquea sin UA de player (medido: sin UA -> 000; con UA -> 302).
+    - mode:'cors' exige Access-Control-Allow-Origin. MEDIDO: el proveedor NO lo manda.
+  Resultado: FETCH_FAILED en el 100%. Cero canales verificados, y el clasificador cae
+  siempre en heuristicas porque exige probe.verified === true (L382) y nadie lo pone.
+  Ademas el prober escribe channel._probeData y el clasificador lee ch.probe: los
+  nombres no se encuentran aunque el probe funcionara.
+
+MURO 2 · AUN CON PROBE SERVER-SIDE, LA FUENTE NO DECLARA RESOLUCION
+  Se construyo /var/www/html/prisma/api/probe-manifest.php (SSRF-safe: acepta un
+  CHANNEL ID y resuelve la URL contra /var/lib/ape/ch-url-index.json, construido por
+  ape-build-ch-index.sh con las URLs de nuestras listas; si el id no esta, no hay
+  peticion) y /opt/ape-pulse/ape-build-ch-index.sh (21.224 canales, 1.485.312 B,
+  0,75 s).
+  MEDIDO sobre 20 canales al azar: requested 20 · fetched 18 · verified 0.
+  masters 0 · media 18. Los proveedores sirven LISTAS DE MEDIOS (#EXT-X-VERSION:3,
+  #EXTINF:10.000000, .ts), y una lista de medios NO declara RESOLUTION.
+  Conclusión: el manifest no puede verificar nada. Hay que medir un segmento.
+
+MUTO 3 (el bueno) · MEDIR UN SEGMENTO SI FUNCIONA
+  Medido en el canal 1: el manifest REDIRIGE (302) a otro host con token; el segmento
+  se baja del host del redirect SIN token (el host original da 401):
+    200 · 1.601.760 B · ffprobe -> h264 848x480 30/1 High yuv420p
+  El Range se ignora (siempre baja el segmento entero), pero ffprobe lee la metadata.
+
+LO QUE SE CONSTRUYO
+  /opt/ape-pulse/ape-probe-deep.sh (desde vps/bin/)
+  Mide UNA muestra por (host, perfil) porque medir los 21.224 costaria 1,6 MB x 21.224
+  = 34 GB. El catalogo tiene SOLO 3 HOSTS (evestv.wuitf.com 11.350 · line.tivi-ott.net
+  9.873 · nfqdeuxu.x1megaott.store 1), asi que la muestra son 9 grupos.
+  Escribe /var/lib/ape/probe-deep.json y compara la MEDIDA con lo que el perfil promete.
+  Etiqueta el resultado como ESTIMACION DE HOST, no como verdad por canal.
+
+LA MEDICION, Y LO QUE DESTAPO (34 s, 6 de 9 grupos)
+  HOST                    PERFIL  GRUPO   ALTURA MEDIDA  CODEC/FPS        VEREDICTO
+  evestv.wuitf.com        P1         173   1080           h264 50          FUENTE POR DEBAJO (pide 2160)
+  evestv.wuitf.com        P3      11.170    720           h264 25          FUENTE POR DEBAJO (pide 1080)
+  evestv.wuitf.com        P4           1   sin manifest   -                NO_DATA
+  evestv.wuitf.com        P5           6    720           h264 25          POR ENCIMA (pide 480)
+  line.tivi-ott.net       P1         760   sin manifest   -                NO_DATA
+  line.tivi-ott.net       P3       9.051    720           h264 25          FUENTE POR DEBAJO (pide 1080)
+  line.tivi-ott.net       P4          57    576           mpeg2video 25    FUENTE POR DEBAJO (pide 720)
+  line.tivi-ott.net       P5           5    576           h264 25          POR ENCIMA (pide 480)
+  nfqdeuxu.x1megaott.store P3          1   sin manifest   -                NO_DATA
+
+HALLAZGO CRITICO QUE ESTO DESTAPA
+  El 95% del catalogo (P3 = 20.222 canales) mide 720p real.
+  Y sobre esos mismos canales el #EXT-X-STREAM-INF declara RESOLUTION=5760x3240 (6K).
+  Eso es 5,4x la resolucion real de la fuente, en la lista servida.
+  La LEY CRYSTAL 6K MAX ENHANCEMENT del repo dice literalmente: "nunca degradar 4K ni
+  declarar 6K falso". El 6K de presentacion esta autorizado como enhancement de display,
+  pero RESOLUTION= es el atributo que RFC 8216 define como la resolucion de la variante,
+  no del display. Un player que decodifique lo declarado pide 6K sobre 720p.
+  NO SE TOCO: cambiar RESOLUTION a la resolucion real medida cambia el contrato que lee
+  el APK y es una decision de diseño del operador. Se reporta con la evidencia.
+
+  Y P4 de line.tivi-ott.net mide MPEG-2 (544x576): un codec que ningun perfil APE declara.
