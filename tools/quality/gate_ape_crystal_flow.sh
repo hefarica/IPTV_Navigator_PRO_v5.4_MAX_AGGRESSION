@@ -177,7 +177,11 @@ LIGHT="${APE_LIGHT_FILE:-/var/www/html/lists/APE_LISTA_1794100720046_CABLEADA_LI
 if [ -f "$LIGHT" ]; then
   g_ch=$(grep -c '^#EXTINF'       "$LIGHT" 2>/dev/null); g_ch=${g_ch:-0}
   g_tag=$(grep -c '^#EXTSHIMOTT:' "$LIGHT" 2>/dev/null); g_tag=${g_tag:-0}
-  g_ape=$(grep -c '^#EXT-X-APE-'  "$LIGHT" 2>/dev/null); g_ape=${g_ape:-0}
+# [FIX 2026-11-15] Solo cuentan las APE DEL CUERPO. La cabecera lleva las 9 plantillas
+# de perfil (#EXT-X-APE-PROFILE-TEMPLATE) + el indice, que son LEGITIMAS y son justo lo
+# que devuelve a cada canal sus 1.040 lineas. Contarlas como 'metadata por canal' era
+# marcar en rojo la mejora. Medido: cabecera 10 APE, cuerpo 0.
+g_ape=$(awk '/^#EXTINF/{f=1} f && /^#EXT-X-APE-' "$LIGHT" 2>/dev/null | wc -l); g_ape=${g_ape:-0}
   g_sz=$(stat -c%s "$LIGHT" 2>/dev/null || echo 0)
   if [ "$g_ch" -gt 0 ] && [ "$g_tag" -eq "$g_ch" ] && [ "$g_ape" -eq 0 ]; then
     ok "proyeccion" "${g_sz}B · ${g_ch} canales · ${g_tag} tags · 0 APE"
