@@ -1537,3 +1537,62 @@ LO QUE NO ESTA VERIFICADO
   El POST real a list-light-project.php con una lista pequena. Exige que ape-list-light.sh
   corra 86-90 s y no se lanzo. Lo verificado es el gate de verificacion, que es el que
   decide, y que las cinco listas de distinto tamano lo pasan.
+---
+
+## Hecho 30 · El pipeline LIGHT son DOS pasos, y el contrato no exige 9 plantillas
+
+El operador insistio: "SI QUIERO 100 CANALES Y ESTOS CON EL CHECK MARCADO DE LIGHT, DEBE SALIR
+LA VERSION MARCADA". Tenia razon y habia TRES candados mas mal puestos.
+
+CANDADO 3 · EL SCRIPT DESCARTA LISTAS PEQUENAS
+  ape-list-light.sh:58  MIN_CHANNELS="${APE_MIN_CHANNELS:-1000}"
+  Ese 1000 protege la ELECCION AUTOMATICA del origen (que no coja un fixture de 3 canales, bug
+  documentado en las lineas 46-57 del propio script). NO es un limite del formato. El endpoint
+  ahora pasa APE_MIN_CHANNELS=1 porque el operador ya eligio la lista en el POST.
+
+CANDADO 4 · EL ENDPOINT NO PASABA LA LISTA
+  El script acepta el origen como $1 (L27: BASE="${1:-}"). Si no se le pasa, elige por su cuenta
+  la mas reciente y procesa OTRA lista: medido, con APE_MIN_CHANNELS=1 eligio P5_CABLEADA de 11
+  canales cuando se le pidio la principal. Ahora se pasa la RUTA COMPLETA como $1, porque el
+  script deriva base="${SRC%_CABLEADA.m3u8}" y exige que termine en _CABLEADA.m3u8.
+
+CANDADO 5 · EL CONTRATO EXIGIA 9 PLANTILLAS
+  Medido: las 9 plantillas de la lista grande son 9 COMBINACIONES perfil+tier:
+  P1+T5 P1+T8 P1+T9 P3+T5 P3+T6 P3+T7 P3+T9 P4+T5 P5+T5
+  Una lista filtrada a un solo tier (P5+T5) solo necesita UNA. Exigir 9 veta listas validas.
+  Gate corregido: plantillas >= 1 (no == 9). Sigue exigiendo: canales >= 1, ape_cuerpo == 0,
+  truncado == false.
+
+EL PIPELINE DE VERDAD SON DOS PASOS, Y EL ENDPOINT SOLO LLAMABA A UNO
+  paso 1  ape-list-project.sh <ruta_cableada>
+          proyecta la cableada -> _CABLEADA_LIGHT (EXTINF + EXTHTTP + URL) y verifica que no
+          se pierde ni un canal y que cada canal tiene EXACTAMENTE 1 URL.
+  paso 2  ape-profile-project.js light <light> <tmp> --origin <origen> --gz
+          escribe las plantillas de perfil + el indice en la cabecera.
+  ape-list-light.sh NO sustituye a ninguno: hace el wrap #EXTSHIMOTT y PISA el fichero,
+  borrando las plantillas que hubiera. Por eso dejo de usarse en el endpoint.
+  Y hay que instalar LOS DOS ficheros, .m3u8 y .gz: si solo se mueve el .m3u8, el .gz queda
+  con el contenido anterior y el verificador (que lee el .gz) reporta 0 plantillas cuando el
+  .m3u8 si las tiene. Medido.
+
+SEIS DEFECTOS MIOS CORREGIDOS EN EL CAMINO
+  1. header('X-APE-Endpoint','v') -> TypeError, el 2o argumento es $replace (bool).
+  2. strncmp(...,'#EXT-X-APE-PROFILE-TEMPLATE:',29) -> la firma mide 28. Reportaba 0 plantillas.
+  3. $light usado 60 lineas antes de definirse -> escapeshellarg(null) fatal.
+  4. preg_replace('/\.m3u8\$/i') con el \$ escapado -> no quitaba la extension.
+  5. El verificador se invocaba por http://127.0.0.1 y nginx devuelve 302 a https -> ahora CLI.
+  6. PHP_BINARY bajo php-fpm apunta a php-fpm, no al CLI -> ahora /usr/bin/php.
+  Y uno de despliegue: el primer scp se hizo sin backup porque un error de escapado de PowerShell
+  ('syntax error near unexpected token (') impidio que corriera el cp -a.
+
+MEDIDO AL FINAL, PUNTA A PUNTA
+  POST {"lista":"APE_LISTA_1794100720046_P5_CABLEADA.m3u8"}
+  -> ok:true · light APE_LISTA_1794100720046_P5_CABLEADA_LIGHT.m3u8 · 128 ms
+     verify: canales 11 · plantillas 1 · ape_cuerpo 0 · bytes 147629 · truncado false
+  Y la lista grande, intacta: 241.369.147 B · 9 plantillas · 21.224 canales · gate 11/11.
+
+LA LISTA GRANDE SE PERDIO Y SE RESTAURO
+  La primera prueba del pipeline (con ape-list-light.sh) SOBRESCRIBIO la LIGHT buena de 241 MB
+  con una de 186 MB SIN plantillas. Se recupero de APE_LISTA_..._CABLEADA_LIGHT_CABLEADA.m3u8
+  (241.369.147 B, 9 plantillas), se reinstalo, y se verifico con el endpoint. El backup del
+  fichero malo queda en .bak-sin-plantillas-20261115T134709Z.

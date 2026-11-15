@@ -17,7 +17,9 @@
 declare(strict_types=1);
 
 const ALLOWED_DIR = '/var/www/lists';
-const SCRIPT      = '/opt/ape-pulse/ape-list-light.sh';
+const SCRIPT_PROJECT = '/opt/ape-pulse/ape-list-project.sh';   // paso 1: proyeccion
+const SCRIPT_PROJ_JS = '/opt/ape-pulse/ape-profile-project.js'; // paso 2: 9 plantillas
+const SCRIPT      = '/opt/ape-pulse/ape-list-light.sh';         // NO se usa: pisa las plantillas
 const SCRIPT_TO   = 240;   // s: la proyeccion medida tarda 86-90 s
 
 header('Content-Type: application/json; charset=utf-8');
@@ -35,8 +37,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     out(405, ['ok' => false, 'reason' => 'E_METODO', 'esperado' => 'POST']);
 }
 
-if (!is_file(SCRIPT) || !is_readable(SCRIPT)) {
-    out(503, ['ok' => false, 'reason' => 'E_SCRIPT_AUSENTE', 'script' => SCRIPT]);
+foreach ([SCRIPT_PROJECT, SCRIPT_PROJ_JS] as $need) {
+    if (!is_file($need) || !is_readable($need)) {
+        out(503, ['ok' => false, 'reason' => 'E_SCRIPT_AUSENTE', 'script' => $need]);
+    }
 }
 
 $raw = file_get_contents('php://input');
@@ -69,10 +73,32 @@ if (strpos($lista, '_LIGHT') !== false) {
     ]);
 }
 
-$stamp   = gmdate('Ymd\THis\Z');
+$stamp// Y si el script admite forzar el origen por nombre, se lo pasamos para que no elija otro.
+   = gmdate('Ymd\THis\Z');
 $logPath = '/tmp/ape-light-project-' . $stamp . '.log';
-$cmd     = 'APE_FORCE=1 timeout ' . SCRIPT_TO . ' bash ' . escapeshellarg(SCRIPT)
-         . ' > ' . escapeshellarg($logPath) . ' 2>&1';
+// APE_MIN_CHANNELS=1: el script usa MIN_CHANNELS=1000 para elegir AUTOMATICAMENTE el origen
+// y no coger un fixture de 3 canales. Aqui el origen viene EXPLICITO en el POST, asi que esa
+// proteccion sobra y vetaria una lista filtrada de 100 canales. El operador ya eligio.
+// EL PIPELINE SON DOS PASOS, y hasta hoy el endpoint solo llamaba a uno.
+//   paso 1  ape-list-project.sh <origen>
+//           proyecta la cableada -> _CABLEADA_LIGHT (EXTINF + EXTHTTP + URL) y verifica
+//           que no se pierde ni un canal y que cada canal tiene EXACTAMENTE 1 URL.
+//   paso 2  ape-profile-project.js light <light> <light> --origin <origen> --gz
+//           escribe las 9 plantillas de perfil + el indice en la cabecera. SIN ESTE PASO
+//           la lista queda sin proyeccion por perfil: medido, 0 plantillas.
+// ape-list-light.sh NO sustituye a ninguno de los dos: hace el wrap #EXTSHIMOTT y PISA el
+// fichero, borrando las plantillas que hubiera. Por eso no se usa aqui.
+$srcBase = basename($lista, '.m3u8');
+$cmd1    = 'timeout ' . SCRIPT_TO . ' bash ' . escapeshellarg(SCRIPT_PROJECT)
+          . ' ' . escapeshellarg($srcBase)
+          . ' > ' . escapeshellarg($logPath) . ' 2>&1';
+$cmd2    = 'timeout ' . SCRIPT_TO . ' node ' . escapeshellarg(SCRIPT_PROJ_JS)
+          . ' light ' . escapeshellarg($light)
+          . ' ' . escapeshellarg($light)
+          . ' --origin ' . escapeshellarg($srcBase . '.m3u8')
+          . ' --gz'
+          . ' >> ' . escapeshellarg($logPath) . ' 2>&1';
+$cmd     = $cmd1 . ' && ' . $cmd2;
 
 $t0 = microtime(true);
 $rc = 0;
