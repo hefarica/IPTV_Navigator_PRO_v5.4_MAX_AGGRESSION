@@ -193,3 +193,72 @@ reporta como verde.
 `flt` es para el pipeline VPS/VLC y OTT no lo toca; `v`/`a`/`hdr` son declaraciones de
 la fuente. El valor del tag es que la lista LLEVE su propia calibracion y el device no
 dependa de una DB externa.
+---
+
+## Addendum final 2026-11-15 06:20 UTC · Estado por eslabón, con su número
+
+Esta es la foto al cierre de la sesión. Cada fila tiene el comando que la produce; lo
+que no está medido se dice.
+
+### REAL · medido ahora
+
+| Qué | Valor | Cómo se mide |
+|---|---|---|
+| Canales | 21.224 | `grep -c '^#EXTINF' LIGHT` |
+| Tags `#EXTSHIMOTT` | 21.224 (uno por canal) | `grep -c '^#EXTSHIMOTT:' LIGHT` |
+| Directivas APE en la proyección | 0 | `grep -c '^#EXT-X-APE-' LIGHT` |
+| Tamaño proyección | 186.789.613 B | `stat -c%s` |
+| Tamaño con gzip | 4.023.576 B | `stat -c%s LIGHT.gz` |
+| Latencia servida (gzip) | 14,7 ms | `curl -w '%{time_total}'` |
+| Canales que responden 200 | 55 de 60 muestreados | `curl` sobre 60 URLs de la lista |
+| Manifiestos HLS válidos | 52 de 55 | `grep '^#EXTM3U'` |
+| Segmento real | 1.601.760 B · byte 0x47 | `curl -r 0-1048575` + `od` |
+| Gate del flujo | PASS 10/10 | `gate_ape_crystal_flow.sh --json` |
+| Vigilante | OK · 7 módulos | `/var/lib/ape/module-watchdog.json` |
+| Recuperación tras `kill -9` | 6 s · NRestarts=1 | matar php-fpm y cronometrar |
+| Timers activos | 11 `ape-*` | `systemctl list-timers` |
+| 404 cerrados | 324 de 398 (81 %) | `playlist_access.log` antes/después |
+
+### LO QUE EL SISTEMA AHORA VIGILA POR SÍ SOLO
+
+Cada uno de estos se añadió **después** de que su ausencia causara un fallo real:
+
+1. **`ape-list-light.timer`** (10 min) — regenera la proyección. **Comprueba el CONTENIDO**,
+   no solo el `.stamp`: si algo la reescribe y le quita los tags, la repara y lo dice.
+   (Medido: la reparó en 85 s.)
+2. **`ape-module-watchdog` módulo `proyeccion`** (60 s) — 1 tag por canal y 0 APE.
+3. **`gate_ape_crystal_flow.sh` check [11]** — lo mismo, para el que corre a mano.
+4. **`Restart=on-failure` en nginx y php-fpm** — antes `Restart=no`. Medido con kill -9.
+
+**Los tres primeros nacieron del mismo fallo:** el sistema daba por bueno un resultado que
+nadie comprobaba. **Ese era el «está a medias y no me doy cuenta».**
+
+### SIN MEDIR · y por qué
+
+| Qué | Por qué no está |
+|---|---|
+| OTT Navigator aceptando la lista | requiere acción del operador (alta manual) |
+| Tiempo de zapeo real | idem |
+| El shim aplicando un tag (`ApeExtShimOtt`) | 0 eventos: no ha habido lista nueva en el player |
+| El badge en pantalla con la lista nueva | depende del punto anterior |
+| Cadencia 50 fps vs panel 59,94 Hz | no se puede tocar el modo de display desde la app |
+
+### DESCARTADO · probado que no funciona aquí
+
+- **REAL-Video-Enhancer y video2x: AGPL-3.0** (copyleft de red: incompatible con este
+  APK). Además el cálculo los descarta: 13,19 TFLOPs por fotograma contra 64 GFLOPS de
+  pico del SoC son **10.300×–50.750×** el presupuesto de 20 ms del directo. Solo tendría
+  sentido offline con GPU alquilada, y **eso no mejora el vivo**.
+- **`websr.attachToVideo(player,{quality:'6k'})` no existe.** La API real de WebSR es
+  `new WebSR({canvas,gpu,network_name,weights})` + `render(source)`, y `quality`/`6k` no
+  son parámetros suyos. OTT Navigator además no ejecuta JS.
+- **VPP/AI-PQ en este SoC:** los 6 levers devuelven `null` (`pq_ai_sr_enable`, `ai_sr_level`,
+  `pq_sharpness_enable`, `pq_hdr_mode`, `ai_pq_mode`, `pq_dnr_enable`). No existen.
+- **`wm size 3840x2160`:** `ro.surface_flinger.max_graphics_height=1080` es del build.
+  Android compone a FHD y el panel escala; no se puede cambiar desde la app.
+
+### RIESGO ABIERTO, detectado al medir
+
+**La lista se está raspando desde 20 IPs de Azure/AWS** (una petición cada una, en una
+noche). Es pública por diseño, pero aparecerá en agregadores. Cerrarla con token rompería
+el acceso de OTT: **es una decisión del operador, no del agente.** Anotado, sin tocar.
