@@ -780,3 +780,72 @@ HERRAMIENTA
 `ape-module-status.php` devuelve el estado por modulo leyendo `systemctl`, `/proc/net/tcp`
 y los ficheros de estado. `apk_agent` y `shim` se declaran **UNKNOWN con la razon**: corren
 en el device y el VPS no puede ver su proceso. Un `unknown` explicado no es un `ok`.
+---
+
+## Hecho 18 · "Nunca se caiga" — medido matando el servicio, no leyendo la config
+
+El operador lo pidio asi: *«haz un workflow para que corra siempre, nunca se caiga...
+sin generar lacks ni freezeos, en segundo plano pero que trabaje siempre»*. Eso no se
+verifica leyendo `Restart=on-failure` en un fichero. Se verifica matando el proceso.
+
+EL AGUJERO, MEDIDO ANTES
+```
+systemctl show nginx      -p Restart  ->  no
+systemctl show php8.3-fpm -p Restart  ->  no
+systemctl show ape-jit    -p Restart  ->  always
+```
+nginx sirve las listas y los segmentos; php-fpm ejecuta cada `/pulse/` y cada endpoint.
+Si cualquiera moria (OOM, worker roto, reload fallido) **systemd no lo levantaba** y el
+VPS se quedaba sin plano de servicio hasta que alguien entrara a mano. Es literalmente
+el "se caen de manera inadvertida" que el operador denuncia.
+
+EL FIX
+Drop-ins (`/etc/systemd/system/<unit>.d/10-ape-restart.conf`), no edicion del unit:
+```
+Restart=on-failure
+RestartSec=5s
+StartLimitIntervalSec=60s
+StartLimitBurst=5
+```
+Drop-in y no unit: un `apt upgrade` del paquete no lo pisa, y `rm` revierte sin rastro.
+`StartLimitBurst=5` a proposito: un servicio que falla, se levanta y vuelve a fallar en
+bucle es PEOR que uno parado (come CPU y esconde la causa). A los 5 intentos en 60 s
+queda en `failed` y `ape-module-status.php` lo reporta como DOWN.
+
+LA PRUEBA (2026-11-15 05:57 UTC)
+```
+PID master php-fpm antes : 3324267
+kill -9 3324267                      (equivale a un OOM kill)
+ACTIVO de nuevo          : a los 6 s
+PID master nuevo         : 1720929
+NRestarts                : 1
+journal: "Main process exited, code=killed, status=9/KILL" ->
+         "Failed with result 'signal'" ->
+         "Scheduled restart job, restart counter is at 1" ->
+         "Started php8.3-fpm.service"
+
+Flujo durante y despues de la caida:
+  lista  : 206 · 0,0072 s   <-- se siguio sirviendo SIN php: es estatica via nginx
+  modulo : 200 · 0,0308 s
+  nginx  : active (no se toco)
+```
+Ese ultimo punto es el hallazgo util: **php-fpm caido NO es catalogo caido.** La lista es
+un fichero estatico que sirve nginx; los endpoints PHP son los que dan 502 mientras dure.
+Separar esas dos dependencias es lo que permite que el reproductor siga viendo canales
+aunque el plano de control parpadee.
+
+EL RESTO DE MODULOS: 17 TIMERS ACTIVOS
+```
+ara-wake-watchdog   5 s     ape-pulse-canary   20 s    wg-health-fast     3 s
+surfshark-failover 20 s     ape-meta-watchdog  60 s    iptv-tcp-autosync 60 s
+ape-pulse-sync      5 min   ape-quality-sync    5 min  ape-jit-reconcile  5 min
+ape-list-light     10 min   ape-cablear-auto   15 min  ape-cablear-cola   15 min
+cache-hygiene      5 min    unbound-prewarm     5 min  sysstat-collect   10 min
+phpsessionclean     1 dia   apt-daily-upgrade   1 dia
+```
+El JIT ademas tiene `Restart=always` y su mapa con 21.224 canales.
+
+LO QUE NO CUBRE
+  Esto protege contra que un PROCESO muera. No protege contra que el VPS entero caiga
+  (ahi hacen falta backups fuera del host) ni contra que un servicio quede "active" pero
+  degradado: para eso estan los gates, no el Restart.
