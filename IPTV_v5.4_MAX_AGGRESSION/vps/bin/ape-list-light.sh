@@ -96,7 +96,11 @@ light_ok() {
   local ch tag ape
   ch=$(grep -c '^#EXTINF' "$OUT" 2>/dev/null); ch=${ch:-0}
   tag=$(grep -c '^#EXTSHIMOTT:' "$OUT" 2>/dev/null); tag=${tag:-0}
-  ape=$(grep -c '^#EXT-X-APE-' "$OUT" 2>/dev/null); ape=${ape:-0}
+  # [FIX 2026-11-15] Solo las APE DEL CUERPO. La cabecera lleva las 9 plantillas de
+  # perfil (#EXT-X-APE-PROFILE-TEMPLATE) + el indice, que son LEGITIMAS: son justo lo
+  # que devuelve a cada canal sus 1.040 lineas. Contarlas como "metadata sin quitar"
+  # hacia que este script dijera REPARAR y REVIRTIERA la metapack-light a la LIGHT.
+  ape=$(awk '/^#EXTINF/{f=1} f && /^#EXT-X-APE-/' "$OUT" 2>/dev/null | wc -l); ape=${ape:-0}
   [ "$ch" -gt 0 ] || return 1
   [ "$tag" -eq "$ch" ] || return 1
   [ "$ape" -eq 0 ] || return 1
@@ -167,7 +171,7 @@ awk -v STD="$STANDARD_TAGS" '
 # nada. Con `|| echo 0` el valor queda con dos ceros y la comparacion numerica revienta.
 P_CH=$(grep -c '^#EXTINF'       "$PROJ" 2>/dev/null); P_CH=${P_CH:-0}
 P_TAG=$(grep -c '^#EXTSHIMOTT:' "$PROJ" 2>/dev/null); P_TAG=${P_TAG:-0}
-P_APE=$(grep -c '^#EXT-X-APE-'  "$PROJ" 2>/dev/null); P_APE=${P_APE:-0}
+P_APE=$(awk '/^#EXTINF/{f=1} f && /^#EXT-X-APE-/' "$PROJ" 2>/dev/null | wc -l); P_APE=${P_APE:-0}
 P_URL=$(grep -cE '^https?://'   "$PROJ" 2>/dev/null); P_URL=${P_URL:-0}
 
 # ── 5. fail-closed ────────────────────────────────────────────────────────────
