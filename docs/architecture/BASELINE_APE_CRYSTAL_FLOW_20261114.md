@@ -1811,3 +1811,52 @@ MEDIDO: ejecucion forzada a las 14:00:23
 
 ESPEJADO AL REPO
   IPTV_v5.4_MAX_AGGRESSION/vps/systemd/ape-list-light.service
+---
+
+## Hecho 35 · El panel tambien en el servidor local, y tres trampas que lo impedian
+
+El operador senalo http://127.0.0.1:5500/IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html y pidio
+que todo quedara implementado ahi tambien.
+
+TRAMPA 1 · EL CACHE-BUSTER ERA DE HACE UNA SEMANA
+  index-v4.html:5127 cargaba generation-output-panel.js?v=20261107-rea y :5133
+  vps-image-panel.js?v=20261109-svc1. El navegador servia la copia cacheada aunque el fichero
+  estuviera bien: la tarjeta LIGHT no habria aparecido nunca. Actualizado en el repo y en el
+  VPS a v=20261115-light y v=20261115-3bugs.
+
+TRAMPA 2 · LAS DOS LLAMADAS DEL PANEL ERAN RELATIVAS
+  runLight() y validateLight() pedian '/prisma/api/...'. En el VPS funciona porque nginx sirve
+  /prisma/, pero en 127.0.0.1:5500 eso resuelve a http://127.0.0.1:5500/prisma/... y da 404.
+  Corregido a VPS_BASE + '/prisma/api/...' en las dos, usando la base que el panel ya resolvia
+  (window.APE_VPS_BASE || 'https://iptv-ape.duckdns.org'). node -c OK.
+
+TRAMPA 3 · GZIP_STATIC SERVIA UN .js.gz VIEJO
+  Esto es lo que de verdad rompia la verificacion: el fichero en disco era 69.168 B pero nginx
+  servia 68.981 B con last-modified 13:52. nginx.conf:73 tiene gzip_static on, y habia un
+  .js.gz de una version anterior que se servia en lugar del .js nuevo.
+  MEDIDO: disco sha a5ba925b... vs servido sha distinto, y content-length 68981.
+  FIX: regenerar los .gz de los dos ficheros.
+  DESPUES: disco 69.168 = servido 69.168 y el MISMO sha256; imagen 103.329 = 103.329.
+
+COMO QUEDA EL SERVIDOR LOCAL
+  IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html          291.632 B
+    L5127  generation-output-panel.js?v=20261115-light
+    L5133  vps-image-panel.js?v=20261115-3bugs
+  js/ape-v9/generation-output-panel.js                      69.168 B · 8 piezas LIGHT
+  js/ape-v9/vps-image-panel.js                             103.329 B · los 3 parches
+  js/ape-v9/m3u8-typed-arrays-ultimate.js                  949.737 B
+  js/ape-v9/ape-profiles-config.js                         411.497 B
+  NO existe frontend/js/ape-v9/ape-profile-classifier.js: el panel no lo carga desde ahi y el
+  index no lo referencia, asi que su ausencia no rompe el panel. Se dice para que nadie la
+  busque y crea que falta algo.
+
+LO QUE NO ESTA VERIFICADO
+  No he podido cargar http://127.0.0.1:5500 desde aqui: es el navegador del operador. Lo
+  verificado es que los ficheros que ese servidor va a servir son los correctos (tamano, sha256
+  y las 8 piezas presentes) y que nginx ya sirve la misma version en produccion.
+  Falta el reload con Ctrl+Shift+R por parte del operador.
+
+DE PASO, UNA OBSERVACION DE HIGIENE
+  /var/www/html/js/ape-v9/ tiene ~110 copias del panel con nombres .bak_2026*, desde 33.950 B
+  hasta 68.443 B. No se borro ninguna. Con el disco al 89% es candidato a limpieza previa
+  autorizacion.

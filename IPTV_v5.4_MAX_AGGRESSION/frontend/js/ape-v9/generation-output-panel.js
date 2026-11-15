@@ -947,7 +947,8 @@
   async function validateLight() {
     var base = lightBaseUrl();
     if (!base) return { ok: false, reason: 'NO_LIST_NAME' };
-    var url = '/prisma/api/list-light-verify.php?lista=' + encodeURIComponent(base);
+    // [FIX 2026-11-15] ruta absoluta contra el VPS, no relativa: en el servidor local
+    // (127.0.0.1:5500) no existe /prisma/ y devolvia 404 en vez de validar.\n    var url = VPS_BASE + '/prisma/api/list-light-verify.php?lista=' + encodeURIComponent(base);
     var r;
     try {
       r = await fetch(url, { cache: 'no-store' });
@@ -992,7 +993,7 @@
       // 2) proyeccion en el VPS
       var base = lightBaseUrl();
       setLightState('proyectando…', '#e879f9');
-      var pr = await fetch('/prisma/api/list-light-project.php', {
+      var pr = await fetch(VPS_BASE + '/prisma/api/list-light-project.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lista: base })
