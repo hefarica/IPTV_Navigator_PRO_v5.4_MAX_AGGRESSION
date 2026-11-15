@@ -849,3 +849,37 @@ LO QUE NO CUBRE
   Esto protege contra que un PROCESO muera. No protege contra que el VPS entero caiga
   (ahi hacen falta backups fuera del host) ni contra que un servicio quede "active" pero
   degradado: para eso estan los gates, no el Restart.
+---
+
+## Hecho 19 · La lista reproduco: manifest -> segmento -> TS valido
+
+Es la parte del "SI" que se puede demostrar SIN el televisor. Se hizo sobre la LISTA
+NUEVA (la que lleva los 21.224 #EXTSHIMOTT), no sobre la vieja.
+
+MUESTRA DE 60 CANALES AL AZAR
+```
+55 -> HTTP 200
+ 5 -> 000 (timeout del proveedor; no es el flujo)
+52 de los 55 traen #EXTM3U valido
+```
+
+CADENA COMPLETA DE UN CANAL
+```
+manifest : https://iptv-ape.duckdns.org/pulse/1.m3u8?u=...   1.348 B · #EXTM3U · 3 segmentos
+segmento : /seg/aHR0cDovLzEwNDcyNTUw...                      (ABSOLUTO desde la raiz)
+           https://iptv-ape.duckdns.org/seg/aHR0...          200 · 1.601.760 B
+           primer byte 0x47  -> MPEG-TS sincronizado
+```
+No es una lista que "parece" correcta: sirve bytes que un decodificador acepta.
+
+TRAMPA DE MEDICION (me paso y la dejo escrita)
+El segmento del manifest es ABSOLUTO (`/seg/...`). Mi primer test lo unio a la base del
+manifest y pidio `/pulse//seg/...` -> 404, y casi reporto "el segmento no funciona".
+Con la resolucion correcta da 200 · 1,6 MB. **Una URL mal construida en el test se
+parece demasiado a un fallo del sistema.**
+
+LO QUE ESTA PRUEBA NO CUBRE (y por eso el objetivo sigue abierto)
+  - que OTT Navigator ACEPTE la lista: eso es del reproductor
+  - que el shim LEA los tags: necesita que OTT pida la lista
+  - el TIEMPO DE ZAPEO con la red y el televisor reales
+Los tres necesitan el zapeo del operador. No se declaran.
