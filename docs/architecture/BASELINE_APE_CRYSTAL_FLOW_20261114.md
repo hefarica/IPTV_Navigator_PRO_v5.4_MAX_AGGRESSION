@@ -1158,3 +1158,84 @@ RESTO DE LOS 4xx/5xx REVISADOS, y su veredicto
 
 El JIT escucha en 127.0.0.1:3099 (no en 8084, que nunca existió) y nginx en 8088.
 Lo dice el propio CLAUDE.md y ahora está verificado en vivo.
+---
+
+## Hecho 24 · El badge de upscaling era código muerto: faltaba Usage Access en el device
+
+LO QUE PEDIA EL OPERADOR
+"en el overlay, coloques un logo de upscaling para saber que está funcionando".
+El badge EXISTE y está bien escrito desde antes:
+```
+BadgeOverlay.kt L18  Badge de upscaling DINAMICO en el overlay — montado SIN Activity
+          L38    <entrada> -> <salida>  ·  REAL (nativa) | SIMULADA (upscale xN) | REDUCIDA | N/D
+          L45    SI NO SE SABE, SE DICE "N/D" — NUNCA SE INVENTA
+          L119   w.setTitle("UpscaleBadge")
+```
+
+LA CADENA, Y DONDE ESTABA CORTADA
+```
+GET_USAGE_STATS = default  (medido en el ONN 4K)
+  -> foregroundPackage() devuelve ""
+  -> CaptureWatchdogService: ARA_WATCHDOG poll pkg=''    (medido)
+  -> ottReciente nunca true
+  -> BadgeOverlay.show() nunca se llama
+  -> dumpsys window | grep -c UpscaleBadge = 0 · log ARA-BadgeOverlay VACIO
+```
+El permiso SI estaba declarado en el manifest (L7 PACKAGE_USAGE_STATS, L20
+SYSTEM_ALERT_WINDOW). SYSTEM_ALERT_WINDOW llevaba 3h58m concedido. GET_USAGE_STATS
+estaba en `default`: NUNCA se habia concedido. Por eso el poll devolvia cadena vacia.
+
+EL FIX
+```
+adb shell appops set com.ape.crystalagent GET_USAGE_STATS allow
+```
+Es el permiso que el propio CaptureWatchdogService.kt:24 documenta:
+"Usage Access is required for foreground detection."
+
+VERIFICADO EN EL DEVICE
+```
+ANTES  ARA_WATCHDOG: poll pkg=''
+AHORA  ARA_WATCHDOG: poll pkg='com.ape.crystalagent'   (cada 1 s: :02.948 :03.953 :04.957)
+
+servicios vivos (4):
+  dev.venice.ottshim.ProxyService     isForeground=true
+  .CaptureWatchdogService             isForeground=true
+  dev.venice.ottshim.SessionTap
+  .AgentService
+GET_USAGE_STATS    : allow
+SYSTEM_ALERT_WINDOW: allow
+```
+
+TROPIEZO PROPIO, DOCUMENTADO
+Para que el agente releyera el permiso se uso `am force-stop`, que deja el paquete en
+estado *stopped*. En ese estado Android NO relanza servicios sticky: el proceso (pid 27563)
+quedaba vivo pero SIN servicios, y el poll no logueaba nada. Se detecto porque se fue a
+buscar el `Log.i(TAG, "watchdog start")` (L25/L36) y no estaba. Se recupero con
+`am start -n com.ape.crystalagent/.MainActivity`.
+
+REGLA PARA LA PROXIMA
+`am force-stop` NO es la forma de hacer que un agente relea un permiso. Es la forma de
+dejarlo medio muerto sin que nadie lo note. Si hay que releer: `am start` de la Activity.
+
+LO QUE FALTA, y es del operador
+La cadena esta completa hasta el poll. Falta que OTT este en primer plano para que
+`poll pkg=` diga el paquete de OTT y el badge se monte. Tres lineas a verificar cuando
+se zapee:
+```
+ARA_WATCHDOG: poll pkg='<paquete de OTT>'
+ARA-BadgeOverlay: badge de upscaling sobre OTT canal=... entrada=...
+dumpsys window windows | grep -c UpscaleBadge  ->  > 0
+```
+
+Y EL SoC, que limita el resto
+```
+pq_sharpness_enable   -> no existe en ningun ns de este device — skip
+pq_dnr_enable         -> no existe en ningun ns de este device — skip
+pq_ai_fbc_enable      -> no existe en ningun ns de este device — skip
+com.amazon.tv.* (6)   -> no existe en ningun ns de este device — skip
+ApeSettingsApplier    -> device_settings aplicados=12 rechazados=12
+```
+El "VPP" que pide el operador no tiene palancas en este hardware. No es un fallo del
+shim: es el SoC. Y ApeUltraEnhance declara `fps=30->60` como HINT del VPS, que no esta
+medido: si el badge muestra SIMULADA xN es coherente; si muestra REAL (nativa), el hint
+no se materializo y el badge dira la verdad. No se declara aplicado sin recibo.
