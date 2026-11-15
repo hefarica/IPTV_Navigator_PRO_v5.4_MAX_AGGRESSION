@@ -1713,3 +1713,66 @@ LOS TRES BUGS DEL MODULO, SIGUEN ABIERTOS
   3. HTML en vez de JSON: "Unexpected token '<'".
   Los tres viven en server.js. No se tocaron: son el motor de imagen y el operador no ha
   autorizado editarlo. Se reportan con su evidencia para que los decida.
+---
+
+## Hecho 33 · Los tres bugs del modulo de imagen, arreglados y verificados
+
+El operador autorizo: "ARREGLALOS". Se corrigieron los tres, con backup previo
+(server.js.bak-3bugs-20261115T135756Z y vps-image-panel.js.bak-3bugs-...).
+
+BUG 1 · UN CAMPO VACIO SE TRATABA COMO INVALIDO
+  server.js:4199 y siguientes
+    if (p.recipe !== undefined) {
+      c.recipe = pick(p.recipe, IMAGE_LIMITS.recipes, c.recipe);
+      if (c.recipe !== String(p.recipe)) errors.push('recipe invalida: ' + p.recipe);
+    }
+  Con p.recipe = '': pick('') devuelve el DEFAULT, y c.recipe !== '' es true, asi que se
+  reportaba "recipe invalida: " con el valor EN BLANCO. El panel manda '' cuando el operador
+  no ha tocado el campo todavia. Mismo patron en recipe, codec, preset, fps y audio.
+  FIX: no entrar en la validacion si el valor es undefined, null o cadena vacia; y el mensaje
+  de error usa JSON.stringify para que un valor vacio se vea como "" y no desaparezca.
+  MEDIDO: POST /image/config con los 5 campos vacios -> ok:true, errors:[] (antes: 1 error).
+
+BUG 2 · objective() NUNCA DEVOLVIA EL FPS DE SALIDA
+  server.js:3227
+    output: { width: outW, height: outH, pixels: outPx },      <- sin fps
+  El panel lee r.fields.outFps.value para rellenar el campo SALIDA fps; al no existir, el
+  input quedaba vacio y al declarar llegaba '' -> disparaba el BUG 1. Era una cadena.
+  FIX (tres puntos):
+    const outFps = Number(o.outFps) > 0 ? Number(o.outFps) : inFps;   // no se inventan fotogramas
+    output: { width: outW, height: outH, fps: outFps, pixels: outPx },
+    fields.outFps: { value: outFps, reason: 'se conserva el fps de entrada' | 'fijado...' }
+  MEDIDO: ?inFps=60 -> output.fps 60 y fields.outFps 60.
+
+BUG 2b · EL GET NO LEIA outFps
+  El POST lo pasaba a objective() pero el GET solo leia inW/inH/inFps/outW/outH, asi que
+  ?outFps=25 se ignoraba en silencio (devolvia el de entrada).
+  FIX: outFps: q.get('outFps') en el bloque GET.
+  MEDIDO: ?inFps=60&outFps=25 -> in 60, out 25 (antes: out 60).
+
+BUG 3 · JSON.parse SIN COMPROBAR EL CONTENT-TYPE
+  vps-image-panel.js:47
+    return fetch(...).then(r => r.json().then(...))
+  Cuando el endpoint devolvia HTML, r.json() lanzaba
+  "Unexpected token '<', "<html> <h"... is not valid JSON" (visto en el log del panel).
+  FIX: r.text() y decidir por Content-Type o por la forma del texto; si no es JSON, se lanza
+  un error legible con el HTTP, el content-type y 120 caracteres de muestra.
+  MEDIDO: GET /image/rtua-inexistente -> "not found" (texto plano) y el panel lo trata como
+  error normal, sin romper.
+
+VERIFICACION
+  node -c server.js            OK
+  node -c vps-image-panel.js   OK
+  ape-jit reiniciado: active · health 200
+  gate: PASS 11/11
+
+ESPEJADO AL REPO
+  IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js            470.702 B (con los 5 parches)
+  IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/vps-image-panel.js  103.329 B
+  Comprobado en el repo: 5 guards de vacio, 2 declaraciones de outFps, 1 output con fps,
+  1 GET que lee outFps, 2 comprobaciones de content-type.
+
+PENDIENTE, Y SE DICE
+  tools/lab/ape-jit/server.js sigue en 468.210 B, SIN los parches: es la copia de laboratorio
+  y no se toco. Si esa copia es la que se redespliega algun dia, los tres bugs vuelven.
+  Decidir cual es la fuente es del operador.

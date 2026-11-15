@@ -47,7 +47,21 @@
   function api(path, opts) {
     return fetch(S.base + path, Object.assign({ cache: 'no-store' }, opts || {}))
       .then(function (r) {
-        return r.json().then(function (j) {
+        // [FIX 2026-11-15] JSON.parse sin comprobar el Content-Type. Cuando el endpoint
+        // devolvia una pagina de error HTML, r.json() lanzaba
+        // 'Unexpected token '<', "<html> <h"... is not valid JSON' (medido en el log del
+        // panel). Ahora se lee el texto y se decide por el Content-Type y por la forma.
+        return r.text().then(function (txt) {
+          var ct = String(r.headers.get('content-type') || '');
+          var j = null;
+          if (ct.indexOf('json') !== -1 || /^[\s]*[\{\[]/.test(txt)) {
+            try { j = JSON.parse(txt); } catch (e) { j = null; }
+          }
+          if (j === null) {
+            var muestra = String(txt || '').replace(/\s+/g, ' ').slice(0, 120);
+            throw new Error('respuesta no JSON (HTTP ' + r.status +
+              (ct ? ', ' + ct : ', sin content-type') + '): ' + muestra);
+          }
           if (!r.ok || j.ok === false) {
             throw new Error(j.error || (j.errors && j.errors.join('; ')) || ('HTTP ' + r.status));
           }
