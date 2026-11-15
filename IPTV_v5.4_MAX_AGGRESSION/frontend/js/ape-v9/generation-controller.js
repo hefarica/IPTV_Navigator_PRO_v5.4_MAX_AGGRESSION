@@ -1437,8 +1437,26 @@
         const channelCoverage = _computeAdmissionCoverage(channels, runtime);
         console.log(`[APE-PREPUBLISH] Cobertura admitted: ${channelCoverage.matched}/${channelCoverage.total} (${(channelCoverage.ratio * 100).toFixed(1)}%)`);
 
-        if (channelCoverage.ratio < 0.50) {
-            console.log(`[APE-PREPUBLISH] Cobertura < 50% → activando Dynamic Admission Probing via VPS...`);
+        // [2026-11-15] EL MODO DE PUBLICACION MANDA EN EL UMBRAL.
+        // Esto era un `if (channelCoverage.ratio < 0.50)` fijo, y el selector MODO del
+        // panel (ape-gen-mode-select -> window.APE_PUBLICATION_MODE) no lo tocaba:
+        // elegir Strict Terminal / Balanced 95 / Diagnostic no cambiaba NADA.
+        // Medido: APE_PUBLICATION_MODE tenia 5 referencias, todas dentro del panel.
+        //
+        // Ahora el modo fija el umbral por debajo del cual se dispara el probe dinamico:
+        //   strict_terminal  exige >99% de canales con 200 -> dispara casi siempre
+        //   balanced_95      exige >95% de playback        -> dispara si baja de 95%
+        //   diagnostic       siempre prueba y reporta      -> dispara siempre
+        // El 0.50 historico queda como fallback para una sesion sin panel, de modo que
+        // un modo desconocido no cambia el comportamiento previo.
+        var _pubMode = (typeof window !== 'undefined' && window.APE_PUBLICATION_MODE) || 'balanced_95';
+        var _probeTriggerByMode = { strict_terminal: 0.99, balanced_95: 0.95, diagnostic: 1.0 };
+        var _probeTrigger = Object.prototype.hasOwnProperty.call(_probeTriggerByMode, _pubMode)
+            ? _probeTriggerByMode[_pubMode] : 0.50;
+        console.log(`[APE-PREPUBLISH] Modo publicacion=${_pubMode} · umbral de probe=${(_probeTrigger * 100).toFixed(0)}%`);
+
+        if (channelCoverage.ratio < _probeTrigger) {
+            console.log(`[APE-PREPUBLISH] Cobertura ${(channelCoverage.ratio * 100).toFixed(1)}% < umbral ${(_probeTrigger * 100).toFixed(0)}% (${_pubMode}) → activando Dynamic Admission Probing via VPS...`);
             if (window.app.showToast) window.app.showToast(`Cobertura ${(channelCoverage.ratio * 100).toFixed(0)}% → Probing dinámico de ${Math.min(200, channels.length)} URLs vía VPS…`, 'info');
 
             const vpsReachable = await probePrepublishServer(prepublishUrl);

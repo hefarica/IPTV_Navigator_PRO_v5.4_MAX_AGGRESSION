@@ -51,6 +51,61 @@
     return { jit: !!(oj && oj.checked), hdrMode: hdr };
   }
 
+  // [2026-11-15] OPCIONES COMUNES DE GENERACION, para que las selecciones valgan
+  // en LAS CUATRO salidas y no solo en DIRECTO.
+  //
+  // Medido antes de este cambio: runDirect() pasaba {jit, hdrMode} a
+  // prepublishAndGenerateDirect, y runVps()/runBoth()/runLight() llamaban a
+  // prepublishAndGenerateDual con SOLO el delta. Resultado: marcar JIT o elegir PQ
+  // no tenia ningun efecto sobre la lista VPS, AMBAS ni LIGHT — la casilla pintaba
+  // y el generador no se enteraba.
+  //
+  // Y si se entera: generation-controller.js:1359-1360 hace
+  //   window.APE_USE_JIT = options.jit === true;
+  //   window.APE_HDR_MODE = options.hdrMode || 'auto';
+  // y el generador consume APE_USE_JIT en m3u8-typed-arrays-ultimate.js:8685 y
+  // APE_HDR_MODE -> merged.hdr_force en generation-controller.js:1532-1533.
+  function genOpts(d) {
+    var out = currentOutOpts();
+    var o = { buffer_delta_pct: d, buffer_delta_array: getDeltaArray(d) };
+    // En JSON de metadatos no se aplica routing ni HDR: es el catalogo tal cual.
+    if (!isJsonMetadataOutput()) {
+      o.jit = out.jit === true;
+      o.hdrMode = out.hdrMode || 'auto';
+    }
+    return o;
+  }
+
+  // [2026-11-15] Etiqueta honesta de lo que se esta aplicando, para que la barra de
+  // estado diga la verdad de lo que va a salir en la lista y no solo el delta.
+  // Si no hay JIT ni HDR forzado no añade ruido: devuelve cadena vacia.
+  function _outOptsLabel() {
+    try {
+      if (isJsonMetadataOutput()) return ' · JSON metadatos (rutas de origen)';
+      var o = currentOutOpts();
+      var parts = [];
+      if (o.jit) parts.push('JIT');
+      if (o.hdrMode && o.hdrMode !== 'auto') parts.push('HDR ' + String(o.hdrMode).toUpperCase());
+      return parts.length ? ' · ' + parts.join(' · ') : '';
+    } catch (_) { return ''; }
+  }
+
+  // [2026-11-15] HIBRIDA = HLS descargable + DASH servido por JIT. Antes la opcion
+  // solo mostraba un toast anunciandolo y ningun run* descargaba la parte DASH
+  // (todos comprobaban selectedFormat()==='mpd', que con 'hybrid' es falso):
+  // se prometia y no se entregaba. Ahora se entrega, y si la parte DASH falla se
+  // dice que la hibrida queda PARCIAL en vez de dar la opcion por cumplida.
+  async function deliverHybridDash() {
+    if (selectedFormat() !== 'hybrid' || isJsonMetadataOutput()) return;
+    try {
+      await downloadActiveJitMpd();
+      toast('HÍBRIDA completa: lista HLS generada + M3U DASH del canal JIT descargada', 'success');
+    } catch (e) {
+      status('HÍBRIDA PARCIAL · HLS generada, DASH no: ' + e.message, '#f59e0b');
+      toast('HÍBRIDA parcial: HLS sí, DASH no (' + e.message + ')', 'warning');
+    }
+  }
+
   function currentManifestMetadata() {
     var dictator = document.getElementById('dictatorMode');
     var tier = document.querySelector('input[name="dictatorTier"]:checked');
@@ -126,6 +181,13 @@
       mejorEscenario: mejorEscenario,
       aplicarEscenario: aplicarEscenario,
       getDeltaPct: function () { return DELTA_PCT; },
+      // [2026-11-15] Expuestos para probar que JIT y HDR llegan a LAS CUATRO salidas
+      // y que la HIBRIDA entrega tambien la parte DASH. Sin esto la unica forma de
+      // verificar la promesa seria a ojo en el navegador.
+      genOpts: genOpts,
+      outOptsLabel: _outOptsLabel,
+      deliverHybridDash: deliverHybridDash,
+      runLight: runLight,
       // Expuesto para fijar el delta por funcion desde una prueba. Escribir en localStorage no
       // cambia la variable en memoria, asi que un test no puede provocar un estado con ese truco.
       applyDelta: applyDelta
@@ -319,8 +381,11 @@
       return true;
     }
     if (f === 'hybrid') {
-      toast('Se generará la lista HLS; el manifiesto DASH se sirve desde JIT.', 'info');
-      status('HÍBRIDA: HLS descargable + DASH servido por JIT', '#a855f7');
+      // [2026-11-15] El texto dice EXACTAMENTE lo que pasa: se entregan dos cosas.
+      // Antes ponia "el manifiesto DASH se sirve desde JIT" y ningun run* descargaba
+      // la parte DASH, asi que la opcion se anunciaba y no se cumplia.
+      toast('HÍBRIDA: se descargarán DOS archivos — la lista HLS y la M3U que enlaza el MPD del canal JIT.', 'info');
+      status('HÍBRIDA: HLS + DASH en dos entregables', '#a855f7');
     }
     return true;
   }
@@ -337,7 +402,9 @@
       if (list[i] && list[i].active === true) { active = list[i]; break; }
     }
     if (!active) {
-      throw new Error('no hay canal JIT activo; abre primero su salida HLS/JIT');
+      // Honesto: el JIT sirve un canal a la vez y ahora mismo ninguno tiene pipeline.
+      // No se inventa un id ni se cae a un enlace fijo que devolveria 503.
+      throw new Error('no hay canal JIT activo (0 de ' + list.length + '); abre primero su salida HLS/JIT');
     }
     var dash = String(active.dash || (base + '/jit/live/' + encodeURIComponent(active.id) + '/manifest.mpd'));
     if (/[\u0000-\u0020\u007f]/.test(dash)) throw new Error('URL DASH inválida');
@@ -347,7 +414,15 @@
     // ordering, duplicate parameters, percent escapes and authorization.
     if (!/^https?:\/\//i.test(dash)) dash = absoluteDash.href;
     var r = await fetch(dash, { cache: 'no-store' });
-    if (!r.ok) throw new Error('MPD HTTP ' + r.status);
+    if (!r.ok) {
+      // [2026-11-15] El motivo real del fallo, no solo el codigo. Medido en produccion:
+      // el JIT responde 503 con "PROVIDER_SLOT_BUSY: use provider-direct; source
+      // unchanged" cuando el proveedor ya tiene su unica conexion ocupada. Decir solo
+      // "MPD HTTP 503" oculta la causa y hace pensar que el panel esta roto.
+      var why = '';
+      try { why = (await r.text()).slice(0, 160).trim(); } catch (_) { }
+      throw new Error('MPD HTTP ' + r.status + (why ? ' · ' + why : ''));
+    }
     var text = await r.text();
     if (!/<MPD\b/.test(text)) throw new Error('el JIT no devolvió un MPD válido');
     var snapshot = diagnosticSnapshot === true;
@@ -838,10 +913,11 @@
       return;
     }
     try {
-      status('Generando VPS con delta ' + d + '%…', '#38bdf8');
+      status('Generando VPS con delta ' + d + '%' + _outOptsLabel() + '…', '#38bdf8');
       if (!isJsonMetadataOutput()) sendDeltaToVps(d);
-      var result = await window.APEGenerationController.prepublishAndGenerateDual({ buffer_delta_pct: d, buffer_delta_array: getDeltaArray(d) });
+      var result = await window.APEGenerationController.prepublishAndGenerateDual(genOpts(d));
       generationResultStatus(result, 'VPS completado · delta ' + d + '% (array por perfil)');
+      await deliverHybridDash();
     } catch (e) { status('VPS falló: ' + e.message, '#ef4444'); toast('VPS falló: ' + e.message, 'error'); }
   }
 
@@ -868,7 +944,7 @@
       hdr: window.APE_HDR_MODE
     };
     try {
-      status('Generando DIRECTO con delta ' + d + '%…', '#38bdf8');
+      status('Generando DIRECTO con delta ' + d + '%' + _outOptsLabel() + '…', '#38bdf8');
       if (!isJsonMetadataOutput()) sendDeltaToVps(d);
       var controller = window.APEGenerationController;
       var generateDirect = controller.prepublishAndGenerateDirect || controller.prepublishAndGenerate;
@@ -880,6 +956,8 @@
         manifestMetadata: currentManifestMetadata()
       });
       generationResultStatus(result, 'DIRECTO completado · delta ' + d + '% (array por perfil)');
+      // [2026-11-15] La parte DASH de la HIBRIDA tambien se entrega en DIRECTO.
+      await deliverHybridDash();
     } catch (e) {
       status('DIRECTO falló: ' + e.message, '#ef4444');
       toast('DIRECTO falló: ' + e.message, 'error');
@@ -900,10 +978,13 @@
       return;
     }
     try {
-      status('Generando AMBAS: DIRECTA + CDN · delta ' + d + '%…', '#38bdf8');
+      status('Generando AMBAS: DIRECTA + CDN · delta ' + d + '%' + _outOptsLabel() + '…', '#38bdf8');
       if (!isJsonMetadataOutput()) sendDeltaToVps(d);
-      var result = await window.APEGenerationController.prepublishAndGenerateDual({ dual: 'both', buffer_delta_pct: d, buffer_delta_array: getDeltaArray(d) });
+      var bothOpts = genOpts(d);
+      bothOpts.dual = 'both';
+      var result = await window.APEGenerationController.prepublishAndGenerateDual(bothOpts);
       generationResultStatus(result, 'AMBAS completado: DIRECTA + CDN · delta ' + d + '%');
+      await deliverHybridDash();
     } catch (e) { status('AMBAS falló: ' + e.message, '#ef4444'); toast('AMBAS falló: ' + e.message, 'error'); }
   }
 
@@ -984,10 +1065,10 @@
       if (!isJsonMetadataOutput()) sendDeltaToVps(d);
 
       // 1) base CDN (la materia prima real de la proyeccion)
-      var result = await window.APEGenerationController.prepublishAndGenerateDual({
-        buffer_delta_pct: d,
-        buffer_delta_array: getDeltaArray(d)
-      });
+      // [2026-11-15] genOpts(d) en vez de solo el delta: la base LIGHT tambien debe
+      // honrar JIT y HDR, o la proyeccion por perfil saldria de una base distinta
+      // a la que el operador pidio.
+      var result = await window.APEGenerationController.prepublishAndGenerateDual(genOpts(d));
       generationResultStatus(result, 'LIGHT: base CDN lista · proyectando…');
 
       // 2) PUBLICACION ATOMICA EN EL VPS
@@ -1162,8 +1243,14 @@
       '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;padding:7px 9px;border-radius:8px;background:rgba(2,6,23,.24);border:1px solid rgba(148,163,184,.18);font-size:.74rem;color:#94a3b8;">' +
       '<strong style="color:#67e8f9;">JIT:</strong>' +
       '<a href="https://iptv-ape.duckdns.org/jit/playlist.m3u8" target="_blank" rel="noopener" style="color:#7dd3fc;">lista HLS</a>' +
-      '<a href="https://iptv-ape.duckdns.org/jit/live/1174213/manifest.mpd" target="_blank" rel="noopener" style="color:#38bdf8;">DASH 4K</a>' +
-      '<a href="https://iptv-ape.duckdns.org/jit/live/3/manifest.mpd" target="_blank" rel="noopener" style="color:#38bdf8;">DASH 1080</a>' +
+      // [2026-11-15] Aqui habia DOS enlaces fijos a /jit/live/1174213/manifest.mpd y
+      // /jit/live/3/manifest.mpd. Medido: los dos devuelven 503
+      // "PROVIDER_SLOT_BUSY: use provider-direct; source unchanged", porque el JIT
+      // sirve UN canal a la vez (server.js:4 "one active channel at a time") y solo el
+      // canal con pipeline vivo responde (server.js:5615). Un enlace fijo a un id
+      // concreto no puede cumplir lo que promete. En su lugar va un control que
+      // resuelve el canal ACTIVO en el momento del clic, y si no hay ninguno lo dice.
+      '<button type="button" id="ape-jit-dash-live" style="cursor:pointer;background:#1e293b;color:#7dd3fc;border:1px solid #334155;border-radius:5px;padding:2px 7px;font-size:.74rem;">DASH del canal activo</button>' +
       '<a href="https://iptv-ape.duckdns.org/jit/catalog.json" target="_blank" rel="noopener" style="color:#fbbf24;">catálogo</a>' +
       '<a href="https://iptv-ape.duckdns.org/jit/capabilities.json" target="_blank" rel="noopener" style="color:#fbbf24;">capacidades</a>' +
       '</div>' +
@@ -1197,6 +1284,19 @@
     if (snapshotButton) snapshotButton.addEventListener('click', async function () {
       try { await downloadActiveJitMpd(true); }
       catch (e) { status('MPD diagnóstico: ' + e.message, '#ef4444'); toast('MPD diagnóstico: ' + e.message, 'error'); }
+    });
+
+    // [2026-11-15] Boton que sustituye a los dos enlaces DASH fijos. Resuelve el canal
+    // ACTIVO en el momento del clic contra /jit/catalog.json: si hay uno, descarga la
+    // M3U que enlaza su MPD; si no hay ninguno, lo dice con el numero exacto.
+    var jitDashBtn = document.getElementById('ape-jit-dash-live');
+    if (jitDashBtn) jitDashBtn.addEventListener('click', async function () {
+      try {
+        await downloadActiveJitMpd();
+      } catch (e) {
+        status('DASH JIT: ' + e.message, '#f59e0b');
+        toast('DASH JIT: ' + e.message, 'warning');
+      }
     });
 
     panel.querySelectorAll('[data-ape-run]').forEach(function (b) {
@@ -1298,18 +1398,30 @@
     paintOutputs();
     var p = document.getElementById('publicationMode');
     var ps = document.getElementById('ape-gen-mode-select');
-    function paintMode() {
-      var v = p ? p.value : (window.APE_PUBLICATION_MODE || 'balanced_95');
-      if (ps) ps.value = v;
+    // [2026-11-15] Hay DOS selects del mismo modo: #publicationMode vive en
+    // index-v4.html:2776 y #ape-gen-mode-select en este panel. La sincronizacion solo
+    // iba en una direccion (panel -> global), asi que cambiar el select de fuera
+    // dejaba al panel mostrando un modo y al generador aplicando otro.
+    // Ahora la fuente de verdad es window.APE_PUBLICATION_MODE y los dos selects la
+    // reflejan; ademas se fija al arrancar para que generation-controller.js:1452 lo
+    // lea desde la primera generacion, no solo despues de tocar el selector.
+    function syncMode(v) {
+      var val = (v === 'strict_terminal' || v === 'diagnostic') ? v : 'balanced_95';
+      window.APE_PUBLICATION_MODE = val;
+      if (ps && ps.value !== val) ps.value = val;
+      if (p && p.value !== val) p.value = val;
       var m = $('#ape-gen-mode'); if (m) m.textContent = modeText();
+      return val;
     }
-    if (p) p.addEventListener('change', paintMode);
-    if (ps) ps.addEventListener('change', function () {
-      window.APE_PUBLICATION_MODE = ps.value;
-      if (p) { p.value = ps.value; p.dispatchEvent(new Event('change', { bubbles: true })); }
-      paintMode();
-    });
+    function paintMode() {
+      var v = p ? p.value : (ps ? ps.value : (window.APE_PUBLICATION_MODE || 'balanced_95'));
+      syncMode(v);
+    }
+    if (p) p.addEventListener('change', function () { syncMode(p.value); });
+    if (ps) ps.addEventListener('change', function () { syncMode(ps.value); });
     paintMode();
+    // Se publica en la superficie para que una prueba pueda verificarlo sin navegador.
+    if (window.APE_OUTPUT_TEST_HOOKS) window.APE_OUTPUT_TEST_HOOKS.syncMode = syncMode;
     var di = document.getElementById('ape-delta-input');
     if (di) {
       di.value = String(DELTA_PCT);
