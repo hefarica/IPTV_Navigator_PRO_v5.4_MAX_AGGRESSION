@@ -713,3 +713,70 @@ El shim aplicando un tag real. La lista lo tiene y el parser esta instalado (v67
 `ApeExtShimOtt: sink instalado`), pero hace falta reproducir y zapear. Medido el
 2026-11-15 04:5x: el device estaba en Paramount+, 0 peticiones externas a la lista nueva.
 **No se declara verde.**
+---
+
+## Hecho 17 · Analisis 4xx/5xx: 324 de 398 404 cerrados
+
+El operador lo pidio literal: *«agrega analisis de todos los errores que salgan y
+resuelvelos 4xx y 5xx»*. Esto es lo medido y lo cerrado.
+
+EL UNIVERSO MEDIDO (`/var/log/nginx/playlist_access.log`, 15.795 peticiones)
+```
+200 = 14.273   206 = 423   404 = 398   302 = 358   407 = 309
+503 =   199   403 =  18   400 =  17   499 =   4   502 =   2
+```
+OJO CON LA RUTA: el log de `/pulse/` y `/lists/` es
+`/var/log/nginx/playlist_access.log`, **NO** `/var/www/lists/playlist_access.log`
+(y tampoco `access.log`). Con la ruta mal, el analisis sale vacio y parece que no hay
+errores. Ya paso dos veces.
+
+404 CERRADOS: 324 de 398 (81 %)
+| Ruta | Peticiones | Quien | Causa | Fix |
+|---|---|---|---|---|
+| `/prisma/api/telemetry-full` | 141 | widget del frontend | pedia SIN `.php` cada 30 s | constante -> `.php` |
+| `/prisma/api/sentinel-status` | 141 | widget del frontend | idem | constante -> `.php` |
+| `/prisma/api/ape-module-status.php` | 42 | el propio VPS | el fichero no existia | endpoint creado |
+Los tres endpoints devuelven 200 ahora: 2.384 B / 217 B / 1.527 B.
+Se arreglo EL CLIENTE, no nginx. Tocar la config para aceptar una URL mal formada habria
+sido tapar el sintoma, y ademas `conf.d/` esta en contexto `http`: un `location` ahi hace
+fallar `nginx -t` (probado, el snippet se revierte solo y nginx queda intacto).
+
+LOS OTROS 74 404 (no son del flujo)
+```
+/lists/APE_LISTA_1793589060441.m3u8        48   lista vieja que el cliente aun pide
+/lists/APE_LISTA_1793531111695_CDN.m3u8    15   idem
+/favicon.ico                                2
+/cgi-bin/luci/;stok=/locale                 2   ESCANEO de bot a un router
+/wp-login.php                               1   ESCANEO de bot a WordPress
+```
+Los dos ultimos son ruido de internet, no del sistema.
+
+503 (199): EL JIT, NO UN FALLO DEL FLUJO
+```
+/jit/live/3/master.m3u8            30      /jit/live/1174213/master.m3u8      30
+/jit/live/3/sdr/master.m3u8        30      /jit/live/1174213/sdr/master.m3u8  30
+/jit/live/3/manifest.mpd           15      /jit/live/1174213/manifest.mpd     15
+UA: "node"
+```
+El JIT escucha en **127.0.0.1:3099** (medido) y nginx lo publica en **8088**. Responde 503
+cuando el canal pedido no esta en su mapa (`/opt/ape-jit/current/channels.json`). Es el
+contrato del motor bajo demanda, no un error de configuracion.
+
+407 (309): DEL PROVEEDOR, SE ESPERAN
+Todas a `/pulse/1312008.m3u8`. Ese canal esta bloqueado por el proveedor. Contarlo como
+fallo del flujo fue uno de los DOS falsos positivos del vigilante (Hecho 7).
+
+400 (17): 5 `/jit/image/config` (parametros), 4 `/prisma/api/conviva-event.php`,
+2 `/` — residuales, sin patron.
+
+ERROR.LOG: 738 [error], de los cuales 641 NO SON ERRORES
+Son `PHP message: ara-sync ok ...` — un INFO que PHP escribe por stderr y nginx marca
+como [error]. Los 59 reales son `fastcgi ... buffered to a temporary file` (respuesta
+grande, nginx la pasa a disco: normal) y 34 `client intended to send too large body`
+(peticiones sobredimensionadas de un cliente, no del sistema).
+**Un error.log que se lee por el nivel y no por el mensaje da 641 falsos positivos.**
+
+HERRAMIENTA
+`ape-module-status.php` devuelve el estado por modulo leyendo `systemctl`, `/proc/net/tcp`
+y los ficheros de estado. `apk_agent` y `shim` se declaran **UNKNOWN con la razon**: corren
+en el device y el VPS no puede ver su proceso. Un `unknown` explicado no es un `ok`.
