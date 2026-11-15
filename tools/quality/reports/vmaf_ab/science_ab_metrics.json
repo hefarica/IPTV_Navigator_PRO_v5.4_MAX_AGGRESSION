@@ -1,0 +1,15 @@
+{
+  "poor_variant_vs_ref": {
+    "vmaf": 24.1087,
+    "psnr_y": 31.9699,
+    "ssim": 0.9742,
+    "frames": 60
+  },
+  "good_variant_vs_ref": {
+    "vmaf": 97.5923,
+    "psnr_y": 50.2764,
+    "ssim": 0.9998,
+    "frames": 60
+  },
+  "vmaf_delta_good_minus_poor": 73.4836
+}

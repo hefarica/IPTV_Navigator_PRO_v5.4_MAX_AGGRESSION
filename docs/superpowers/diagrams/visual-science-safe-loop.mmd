@@ -1,0 +1,31 @@
+flowchart TD
+  A[IPTV Player] --> B[URL verbatim - SHIELDED Ley 5]
+  B --> C[DNS hijack / VPS entry]
+  C --> D[Nginx / OpenResty]
+  D --> E[combined_body_filter_visual_science_safe.lua<br/>body_filter_by_lua, passthrough on error]
+  E --> F{Profile resolver}
+  F --> F1[1 X-APE-Profile header]
+  F --> F2[2 ?profile= arg]
+  F --> F3[3 stream_id map - REUSES live ape_profile_resolver.lua]
+  F --> F4[4 /dev/shm device_state]
+  F --> F5[5 default P2]
+  E --> G[Science score: resolution-dominant + codec + bpppf + fps]
+  G --> H[Reorder; preserve ALL variants; AVC fallback kept]
+  H --> I[Mutated HLS master - no fake metadata, URLs verbatim]
+  I --> A
+  A --> Pg{Phase G rollback?}
+  Pg -->|VST>8000ms / black| Sdr[PQ -> SDR per channel]
+  D --> J[bandwidth_reactor_science_safe.lua<br/>log_by_lua]
+  J --> K[EWMA throughput]
+  K --> L[De-escalate on drop: profile/bitrate/prefetch DOWN]
+  L --> M[URL-2 / ARA deltas - on-device VPP only]
+  M --> N[device settings / QoE]
+  N --> J
+  subgraph SCIENCE GATE - offline, no production
+    Q[hls_science_lint.py - 15+ checks, exit1 on HIGH]
+    R[benchmark_vmaf_ab.sh - VMAF/SSIM/PSNR]
+    S[sandbox_harness.mjs + reactor_harness.mjs]
+  end
+  I -.audited by.-> Q
+  A -.A/B captures.-> R
+  E -.logic proven by.-> S

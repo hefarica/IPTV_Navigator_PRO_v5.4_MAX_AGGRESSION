@@ -1,0 +1,14 @@
+# Rust build artifacts — NO commitear
+rust/target/
+**/*.rs.bk
+Cargo.lock
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# Logs / temp
+*.log
+*.tmp

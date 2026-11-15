@@ -1,0 +1,65 @@
+{
+  "manifest": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION-master\\tools\\quality\\testdata\\master_sample.m3u8",
+  "variant_count": 3,
+  "high": 0,
+  "warn": 0,
+  "verdict": "PASS",
+  "note": "CHANNEL_REMOVAL check requires a before/after diff and is not evaluable from a single manifest.",
+  "warnings": [],
+  "variants": [
+    {
+      "line": 3,
+      "url": "720p_avc.m3u8",
+      "attrs": {
+        "BANDWIDTH": "3000000",
+        "AVERAGE-BANDWIDTH": "2800000",
+        "RESOLUTION": "1280x720",
+        "FRAME-RATE": "30",
+        "CODECS": "avc1.4d401f,mp4a.40.2"
+      },
+      "raw": "#EXT-X-STREAM-INF:BANDWIDTH=3000000,AVERAGE-BANDWIDTH=2800000,RESOLUTION=1280x720,FRAME-RATE=30,CODECS=\"avc1.4d401f,mp4a.40.2\"",
+      "w": 1280,
+      "h": 720,
+      "bw": 2800000,
+      "decl_bw": 3000000,
+      "fps": 30.0,
+      "bpppf": 0.10127314814814815
+    },
+    {
+      "line": 5,
+      "url": "1080p_avc.m3u8",
+      "attrs": {
+        "BANDWIDTH": "8000000",
+        "AVERAGE-BANDWIDTH": "7600000",
+        "RESOLUTION": "1920x1080",
+        "FRAME-RATE": "30",
+        "CODECS": "avc1.640028,mp4a.40.2"
+      },
+      "raw": "#EXT-X-STREAM-INF:BANDWIDTH=8000000,AVERAGE-BANDWIDTH=7600000,RESOLUTION=1920x1080,FRAME-RATE=30,CODECS=\"avc1.640028,mp4a.40.2\"",
+      "w": 1920,
+      "h": 1080,
+      "bw": 7600000,
+      "decl_bw": 8000000,
+      "fps": 30.0,
+      "bpppf": 0.12217078189300412
+    },
+    {
+      "line": 7,
+      "url": "4k_hevc.m3u8",
+      "attrs": {
+        "BANDWIDTH": "13000000",
+        "AVERAGE-BANDWIDTH": "12000000",
+        "RESOLUTION": "3840x2160",
+        "FRAME-RATE": "30",
+        "CODECS": "hvc1.2.4.L150.B0,mp4a.40.2"
+      },
+      "raw": "#EXT-X-STREAM-INF:BANDWIDTH=13000000,AVERAGE-BANDWIDTH=12000000,RESOLUTION=3840x2160,FRAME-RATE=30,CODECS=\"hvc1.2.4.L150.B0,mp4a.40.2\"",
+      "w": 3840,
+      "h": 2160,
+      "bw": 12000000,
+      "decl_bw": 13000000,
+      "fps": 30.0,
+      "bpppf": 0.04822530864197531
+    }
+  ]
+}

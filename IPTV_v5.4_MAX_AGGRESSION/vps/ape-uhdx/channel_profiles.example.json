@@ -1,0 +1,9 @@
+{
+  "_comment": "EXAMPLE ONLY - not production data. Science-Safe channel->profile map (brief format). The list generator should emit the real file. The LIVE resolver currently reads /etc/nginx/lua/ape_profile_map.json (by_streamid); this {streams} format is the documented Science-Safe target and an adapter can bridge the two. No invented production profiles.",
+  "version": 1,
+  "default_profile": "P2",
+  "streams": {
+    "12345": { "channel_id": "EXAMPLE_SPORTS_4K", "profile": "P2", "codec_preference": "HEVC", "max_resolution": "3840x2160" },
+    "67890": { "channel_id": "EXAMPLE_NEWS_FHD",  "profile": "P3", "codec_preference": "HEVC", "max_resolution": "1920x1080" }
+  }
+}
