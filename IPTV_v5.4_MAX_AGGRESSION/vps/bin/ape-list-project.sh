@@ -20,7 +20,15 @@
 #
 # LAS DOS PROYECCIONES
 #   <nombre>_FULL.m3u8   todo tal cual (para VLC/Kodi, que si usan el recetario)
-#   <nombre>_OTT.m3u8    #EXTINF + #EXTHTTP + URL (lo que OTT necesita)
+#   <nombre>_OTT_LIGHT.m3u8   #EXTINF + #EXTHTTP + URL (lo que OTT necesita)
+#
+# OJO CON EL NOMBRE: NO se puede llamar _CABLEADA_OTT.m3u8.
+# MEDIDO el 2026-11-15: /opt/ape-pulse/ape-pulse-sync.sh YA genera
+# /var/www/lists/pulse/<base>_CABLEADA_OTT.m3u8 y le inyecta las directivas APE
+# (181.614.136 B frente a los 171.893.544 B de esta proyeccion). Los dos scripts
+# peleaban por el mismo nombre y ganaba el ultimo en escribir: la URL servia un
+# fichero con #EXT-X-APE- que esta proyeccion habia quitado. El sufijo _LIGHT deja
+# claro que es la proyeccion delgada y evita la colision.
 #
 # QUE CONSERVA LA PROYECCION OTT
 #   · #EXTINF completo (tvg-id, tvg-name, tvg-logo, group-title) -> EPG y caratulas
@@ -57,7 +65,7 @@ fi
 
 base="${SRC%_CABLEADA.m3u8}"
 OUT_FULL="${base}_CABLEADA_FULL.m3u8"
-OUT_OTT="${base}_CABLEADA_OTT.m3u8"
+OUT_OTT="${base}_CABLEADA_OTT_LIGHT.m3u8"
 
 echo "origen: $(basename "$SRC") ($(stat -c%s "$SRC" 2>/dev/null) B)" >&2
 
