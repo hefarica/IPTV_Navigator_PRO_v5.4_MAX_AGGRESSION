@@ -321,10 +321,29 @@ class MainActivity : Activity() {
             append("Player: ").append(if (AraStatus.playerActive) "ACTIVO" else "inactivo")
         }
 
+        // El VPS manda `ape_vpp` en el feed-forward. Si NO lo manda, antes se mostraba
+        // "sin dato" — pero el DEVICE sí puede medirlo con DeviceSampler.vppCapability(),
+        // que lee las claves del vendor y comprueba si puede escribir en secure settings.
+        // Decir "sin dato" teniendo el dato medido es una mentira por omision.
+        //
+        // MEDIDO 2026-11-15: en este SoC (AMLS905Y4) las 6 claves AI-PQ del vendor NO
+        // existen -> vppCapability() devuelve found=0 con reason="no_vendor_keys". Eso
+        // es lo que el panel debe decir, no "sin dato".
+        val vppLocal: DeviceSampler.VppCapability? = try {
+            DeviceSampler(this).vppCapability()
+        } catch (e: Exception) { null }
         val vpp = when (AraStatus.vppAllowed) {
             true -> "ON  (${AraStatus.vppReason.ifBlank { "soc_allowlisted" }})"
             false -> "OFF (${AraStatus.vppReason.ifBlank { "no_caps/soc" }})"
-            null -> "sin dato"
+            // Campos reales de DeviceSampler.VppCapability: aiSr / keysFound / keysProbed / reason
+            null -> when {
+                vppLocal == null -> "sin dato (ni el VPS ni el device lo reportan)"
+                vppLocal.aiSr -> "ON  (device: ${vppLocal.reason}, ${vppLocal.keysFound}/${vppLocal.keysProbed} claves)"
+                vppLocal.keysFound == 0 ->
+                    "OFF (device: ${vppLocal.reason} — 0 de ${vppLocal.keysProbed} claves del vendor en este SoC)"
+                else ->
+                    "OFF (device: ${vppLocal.reason}, ${vppLocal.keysFound}/${vppLocal.keysProbed} claves)"
+            }
         }
         vps.text = buildString {
             append("VPP: ").append(vpp).append('\n')

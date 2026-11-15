@@ -26,8 +26,8 @@ android {
         applicationId = "com.ape.crystalagent"
         minSdk = 22            // Fire OS 5 (Android 5.1) en adelante
         targetSdk = 28         // <29: conserva libertad de servicio en background en Fire OS
-        versionCode = 673
-        versionName = "3.9.9-host-plus-rea-673-extshimott"
+        versionCode = 674
+        versionName = "3.9.9-host-plus-rea-674-vpp-local"
         buildConfigField("String", "ENROLL_SECRET", "\"$apeEnrollSecret\"")
         // Contrato /sync (D3 v2). El endpoint en el VPS sigue STAGED: la app funciona local-first.
         buildConfigField("String", "SYNC_PROTOCOL_VERSION", "\"2\"")
