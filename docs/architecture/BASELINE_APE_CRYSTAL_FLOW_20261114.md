@@ -883,3 +883,80 @@ LO QUE ESTA PRUEBA NO CUBRE (y por eso el objetivo sigue abierto)
   - que el shim LEA los tags: necesita que OTT pida la lista
   - el TIEMPO DE ZAPEO con la red y el televisor reales
 Los tres necesitan el zapeo del operador. No se declaran.
+---
+
+## Hecho 20 · Las imagenes del operador: el sistema confirmado por el propio servidor
+
+Las dos fotos del 2026-11-14 que el operador adjunto al principio del encargo contenian
+el estado real del sistema, y yo no las habia mirado. Esto es lo que dicen, verificado
+despues contra el VPS.
+
+PANEL VPS/ARA (foto 13:10)
+```
+Settings recibidos: 14 · Aplicados/rechazados: 12 / 12
+Presets homologados: 41 (Android: 5, player: 41) p50/p95/p99/max: 8/13/13/19 ms
+Verdad presets: APPLIED 4 · STORED 29 · DECLARED 8
+Ultimo SSE: hace 1s
+Track: mime=video/hevc codecs=hvc1.2.4.L153.B0 3840x2160 bps=-1
+Perfil: crystal_uhd · Buffer: max · HDR: HDR10, HLG, HDR10+
+VPP: sin dato · Estado: detenido
+```
+Dos cosas que importan y que no salen de mis mediciones:
+  - Las latencias de los 41 presets: **p50 8 ms, p95 13, p99 13, max 19**. Son el
+    presupuesto real de aplicacion de settings, no una estimacion.
+  - **APPLIED 4 · STORED 29 · DECLARED 8**: el contrato requested/applied/output en
+    vivo. Solo 4 de los 41 presets estan APLICADOS de verdad; 29 solo guardados y 8
+    solo declarados. Ese numero es la prueba de que el sistema distingue los tres
+    estados en vez de llamar "aplicado" a todo.
+  - `VPP: sin dato` y `Estado: detenido`: el panel NO inventa. Cuando no mide, lo dice.
+
+SHIM (foto 15:59)
+```
+shim: ACTIVO · puerto 45721 · up 109s
+cache 0/0 (null) · segmentos 0 · req 59 · pending 0
+techo 6000000 B/s · admitido 9223372036854775807 · ids 0 · restarts 0
+base=http://127.0.0.1:45721/source.m3u8
+            con la lista https://.../lists/APE_PRUEBA_ORDER_OK_CABLEADA.m3u8
+```
+El shim SI se arranca con una URL de lista y expone `base=/source.m3u8` para el player.
+Medido: 59 peticiones, 0 segmentos servidos, 0 restarts. El techo de 6.000.000 es
+BYTES/s (48 Mbps) y `maxBwAdmitted` esta en Long.MAX_VALUE: no limita nada.
+
+LA RUTA "IDEMPOTENTE, POLIMORFICA, ISOMORFICA" YA EXISTE (foto 15:56)
+```
+REA · Catalogo JIT
+Confirmado por el servidor
+ape-jit-catalog/1.0.0 · idempotente+polimorfico+isomorfico
+perfil=P5 · target=source · receta=balanced
+
+https://iptv-ape.duckdns.org/jit/playlist-calidad.m3u8
+https://iptv-ape.duckdns.org/jit/playlist-resolver.m3u8
+```
+VERIFICADO EN EL VPS el 2026-11-15: los dos endpoints responden **200 ·
+1.298.222.092 B · 21.224 canales**, y las cabeceras lo declaran:
+```
+#EXT-X-APE-CONTRACT:ape-jit-catalog/1.0.0
+#EXT-X-APE-CONTRACT-MODE:idempotente+polimorfico+isomorfico
+#EXT-X-CMAF-POLIMORFISMO:NONCE=...,SID=...,HASH=...
+```
+El codigo: `/opt/ape-jit/jit_catalog_build.js:134-135`. **Existia antes de esta sesion.
+El agente llevaba 100 rondas sin citarlo porque no habia mirado las fotos del operador.**
+
+DOS CATALOGOS EN EL MISMO VPS (hallazgo)
+```
+JIT /jit/playlist-*.m3u8   -> 1.298.222.092 B · la lista completa
+mi proyeccion /lists/*_LIGHT.m3u8 -> 186.789.613 B · con los 21.224 tags · gzip 4,0 MB
+referencias a CABLEADA_LIGHT dentro del JIT: 0
+```
+**Son 7x mas bytes y 88x mas gzip.** No es un fallo (el JIT es la ruta del agente y la
+proyeccion es la del reproductor), pero son DOS catalogos y conviene no confundirlos.
+
+LO QUE LA PROPIA APP LE DICE AL OPERADOR
+```
+El alta del proveedor la haces tu: Ajustes -> Proveedor -> Anadir proveedor ->
+Lista de reproduccion, y pegas la URL.
+No hay Intent publico de OTT para registrarlo solo.
+```
+**El ultimo paso del objetivo es manual POR DISENO DE OTT, y esta escrito en la app.**
+No es una carencia del sistema: es una limitacion del reproductor, documentada donde el
+operador la va a leer.
