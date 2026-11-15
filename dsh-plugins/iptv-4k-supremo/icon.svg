@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="IPTV 4K Supremo">
+  <rect x="4" y="4" width="120" height="120" rx="26" fill="#0B1220"/>
+  <g fill="none" stroke="#22D3EE" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M26 46 V26 H46"/>
+    <path d="M82 26 H102 V46"/>
+    <path d="M26 82 V102 H46"/>
+    <path d="M102 82 V102 H82"/>
+  </g>
+  <g>
+    <rect x="40" y="78" width="12" height="18" rx="3" fill="#1E6F8C"/>
+    <rect x="58" y="66" width="12" height="30" rx="3" fill="#38BDF8"/>
+    <rect x="76" y="52" width="12" height="44" rx="3" fill="#A5F3FC"/>
+  </g>
+  <path d="M32 106 H96" stroke="#334155" stroke-width="4" stroke-linecap="round"/>
+</svg>

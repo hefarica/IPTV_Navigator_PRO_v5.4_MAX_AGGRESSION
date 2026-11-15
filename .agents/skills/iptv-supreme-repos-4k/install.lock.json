@@ -1,0 +1,32 @@
+{
+  "skill": "iptv-supreme-repos-4k",
+  "version": "1.0.0",
+  "installed_at": "2026-11-15T06:50:00Z",
+  "installed_at_local": "2026-11-15T01:50:00-05:00",
+  "pin": {
+    "skills_library": "compatible con .agents/skills (spec: 8 archivos + 3 subdirs)",
+    "anchor_for": ["iptv-4k-source-truth-audit", "iptv-4k-pipeline-automation"]
+  },
+  "depends_on": {
+    "external": [
+      "https://api.github.com/repos/{owner}/{repo}",
+      "https://iptv-org.github.io/api/streams.json",
+      "https://iptv-org.github.io/api/channels.json",
+      "https://iptv-org.github.io/api/categories.json",
+      "https://iptv-org.github.io/iptv/index.m3u",
+      "https://dearbulut.github.io/iptv/api/v1/openapi.json"
+    ],
+    "internal": [
+      "docs/policies/ANTI_DEGRADATION_LAW.md",
+      ".agent/skills/Skill_Fake_4K_Detector",
+      ".gemini/settings/shielded.md"
+    ]
+  },
+  "measurement": {
+    "timestamp_utc": "2026-11-15T06:45:00Z",
+    "method": "GitHub REST + GET directo por endpoint",
+    "fixture": "fixtures/measured_2026-11-15.json",
+    "reproduce_after": "2026-12-15"
+  },
+  "notes": "Los valores de estrellas y pushed_at caducan; la fixture lleva la fecha en el nombre a proposito."
+}

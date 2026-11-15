@@ -1,0 +1,5 @@
+# Loader patch: inserts the Upscale Lab bundle row.
+# The Client half (client.js) owns the sidebar entry, the main panel and /upscale.
+- insert:
+    - id: upscale-lab
+      name: '@local/upscale-lab'

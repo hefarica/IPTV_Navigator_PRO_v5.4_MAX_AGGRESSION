@@ -1,0 +1,3 @@
+- insert:
+    - id: iptv-4k-supremo
+      name: '@local/iptv-4k-supremo'

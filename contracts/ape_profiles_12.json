@@ -1,0 +1,562 @@
+{
+  "contract": "ape_profiles_12",
+  "version": "1.0.0",
+  "generated_at": "2026-11-15T01:47:26-05:00",
+  "author": "agente [perfiles] — mision ecosistema APE",
+  "purpose": "Definir de forma DEFENDIBLE los 12 perfiles APE y servir de SSOT al clasificador atomico por canal (IPTV_v5.4_MAX_AGGRESSION/vps/bin/ape-profile-classifier.js).",
+  "hard_rule": "NO se toca el generador (m3u8-typed-arrays-ultimate.js) ni ape-profiles-config.js. Este contrato es ADITIVO y de solo lectura para el resto del sistema.",
+  "answer_to_the_question": {
+    "question": "El operador afirma que son 12 perfiles. ¿Donde estan?",
+    "verdict": "MEDIDO, no sintetizado: los 12 existen en codigo.",
+    "finding": "6 perfiles canonicos (P0..P5) + 6 derivados 6K emulados (P0.5..P5.5)",
+    "not_a_synthesis": true,
+    "evidence": [
+      "artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated -> Object.keys().length === 12",
+      "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js:5140 APE_6K_PROFILE_IDS = ['P0.5','P1.5','P2.5','P3.5','P4.5','P5.5']",
+      "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js:5141 APE_ALL_PROFILE_IDS = ['P0'..'P5'].concat(APE_6K_PROFILE_IDS)",
+      "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/profile-manager-v9.js:4196 const APE_6K_IDS = ['P0.5','P1.5','P2.5','P3.5','P4.5','P5.5'];",
+      "docs/audit/ENTREGA_CADENA_COMPLETA_2026-11-05.md:14 'v24 con 12 perfiles | P0-P5 (UHD) + P0.5-P5.5 (6K)'"
+    ]
+  },
+  "provenance": {
+    "canonical_12_artifact": {
+      "path": "artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json",
+      "bytes": 586587,
+      "sha256": "71307d9a6ce49cf4d384c6c894093e15011891306107b970de6768efff953e30",
+      "version_field": "23.1.0-6K-EMULATED",
+      "lab_version_field": "omega_v1_bulletproof_20261026",
+      "six_k_version_field": "6K-EMULATED-v1"
+    },
+    "config_6_artifact": {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js",
+      "bytes": 411497,
+      "DEFAULT_PROFILES_object": "line 558 (literal starts) .. line 4225 (literal ends), 246792 literal bytes",
+      "DEFAULT_PROFILES_key_count": 6
+    },
+    "sources_checked_that_have_only_6": [
+      {
+        "path": "audit/alignment/2026-10-25/10-excel/EXCEL_PROFILES_EXTRACT.json",
+        "bytes": 822920,
+        "containers_found": ["profiles (6)", "codecLadder.rows (6)"],
+        "why_6": "instantanea 2026-10-25, anterior al LAB v24 6K"
+      },
+      {
+        "path": "audit/alignment/2026-10-25/20-json/JSON_PROFILES_MATRIX.json",
+        "bytes": 134951,
+        "containers_found": ["profiles (6)", "meta.manifest_table (6)", "cross_source.* (6)"],
+        "why_6": "misma instantanea 2026-10-25"
+      },
+      {
+        "path": "IPTV_v5.4_MAX_AGGRESSION/frontend/lab_master_22.6.0.json",
+        "bytes": 280065,
+        "containers_found": ["profiles_calibrated (6)", "prisma_lab_sync_v20.* (6)"],
+        "why_6": "LAB v22.6.0, anterior a la capa 6K"
+      }
+    ],
+    "path_named_in_order_that_does_not_exist": {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/config/lab_master_22.6.0.json",
+      "status": "MISSING",
+      "actual_location": "IPTV_v5.4_MAX_AGGRESSION/frontend/lab_master_22.6.0.json"
+    },
+    "fail_honest_sha_divergence": {
+      "issue": "docs/audit/ENTREGA_CADENA_COMPLETA_2026-11-05.md cita para LAB_CALIBRATED_FINAL_v24.0.0-6K.json: 585.107 B y sha256 14ee67b5...",
+      "measured_here": "586587 B y sha256 71307d9a6ce49cf4d384c6c894093e15011891306107b970de6768efff953e30",
+      "conclusion": "NO coinciden. El conteo de 12 claves SI coincide; la identidad byte a byte NO. Existe una sola copia de ese nombre en el workspace (verificado con Get-ChildItem -Recurse), asi que el fichero citado por el documento no es el que hay aqui. Se usa el medido aqui y se declara la divergencia en vez de heredarla.",
+      "status": "NO_COMPUTADO: no se puede resolver cual de las dos identidades es la del artefacto de produccion sin el original"
+    }
+  },
+  "axes": {
+    "warning": "P, T y F son TRES escaleras distintas. Confundirlas produce decisiones falsas.",
+    "P_profile": {
+      "symbol": "P0..P5 (+ .5)",
+      "cardinality": 12,
+      "what": "resolucion/bitrate/fps objetivo del canal",
+      "lives_in": "ape-profiles-config.js DEFAULT_PROFILES + artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json profiles_calibrated"
+    },
+    "T_tier": {
+      "symbol": "T5..T9",
+      "cardinality_used_in_served_list": 5,
+      "what": "etiqueta de nivel dentro del #EXTHTTP del canal (X-APE-Tier)",
+      "note": "T no es calidad: es etiqueta. Un P3+T7 es P3."
+    },
+    "F_fallback_evidence": {
+      "symbol": "F0..F5",
+      "cardinality": 6,
+      "what": "cuanta evidencia tiene el probe y que codec se declara",
+      "lives_in": "ape-fallback-resolver.js",
+      "note": "F describe CONFIANZA del probe, no calidad. Un F5 sobre un canal P1 sigue siendo P1 sin metadata."
+    }
+  },
+  "invariants": [
+    "fuse_bps <= design_bps en TODOS los perfiles (fusible de suelo solo puede relajar, jamas subir). Fuente: docs/rea/02_EDGE_DECLARE_AUTO_API.md:87 (T6) + ape_gateway.lua:435-436 segun esa misma cita.",
+    "Ley Cardinal 1 Nivel<->Resolucion: el level del codec DEBE poder cargar RESOLUTION@fps. L153=4K@60 es TECHO; jamas declarar L153 sobre 8K.",
+    "Un perfil .5 NUNCA se selecciona desde un probe: es enhancement de display declarado (declared_enhancement=true, is_emulated=true).",
+    "Anti-degradacion: 4K real nunca baja a FHD/HD/SD. La unica degradacion permitida es incapacidad de decoder MEDIDA, un escalon, registrada.",
+    "Corregir un metadato falso (fake-4k -> P3) NO es degradar: el bitstream no cambia."
+  ],
+  "fallback_edge_semantics": {
+    "problem_found_while_testing": "P0.5 declara resolution_cap 5760x3240 y su fallback medido (compatibility.fallback_profile) es P0, cuyo cap es 7680x4320: la cadena SUBE de resolucion. Un test que exija monotonia descendente en las 12 filas falla.",
+    "why_it_is_correct": "P0.5 NO es una fuente 6K: es un DOWNSAMPLE de 8K (emulation.mode=adaptive_downscale, scale_ratio 0.75x, technique 8k_downsample_lanczos_0.75). Su fallback a P0 no sube la calidad: QUITA la capa de emulacion y devuelve la fuente REAL de 8K, que es estrictamente mejor. No es degradacion ni promocion: es dejar de emular.",
+    "rule_encoded": [
+      "La monotonia descendente de resolucion aplica SOLO a la cadena canonica P0->P1->P2->P3->P4->P5.",
+      "En un perfil emulado, fallback_chain[0] DEBE ser su base_profile (medido en el LAB).",
+      "Desde ese punto, el resto de la cadena vuelve a descender estrictamente.",
+      "La eleccion final la hace el DEVICE: si el device no alcanza la resolucion de P0, resolveFallback salta al siguiente escalon decodificable (P1, P2...)."
+    ],
+    "contrast": "En P1.5/P2.5/P3.5/P4.5/P5.5 el fallback a su base SI baja de cap (5760x3240 -> 3840x2160 / 1920x1080 / ...), porque nacen de un UPSCALE. La excepcion es exclusiva de P0.5, y su causa esta medida.",
+    "status": "SEMANTICA DOCUMENTADA, no excepcion silenciada"
+  },
+  "profiles": [
+    {
+      "id": "P0",
+      "name": "8K Master",
+      "name_config": "GOD_TIER_8K_OMEGA",
+      "level": 6,
+      "quality": "ULTRA",
+      "emulated": false,
+      "base_profile": null,
+      "resolution_cap": "7680x4320",
+      "fps": 30,
+      "hdr": "DOLBY_VISION_P8",
+      "bit_depth": 10,
+      "codec_full": "dvh1.08.06",
+      "codec_ladder": {
+        "video": "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.1.6.L183.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
+        "audio": "mp4a.40.2,ac-3,mp4a.40.5",
+        "hdr": "dolby-vision,hdr10+,hdr10,hlg,sdr",
+        "player_pref": "hvc1,hev1,dvh1,dvhe,h265,av1,avc1,h264",
+        "video_family": "DV>HEVC-MAIN10>HEVC-MAIN>AV1>H264-HIGH>H264-MAIN",
+        "source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/prisma_lab_sync_v20/codec_ladder_per_profile/P0"
+      },
+      "design_bps": 60000000,
+      "fuse_bps": 15000000,
+      "bps_source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P0/settings/bandwidth_target (design) y /bandwidth_floor (fuse)",
+      "buffer": { "buffer_seconds": 15, "player_buffer_ms": 20000, "headers_count": 233 },
+      "fallback": "P1",
+      "fallback_chain": ["P1", "P2", "P3", "P4", "P5"],
+      "level_ceiling_note": "8K exige nivel >= L183. Declarar L153 (4K@60) sobre 8K es el freeze 2026-06-08.",
+      "source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P0+measured:IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js:559"
+    },
+    {
+      "id": "P0.5",
+      "name": "6K Emulated (P0)",
+      "name_config": null,
+      "level": 6,
+      "lab_level_marker": 0.5,
+      "quality": "6K_EMULATED",
+      "emulated": true,
+      "base_profile": "P0",
+      "resolution_cap": "5760x3240",
+      "fps": 60,
+      "hdr": "HDR10PLUS",
+      "bit_depth": 10,
+      "codec_full": "hvc1.2.4.L183.B0",
+      "codec_ladder": {
+        "video": "hvc1.2.4.L183.B0",
+        "audio": "mp4a.40.2,ac-3,mp4a.40.5",
+        "hdr": "hdr10+,hdr10,hlg,sdr",
+        "player_pref": "hvc1,hev1,dvh1,dvhe,h265,av1,avc1,h264",
+        "source": "derived:el LAB solo publica codec_ladder_per_profile para P0..P5 (6 claves medidas). El .5 no tiene ladder propio; se compone de su settings.codec_full medido + la ladder de su base_profile."
+      },
+      "design_bps": 60000000,
+      "fuse_bps": 15000000,
+      "bps_source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P0.5/settings/bandwidth_target y /bandwidth_floor (heredados del base por diseno del LAB)",
+      "buffer": { "buffer_seconds": 15, "player_buffer_ms": 20000, "headers_count": 233 },
+      "fallback": "P0",
+      "fallback_chain": ["P0", "P1", "P2", "P3", "P4", "P5"],
+      "fallback_source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P0.5/compatibility/fallback_profile = 'P0'",
+      "emulation": {
+        "mode": "adaptive_downscale",
+        "scale_ratio": "0.75x",
+        "technique": "8k_downsample_lanczos_0.75",
+        "declared_enhancement": true,
+        "applied_by": "device_vpp_declared",
+        "declared_not_applied_by_vps": true
+      },
+      "truth_guard": "DECLARED_ENHANCEMENT - nunca se declara la fuente como 6K real",
+      "source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P0.5"
+    },
+    {
+      "id": "P1",
+      "name": "4K UHD Pro",
+      "name_config": "SUPREME_4K_HDR",
+      "level": 5,
+      "quality": "4K+",
+      "emulated": false,
+      "base_profile": null,
+      "resolution_cap": "3840x2160",
+      "fps": 60,
+      "hdr": "HDR10PLUS",
+      "bit_depth": 10,
+      "codec_full": "hvc1.2.4.L153.B0",
+      "codec_ladder": {
+        "video": "hvc1.2.4.L153.B0,hev1.2.4.L153.B0,hvc1.1.6.L150.B0,av01.0.12M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
+        "audio": "mp4a.40.2,ac-3,mp4a.40.5",
+        "hdr": "hdr10+,hdr10,hlg,sdr",
+        "player_pref": "hvc1,hev1,h265,av1,avc1,h264",
+        "video_family": "HEVC-MAIN10>HEVC-MAIN>AV1>H264-HIGH>H264-MAIN",
+        "source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/prisma_lab_sync_v20/codec_ladder_per_profile/P1"
+      },
+      "design_bps": 22000000,
+      "fuse_bps": 12000000,
+      "bps_source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P1/settings/bandwidth_target y /bandwidth_floor",
+      "buffer": { "buffer_seconds": 12, "player_buffer_ms": 16000, "headers_count": 233 },
+      "fallback": "P2",
+      "fallback_chain": ["P2", "P3", "P4", "P5"],
+      "level_ceiling_note": "L153 = 4K@60 = TECHO de esta fila. Correcto aqui, prohibido sobre 8K.",
+      "source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P1+measured:IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js:1196"
+    },
+    {
+      "id": "P1.5",
+      "name": "6K Emulated (P1)",
+      "name_config": null,
+      "level": 5,
+      "lab_level_marker": 0.5,
+      "quality": "6K_EMULATED",
+      "emulated": true,
+      "base_profile": "P1",
+      "resolution_cap": "5760x3240",
+      "fps": 60,
+      "hdr": "HDR10PLUS",
+      "bit_depth": 10,
+      "codec_full": "hvc1.2.4.L183.B0",
+      "codec_ladder": {
+        "video": "hvc1.2.4.L183.B0",
+        "audio": "mp4a.40.2,ac-3,mp4a.40.5",
+        "hdr": "hdr10+,hdr10,hlg,sdr",
+        "player_pref": "hvc1,hev1,h265,av1,avc1,h264",
+        "source": "derived:composicion de settings.codec_full medido + ladder de P1 (el LAB no publica ladder propia para .5)"
+      },
+      "design_bps": 22000000,
+      "fuse_bps": 12000000,
+      "bps_source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P1.5/settings/bandwidth_target y /bandwidth_floor",
+      "buffer": { "buffer_seconds": 12, "player_buffer_ms": 16000, "headers_count": 233 },
+      "fallback": "P1",
+      "fallback_chain": ["P1", "P2", "P3", "P4", "P5"],
+      "fallback_source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P1.5/compatibility/fallback_profile = 'P1'",
+      "emulation": {
+        "mode": "adaptive_upscaling",
+        "scale_ratio": "1.50x",
+        "technique": "4k_upscale_ai_sr_1.5x",
+        "declared_enhancement": true,
+        "applied_by": "device_vpp_declared",
+        "declared_not_applied_by_vps": true
+      },
+      "truth_guard": "DECLARED_ENHANCEMENT - nunca se declara la fuente como 6K real",
+      "source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P1.5"
+    },
+    {
+      "id": "P2",
+      "name": "4K Balanced",
+      "name_config": "ELITE_4K_BALANCED",
+      "level": 4,
+      "quality": "4K",
+      "emulated": false,
+      "base_profile": null,
+      "resolution_cap": "3840x2160",
+      "fps": 30,
+      "hdr": "HDR10",
+      "bit_depth": 10,
+      "codec_full": "hvc1.2.4.L150.B0",
+      "codec_ladder": {
+        "video": "hvc1.2.4.L153.B0,hev1.2.4.L153.B0,hvc1.1.6.L150.B0,avc1.640033,avc1.640028",
+        "audio": "mp4a.40.2,ac-3,mp4a.40.5",
+        "hdr": "hdr10,hlg,sdr",
+        "player_pref": "hvc1,hev1,h265,avc1,h264",
+        "video_family": "HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN",
+        "source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/prisma_lab_sync_v20/codec_ladder_per_profile/P2"
+      },
+      "design_bps": 12000000,
+      "fuse_bps": 8000000,
+      "bps_source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P2/settings/bandwidth_target y /bandwidth_floor",
+      "buffer": { "buffer_seconds": 10, "player_buffer_ms": 13000, "headers_count": 233 },
+      "fallback": "P3",
+      "fallback_chain": ["P3", "P4", "P5"],
+      "source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P2+measured:IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js:1830"
+    },
+    {
+      "id": "P2.5",
+      "name": "6K Emulated (P2)",
+      "name_config": null,
+      "level": 4,
+      "lab_level_marker": 0.5,
+      "quality": "6K_EMULATED",
+      "emulated": true,
+      "base_profile": "P2",
+      "resolution_cap": "5760x3240",
+      "fps": 60,
+      "hdr": "HDR10PLUS",
+      "bit_depth": 10,
+      "codec_full": "hvc1.2.4.L183.B0",
+      "codec_ladder": {
+        "video": "hvc1.2.4.L183.B0",
+        "audio": "mp4a.40.2,ac-3,mp4a.40.5",
+        "hdr": "hdr10,hlg,sdr",
+        "player_pref": "hvc1,hev1,h265,avc1,h264",
+        "source": "derived:composicion de settings.codec_full medido + ladder de P2"
+      },
+      "design_bps": 12000000,
+      "fuse_bps": 8000000,
+      "bps_source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P2.5/settings/bandwidth_target y /bandwidth_floor",
+      "buffer": { "buffer_seconds": 10, "player_buffer_ms": 13000, "headers_count": 233 },
+      "fallback": "P2",
+      "fallback_chain": ["P2", "P3", "P4", "P5"],
+      "fallback_source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P2.5/compatibility/fallback_profile = 'P2'",
+      "emulation": {
+        "mode": "adaptive_upscaling",
+        "scale_ratio": "1.50x",
+        "technique": "4k_upscale_shader_lanczos_1.5x",
+        "declared_enhancement": true,
+        "applied_by": "device_vpp_declared",
+        "declared_not_applied_by_vps": true
+      },
+      "truth_guard": "DECLARED_ENHANCEMENT - nunca se declara la fuente como 6K real",
+      "source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P2.5"
+    },
+    {
+      "id": "P3",
+      "name": "FHD 1080p",
+      "name_config": "ULTRA_FHD_STABLE",
+      "level": 3,
+      "quality": "FHD",
+      "emulated": false,
+      "base_profile": null,
+      "resolution_cap": "1920x1080",
+      "fps": 60,
+      "hdr": "SDR",
+      "bit_depth": 10,
+      "codec_full": "hvc1.2.4.L123.B0",
+      "codec_ladder": {
+        "video": "hvc1.1.6.L120.B0,hev1.1.6.L120.B0,hvc1.2.4.L120.B0,avc1.640028,avc1.4D401F",
+        "audio": "mp4a.40.2,mp4a.40.5,mp4a.40.29",
+        "hdr": "hlg,sdr",
+        "player_pref": "hvc1,hev1,h265,avc1,h264",
+        "video_family": "HEVC-MAIN>HEVC-MAIN10>H264-HIGH>H264-MAIN",
+        "source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/prisma_lab_sync_v20/codec_ladder_per_profile/P3"
+      },
+      "design_bps": 9000000,
+      "fuse_bps": 5000000,
+      "bps_source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P3/settings/bandwidth_target y /bandwidth_floor",
+      "buffer": { "buffer_seconds": 8, "player_buffer_ms": 11000, "headers_count": 233 },
+      "fallback": "P4",
+      "fallback_chain": ["P4", "P5"],
+      "served_list_role": "Perfil mayoritario de la lista servida: 20.222 de 21.180 canales censados por par P+T.",
+      "source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P3+measured:IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js:2324"
+    },
+    {
+      "id": "P3.5",
+      "name": "6K Emulated (P3)",
+      "name_config": null,
+      "level": 3,
+      "lab_level_marker": 0.5,
+      "quality": "6K_EMULATED",
+      "emulated": true,
+      "base_profile": "P3",
+      "resolution_cap": "5760x3240",
+      "fps": 60,
+      "hdr": "HDR10PLUS",
+      "bit_depth": 10,
+      "codec_full": "hvc1.2.4.L183.B0",
+      "codec_ladder": {
+        "video": "hvc1.2.4.L183.B0",
+        "audio": "mp4a.40.2,mp4a.40.5,mp4a.40.29",
+        "hdr": "hlg,sdr",
+        "player_pref": "hvc1,hev1,h265,avc1,h264",
+        "source": "derived:composicion de settings.codec_full medido + ladder de P3"
+      },
+      "design_bps": 9000000,
+      "fuse_bps": 5000000,
+      "bps_source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P3.5/settings/bandwidth_target y /bandwidth_floor",
+      "buffer": { "buffer_seconds": 8, "player_buffer_ms": 11000, "headers_count": 233 },
+      "fallback": "P3",
+      "fallback_chain": ["P3", "P4", "P5"],
+      "fallback_source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P3.5/compatibility/fallback_profile = 'P3'",
+      "emulation": {
+        "mode": "adaptive_upscaling",
+        "scale_ratio": "3.00x",
+        "technique": "fhd_upscale_ai_sr_3x",
+        "declared_enhancement": true,
+        "applied_by": "device_vpp_declared",
+        "declared_not_applied_by_vps": true
+      },
+      "truth_guard": "DECLARED_ENHANCEMENT - nunca se declara la fuente como 6K real",
+      "source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P3.5"
+    },
+    {
+      "id": "P4",
+      "name": "HD 720p",
+      "name_config": "HIGH_HD_COMPATIBLE",
+      "level": 2,
+      "quality": "HD",
+      "emulated": false,
+      "base_profile": null,
+      "resolution_cap": "1280x720",
+      "fps": 30,
+      "hdr": "SDR",
+      "bit_depth": 8,
+      "codec_full": "hvc1.2.4.L93.B0",
+      "codec_ladder": {
+        "video": "hvc1.1.6.L93.B0,hev1.1.6.L93.B0,avc1.640020,avc1.4D401F,avc1.42E01F",
+        "audio": "mp4a.40.2,mp4a.40.5,mp4a.40.29",
+        "hdr": "sdr",
+        "player_pref": "hvc1,hev1,h265,avc1,h264",
+        "video_family": "HEVC-MAIN-HD>H264-HIGH>H264-MAIN>H264-BASELINE",
+        "source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/prisma_lab_sync_v20/codec_ladder_per_profile/P4"
+      },
+      "design_bps": 6500000,
+      "fuse_bps": 3000000,
+      "bps_source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P4/settings/bandwidth_target y /bandwidth_floor",
+      "buffer": { "buffer_seconds": 6, "player_buffer_ms": 8000, "headers_count": 233 },
+      "fallback": "P5",
+      "fallback_chain": ["P5"],
+      "source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P4+measured:IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js:2958"
+    },
+    {
+      "id": "P4.5",
+      "name": "6K Emulated (P4)",
+      "name_config": null,
+      "level": 2,
+      "lab_level_marker": 0.5,
+      "quality": "6K_EMULATED",
+      "emulated": true,
+      "base_profile": "P4",
+      "resolution_cap": "5760x3240",
+      "fps": 60,
+      "hdr": "HDR10PLUS",
+      "bit_depth": 10,
+      "codec_full": "hvc1.2.4.L183.B0",
+      "codec_ladder": {
+        "video": "hvc1.2.4.L183.B0",
+        "audio": "mp4a.40.2,mp4a.40.5,mp4a.40.29",
+        "hdr": "sdr",
+        "player_pref": "hvc1,hev1,h265,avc1,h264",
+        "source": "derived:composicion de settings.codec_full medido + ladder de P4"
+      },
+      "design_bps": 6500000,
+      "fuse_bps": 3000000,
+      "bps_source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P4.5/settings/bandwidth_target y /bandwidth_floor",
+      "buffer": { "buffer_seconds": 6, "player_buffer_ms": 8000, "headers_count": 233 },
+      "fallback": "P4",
+      "fallback_chain": ["P4", "P5"],
+      "fallback_source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P4.5/compatibility/fallback_profile = 'P4'",
+      "emulation": {
+        "mode": "adaptive_upscaling",
+        "scale_ratio": "4.50x",
+        "technique": "hd_upscale_ai_sr_4.5x",
+        "declared_enhancement": true,
+        "applied_by": "device_vpp_declared",
+        "declared_not_applied_by_vps": true
+      },
+      "truth_guard": "DECLARED_ENHANCEMENT - nunca se declara la fuente como 6K real",
+      "source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P4.5"
+    },
+    {
+      "id": "P5",
+      "name": "SD 480p",
+      "name_config": "SD_FAILSAFE_UNIVERSAL",
+      "level": 1,
+      "quality": "SD",
+      "emulated": false,
+      "base_profile": null,
+      "resolution_cap": "854x480",
+      "fps": 30,
+      "hdr": "SDR",
+      "bit_depth": 8,
+      "codec_full": "avc1.42c01e",
+      "codec_ladder": {
+        "video": "avc1.42E01E,avc1.42E00D,mp2v.2",
+        "audio": "mp4a.40.5,mp4a.40.29,mp4a.40.2",
+        "hdr": "sdr",
+        "player_pref": "avc1,h264",
+        "video_family": "H264-MAIN>H264-BASELINE>MPEG2",
+        "source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/prisma_lab_sync_v20/codec_ladder_per_profile/P5"
+      },
+      "design_bps": 4000000,
+      "fuse_bps": 1500000,
+      "bps_source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P5/settings/bandwidth_target y /bandwidth_floor",
+      "buffer": { "buffer_seconds": 5, "player_buffer_ms": 7000, "headers_count": 233 },
+      "fallback": null,
+      "fallback_chain": [],
+      "terminal": true,
+      "note": "P5 es la ultima linea de defensa: AVC High como primario se mantiene a proposito (anti-freeze en device debil). No hay degradacion por debajo sin autorizacion del Art. 9.",
+      "source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P5+measured:IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js:3592"
+    },
+    {
+      "id": "P5.5",
+      "name": "6K Emulated (P5)",
+      "name_config": null,
+      "level": 1,
+      "lab_level_marker": 0.5,
+      "quality": "6K_EMULATED",
+      "emulated": true,
+      "base_profile": "P5",
+      "resolution_cap": "5760x3240",
+      "fps": 60,
+      "hdr": "HDR10PLUS",
+      "bit_depth": 10,
+      "codec_full": "hvc1.2.4.L183.B0",
+      "codec_ladder": {
+        "video": "hvc1.2.4.L183.B0",
+        "audio": "mp4a.40.5,mp4a.40.29,mp4a.40.2",
+        "hdr": "sdr",
+        "player_pref": "avc1,h264",
+        "source": "derived:composicion de settings.codec_full medido + ladder de P5"
+      },
+      "design_bps": 4000000,
+      "fuse_bps": 1500000,
+      "bps_source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P5.5/settings/bandwidth_target y /bandwidth_floor",
+      "buffer": { "buffer_seconds": 5, "player_buffer_ms": 7000, "headers_count": 233 },
+      "fallback": "P5",
+      "fallback_chain": ["P5"],
+      "fallback_source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P5.5/compatibility/fallback_profile = 'P5'",
+      "emulation": {
+        "mode": "adaptive_upscaling",
+        "scale_ratio": "6.75x",
+        "technique": "sd_upscale_ai_sr_6.75x",
+        "declared_enhancement": true,
+        "applied_by": "device_vpp_declared",
+        "declared_not_applied_by_vps": true
+      },
+      "truth_guard": "DECLARED_ENHANCEMENT - nunca se declara la fuente como 6K real",
+      "source": "measured:artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json#/profiles_calibrated/P5.5"
+    }
+  ],
+  "divergences_measured": [
+    {
+      "what": "bitrate/fps no coinciden entre config JS y LAB v24 para 5 de 6 canonicos",
+      "config_js": { "P0": "80 Mbps / 60 fps", "P1": "40 / 60", "P2": "20 / 60", "P3": "10 / 60", "P4": "5 / 30", "P5": "2 / 30" },
+      "lab_v24": { "P0": "200 / 30", "P1": "40 / 60", "P2": "25 / 30", "P3": "15 / 60", "P4": "10 / 30", "P5": "2 / 30" },
+      "only_P1_and_P5_agree": true,
+      "resolution": "Este contrato NO arbitra el conflicto: expone ambos. El codigo de clasificacion NO usa bitrate para elegir perfil (solo resolucion, fps y codec), asi que la divergencia no altera el veredicto. El arbitraje pertenece al operador porque el manifiesto declara el LAB como SSOT (LEY SSOT-LAB) mientras ape-profiles-config.js es el default del panel.",
+      "status": "DECLARADO, no resuelto"
+    },
+    {
+      "what": "level de los 6 derivados .5",
+      "lab_stores": 0.5,
+      "problem": "0.5 no es un level de codec HEVC: es un marcador de 'derivado'.",
+      "resolution": "Este contrato usa level = el de su base_profile y conserva el literal en lab_level_marker.",
+      "status": "NORMALIZADO con trazabilidad"
+    },
+    {
+      "what": "design_bps/fuse_bps de los 6 derivados",
+      "measured": "heredan bandwidth_floor/target/max de su base_profile",
+      "consequence": "Un P5.5 declara 4 Mbps de target para una salida de 5760x3240. El invariante fuse_bps <= design_bps se cumple, pero el presupuesto es el del tier base, no el de 6K.",
+      "status": "DECLARADO; no es un error de este contrato"
+    }
+  ],
+  "no_computado": [
+    {
+      "item": "Censo completo de los 21.224 canales de la lista servida",
+      "reason": "Los 9 pares (Profile,Tier) medidos suman 21.180, no 21.224. Faltan 44 canales sin par atribuido y el artefacto que los cierra no esta en este entorno.",
+      "measured_sum": 21180,
+      "declared_total": 21224,
+      "gap": 44,
+      "rule": "NO se rellena. Un hueco de evidencia no se tapa con 44 canales inventados."
+    },
+    {
+      "item": "Constante real del fusible en produccion (fuse_bps del edge)",
+      "reason": "El invariante fuse_bps <= design_bps esta citado de docs/rea/02_EDGE_DECLARE_AUTO_API.md:87 y ape_gateway.lua:435-436, pero las copias de ape_gateway.lua presentes en _vps_stage/edge/ no contienen esa linea (grep 'fuse' -> 0 hits en E10_window/staged). Se usa bandwidth_floor del LAB como fuse_bps, que SI esta medido.",
+      "status": "NO_COMPUTADO para el valor desplegado; el valor del LAB si esta medido"
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "measured_at_utc": "2026-11-15T06:45:00Z",
+  "measured_at_local": "2026-11-15T01:45:00-05:00",
+  "zone": "America/Bogota",
+  "method": {
+    "stars": "GET https://api.github.com/repos/{owner}/{repo}",
+    "endpoints": "GET directo, contando ^#EXTINF en los .m3u",
+    "quality": "GET https://iptv-org.github.io/api/streams.json"
+  },
+  "declared_catalog_star_floor": 93600,
+  "measured_star_total": 179578,
+  "repos": [
+    { "full": "iptv-org/iptv", "tier": "mega", "declared": "82K+", "declared_floor": 82000, "stars": 144053, "forks": 8600, "lang": "TypeScript", "license": "Unlicense", "archived": false, "pushed": "2026-11-15T00:12:47Z", "verdict": "ok_con_4k_inexistente" },
+    { "full": "dearbulut/iptv", "tier": "mega", "declared": "1.5K+", "declared_floor": 1500, "stars": 41, "forks": 17, "lang": "TypeScript", "license": "MIT", "archived": false, "pushed": "2026-11-15T06:41:42Z", "verdict": "inflado_x37_endpoints_movidos" },
+    { "full": "Guovin/iptv-api", "tier": "mega", "declared": "3.5K+", "declared_floor": 3500, "stars": 26130, "forks": 7732, "lang": "Python", "license": "NOASSERTION", "archived": false, "pushed": "2026-10-14T01:21:43Z", "verdict": "subcontado_x7_5_licencia_sin_spdx" },
+    { "full": "freearhey/iptv-checker", "tier": "validator", "declared": "800+", "declared_floor": 800, "stars": 632, "forks": 106, "lang": "JavaScript", "license": "MIT", "archived": false, "pushed": "2026-03-06T14:15:53Z", "verdict": "dormido_8_meses" },
+    { "full": "shadialhasan/iptv-m3u-validator", "tier": "validator", "declared": "500+", "declared_floor": 500, "stars": 0, "forks": 0, "lang": "Python", "license": "MIT", "archived": false, "pushed": "2026-10-01T10:56:44Z", "verdict": "no_sostenido" },
+    { "full": "Dispatcharr/Dispatcharr", "tier": "proxy", "declared": "1.2K+", "declared_floor": 1200, "stars": 4514, "forks": 353, "lang": "Python", "license": "AGPL-3.0", "archived": false, "pushed": "2026-11-14T22:27:11Z", "verdict": "ok_copyleft" },
+    { "full": "euzu/tuliprox", "tier": "proxy", "declared": "800+", "declared_floor": 800, "stars": 595, "forks": 64, "lang": "Rust", "license": "MIT", "archived": false, "pushed": "2026-11-14T16:50:58Z", "verdict": "ok_subestimado" },
+    { "full": "kpirnie/kptv-proxy", "tier": "proxy", "declared": "400+", "declared_floor": 400, "stars": 101, "forks": 32, "lang": "Go", "license": "NOASSERTION", "archived": false, "pushed": "2026-11-10T12:42:34Z", "verdict": "inflado_x4_licencia_sin_spdx" },
+    { "full": "iptv-org/epg", "tier": "epg", "declared": "2K+", "declared_floor": 2000, "stars": 3510, "forks": 551, "lang": "HTML", "license": "Unlicense", "archived": false, "pushed": "2026-11-15T04:09:52Z", "verdict": "ok" },
+    { "full": "alperokur/xtream-api-proxy-epg", "tier": "epg", "declared": "300+", "declared_floor": 300, "stars": 2, "forks": 2, "lang": "JavaScript", "license": "MIT", "archived": false, "pushed": "2025-07-26T09:15:40Z", "verdict": "no_sostenido_abandonado_16_meses" },
+    { "full": "Drone9988/IPTV", "tier": "4k", "declared": "600+", "declared_floor": 600, "stars": 0, "forks": 0, "lang": "Python", "license": null, "archived": false, "pushed": "2026-11-15T05:09:03Z", "verdict": "no_sostenido_sin_licencia" }
+  ],
+  "endpoints": [
+    { "url": "https://iptv-org.github.io/iptv/index.m3u", "status": 200, "extinf": 11502, "bytes": 2644525, "declared_by_catalog": false },
+    { "url": "https://iptv-org.github.io/iptv/countries/us.m3u", "status": 200, "extinf": 1497, "bytes": 331151, "declared_by_catalog": false },
+    { "url": "https://iptv-org.github.io/iptv/categories/sports.m3u", "status": 200, "extinf": 525, "bytes": 133062, "declared_by_catalog": false },
+    { "url": "https://iptv-org.github.io/api/streams.json", "status": 200, "items": 18689, "bytes": 3897483, "declared_by_catalog": false },
+    { "url": "https://iptv-org.github.io/api/channels.json", "status": 200, "items": 31843, "bytes": 7955898, "declared_by_catalog": false },
+    { "url": "https://iptv-org.github.io/api/categories.json", "status": 200, "items": 30, "bytes": 2773, "declared_by_catalog": false },
+    { "url": "https://iptv-org.github.io/iptv/categories/4k.m3u", "status": 404, "declared_by_catalog": true },
+    { "url": "https://iptv-org.github.io/iptv/categories/8k.m3u", "status": 404, "declared_by_catalog": true },
+    { "url": "https://dearbulut.github.io/iptv/api/channels.json", "status": 404, "declared_by_catalog": true },
+    { "url": "https://dearbulut.github.io/iptv/api/4k.json", "status": 404, "declared_by_catalog": true },
+    { "url": "https://dearbulut.github.io/iptv/", "status": 200, "bytes": 8539, "declared_by_catalog": false },
+    { "url": "https://dearbulut.github.io/iptv/api/v1/openapi.json", "status": 200, "bytes": 22380, "declared_by_catalog": false },
+    { "url": "https://dearbulut.github.io/iptv/api/v1/channels.json", "status": 200, "bytes": 26616018, "declared_by_catalog": false }
+  ],
+  "iptv_org_quality": {
+    "streams_total": 18689,
+    "with_quality": 14712,
+    "with_quality_pct": 78.7,
+    "distribution": {
+      "1080p": 5769, "720p": 5118, "576p": 2423, "480p": 446, "360p": 273,
+      "540p": 118, "576i": 95, "1080i": 59, "504p": 43, "240p": 37,
+      "396p": 35, "406p": 33, "2160p": 20
+    },
+    "uhd_total": 20,
+    "uhd_8k_total": 0
+  },
+  "license_file_checks": [
+    { "full": "Guovin/iptv-api", "spdx": "NOASSERTION", "license_file": "AGPL-3.0", "file_bytes": 26574, "wins": "license_file" },
+    { "full": "kpirnie/kptv-proxy", "spdx": "NOASSERTION", "license_file": "MIT", "file_bytes": 1871, "wins": "license_file" },
+    { "full": "iptv-org/iptv", "spdx": "Unlicense", "license_file": "Unlicense", "file_bytes": 1235, "wins": "agree" },
+    { "full": "Drone9988/IPTV", "spdx": null, "license_file": null, "file_bytes": 0, "wins": "no_license" }
+  ],
+  "pipeline_run": {
+    "step1_acquire": { "executed": true, "streams_total": 18689, "with_quality": 14712, "quality_2160p": 20 },
+    "step2_probe_bitstream": { "executed": false, "reason": "requiere ffprobe/probe real; toda etiqueta queda declarado" },
+    "step3_dedupe": { "executed": true, "method": "dedupe por URL, una URL por #EXTINF" },
+    "step4_emit": { "executed": true, "output_bytes": 3189, "channels": 20 },
+    "invariants": { "extinf_equals_urls": true, "first_line_extm3u": true, "master_tags": 0, "fake_4k_labels": 0 },
+    "note": "ejecutado con equivalente PowerShell; los comandos jq/awk del ejemplo no se corrieron como tales"
+  },
+  "not_measured": [
+    "health checks de dearbulut (workflow no ejecutado)",
+    "flag --resolution-check y API de iptv-checker",
+    "esquema results.resolution.real",
+    "pasos 2-4 del pipeline del catalogo",
+    "generate-m3u.js (no existe en el catalogo)"
+  ]
+}

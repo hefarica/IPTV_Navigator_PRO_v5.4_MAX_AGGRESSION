@@ -1,0 +1,6 @@
+# Loader patch: inserts the APE Profile Studio bundle row.
+# The Host half (index.js) owns the two read-only JSON routes; the Client half
+# (client.js) owns the left sidebar entry and the `ape-profile-studio` panel.
+- insert:
+    - id: ape-profile-studio
+      name: '@local/ape-profile-studio'
