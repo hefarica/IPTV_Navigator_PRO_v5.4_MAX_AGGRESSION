@@ -4687,6 +4687,14 @@
   <!-- Latency Rayo Supremo v1.0 (23 metadatos por canal) -->
   <script src="js/ape-v9/latency-rayo-supremo.js"></script>
   <script src="js/ape-v9/streaming/sufficiency-law-v1.js?v=20261108"></script>
+  <!-- Productor de medicion que la ley de suficiencia exige: bins de 1 s sobre
+       ventana de 5-10 s desde Resource Timing. Sin el, el panel no puede pasar
+       de NO_MEASUREMENT y muestra UNSTABLE/79.97% sin dato real. -->
+  <script src="js/ape-v9/streaming/bandwidth-meter-v1.js?v=20261116"></script>
+  <!-- Autotuner: NO muestra el health, MUEVE los parametros. Formulas + propuesta
+       del LLM de la plataforma (/image/optimize-llm), validada por rangos; si el
+       LLM falla o toca fallbacks/codec/resolucion, gana el determinista. -->
+  <script src="js/ape-v9/streaming/auto-tune-v1.js?v=20261116"></script>
   <script src="js/ape-v9/profile-manager-v9.js?v=20261106-ready"></script>
   <!-- Profile Manager - Custom Headers Extension -->
   <script src="js/profile-manager-custom-headers.js"></script>

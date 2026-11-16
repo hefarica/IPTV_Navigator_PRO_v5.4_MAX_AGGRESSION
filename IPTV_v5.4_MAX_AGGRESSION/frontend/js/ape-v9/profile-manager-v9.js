@@ -1278,6 +1278,17 @@
 
             // v3.1: Actualizar indicadores de Streaming Health
             this._updateStreamingHealth();
+
+            // [2026-11-16] Auto-medición ÚNICA por sesión: la primera vez que se
+            // pinta el panel se mide la red de verdad (5 s, sin tráfico extra).
+            // No es poll: se dispara una sola vez y luego el usuario mide si quiere.
+            if (!this._lastBw && !this._bwAutoStarted) {
+                this._bwAutoStarted = true;
+                const _self = this;
+                setTimeout(function () {
+                    try { _self.measureStreamingHealth(5); } catch (e) { /* no bloqueante */ }
+                }, 0);
+            }
         }
 
         /**
@@ -1326,6 +1337,36 @@
                         performance.risk_color = _sc.risk <= 30 ? '#10b981'
                             : _sc.risk <= 60 ? '#eab308' : '#ef4444';
                     }
+                }
+            } catch (e) { /* no bloqueante */ }
+
+            // ═══════════════════════════════════════════════════════════════
+            // [2026-11-16] LA MEDICIÓN REAL MANDA SOBRE EL SOLVER.
+            //
+            // El solver estima desde el PERFIL: bitrate 200 Mbps contra un piso
+            // de 0.1 Mbps ⇒ Risk 90 / stall 79,97 % sin un solo byte de red.
+            // Si hay una ventana medida y fresca (< 60 s), esos cuatro valores
+            // se sustituyen por la medición y evidence pasa a true. Sin
+            // medición, evidence=false y el panel dice exactamente por qué.
+            // ═══════════════════════════════════════════════════════════════
+            try {
+                const _bw = this._lastBw;
+                const _fresh = !!(_bw && _bw.ok && _bw.headroomRatio !== null &&
+                                  (Date.now() - (_bw.at || 0)) < 60000);
+                if (_fresh) {
+                    performance.evidence = true;
+                    performance.headroomRatio = _bw.headroomRatio;
+                    performance.risk_score = _bw.risk;
+                    performance.stall_rate_percent = (_bw.stallPct === null ? undefined : _bw.stallPct);
+                    performance.risk_color = _bw.risk <= 30 ? '#10b981'
+                        : _bw.risk <= 60 ? '#eab308' : '#ef4444';
+                    performance.bw_measured_mbps = _bw.measurement.mbpsSafe;
+                    performance.bw_avg_mbps = _bw.measurement.mbpsAvg;
+                    performance.bw_window_s = _bw.measurement.windowS;
+                    performance.bw_jitter = _bw.measurement.jitter;
+                    performance.sufficiency_state = _bw.state;
+                } else if (typeof performance.evidence !== 'boolean') {
+                    performance.evidence = false;
                 }
             } catch (e) { /* no bloqueante */ }
 
@@ -2714,6 +2755,84 @@
          * Timing vía APE_BW), refresca la ventana del predictor y re-renderiza.
          * Si no hay medición disponible lo dice; no inventa Mbps.
          */
+        /* ═══════════════════════════════════════════════════════════════════
+         * STREAMING HEALTH MEDIDO (2026-11-16)
+         *
+         * Mide en bins de 1 s sobre una ventana de 5 s (hasta 10 s) usando los
+         * bytes de media que el player YA descargó (Resource Timing): cero
+         * tráfico extra. Alimenta el panel con la ley de suficiencia y, cuando
+         * el headroom lo permite, devuelve la configuración recomendada.
+         *
+         * Sin medición NO publica cifras: deja evidence=false y explica por qué.
+         * Devuelve la promesa para poder verificarlo desde consola o test.
+         * ═══════════════════════════════════════════════════════════════════ */
+        measureStreamingHealth(windowS) {
+            const bw = (typeof window !== 'undefined') ? window.APE_BW_METER : null;
+            const profile = this.config.getProfile(this.activeProfileId);
+            const required = Number(profile && profile.settings ? profile.settings.bitrate : 0) || 0;
+            const self = this;
+
+            if (!bw || typeof bw.measureAndIntegrate !== 'function') {
+                this._lastBw = { ok: false, state: 'NO_METER', at: Date.now(),
+                                 reason: 'APE_BW_METER no cargado (bandwidth-meter-v1.js)' };
+                this._updateStreamingHealth();
+                return Promise.resolve(this._lastBw);
+            }
+
+            return bw.measureAndIntegrate(required, { windowS: windowS || 5, mode: 'auto' }).then(function (r) {
+                r.at = Date.now();
+                r.stallPct = self._stallFromRatio(r.headroomRatio);
+                self._lastBw = r;
+
+                // ═══════════════════════════════════════════════════════════
+                // [2026-11-16] NO sólo se muestra: SE MUEVEN LOS PARÁMETROS.
+                // 1) el tuner calcula con las 4 fórmulas (buffer/prefetch/
+                //    paralelo/read-timeout) y consulta al LLM de la plataforma
+                //    (/image/optimize-llm) con purpose='streaming_health';
+                // 2) la validación por rangos decide: si el LLM toca fallbacks,
+                //    codec, resolución o se sale de rango, gana el determinista;
+                // 3) se aplica al perfil activo SOLO por las APIs del modelo.
+                // ═══════════════════════════════════════════════════════════
+                const T = (typeof window !== 'undefined') ? window.APE_HEALTH_TUNER : null;
+                if (!T || !r.ok) { self._updateStreamingHealth(); return r; }
+                const segDur = (profile && profile.settings) ? profile.settings.segment_duration_s : null;
+                return T.plan({
+                    requiredMbps: required,
+                    headroomRatio: r.headroomRatio,
+                    risk: r.risk,
+                    measuredMbpsSafe: r.measurement ? r.measurement.mbpsSafe : null,
+                    jitter: r.measurement ? r.measurement.jitter : null,
+                    windowS: r.measurement ? r.measurement.windowS : null,
+                    segDurationSec: segDur
+                }, {
+                    llm: true,
+                    fetch: (typeof window !== 'undefined' ? window.fetch : null)
+                }).then(function (pl) {
+                    self._lastTune = pl;
+                    if (pl && pl.ok && pl.chosen) {
+                        pl.applied = T.apply(self, self.activeProfileId, pl.chosen);
+                    }
+                    self._updateStreamingHealth();
+                    return r;
+                });
+            }).catch(function (e) {
+                self._lastBw = { ok: false, state: 'MEASURE_FAILED',
+                                 reason: (e && e.message) || 'error midiendo', at: Date.now() };
+                self._updateStreamingHealth();
+                return self._lastBw;
+            });
+        }
+
+        /* Estimación DOCUMENTADA de stall a partir del headroom.
+         * Tiempo de descarga de un segmento = segDur / ratio. Si ratio < 1 el
+         * segmento llega tarde y el buffer se vacía en esa proporción.
+         * NO es una medición de stall: es una derivación del mismo ratio, y se
+         * etiqueta como tal. ratio >= 1 ⇒ 0 %. */
+        _stallFromRatio(r) {
+            if (typeof r !== 'number' || !isFinite(r) || r <= 0) return null;
+            return Math.max(0, Math.round((1 / r - 1) * 10000) / 100);
+        }
+
         measurePredictiveAI() {
             try {
                 if (!window.APE_BW || !window.APE_PREDICT) {

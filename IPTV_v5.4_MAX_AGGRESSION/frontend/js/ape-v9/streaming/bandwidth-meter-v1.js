@@ -1,0 +1,379 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * APE BANDWIDTH METER v1.0 — el PRODUCTOR de medición que faltaba
+ *
+ * POR QUE EXISTE
+ *   `sufficiency-law-v1.js` ya hace lo correcto: sin medición devuelve
+ *   NO_MEASUREMENT en vez de inventar un headroom. Pero nadie MEDÍA. Resultado
+ *   medido en el panel: "UNSTABLE · 79.97 % · Risk 90 · Headroom SIN MEDICIÓN",
+ *   tres números incompatibles porque ninguno venía de la red.
+ *
+ * QUE MIDE
+ *   Velocidad media en bins de 1 segundo, acumulada sobre una ventana de 5 s
+ *   (configurable a 10 s). Fuente preferente: Resource Timing — los bytes que
+ *   el reproductor YA descargó. Cero tráfico extra. Fuente opcional: sonda
+ *   sintética contra una URL pequeña, sólo si se pide explícitamente.
+ *
+ * QUE DEVUELVE (y qué NO)
+ *   - mbpsAvg  : media de la ventana
+ *   - mbpsSafe : mínimo de los bins (el número con el que se decide, porque un
+ *                pico de 1 s no sostiene un buffer)
+ *   - jitter   : 1 − min/max de la ventana
+ *   Sin muestras NO hay números: state = NO_MEASUREMENT y recommend = null.
+ *
+ * AUTOMATIZA
+ *   Traduce headroom → buffer / prefetch / concurrencia / read-timeout.
+ *   NO toca la naturaleza de los fallbacks: las cadenas F0–F5, el codec ladder
+ *   y los tiers de calidad quedan fuera, listados en `untouched`.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+(function (root, factory) {
+    if (typeof module === 'object' && module.exports) module.exports = factory;
+    else root.APE_BW_METER = factory(root);
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (root) {
+    'use strict';
+
+    var LAW = {
+        VERSION: '1.0',
+        WINDOW_S_DEFAULT: 5,
+        WINDOW_S_MAX: 10,
+        BIN_MS: 1000,
+        // anclas de riesgo, coherentes con sufficiency-law-v1 (3x→≤10, 1.3x→50)
+        RISK_ANCHORS: [[3.0, 5], [2.0, 20], [1.5, 35], [1.3, 50], [1.0, 70], [0, 95]],
+        CONCURRENCY_MAX: 8,          // invariante del repo: 8, nunca más
+        MIN_BINS_VALIDOS: 3,
+        // SONDA SINTÉTICA: fichero estático del propio servidor (nunca el
+        // proveedor: su slot es único y una sonda lo tumbaría). Se cancela en
+        // cuanto pasa la ventana, así que el tope sólo acota el daño.
+        PROBE_URL_DEFAULT: '/lists/streamlink.m3u8',
+        PROBE_MAX_BYTES: 64 * 1024 * 1024,
+        UNTOUCHED: [
+            'fallback_chain_F0_F5',
+            'codec_ladder_priority',
+            'profile_quality_tier',
+            'anti_degradation_floor',
+            'hdcp_level_policy',
+            'RESOLUTION_declarada'
+        ]
+    };
+
+    function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+    function round2(v) { return Math.round(v * 100) / 100; }
+
+    /* Acumula muestras crudas [{t_ms, bytes}] en bins de 1 s. */
+    function toBins(samples, binMs) {
+        binMs = binMs || LAW.BIN_MS;
+        var out = [], cur = null, i, s, b;
+        if (!samples || !samples.length) return out;
+        for (i = 0; i < samples.length; i++) {
+            s = samples[i];
+            if (!s || typeof s.t_ms !== 'number') continue;
+            b = Math.floor(s.t_ms / binMs);
+            if (!cur || cur.bin !== b) { cur = { bin: b, bytes: 0 }; out.push(cur); }
+            cur.bytes += (Number(s.bytes) || 0);
+        }
+        return out;
+    }
+
+    /* Resumen honesto de una ventana de muestras.
+     * `mbpsSafe` ignora bins inactivos (0 bytes) SOLO si quedan >= 3 con datos:
+     * un bin inactivo es el reproductor en pausa, no una caída de red. */
+    function summarize(samples, windowS) {
+        var bins = toBins(samples);
+        var perBin = bins.map(function (b) { return b.bytes * 8 / 1e6; });
+        var activos = perBin.filter(function (v) { return v > 0; });
+        if (!activos.length) {
+            return {
+                ok: false, state: 'NO_MEASUREMENT',
+                reason: 'ventana sin bytes: el reproductor no descargó nada (no es 0 Mbps)',
+                samples: perBin.length, windowS: windowS || LAW.WINDOW_S_DEFAULT
+            };
+        }
+        var usados = activos.length >= LAW.MIN_BINS_VALIDOS ? activos : perBin;
+        var sum = 0, i;
+        for (i = 0; i < usados.length; i++) sum += usados[i];
+        var avg = sum / usados.length;
+        var min = Math.min.apply(null, usados);
+        var max = Math.max.apply(null, usados);
+        return {
+            ok: true, state: 'MEASURED',
+            mbpsAvg: round2(avg),
+            mbpsSafe: round2(min),
+            mbpsMax: round2(max),
+            jitter: max > 0 ? round2(1 - min / max) : null,
+            bins: perBin.length,
+            binsActivos: activos.length,
+            perBinMbps: perBin.map(round2),
+            windowS: windowS || LAW.WINDOW_S_DEFAULT
+        };
+    }
+
+    /* Riesgo 0..100 por interpolación lineal entre anclas de la ley. */
+    function riskFromRatio(r) {
+        if (r === null || r === undefined || !isFinite(r)) return null;
+        var A = LAW.RISK_ANCHORS, i, hi, lo, t;
+        if (r >= A[0][0]) return A[0][1];
+        for (i = 0; i < A.length - 1; i++) {
+            hi = A[i]; lo = A[i + 1];
+            if (r <= hi[0] && r >= lo[0]) {
+                t = (hi[0] === lo[0]) ? 0 : (r - lo[0]) / (hi[0] - lo[0]);
+                return Math.round(lo[1] + t * (hi[1] - lo[1]));
+            }
+        }
+        return 95;
+    }
+
+    /* Escalón de configuración según headroom. Sube buffer/prefetch/tiempo de
+     * lectura; NUNCA toca la cadena de fallbacks ni el techo de calidad. */
+    function recommendFromRatio(r) {
+        if (r === null || r === undefined || !isFinite(r) || r <= 0) {
+            return { ok: false, state: 'NO_MEASUREMENT', config: null, untouched: LAW.UNTOUCHED.slice() };
+        }
+        var tier, cfg;
+        if (r >= 2.0) {
+            tier = 'EXCEPTIONAL';
+            cfg = { bufferTargetS: 12, prefetchSegments: 6, parallelDownloads: 8, readTimeoutMs: 90000 };
+        } else if (r >= 1.3) {
+            tier = 'SUFFICIENT';
+            cfg = { bufferTargetS: 10, prefetchSegments: 4, parallelDownloads: 6, readTimeoutMs: 75000 };
+        } else {
+            tier = 'TIGHT';
+            cfg = { bufferTargetS: 8, prefetchSegments: 3, parallelDownloads: 4, readTimeoutMs: 60000 };
+        }
+        cfg.parallelDownloads = clamp(Math.min(cfg.parallelDownloads, Math.floor(2 * r) || 1),
+                                      1, LAW.CONCURRENCY_MAX);
+        return {
+            ok: true, state: tier, config: cfg,
+            reason: 'headroom ' + round2(r) + 'x → ' + tier,
+            untouched: LAW.UNTOUCHED.slice()
+        };
+    }
+
+    /* Núcleo: integra medición + exigencia y devuelve todo lo que el panel
+     * necesita, sin inventar nada cuando no hay muestras. */
+    function integrate(requiredMbps, samples, opts) {
+        opts = opts || {};
+        var req = Number(requiredMbps);
+        var m = summarize(samples, opts.windowS);
+        if (!m.ok) {
+            return {
+                ok: false, state: 'NO_MEASUREMENT',
+                measurement: m, headroomRatio: null, headroomPct: null, risk: null,
+                recommend: { ok: false, state: 'NO_MEASUREMENT', config: null, untouched: LAW.UNTOUCHED.slice() },
+                untouched: LAW.UNTOUCHED.slice(),
+                reason: m.reason
+            };
+        }
+        if (!isFinite(req) || req <= 0) {
+            return {
+                ok: false, state: 'NO_REQUIREMENT',
+                measurement: m, headroomRatio: null, headroomPct: null, risk: null,
+                recommend: { ok: false, state: 'NO_REQUIREMENT', config: null, untouched: LAW.UNTOUCHED.slice() },
+                untouched: LAW.UNTOUCHED.slice(),
+                reason: 'sin bitrate exigido no hay headroom que calcular'
+            };
+        }
+        var r = round2(m.mbpsSafe / req);
+        var risk = riskFromRatio(r);
+        var ev = null;
+        if (typeof root.evaluateSufficiency === 'function') {
+            ev = root.evaluateSufficiency(r, risk, true);
+        }
+        var rec = recommendFromRatio(r);
+        return {
+            ok: true,
+            state: ev ? ev.state : rec.state,
+            law: ev,
+            measurement: m,
+            requiredMbps: req,
+            headroomRatio: r,
+            headroomPct: Math.round((r - 1) * 100),
+            risk: risk,
+            satisfiesExceptional: ev ? !!ev.satisfiesExceptional : (r >= 3 && risk <= 10),
+            recommend: rec,
+            untouched: LAW.UNTOUCHED.slice()
+        };
+    }
+
+    /* ── SAMPLER de navegador (Resource Timing, cero tráfico extra) ─────────
+     * Cada 1 s lee cuántos bytes de media entraron desde la última lectura y
+     * los apila. Al terminar la ventana resuelve con las muestras crudas. */
+    function startSampler(opts) {
+        opts = opts || {};
+        var windowS = clamp(Number(opts.windowS) || LAW.WINDOW_S_DEFAULT, 1, LAW.WINDOW_S_MAX);
+        var mediaRe = /\.(ts|m4s|mp4|m3u8|cmfv|cmfa)(\?|#|$)/i;
+        var samples = [], t0 = null, lastBytes = 0, timer = null;
+        var perf = root.performance;
+
+        if (!perf || typeof perf.getEntriesByType !== 'function') {
+            return Promise.resolve({
+                ok: false, state: 'NO_RESOURCE_TIMING',
+                reason: 'el entorno no expone performance.getEntriesByType (no se mide, no se inventa)',
+                samples: [], windowS: windowS
+            });
+        }
+
+        function totalBytes() {
+            var out = 0;
+            var entries = perf.getEntriesByType('resource') || [];
+            for (var i = 0; i < entries.length; i++) {
+                var e = entries[i];
+                if (e.initiatorType && e.initiatorType !== 'xmlhttprequest' && e.initiatorType !== 'fetch' && e.initiatorType !== 'other' && e.initiatorType !== 'video') continue;
+                if (!mediaRe.test(String(e.name || ''))) continue;
+                var n = Number(e.transferSize) || Number(e.encodedBodySize) || 0;
+                if (n > 0) out += n;
+            }
+            return out;
+        }
+
+        return new Promise(function (resolve) {
+            t0 = Date.now();
+            lastBytes = totalBytes();
+            timer = setInterval(function () {
+                var now = Date.now();
+                var tot = totalBytes();
+                var delta = tot >= lastBytes ? tot - lastBytes : 0;
+                lastBytes = tot;
+                samples.push({ t_ms: now - t0, bytes: delta });
+                if (now - t0 >= windowS * 1000) {
+                    clearInterval(timer);
+                    resolve({ ok: samples.some(function (s) { return s.bytes > 0; }),
+                             state: 'SAMPLED', samples: samples, windowS: windowS,
+                             source: 'resource-timing' });
+                }
+            }, LAW.BIN_MS);
+        });
+    }
+
+    /* ── SONDA SINTÉTICA (no depende de estar reproduciendo) ─***************
+     * Descarga real durante `windowS` segundos contra un fichero ESTÁTICO del
+     * propio servidor, contando bytes por bin de 1 s. Se cancela al terminar la
+     * ventana: no hace falta el fichero completo.
+     *
+     * NO toca el proveedor: su slot es único y una sonda de más tumbaría lo que
+     * se está sirviendo. La URL es configurable (opts.probeUrl).
+     * cache:'no-store' + cache-buster: si no, mide la caché, no la red.
+     * ********************************************************************* */
+    function probe(opts) {
+        opts = opts || {};
+        var windowS = clamp(Number(opts.windowS) || LAW.WINDOW_S_DEFAULT, 1, LAW.WINDOW_S_MAX);
+        var baseUrl = String(opts.probeUrl || LAW.PROBE_URL_DEFAULT);
+        var maxBytes = Number(opts.maxBytes) || LAW.PROBE_MAX_BYTES;
+        var fetchFn = root.fetch;
+        var Ctl = root.AbortController;
+
+        if (typeof fetchFn !== 'function' || typeof Ctl !== 'function') {
+            return Promise.resolve({
+                ok: false, state: 'NO_FETCH',
+                reason: 'el entorno no expone fetch/AbortController: no se mide, no se inventa',
+                samples: [], windowS: windowS, source: 'synthetic-probe'
+            });
+        }
+
+        var ctl = new Ctl();
+        var bust = (baseUrl.indexOf('?') === -1 ? '?' : '&') + '_ape_bw=' +
+                   Date.now() + Math.random().toString(36).slice(2, 8);
+        var samples = [], t0 = Date.now(), total = 0;
+        var hardStop = setTimeout(function () { try { ctl.abort(); } catch (e) {} }, windowS * 1000 + 400);
+
+        return fetchFn(baseUrl + bust, {
+            cache: 'no-store',
+            signal: ctl.signal,
+            headers: { 'Accept': '*/*', 'Range': 'bytes=0-' + (maxBytes - 1) }
+        }).then(function (res) {
+            if (!res || !res.ok) throw new Error('HTTP ' + (res ? res.status : '?'));
+            if (!res.body || typeof res.body.getReader !== 'function') throw new Error('respuesta sin stream');
+            var reader = res.body.getReader();
+            function pump() {
+                return reader.read().then(function (r) {
+                    if (r.done) return;
+                    var now = Date.now() - t0;
+                    var n = (r.value && r.value.length) ? r.value.length : 0;
+                    total += n;
+                    samples.push({ t_ms: now, bytes: n });
+                    if (now >= windowS * 1000 || total >= maxBytes) {
+                        try { reader.cancel(); } catch (e) {}
+                        return;
+                    }
+                    return pump();
+                });
+            }
+            return pump().then(function () {
+                clearTimeout(hardStop);
+                try { ctl.abort(); } catch (e) {}
+                return {
+                    ok: samples.some(function (s) { return s.bytes > 0; }),
+                    state: 'PROBED', samples: samples, windowS: windowS,
+                    source: 'synthetic-probe', bytes: total, probeUrl: baseUrl
+                };
+            });
+        }).catch(function (e) {
+            clearTimeout(hardStop);
+            var aborted = e && e.name === 'AbortError';
+            return {
+                ok: samples.some(function (s) { return s.bytes > 0; }),
+                state: aborted ? 'PROBE_ABORTED' : 'PROBE_FAILED',
+                reason: (e && e.message) || 'sonda fallida',
+                samples: samples, windowS: windowS, source: 'synthetic-probe',
+                bytes: total, probeUrl: baseUrl
+            };
+        });
+    }
+
+    /* Un solo paso para el panel.
+     * mode 'probe' (por defecto): sonda activa, funciona SIN reproducir.
+     * mode 'auto'             : sonda y, si falla, cae a Resource Timing.
+     * mode 'rt'               : sólo Resource Timing (lo que el player descargó).
+     * Si no hay medición NO inventa: devuelve el estado con su razón. */
+    function measureAndIntegrate(requiredMbps, opts) {
+        opts = opts || {};
+        var mode = opts.mode || 'probe';
+
+        function fromRt() {
+            return startSampler(opts).then(function (smp) {
+                if (!smp || smp.state === 'NO_RESOURCE_TIMING') return null;
+                return integrate(requiredMbps, smp.samples || [], { windowS: smp.windowS });
+            });
+        }
+
+        function none(state, reason, src) {
+            return {
+                ok: false, state: state || 'NO_MEASUREMENT',
+                measurement: { ok: false, state: state || 'NO_MEASUREMENT', reason: reason || null, source: src || null },
+                headroomRatio: null, headroomPct: null, risk: null,
+                recommend: { ok: false, state: state || 'NO_MEASUREMENT', config: null, untouched: LAW.UNTOUCHED.slice() },
+                untouched: LAW.UNTOUCHED.slice(), reason: reason || null
+            };
+        }
+
+        if (mode === 'rt') {
+            return fromRt().then(function (r) {
+                return r || none('NO_RESOURCE_TIMING', 'el entorno no expone Resource Timing', 'resource-timing');
+            });
+        }
+
+        return probe(opts).then(function (pr) {
+            if (pr && pr.ok) {
+                var out = integrate(requiredMbps, pr.samples || [], { windowS: pr.windowS });
+                out.probe = { bytes: pr.bytes, source: pr.source, probeUrl: pr.probeUrl };
+                return out;
+            }
+            if (mode === 'auto') {
+                return fromRt().then(function (r) {
+                    return r || none(pr && pr.state, (pr && pr.reason) || 'sonda sin datos', 'synthetic-probe');
+                });
+            }
+            return none(pr && pr.state, (pr && pr.reason) || 'sonda sin datos', 'synthetic-probe');
+        });
+    }
+
+    return {
+        LAW: LAW,
+        toBins: toBins,
+        summarize: summarize,
+        riskFromRatio: riskFromRatio,
+        recommendFromRatio: recommendFromRatio,
+        integrate: integrate,
+        startSampler: startSampler,
+        probe: probe,
+        measureAndIntegrate: measureAndIntegrate
+    };
+});

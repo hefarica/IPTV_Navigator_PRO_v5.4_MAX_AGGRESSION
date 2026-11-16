@@ -295,13 +295,29 @@
                 (ctx.options && ctx.options.profile) || 'P3'
             ).toUpperCase().replace(/\.5$/, '');
             const _bwMap = { P0: 120000000, P1: 80000000, P2: 50000000, P3: 25000000, P4: 15000000, P5: 8000000 };
+            // [2026-11-15] DEPRECADO: ya NO se lee para emitir. El nivel se deriva del objetivo
+            // declarado con _apeHcLevel (abajo). No volver a usar este mapa para el STREAM-INF:
+            // mapeaba por perfil (P3→L123) mientras RESOLUTION es 5760x3240.
             const _cdMap = {
                 P0: 'hvc1.2.4.L186.B0', P1: 'hvc1.2.4.L153.B0', P2: 'hvc1.2.4.L153.B0',
                 P3: 'hvc1.2.4.L123.B0', P4: 'hvc1.2.4.L120.B0', P5: 'hvc1.2.4.L93.B0'
             };
             const _tBw = _bwMap[_pf] || 25000000;
-            const _tCd = _cdMap[_pf] || 'hvc1.2.4.L123.B0';
+            // [2026-11-15 · owner decision P-4] El nivel se deriva del OBJETIVO DECLARADO, no del perfil.
+            // RESOLUTION se emite como 5760x3240 (target 6K-SIMULATE): a 60 fps eso exige Level 6.1
+            // (2.139.095.040 luma/s >= 1.119.744.000). Con L123 (Level 4.1, techo 133.693.056) el
+            // decoder rechaza o cae a otra variante. Familia SIEMPRE hvc1.2.4.*
+            const _apeHcLevel = (function (w, h, fps) {
+                const T = [['L120', 2228224, 66845184], ['L123', 2228224, 133693056],
+                           ['L150', 8912896, 267386880], ['L153', 8912896, 534773760],
+                           ['L156', 8912896, 1069547520], ['L180', 35651584, 1069547520],
+                           ['L183', 35651584, 2139095040], ['L186', 35651584, 4278190080]];
+                const ps = w * h, sr = ps * fps;
+                for (let i = 0; i < T.length; i++) { if (ps <= T[i][1] && sr <= T[i][2]) return T[i][0]; }
+                return 'L186';
+            })(5760, 3240, Number((_pf === 'P0') ? 120 : 60));
             const _tFps = (_pf === 'P0') ? 120 : 60;
+            const _tCd = 'hvc1.2.4.' + _apeHcLevel + '.B0';
             streamInf = '#EXT-X-STREAM-INF:BANDWIDTH=' + _tBw
                 + ',AVERAGE-BANDWIDTH=' + Math.round(_tBw * 0.8)
                 + ',CODECS="' + _tCd + ',mp4a.40.2"'
@@ -365,11 +381,60 @@
             '#EXT-X-APE-STREAM-TRUTH:src=' + (evidence.status === 'observed' ? 'probe-url' : 'unknown')
                 + ',w=' + (evidence.width || 'unknown') + ',h=' + (evidence.height || 'unknown')
                 + ',fps=' + (evidence.frameRate || 'unknown') + ',range=' + (evidence.videoRange || 'unknown')
-                + ',codec=' + (evidence.videoCodec || 'unknown')
+                + ',codec=' + (evidence.videoCodec || 'unknown'),
+            _apeQoeContract(ctx)
         ];
         const uriIndex = lines.findIndex(line => line.trim() && line.trim()[0] !== '#');
         lines.splice(uriIndex, 0, ...metadata, ...(streamInf ? [streamInf] : []));
         return lines.join('\n');
+    }
+
+    /* ── CONTRATO QoE POR PERFIL (2026-11-16) ────────────────────────────────
+     * Emite UNA linea #EXT-X-APE-QOE-CONTRACT por canal con los knobs de SU
+     * perfil: depth/prebuf/stutter/probe/paralelo/read-timeout/gate.
+     *
+     * POR QUE UN TAG PROPIO: #EXTSHIMOTT ya tiene esquema (ape.extshimott.v1,
+     * aditivo) y mezclar otro payload lo rompe. Este tag es nuevo y aislado;
+     * ningun player lo interpreta, y el controlador /prisma/api/qoe-controller.php
+     * es quien lo sirve y lo corrige en runtime.
+     *
+     * POLIMORFICO: si el canal no trae perfil, se resuelve por su resolucion.
+     * Ni un canal queda sin contrato. */
+    const _apeQoeNet = {
+        'P0': { depth: 4, pb: 4, fm: 1, probe: 100, par: 8, rt: 90000, gate: 3.0 },
+        'P0.5': { depth: 4, pb: 4, fm: 1, probe: 100, par: 8, rt: 90000, gate: 3.0 },
+        'P1': { depth: 3, pb: 3, fm: 2, probe: 150, par: 6, rt: 75000, gate: 2.5 },
+        'P1.5': { depth: 3, pb: 3, fm: 2, probe: 150, par: 6, rt: 75000, gate: 2.5 },
+        'P2': { depth: 3, pb: 3, fm: 2, probe: 150, par: 6, rt: 75000, gate: 2.0 },
+        'P2.5': { depth: 3, pb: 3, fm: 2, probe: 150, par: 6, rt: 75000, gate: 2.0 },
+        'P3': { depth: 3, pb: 3, fm: 2, probe: 200, par: 4, rt: 60000, gate: 1.5 },
+        'P3.5': { depth: 3, pb: 3, fm: 2, probe: 200, par: 4, rt: 60000, gate: 1.5 },
+        'P4': { depth: 3, pb: 2, fm: 3, probe: 200, par: 3, rt: 60000, gate: 1.3 },
+        'P4.5': { depth: 3, pb: 2, fm: 3, probe: 200, par: 3, rt: 60000, gate: 1.3 },
+        'P5': { depth: 3, pb: 2, fm: 3, probe: 200, par: 2, rt: 45000, gate: 1.3 },
+        'P5.5': { depth: 3, pb: 2, fm: 3, probe: 200, par: 2, rt: 45000, gate: 1.3 }
+    };
+    function _apeQoeProfile(ch) {
+        const raw = String((ch && (ch.ape_profile || ch.profile)) || '').toUpperCase();
+        if (_apeQoeNet[raw]) return raw;
+        const h = Number((ch && (ch.height || ch.res_h)) || 0);
+        if (h >= 3240) return 'P0.5';
+        if (h >= 2160) return 'P1';
+        if (h >= 1080) return 'P3';
+        if (h >= 720) return 'P4';
+        return 'P5';
+    }
+    function _apeQoeContract(ctx) {
+        const ch = (ctx && ctx.channel) || {};
+        const prof = _apeQoeProfile(ch);
+        const n = _apeQoeNet[prof];
+        const id = String(ch.tvg_id || ch.stream_id || ch.id || '')
+            .replace(/[^A-Za-z0-9_.-]/g, '').slice(0, 40) || 'ch';
+        return '#EXT-X-APE-QOE-CONTRACT:{"ch":"' + id + '","v":1,"p":"' + prof + '"'
+            + ',"net":{"depth":' + n.depth + ',"pb":' + n.pb + ',"fm":' + n.fm
+            + ',"probe":' + n.probe + ',"par":' + n.par + ',"rt":' + n.rt + ',"gate":' + n.gate + '}'
+            + ',"cad":{"m":"fixed","v":"cfr"},"ott":{"hw":1,"hc":1,"mcr":2,"mmp":0}'
+            + ',"jit":"/prisma/api/qoe-controller.php","truth":"DECLARED"}';
     }
 
     function _apeFinalizeReaPlaylist(text, channels, options) {
