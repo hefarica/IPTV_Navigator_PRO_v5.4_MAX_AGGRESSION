@@ -1,7 +1,8 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "status": "mandatory",
   "effective": "2026-11-01",
+  "amended": "2026-11-15",
   "law": "docs/policies/CRYSTAL_4K_ENHANCEMENT_LAW.md",
   "priority": [
     "native_remux",
@@ -22,8 +23,74 @@
     "downscale_4k_to_fhd",
     "replace_4k_with_fhd",
     "declare_fhd_as_4k_source",
-    "declare_fake_source_resolution",
     "bitrate_video_reduction"
   ],
+  "uhd_simulation": {
+    "required": true,
+    "rationale": "MAX IMAGE FIRST: el objetivo UHD SE SIMULA siempre. Lo prohibido es afirmar que la FUENTE ya lo es, no declarar el objetivo.",
+    "objective": "OBJETIVO DE LA APP: 4K FAKE · 6K SIMULATE · 8K FAKE — simular resoluciones UHD de alta calidad",
+    "tiers": [
+      {
+        "id": "4K-FAKE",
+        "target": "3840x2160",
+        "tag": "#EXT-X-APE-4KFALSE-MODE:ACTIVE",
+        "support_tags": [
+          "#EXT-X-APE-4KFALSE-TARGET-RES:3840x2160",
+          "#EXT-X-APE-4KFALSE-ENGINE:<cadena>"
+        ],
+        "declares_stream_inf_resolution": true,
+        "source": "frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:10540-10543"
+      },
+      {
+        "id": "6K-SIMULATE",
+        "target": "5760x3240",
+        "tag": "#EXT-X-APE-CRYSTAL-6K:...;RES=5760x3240;PIXELS=18662400;CODEC=hvc1.2.4.L183.B0",
+        "support_tags": [
+          "#EXT-X-APE-CRYSTAL-6K-MODE:EMULATED",
+          "#EXT-X-APE-CRYSTAL-6K-TRUTH:DECLARED_ENHANCEMENT;NOT_SOURCE",
+          "#EXT-X-APE-UPSCALE:...MODE=SIMULATED|EMULATED;EXECUTOR=display;EXECUTED=0"
+        ],
+        "declares_stream_inf_resolution": true,
+        "required_codec_level": "hvc1.2.4.L183.B0",
+        "source": "frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:9621-9633"
+      },
+      {
+        "id": "8K-FAKE",
+        "target": "7680x4320",
+        "tag": "#EXT-X-APE-8KFAKE:ENABLED=1;NEVER_REAL=1;TARGET=DISPLAY",
+        "declares_stream_inf_resolution": false,
+        "reason": "display-side: el generador NO pone 7680x4320 en RESOLUTION salvo flag",
+        "source": "frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:9509-9511"
+      }
+    ],
+    "ladder": [
+      { "order": 1, "tier": "8K-FAKE", "target": "7680x4320", "declared_in_manifest": false, "reason": "display-only; NEVER_REAL=1" },
+      { "order": 2, "tier": "6K-SIMULATE", "target": "5760x3240", "declared_in_manifest": true, "required_codec_level": "hvc1.2.4.L183.B0" },
+      { "order": 3, "tier": "4K-FAKE", "target": "3840x2160", "declared_in_manifest": true }
+    ],
+    "selection_rule": "buscar SIEMPRE el tier mas alto sostenible y declararlo como SIMULADO; 8K solo como display; 6K declarado con L183",
+    "fallback": {
+      "on": ["decoder_rejects_level", "bandwidth_insufficient", "tier_not_declarable"],
+      "to": "4K-FAKE",
+      "target": "3840x2160",
+      "never_below": "4K simulado: caer a FHD/HD/SD por fallo es degradacion y esta prohibido (ley anti-degradacion, excepcion escrita del propietario)",
+      "authority": "owner-decision-2026-11-15"
+    },
+    "quality_floor": "alta: cadena declarada con TECH (lanczos/NGU/ESRGAN/unsharp/minterpolate) y EXECUTOR=display; sin recorte de bitrate, fps, HDR ni canales de audio",
+    "required_truth_tags": [
+      "#EXT-X-APE-UPSCALE:TARGET=<objetivo>;SOURCE=<fuente>;MULTIPLIER=x<ratio>;TECH=<cadena>;MODE=SIMULATED|EMULATED;EXECUTOR=display;EXECUTED=0",
+      "#EXT-X-APE-STREAM-TRUTH:src=,w=,h=,fps=,range=,codec=",
+      "#EXT-X-APE-TARGET-PROFILE:<perfil>;TARGET-RES=<objetivo>;SOURCE-RES=<fuente>;GAP=x<ratio>"
+    ],
+    "forbidden": [
+      "declarar que la FUENTE tiene la resolucion objetivo",
+      "declarar applied/verified sin recibo del motor",
+      "simular recortando bitrate, fps, HDR o canales de audio",
+      "declarar CMAF/fMP4 sin #EXT-X-MAP real",
+      "declarar un nivel de codec incapaz de la resolucion declarada"
+    ],
+    "authority": "owner-decision-2026-11-15",
+    "supersedes": "declare_fake_source_resolution (aplicaba a la declaracion de FUENTE, no al objetivo simulado)"
+  },
   "gate": "node tools/check_crystal_4k_law.js"
 }

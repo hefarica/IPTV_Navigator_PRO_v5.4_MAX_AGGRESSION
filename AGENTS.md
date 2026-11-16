@@ -29,6 +29,34 @@ Ley completa: [`docs/policies/ANTI_DEGRADATION_LAW.md`](docs/policies/ANTI_DEGRA
 Contrato: [`contracts/anti_degradation_contract.json`](contracts/anti_degradation_contract.json)  
 Gate: `node tools/check_anti_degradation_policy.js`
 
+> **DECISIÓN DEL PROPIETARIO · 2026-11-15 (binding).** `RESOLUTION` puede declarar el **objetivo**
+> (`5760x3240`, target del device REA) en todo el catálogo aunque la fuente medida sea menor, y los
+> tokens de mejora (`LCEVC`, `AI-SR`, `AI-FI`, `DV-PROFILE`, `QUANTUM-PIXEL`, `4KFALSE`, `8KFAKE`)
+> están **permitidos como metadata declarada**. Deroga **esas dos cláusulas** de
+> `contracts/crystal_4k_enhancement_contract.json` y `contracts/streaming_continuity_contract.json`;
+> **no** deroga la ley anti-degradación, ni la prohibición de declarar una **fuente** falsa, ni un
+> **nivel de códec incapaz** de la resolución declarada, ni `applied` sin recibo.
+> Ver [`docs/policies/OWNER_DECISION_2026-11-15_TARGET_AND_ENHANCEMENT_TOKENS.md`](docs/policies/OWNER_DECISION_2026-11-15_TARGET_AND_ENHANCEMENT_TOKENS.md).
+>
+> **La simulación UHD de alta calidad es OBLIGATORIA** (P-3): todo canal declara su objetivo UHD
+> simulado (`3840x2160 · 5760x3240 · 6144x3456 · 7680x4320`) con `TECH` + `EXECUTOR=display` +
+> `MODE=SIMULATED|EMULATED` + `EXECUTED=0`. **Lo prohibido no es simular: es afirmar que la FUENTE
+> ya es UHD**, y simular recortando bitrate, fps, HDR o audio.
+>
+> **OBJETIVO DE LA APP (P-4): `4K FAKE` · `6K SIMULATE` · `8K FAKE`** — simular UHD de alta calidad.
+> Tags reales: `#EXT-X-APE-4KFALSE-MODE:ACTIVE` (3840×2160) · `#EXT-X-APE-CRYSTAL-6K:…RES=5760x3240;CODEC=hvc1.2.4.L183.B0`
+> (5760×3240, exige `L183` en `CODECS`) · `#EXT-X-APE-8KFAKE:ENABLED=1;NEVER_REAL=1;TARGET=DISPLAY`
+> (7680×4320, **solo display**: no va en `RESOLUTION`). Cada tier lleva `TECH`/`ENGINE` + `EXECUTOR=display` + `EXECUTED=0`.
+>
+> **ESCALERA + FALLBACK (P-5, decisión A):** buscar **siempre** el tier más alto sostenible y declararlo
+> como simulado — `8K FAKE` (display) → `6K SIMULATE` (5760×3240 + `L183`) → `4K FAKE` (3840×2160).
+> Si el decoder rechaza el nivel, el bitrate no alcanza o el tier no es declarable: **fallback al 4K
+> simulado**. **Nunca por debajo**: caer a FHD/HD/SD por un fallo sigue prohibido.
+>
+> **A-02 RETIRADO (decisión del propietario, 2026-11-15):** declarar `hvc1` en `CODECS` sobre canales
+> cuya `ape-codec-family` es `h264` **no rompe la reproducción** y queda **aceptado**. No se vuelve a
+> reportar como defecto.
+
 ## ✨ LEY CRYSTAL 4K UHD — MEJORA OBLIGATORIA
 
 No basta con conservar el 4K: hay que intentar mejorarlo siempre.
