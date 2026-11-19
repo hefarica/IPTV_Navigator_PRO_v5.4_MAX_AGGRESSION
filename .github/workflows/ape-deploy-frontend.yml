@@ -88,7 +88,7 @@ jobs:
       - name: Los fuentes del repo compilan y tienen las correcciones
         run: |
           set -euo pipefail
-          for f in $FICHEROS; do node -c "$SRC_DIR/$f"; echo "  node -c OK  $f"; done
+          for f in $FICHEROS; do case "$f" in *.js) node -c "$SRC_DIR/$f"; echo "  node -c OK  $f" ;; *) echo "  (no-js) $f" ;; esac; done
           SRC="$SRC_DIR/js/ape-v9/m3u8-typed-arrays-ultimate.js"
           echo "SRC=$SRC" >> "$GITHUB_ENV"
           echo '--- correcciones presentes en el repo ---'
@@ -912,4 +912,5 @@ jobs:
 
           [ "$ok" = '1' ] || { echo '::error::SMOKE DEL PLANO DE CONTROL FALLO'; exit 1; }
           echo 'PLANO DE CONTROL DESPLEGADO Y VERIFICADO EN VIVO'
+
 
