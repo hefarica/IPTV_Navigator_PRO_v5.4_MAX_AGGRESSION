@@ -31,6 +31,17 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function (root) {
     'use strict';
 
+    /* ── FETCH NATIVO CAPTURADO EN CARGA (2026-11-17) ────────────────────────
+     * MEDIDO EN EL NAVEGADOR DEL OPERADOR: `ape-runtime-evasion-engine.js`
+     * parchea window.fetch y REINTENTA con espera (interceptedFetch). La sonda
+     * leia root.fetch en el momento de la llamada, heredaba esa interceptacion,
+     * se quedaba reintentando el primer objetivo toda la ventana y moria por el
+     * temporizador: PROBE_ABORTED "signal is aborted without reason" y el panel
+     * en NO_MEASUREMENT. En Node no existe ese motor, por eso ahi medía bien.
+     * Se captura AQUI, antes de que nadie parchee, y se usa para medir red pura.
+     * (Se puede seguir inyectando `opts.fetch` para pruebas.) */
+    var NATIVE_FETCH = (root && typeof root.fetch === 'function') ? root.fetch : null;
+
     var LAW = {
         VERSION: '1.0',
         WINDOW_S_DEFAULT: 5,
@@ -87,7 +98,20 @@
                 samples: perBin.length, windowS: windowS || LAW.WINDOW_S_DEFAULT
             };
         }
-        var usados = activos.length >= LAW.MIN_BINS_VALIDOS ? activos : perBin;
+        var usados, dropped = 0;
+        if (activos.length >= 4) {
+            /* [2026-11-17 FIX MEDIDO] El PRIMER bin de 1 s incluye el arranque de
+             * la peticion (cola de Chrome, DNS, primer paquete): salia a ~2.34 Mbps
+             * mientras el resto iba a cientos, y como mbpsSafe era el MINIMO
+             * ABSOLUTO, un solo bin de arranque destruia la medicion y el panel
+             * clavaba el headroom en -100%. Se descarta el bin de calentamiento
+             * (solo si quedan >=3 utiles) y se mide sobre los bins en regimen. */
+            usados = activos.slice(1);
+            dropped = 1;
+            if (usados.length < LAW.MIN_BINS_VALIDOS) { usados = activos; dropped = 0; }
+        } else {
+            usados = activos.length >= LAW.MIN_BINS_VALIDOS ? activos : perBin;
+        }
         var sum = 0, i;
         for (i = 0; i < usados.length; i++) sum += usados[i];
         var avg = sum / usados.length;
@@ -99,6 +123,7 @@
             mbpsSafe: round2(min),
             mbpsMax: round2(max),
             jitter: max > 0 ? round2(1 - min / max) : null,
+            warmupBinsDropped: dropped,
             bins: perBin.length,
             binsActivos: activos.length,
             perBinMbps: perBin.map(round2),
@@ -256,8 +281,16 @@
         opts = opts || {};
         var windowS = clamp(Number(opts.windowS) || LAW.WINDOW_S_DEFAULT, 1, LAW.WINDOW_S_MAX);
         var baseUrl = String(opts.probeUrl || LAW.PROBE_URL_DEFAULT);
+        /* [2026-11-17] AUTODESCUBRIMIENTO DEL OBJETIVO.
+         * El objetivo por defecto (/lists/streamlink.m3u8) existe en el VPS pero
+         * NO en un Live Server local: la sonda fallaba entera y el panel se
+         * quedaba en "SIN MEDICION" aunque la red fuera perfecta. Se prueban
+         * candidatos que SIEMPRE estan: el generador y el propio panel. */
+        var cands = opts.probeUrl ? [baseUrl] : ['index-v4.html',
+            'js/ape-v9/m3u8-typed-arrays-ultimate.js', baseUrl];
+        var ci = 0;
         var maxBytes = Number(opts.maxBytes) || LAW.PROBE_MAX_BYTES;
-        var fetchFn = root.fetch;
+        var fetchFn = opts.fetch || NATIVE_FETCH || root.fetch;
         var Ctl = root.AbortController;
 
         if (typeof fetchFn !== 'function' || typeof Ctl !== 'function') {
@@ -269,34 +302,79 @@
         }
 
         var ctl = new Ctl();
-        var bust = (baseUrl.indexOf('?') === -1 ? '?' : '&') + '_ape_bw=' +
+        var baseBust = (baseUrl.indexOf('?') === -1 ? '?' : '&') + '_ape_bw=' +
                    Date.now() + Math.random().toString(36).slice(2, 8);
-        var samples = [], t0 = Date.now(), total = 0;
+        var samples = [], t0 = Date.now(), total = 0, round = 0;
         var hardStop = setTimeout(function () { try { ctl.abort(); } catch (e) {} }, windowS * 1000 + 400);
 
-        return fetchFn(baseUrl + bust, {
-            cache: 'no-store',
-            signal: ctl.signal,
-            headers: { 'Accept': '*/*', 'Range': 'bytes=0-' + (maxBytes - 1) }
-        }).then(function (res) {
-            if (!res || !res.ok) throw new Error('HTTP ' + (res ? res.status : '?'));
-            if (!res.body || typeof res.body.getReader !== 'function') throw new Error('respuesta sin stream');
-            var reader = res.body.getReader();
-            function pump() {
-                return reader.read().then(function (r) {
-                    if (r.done) return;
-                    var now = Date.now() - t0;
-                    var n = (r.value && r.value.length) ? r.value.length : 0;
-                    total += n;
-                    samples.push({ t_ms: now, bytes: n });
-                    if (now >= windowS * 1000 || total >= maxBytes) {
-                        try { reader.cancel(); } catch (e) {}
-                        return;
-                    }
-                    return pump();
-                });
+        /* ── RONDAS (2026-11-17) ─────────────────────────────────────────────
+         * Un fichero pequeño —o cualquier cosa servida en localhost— termina en
+         * milisegundos y dejaría menos de MIN_BINS_VALIDOS bins: la ley daría
+         * NO_MEASUREMENT aunque la red esté perfecta. Se ENCADENAN peticiones
+         * hasta completar la ventana, cada una con su cache-buster propio para
+         * seguir midiendo red y no caché. */
+        function more() { return Date.now() - t0 < windowS * 1000 && total < maxBytes; }
+
+        function oneRound() {
+            round++;
+            /* [2026-11-17 FIX MEDIDO POR t11] PRESUPUESTO POR CANDIDATO.
+             * Reproducido en Chrome real: el primer objetivo tardaba 7311 ms
+             * DESDE LA PAGINA (310 peticiones encoladas por Chrome al cargar)
+             * mientras curl al mismo servidor tardaba 3 ms. El plazo GLOBAL de
+             * 5400 ms abortaba la sonda entera antes de probar el segundo.
+             * Ahora cada candidato tiene su propio plazo corto y, si expira, la
+             * cadena AVANZA en vez de morir. */
+            var perCand = Math.max(400, Math.min(1500, (windowS * 1000) / 2));
+            var ctlC = new Ctl();
+            var tCand = setTimeout(function () { try { ctlC.abort(); } catch (e) {} }, perCand);
+            function avanzar() {
+                if (ci < cands.length - 1) { ci++; return oneRound(); }
+                return null;
             }
-            return pump().then(function () {
+            return fetchFn(cands[ci] + baseBust + '-' + round, {
+                cache: 'no-store',
+                signal: ctlC.signal,
+                headers: { 'Accept': '*/*', 'Range': 'bytes=0-' + (maxBytes - 1) }
+            }).then(function (res) {
+                clearTimeout(tCand);
+                if (!res || !res.ok) {
+                    var nx = avanzar();
+                    if (nx) return nx;
+                    throw new Error('HTTP ' + (res ? res.status : '?') + ' en ' + cands[ci]);
+                }
+                if (!res.body || typeof res.body.getReader !== 'function') throw new Error('respuesta sin stream');
+                var reader = res.body.getReader();
+                function pump() {
+                    return reader.read().then(function (r) {
+                        if (r.done) {
+                            if (more()) return oneRound();   // fichero corto: otra ronda
+                            return;
+                        }
+                        var now = Date.now() - t0;
+                        var n = (r.value && r.value.length) ? r.value.length : 0;
+                        total += n;
+                        samples.push({ t_ms: now, bytes: n });
+                        if (!more()) {
+                            try { reader.cancel(); } catch (e) {}
+                            return;
+                        }
+                        return pump();
+                    });
+                }
+                return pump();
+            }).catch(function (e) {
+                /* [2026-11-17] Candidato colgado o error de red: AVANZAR al
+                 * siguiente en lugar de matar la sonda entera. Es la causa que
+                 * midio t11: el 404 del primer objetivo tarda 7311 ms desde la
+                 * pagina porque Chrome lo encola detras de 310 peticiones. */
+                clearTimeout(tCand);
+                var nxc = avanzar();
+                if (nxc) return nxc;
+                throw e;
+            });
+        }
+
+        return oneRound().then(function () {
                 clearTimeout(hardStop);
                 try { ctl.abort(); } catch (e) {}
                 return {
@@ -304,7 +382,6 @@
                     state: 'PROBED', samples: samples, windowS: windowS,
                     source: 'synthetic-probe', bytes: total, probeUrl: baseUrl
                 };
-            });
         }).catch(function (e) {
             clearTimeout(hardStop);
             var aborted = e && e.name === 'AbortError';
@@ -358,7 +435,20 @@
             }
             if (mode === 'auto') {
                 return fromRt().then(function (r) {
-                    return r || none(pr && pr.state, (pr && pr.reason) || 'sonda sin datos', 'synthetic-probe');
+                    /* [2026-11-17] El fallback OCULTABA la causa: si el pasivo
+                     * tambien fallaba, se devolvia SU 'ventana sin bytes' y el
+                     * error real de la sonda (p.ej. HTTP 404 del objetivo) se
+                     * perdia. Ahora se conservan los DOS motivos para que el
+                     * panel pueda decir cual fallo. */
+                    var pr2 = (pr && pr.state && pr.state !== 'PROBED')
+                        ? ('sonda: ' + pr.state + ' :: ' + (pr.reason || 'sin motivo')) : null;
+                    if (r && r.ok) return r;
+                    if (r) {
+                        r.probeError = { state: pr && pr.state, reason: pr && pr.reason };
+                        if (pr2) r.reason = (r.reason ? r.reason + '  |  ' : '') + pr2;
+                        return r;
+                    }
+                    return none(pr && pr.state, pr2 || 'sonda y pasivo sin datos', 'synthetic-probe');
                 });
             }
             return none(pr && pr.state, (pr && pr.reason) || 'sonda sin datos', 'synthetic-probe');

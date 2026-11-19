@@ -1904,6 +1904,34 @@ try {
     function applyScope(scope) {
         render();
         closeMenu();
+        /* [2026-11-18 · ENCARGO] UN SOLO BOTÓN: MEDIR (calidad tipo Ookla) →
+         * CALCULAR+APLICAR → AUTOGUARDAR → repintar, para uno o para TODOS los
+         * perfiles. El menú existente se respeta tal cual: 'current' = perfil
+         * activo, 'all' = recorrido completo. Una sola medición por pulsación
+         * (qosRunAll reutiliza la promesa en vuelo: doble clic = 1 sonda). */
+        var pmAll = (typeof window !== 'undefined') ? window.ProfileManagerV9 : null;
+        var outAll = document.getElementById('apeAutoAdjustOut');
+        if (pmAll && typeof pmAll.qosRunAll === 'function') {
+            if (outAll) outAll.textContent = '⏳ midiendo y aplicando…';
+            Promise.resolve(pmAll.qosRunAll(scope === 'all' ? 'all' : 'one')).then(function (r) {
+                if (!outAll) return;
+                if (!r || !r.measured || r.measured.ok !== true) {
+                    outAll.textContent = '✗ no se pudo medir: ' +
+                        ((r && (r.reason || r.state)) || 'sin motivo') + ' — NO se aplicó nada';
+                    return;
+                }
+                var m = r.measured;
+                outAll.textContent = '✓ ' + m.mbpsSafe + ' Mbps safe · p95 ' +
+                    (m.mbpsP95 === undefined || m.mbpsP95 === null ? '-' : m.mbpsP95) + ' · jitter ' +
+                    (m.jitterMbps === undefined || m.jitterMbps === null ? '-' : m.jitterMbps) + ' Mbps' +
+                    (m.bufferbloatMs === null || m.bufferbloatMs === undefined ? '' : ' · bufferbloat ' + m.bufferbloatMs + ' ms') +
+                    ' · perfiles ' + ((r.appliedIds || []).length) + ' · guardado ' + (r.saved ? 'sí' : 'NO') +
+                    ' · plan ' + (r.coherent ? 'coherente' : 'incoherente (ver gate)');
+            }).catch(function (e) {
+                if (outAll) outAll.textContent = '✗ ' + ((e && e.message) || 'error en el flujo');
+            });
+            return;
+        }
         if (scope === 'current' && typeof window !== 'undefined'
             && window.APE_AUTO_ADJUST && typeof window.APE_AUTO_ADJUST.apply === 'function') {
             window.APE_AUTO_ADJUST.apply();
@@ -1982,6 +2010,19 @@ try {
         window.apeOpenAutoAdjustMenu = function (e) {
             if (e && typeof e.preventDefault === 'function') e.preventDefault();
             if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+            /* [2026-11-18 · encargo] UN ciclo INMEDIATO y FORZADO del gobernador
+             * antes de responder: recalcula y pinta todo lo que depende de
+             * velocidad y estrategia (buffer/prefetch/paralelo/bwMin + panel de
+             * rendimiento). Es idempotente: si ya hay un ciclo en vuelo se
+             * reutiliza, así que pulsar dos veces NO lanza dos sondas. */
+            var PM = (typeof window !== 'undefined') ? window.ProfileManagerV9 : null;
+            if (PM && typeof PM.governorRunOnce === 'function') {
+                try {
+                    Promise.resolve(PM.governorRunOnce({ force: true })).then(function () {
+                        try { PM._paintCoherentValues(); PM._paintPerfPanel(PM._lastCoherent); PM._updateStreamingHealth(); } catch (x) {}
+                    }).catch(function () { /* no bloqueante */ });
+                } catch (x) { /* no bloqueante */ }
+            }
             var m = document.getElementById('apeAutoAdjustMenu');
             if (m && m.style.display === 'flex') closeMenu();
             else openMenu();

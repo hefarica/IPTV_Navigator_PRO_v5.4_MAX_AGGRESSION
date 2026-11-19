@@ -12053,52 +12053,165 @@ El servidor analizará 26,000+ canales en ~10 minutos.
     // 📡 MÓDULO LATENCIA RAYO (QoS Network Profiler)
     // ==========================================
 
-    /**
-     * Mide empíricamente la velocidad descargando un payload o permite al usuario setearlo
-     */
-    async profileNetwork() {
-        console.group("📡 [LATENCIA RAYO] Auto-Detectando Perfil de Red...");
-        this.showNotification("📡 Midiendo latencia y ancho de banda...", false);
+    /* ═══════════════════════════════════════════════════════════════════════
+     * 📡 LATENCIA RAYO — MEDICIÓN REAL (encargo 2026-11-17)
+     *
+     * LO QUE HABÍA, medido, y era mentira:
+     *   L12085  un aleatorio entre 150 y 450 Mbps: Math.floor(rand() * (450-150+1)) + 150
+     *   L12087  escribía ese ALEATORIO en #qosDownloadMbps
+     *   L12070  "latencia" de fetch('https://iptv-ape.duckdns.org/api/health')
+     *           → ese endpoint da 404 y bloquea por CORS: el RTT medido era el
+     *             del fallo, no el de la red
+     *   L12081  si tardaba > 500 ms fijaba 45 a ciegas
+     *   L12091  saveNetworkProfile() persistía el invento en localStorage
+     *
+     * LO QUE HACE AHORA: sonda real (APE_BW_METER.probe + summarize → mbpsSafe)
+     * y TTFB real (HEAD al MISMO origen con cache-buster). Si no se puede medir
+     * NO se escribe nada en el input y se dice por qué: prohibido inventar y
+     * prohibido un valor por defecto disfrazado.
+     * ═══════════════════════════════════════════════════════════════════════ */
+
+    /* ─── [QOS-NET-BEGIN] bloque testable · lo extrae frontend/tests/t14-qos-network.test.js ─── */
+    async profileNetwork(opts) {
+        opts = opts || {};
+        const silent = opts.silent === true;
+        if (!silent) console.group("📡 [LATENCIA RAYO] Midiendo perfil de red REAL...");
         const btn = document.getElementById("btnAutoProfileNetwork");
         if (btn) btn.innerHTML = "⏳ Midiendo...";
-
         try {
-            // Medición de Ping Real hacia el VPS (Petición ligera)
-            const startTime = performance.now();
-            try {
-                // Endpoint real en el VPS para ping
-                await fetch('https://iptv-ape.duckdns.org/api/health', {
-                    method: 'GET',
-                    cache: 'no-store'
-                });
-            } catch (ignored) { }
-            const endTime = performance.now();
-            let latency = Math.round(endTime - startTime);
-
-            // Filtro de sanidad: si es > 500ms (timeout o fallo de red), usar latencia segura promedio (fibra)
-            if (latency > 500) {
-                console.warn(`⚠️ [LATENCIA RAYO] Timeout o Ping Alto (${latency}ms). Compensando a valor seguro.`);
-                latency = 45;
+            const bw = await this.measureQosBandwidth(opts);
+            if (!bw.ok) {
+                /* SIN MEDICIÓN NO HAY NÚMERO. El input se queda como está. */
+                if (!silent) this.showNotification("⚠️ No se pudo medir el ancho de banda (" + (bw.state || 'fallo') + "). El campo NO se modifica.", true);
+                console.warn("⚠️ [LATENCIA RAYO] sin medición de bajada:", bw.state, bw.reason);
+                return { ok: false, stage: 'bandwidth', state: bw.state, reason: bw.reason, wroteDownload: false };
             }
-
-            // Simulación de Ancho de banda (en un entorno real descargaría un chunk pesado)
-            const simulatedMbps = Math.floor(Math.random() * (450 - 150 + 1)) + 150;
-
-            document.getElementById('qosDownloadMbps').value = simulatedMbps;
-            document.getElementById('qosPingMs').value = latency;
-
-            this.showNotification(`✅ Red Medida: ${simulatedMbps} Mbps / ${latency} ms. Snapshot guardado automáticamente.`, false);
-            this.saveNetworkProfile();
-
+            const ping = await this.measureQosLatency();
+            const saved = this.saveNetworkProfile({
+                source: bw.source || 'probe',
+                silent: silent,
+                values: { downloadMbps: bw.mbpsSafe, pingMs: ping.ok ? ping.ttfbMs : undefined }
+            });
+            if (!silent) {
+                const pingTxt = ping.ok ? (ping.ttfbMs + ' ms') : ('latencia no medida (' + (ping.state || 'fallo') + ')');
+                this.showNotification("✅ Red medida: " + bw.mbpsSafe + " Mbps · " + pingTxt +
+                    (saved ? ". Snapshot guardado." : ". Sin snapshot: valor no válido."), !saved);
+            }
+            console.log("📡 [LATENCIA RAYO] medición real:", {
+                mbpsSafe: bw.mbpsSafe, mbpsAvg: bw.mbpsAvg, bins: bw.bins, windowS: bw.windowS,
+                ttfbMs: ping.ok ? ping.ttfbMs : null, source: bw.source
+            });
+            return { ok: true, downloadMbps: bw.mbpsSafe, pingMs: ping.ok ? ping.ttfbMs : null, saved: !!saved, measured: bw, latency: ping };
         } catch (e) {
-            console.error("❌ Error en Auto-Detección QoS:", e);
-            this.showNotification("❌ Error midiendo red. Ingresa valores manualmente.", true);
+            console.error("❌ Error en la medición QoS:", e);
+            if (!silent) this.showNotification("❌ Error midiendo red: " + ((e && e.message) || 'excepción'), true);
+            return { ok: false, stage: 'exception', reason: (e && e.message) || 'excepción', wroteDownload: false };
         } finally {
             if (btn) btn.innerHTML = "📡 Auto-Detectar";
-            console.groupEnd();
+            if (!silent) console.groupEnd();
         }
     }
 
+    /* Ancho de banda REAL. Prioriza la medición tipo Ookla (multiconexión, ver
+     * qos-speedtest-v1.js); si no está cargada, cae a la sonda clásica de
+     * APE_BW_METER. Reutiliza la medición que YA se hizo (opts.prefetched) para
+     * no lanzar dos sondas en el mismo ciclo. */
+    async measureQosBandwidth(opts) {
+        opts = opts || {};
+        if (opts.prefetched) {
+            const pre = opts.prefetched;
+            const mbpsPre = pre.mbpsSafe !== undefined ? Number(pre.mbpsSafe)
+                : (pre.measurement && Number(pre.measurement.mbpsSafe));
+            if (isFinite(mbpsPre) && mbpsPre > 0) {
+                return {
+                    ok: true, mbpsSafe: mbpsPre, mbpsP95: pre.mbpsP95, mbpsAvg: pre.mbpsAvg,
+                    jitterMbps: pre.jitterMbps, bufferbloatMs: pre.bufferbloatMs,
+                    rttIdleMs: pre.rttIdleMs, bins: pre.bins, windowS: pre.windowS,
+                    source: pre.source || 'prefetched'
+                };
+            }
+            return { ok: false, state: (pre && pre.state) || 'NO_MEASUREMENT',
+                     reason: (pre && pre.reason) || 'la medición previa no trajo mbps' };
+        }
+        const ST = (typeof window !== 'undefined') ? window.APE_SPEEDTEST : null;
+        if (ST && typeof ST.measure === 'function') {
+            const out = await ST.measure({ windowS: Number(opts.windowS) || 8 });
+            if (!out || out.ok !== true || !(Number(out.mbpsSafe) > 0)) {
+                return { ok: false, state: (out && out.state) || 'NO_MEASUREMENT',
+                         reason: (out && out.reason) || 'la medición Ookla no dio mbpsSafe', probe: out || null };
+            }
+            return {
+                ok: true, mbpsSafe: Number(out.mbpsSafe), mbpsP95: out.mbpsP95, mbpsAvg: out.mbpsAvg,
+                jitterMbps: out.jitterMbps, bufferbloatMs: out.bufferbloatMs, rttIdleMs: out.rttIdleMs,
+                bins: out.bins, windowS: out.windowS, stopReason: out.stopReason,
+                streams: out.streams, source: out.source || 'ookla-multistream'
+            };
+        }
+        const M = (typeof window !== 'undefined') ? window.APE_BW_METER : null;
+        if (!M) return { ok: false, state: 'NO_METER', reason: 'ni APE_SPEEDTEST ni APE_BW_METER cargados' };
+        if (typeof M.probe !== 'function') return { ok: false, state: 'NO_PROBE', reason: 'APE_BW_METER.probe ausente' };
+        const out = await M.probe({ windowS: Number(opts.windowS) || 5 });
+        if (!out) return { ok: false, state: 'NO_OUTPUT', reason: 'la sonda no devolvió nada' };
+        if (typeof M.summarize !== 'function') return { ok: false, state: 'NO_SUMMARIZE', reason: 'APE_BW_METER.summarize ausente' };
+        const sum = M.summarize(out.samples || [], out.windowS);
+        const mbps = Number(sum && sum.mbpsSafe);
+        if (!sum || sum.ok !== true || !isFinite(mbps) || mbps <= 0) {
+            return {
+                ok: false,
+                state: (sum && sum.state) || out.state || 'NO_MEASUREMENT',
+                reason: (sum && sum.reason) || out.reason || 'summarize no dio mbpsSafe',
+                probe: out, summary: sum || null
+            };
+        }
+        return {
+            ok: true, mbpsSafe: mbps, mbpsAvg: sum.mbpsAvg, mbpsMax: sum.mbpsMax,
+            jitter: sum.jitter, bins: sum.bins, windowS: sum.windowS, source: out.source || 'probe'
+        };
+    }
+
+
+    /* Latencia REAL: TTFB de un HEAD al MISMO origen. NO al VPS: ese endpoint
+     * daba 404 y bloqueaba por CORS, así que el "RTT" era el del fallo.
+     * Es ida y vuelta de un HEAD, no un RTT ICMP: se llama ttfbMs. */
+    async measureQosLatency() {
+        try {
+            const t0 = performance.now();
+            const base = (typeof location !== 'undefined' && location.pathname) ? location.pathname : '/index-v4.html';
+            const url = base + (base.indexOf('?') >= 0 ? '&' : '?') + '_qosrtt=' + Date.now();
+            const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+            const ms = Math.round(performance.now() - t0);
+            if (!res || res.ok !== true) return { ok: false, state: 'HTTP_' + (res ? res.status : 'x'), reason: 'el HEAD no devolvió 2xx' };
+            if (!isFinite(ms) || ms < 0) return { ok: false, state: 'BAD_TIMING', reason: 'performance.now inválido' };
+            return { ok: true, ttfbMs: ms, url: url };
+        } catch (e) {
+            return { ok: false, state: 'RTT_FAILED', reason: (e && e.message) || 'fetch falló' };
+        }
+    }
+    /* ─── [QOS-NET-END] ─────────────────────────────────────────────────── */
+
+
+    /* Publica una medición YA hecha en el perfil de red, sin volver a medir.
+     * Es el camino del botón único: UNA sonda para todo el flujo. */
+    async applyNetworkMeasurement(measured, opts) {
+        opts = opts || {};
+        if (!measured || measured.ok !== true) {
+            return { ok: false, state: (measured && measured.state) || 'NO_MEASUREMENT', wrote: false };
+        }
+        const mbps = Number(measured.mbpsSafe);
+        if (!isFinite(mbps) || mbps <= 0) return { ok: false, state: 'NO_MEASUREMENT', wrote: false };
+        const saved = this.saveNetworkProfile({
+            source: measured.source || 'speedtest',
+            silent: opts.silent === true,
+            values: {
+                downloadMbps: mbps,
+                pingMs: (measured.rttIdleMs === undefined || measured.rttIdleMs === null) ? undefined : measured.rttIdleMs,
+                mbpsP95: measured.mbpsP95,
+                jitterMbps: measured.jitterMbps,
+                bufferbloatMs: measured.bufferbloatMs
+            }
+        });
+        return { ok: !!saved, wrote: !!saved, profile: saved || null };
+    }
     // 🛡️ ADUANA QoS (Interceptor Infranqueable)
     generateWithQoSCheck(generatorType) {
         this.pendingGeneratorType = generatorType;
@@ -12254,14 +12367,45 @@ El servidor analizará 26,000+ canales en ~10 minutos.
         console.log('✅ [SlotReaper] Pre-flight reap completado, procediendo a generar...');
     }
 
-    saveNetworkProfile() {
-        const dl = parseInt(document.getElementById('qosDownloadMbps').value) || 100;
-        const ping = parseInt(document.getElementById('qosPingMs').value) || 20;
+    /* ─── [QOS-SAVE-BEGIN] ──────────────────────────────────────────────── */
+    saveNetworkProfile(meta) {
+        meta = meta || {};
+        const dlEl = document.getElementById('qosDownloadMbps');
+        const pEl = document.getElementById('qosPingMs');
+        const src = meta.values || null;
+        const dl = src ? Number(src.downloadMbps) : Number(dlEl ? dlEl.value : NaN);
+        const ping = src ? Number(src.pingMs) : Number(pEl ? pEl.value : NaN);
 
+        /* PROHIBIDO INVENTAR (encargo 2026-11-17). Aquí había
+         *   parseInt(...) || 100   y   parseInt(...) || 20
+         * o sea un valor por defecto DISFRAZADO que se persistía como si fuera
+         * una medición. Sin un número válido no hay snapshot: el perfil queda
+         * como estaba y la aduana QoS bloquea en vez de fluir con una mentira. */
+        if (!isFinite(dl) || dl <= 0) {
+            console.warn('[LATENCIA RAYO] NO se guarda el perfil: downloadMbps no medido (' +
+                (src ? src.downloadMbps : (dlEl ? '"' + dlEl.value + '"' : 'input ausente')) + ')');
+            return null;
+        }
+        const hasPing = isFinite(ping) && ping >= 0;
+
+        /* El input se escribe SOLO con lo medido (nunca con un relleno). */
+        if (dlEl) dlEl.value = dl;
+        if (hasPing && pEl) pEl.value = ping;
+
+        const prev = (this.state && this.state.networkProfile) || {};
+        const prevPing = Number(prev.pingMs);
         this.state.networkProfile = {
             downloadMbps: dl,
-            pingMs: ping,
-            timestamp: Date.now()
+            /* si esta medición no trajo latencia se CONSERVA la anterior y se
+             * declara con su origen; si nunca hubo, null (no 20 inventado) */
+            pingMs: hasPing ? ping : (isFinite(prevPing) && prevPing >= 0 ? prevPing : null),
+            timestamp: Date.now(),
+            source: meta.source || 'manual',
+            /* [2026-11-18] métricas Ookla: se guardan SOLO si vienen medidas */
+            mbpsP95: (src && isFinite(Number(src.mbpsP95))) ? Number(src.mbpsP95) : (prev.mbpsP95 === undefined ? null : prev.mbpsP95),
+            jitterMbps: (src && isFinite(Number(src.jitterMbps))) ? Number(src.jitterMbps) : (prev.jitterMbps === undefined ? null : prev.jitterMbps),
+            bufferbloatMs: (src && src.bufferbloatMs !== undefined && src.bufferbloatMs !== null && isFinite(Number(src.bufferbloatMs)))
+                ? Number(src.bufferbloatMs) : (prev.bufferbloatMs === undefined ? null : prev.bufferbloatMs)
         };
 
         localStorage.setItem('iptv_qos_profile', JSON.stringify(this.state.networkProfile));
@@ -12272,9 +12416,11 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             badge.innerHTML = `Status: Active (${dl}Mbps)`;
         }
 
-        console.log("💾 [LATENCIA RAYO] QoS Snapshot Guardado:", this.state.networkProfile);
-        this.showNotification(`💾 Perfil QoS Guardado: Límite ${dl} Mbps`, false);
+        console.log("💾 [LATENCIA RAYO] QoS Snapshot guardado (medido):", this.state.networkProfile);
+        if (meta.silent !== true) this.showNotification(`💾 Perfil QoS Guardado: Límite ${dl} Mbps`, false);
+        return this.state.networkProfile;
     }
+    /* ─── [QOS-SAVE-END] ────────────────────────────────────────────────── */
 
     loadNetworkProfile() {
         try {
@@ -12286,8 +12432,14 @@ El servidor analizará 26,000+ canales en ~10 minutos.
                 const pingInput = document.getElementById('qosPingMs');
                 const badge = document.getElementById('qosStatusBadge');
 
-                if (dlInput) dlInput.value = this.state.networkProfile.downloadMbps || 100;
-                if (pingInput) pingInput.value = this.state.networkProfile.pingMs || 20;
+                /* [2026-11-17] `|| 100` y `|| 20` eran el MISMO defecto en la
+                 * restauración: si el snapshot venía incompleto, el panel
+                 * mostraba un número inventado como si fuera medido. Ahora se
+                 * pinta SOLO lo que hay; si falta, el campo queda vacío. */
+                if (dlInput) dlInput.value = (Number(this.state.networkProfile.downloadMbps) > 0)
+                    ? this.state.networkProfile.downloadMbps : '';
+                if (pingInput) pingInput.value = (this.state.networkProfile.pingMs === null ||
+                    this.state.networkProfile.pingMs === undefined) ? '' : this.state.networkProfile.pingMs;
 
                 if (badge && this.state.networkProfile.downloadMbps) {
                     badge.style.background = '#10b981';
