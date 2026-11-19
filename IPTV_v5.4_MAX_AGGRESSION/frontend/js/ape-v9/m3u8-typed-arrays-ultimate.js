@@ -5751,8 +5751,15 @@ function build_antifreeze_nuclear_headers(cfg, profile) {
         'X-Prefetch-Enabled', 'X-Prefetch-Adaptive', 'X-Prefetch-Segments',
         'X-Parallel-Segments', 'X-Concurrent-Downloads',
         // presupuesto de red declarado
-        'X-Expected-Bitrate', 'X-Max-Bitrate', 'X-Min-Bitrate', 'X-Buffer-Target'
-    ];
+        'X-Expected-Bitrate', 'X-Max-Bitrate', 'X-Min-Bitrate', 'X-Buffer-Target',
+            // [2026-11-19] ANTI-FREEZE: lo que DEBE sobrevivir al recorte 200/8192 B.
+            // El recorte (_sanitizePayloadSize) se aplica DESPUES de fusionar X-AF-*,
+            // asi que sin prioridad el motor podia quedar truncado justo cuando
+            // importa y la auditoria desaparecia en silencio. Solo los 5 que
+            // gobiernan comportamiento o lo declaran; el resto de X-AF-* puede caer.
+            'X-AF-Buffer-Target', 'X-AF-Network-Caching',
+            'X-AF-Requested-Level', 'X-AF-Governed-By', 'X-AF-Effective-Tier'
+        ];
 
     /** Devuelve las claves de `obj` con las prioritarias primero (orden estable). */
     function _priorityOrderKeys(obj) {
