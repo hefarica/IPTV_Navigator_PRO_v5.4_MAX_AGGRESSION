@@ -5202,7 +5202,9 @@ function afResolve() {
     };
 }
 function build_antifreeze_nuclear_headers(cfg, profile) {
-        const lvl = ACTIVE_ISP_LEVEL;
+    const lvl = ACTIVE_ISP_LEVEL;
+    const _af = afResolve();
+    const _v = _af.values;
         return {
             // ── Sub-capa 1: Antifreeze Core ──
             'X-AF-Version': '10.0-OBSCENE-AGGRESSION',
@@ -6423,7 +6425,16 @@ function build_antifreeze_nuclear_headers(cfg, profile) {
         Object.assign(headers, build_proven_quality(cfg, profile, { _exHdrMode, _exKodiTf, _exColorPrimaries, _exPeakNits, _exTmRef, _exColorDepth, _exPixelFmt, _exIsHDR }));
 
         // ── 🧊 ANTIFREEZE NUCLEAR ENGINE v10.0: Merge X-AF-* headers ──
-        Object.assign(headers, build_antifreeze_nuclear_headers(cfg, profile));
+        /* [2026-11-19] BLINDAJE: este merge NO estaba protegido. Un fallo dentro del
+ * motor anti-freeze (una clave undefined, un panel corrupto, una tabla futura
+ * mal editada) lanzaba excepcion y se llevaba por delante la GENERACION COMPLETA
+ * de la lista. Aqui un fallo del motor debe costar SOLO sus cabeceras X-AF-*,
+ * nunca el fichero. Se degrada y se declara; no se propaga. */
+try {
+    Object.assign(headers, build_antifreeze_nuclear_headers(cfg, profile));
+} catch (e) {
+    console.warn('[ANTIFREEZE] motor no aplicable en este canal, la lista continua:', (e && e.message) || e);
+}
 
         // ── 🎯 CHANNEL CLASSIFIER v3.0: Classification metadata headers ──
         if (cfg._classification) {
