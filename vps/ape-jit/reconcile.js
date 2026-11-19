@@ -83,13 +83,33 @@ function pickList() {
       const log = '/var/log/nginx/playlist_access.log';
       const fd  = fsl.openSync(log, 'r');
       const st  = fsl.fstatSync(fd);
-      const len = Math.min(st.size, 4 * 1024 * 1024);
+      /* [2026-11-19] OOM MEDIDO (status=6/ABRT, RegExpImpl::IrregexpExec ->
+       * String::SlowFlatten): aqui se leian 4 MB del access log, se convertian a
+       * un unico string y se les pasaba matchAll con regex global, generando un
+       * array de TODAS las coincidencias. Eso aborta el proceso en esta VPS y el
+       * servicio ape-jit-reconcile queda failed: la allowlist del JIT nunca se
+       * actualiza. Ahora se busca el ULTIMO '?l=' con Buffer.lastIndexOf (nativo,
+       * sin string global y sin array), que es justo lo que el codigo queria:
+       * la ULTIMA lista servida. */
+      const len = Math.min(st.size, 1024 * 1024);
       const buf = Buffer.alloc(len);
       fsl.readSync(fd, buf, 0, len, Math.max(0, st.size - len));
       fsl.closeSync(fd);
-      const ids = [...buf.toString('utf8').matchAll(/[?&]l=(APE_LISTA_[0-9A-Za-z_.-]+)/g)]
-        .map(x => x[1]);
-      return ids.length ? ids[ids.length - 1] : null;
+      const MARK = Buffer.from('l=APE_LISTA_');
+      let at = buf.lastIndexOf(MARK);
+      while (at >= 0) {
+        let end = at + MARK.length;
+        while (end < len) {
+          const c = buf[end];
+          const ok = (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 46 || c === 95 || c === 45;
+          if (!ok) break;
+          end++;
+        }
+        const id = buf.toString('utf8', at + 2, end);
+        if (id && id.indexOf('APE_LISTA_') === 0) return id;
+        at = buf.lastIndexOf(MARK, at - 1);
+      }
+      return null;
     } catch (e) { return null; }
   }
 
@@ -272,9 +292,20 @@ function atomicWrite(file, content) {
 
   // verificación post-flip: lo publicado se lee vía `current/` y cuadra
   const check = JSON.parse(fs.readFileSync(MAP_FILE, 'utf8'));
-  const checkList = fs.readFileSync(JIT_LIST, 'utf8');
+  /* [2026-11-19] OOM MEDIDO: aqui se hacia fs.readFileSync(JIT_LIST) (7,5 MB) y
+   * luego checkList.match(/^#EXTINF/gm): un string enorme + el array de matches.
+   * En esta VPS eso ABORTA el proceso (status=6/ABRT en NewRawTwoByteString /
+   * StringDecoder::DecodeData) y el servicio ape-jit-reconcile queda failed, con
+   * lo que la allowlist del JIT nunca se actualiza. Se cuenta en STREAMING: no
+   * se materializa el fichero ni se crea el array. */
+  const nList = await new Promise((res, rej) => {
+    let n = 0;
+    const _rl = readline.createInterface({ input: fs.createReadStream(JIT_LIST), crlfDelay: Infinity });
+    _rl.on('line', (l) => { if (l.startsWith('#EXTINF')) n++; });
+    _rl.on('close', () => res(n));
+    _rl.on('error', rej);
+  });
   const nCheck = Object.keys(check).length;
-  const nList = (checkList.match(/^#EXTINF/gm) || []).length;
   if (nCheck !== ids.length || nList !== ids.length) {
     log('FATAL', 'verificacion post-flip: mapa=' + nCheck + ' lista=' + nList + ' esperado=' + ids.length);
     process.exit(3);
