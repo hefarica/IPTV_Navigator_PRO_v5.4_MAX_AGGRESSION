@@ -18,7 +18,12 @@
     { id: 'json4k', title: '4K · Manifest JSON', sub: 'salida y metadatos', url: BASE + '/live/1174213/manifest.json', kind: 'media' },
     { id: 'range4k', title: '4K · Range 206', sub: 'init-0.m4s · bytes 0-1023', url: BASE + '/live/1174213/init-0.m4s', kind: 'range' },
     { id: 'hls1080', title: '1080 · HLS', sub: '1920x1080 · HDR10 · zscale', url: BASE + '/live/3/master.m3u8', kind: 'media' },
-    { id: 'dash1080', title: '1080 · DASH', sub: 'CMAF/fMP4 · CICP PQ', url: BASE + '/live/3/manifest.mpd', kind: 'media' }
+    { id: 'dash1080', title: '1080 · DASH', sub: 'CMAF/fMP4 · CICP PQ', url: BASE + '/live/3/manifest.mpd', kind: 'media' },
+    /* [2026-11-19] PROVIDER-DIRECT: la unica salida que NO depende del slot unico
+     * del proveedor (max_connections=1). El motor JIT se niega a abrir una segunda
+     * conexion y devuelve PROVIDER_SLOT_BUSY; su propio codigo dice que el player
+     * elija provider-direct. Esta tarjeta prueba ESA ruta con tu URL real. */
+    { id: 'direct', title: 'Provider-direct · siempre sirve', sub: 'tu URL de canal · sin JIT', url: '', kind: 'media', dynamic: true, range: true }
   ];
 
   function esc(s) {
@@ -27,13 +32,22 @@
     });
   }
 
-  function colour(status) {
-    if (status === '200') return '#22c55e';
+  var VERDICT = {
+    listo:     { color: '#22c55e', label: 'listo' },
+    range_ok:  { color: '#06b6d4', label: '206 OK' },
+    ocupado:   { color: '#f59e0b', label: 'slot ocupado' },
+    pendiente: { color: '#94a3b8', label: 'declarada sin salida' },
+    no_listo:  { color: '#94a3b8', label: 'no lista' },
+    timeout:   { color: '#94a3b8', label: 'timeout' },
+    error:     { color: '#ef4444', label: 'error' }
+};
+function colour(status) {
+    var v = VERDICT[status];
+    if (v) return v.color;
     if (status === '206') return '#06b6d4';
-    if (status === '301' || status === '302' || status === '307' || status === '308') return '#a855f7';
     if (/^4|^5/.test(status)) return '#ef4444';
     return '#94a3b8';
-  }
+}
 
   function setStatus(id, text, detail) {
     var el = document.querySelector('[data-ape-out-status="' + id + '"]');
@@ -116,38 +130,106 @@
 
   async function fetchStatus(c) {
     var headers = {};
-    if (c.kind === 'range') headers.Range = 'bytes=0-1023';
-    var ctrl = new AbortController();
-    var timer = setTimeout(function () { ctrl.abort(); }, 20000);
-    try {
-      var r = await fetch(c.url, {
-        method: 'GET', headers: headers, redirect: 'manual',
-        cache: 'no-store', signal: ctrl.signal
-      });
-      clearTimeout(timer);
-      if (r.status === 0) return { code: '0', detail: 'opaque/redirect (CORS)' };
-      return { code: String(r.status), detail: r.headers.get('content-type') || '' };
-    } catch (e) {
-      clearTimeout(timer);
-      return { code: 'error', detail: e && e.message ? e.message : 'fetch error' };
+    /* [2026-11-19] tarjeta dinamica: la URL sale del canal cargado, no de una
+       constante. Si no hay lista cargada se declara, no se inventa. */
+    if (c.dynamic) {
+        var u = null;
+        try {
+            var st = (window.app && window.app.state) || {};
+            var chs = st.channelsMaster || st.channels || [];
+            var f0 = chs[0] || null;
+            u = (f0 && (f0.url || f0.stream_url || f0.streamUrl || f0.link)) || null;
+        } catch (_e) { u = null; }
+        if (!u) return { code: 'local', verdict: 'no_listo', reason: 'sin canales cargados: carga una lista primero' };
+        c.url = u;
     }
-  }
+    if (c.kind === 'range' || c.range) headers.Range = 'bytes=0-1023';
+    var ctrl = new AbortController();
+    /* 8 s, no 20: si el borde no contesta en 8 s no esta sirviendo, y el
+     * operador no debe quedarse mirando "probando". */
+    var timer = setTimeout(function () { ctrl.abort(); }, 8000);
+    try {
+        var r = await fetch(c.url, {
+            method: 'GET', headers: headers, redirect: 'manual',
+            cache: 'no-store', signal: ctrl.signal
+        });
+        clearTimeout(timer);
+        if (r.status === 0) return { code: '0', verdict: 'no_listo', reason: 'opaque/redirect (CORS)' };
+        var body = '';
+        try { body = (await r.text()).slice(0, 1200); } catch (_e) { body = ''; }
+        var info = classify(c, r.status, body, r.headers.get('content-type') || '');
+        return { code: String(r.status), verdict: info.verdict, reason: info.reason, detail: info.detail };
+    } catch (e) {
+        clearTimeout(timer);
+        var aborted = (e && (e.name === 'AbortError' || /abort/i.test(e.message || '')));
+        return { code: aborted ? 'timeout' : 'error', verdict: aborted ? 'timeout' : 'error',
+                 reason: aborted ? 'sin respuesta en 8 s' : ((e && e.message) || 'fetch error') };
+    }
+}
 
-  async function probeById(id, retries) {
+/* Clasifica por CONTENIDO. Un codigo 2xx solo pasa a 'listo' si el cuerpo es
+ * realmente la salida declarada. */
+function classify(c, status, body, ctype) {
+    var b = String(body || '').trim();
+
+    if (status === 206) return { verdict: 'range_ok', reason: 'bytes servidos', detail: ctype };
+
+    if (status === 503) {
+        var why = /PROVIDER_SLOT_BUSY/.test(b) ? 'PROVIDER_SLOT_BUSY' : (b.slice(0, 80) || 'servicio no disponible');
+        return { verdict: 'ocupado', reason: why, detail: ctype };
+    }
+    if (status === 404) {
+        return { verdict: 'no_listo', reason: b ? b.slice(0, 80) : '404', detail: ctype };
+    }
+    if (/^4|^5/.test(String(status))) {
+        return { verdict: 'error', reason: b.slice(0, 80) || ('HTTP ' + status), detail: ctype };
+    }
+
+    if (c.kind === 'json') {
+        var j = null;
+        try { j = JSON.parse(b); } catch (_e) { j = null; }
+        if (!j) return { verdict: 'error', reason: 'JSON invalido', detail: ctype };
+        var inactivo = (String(j.status || '').toLowerCase() === 'inactive') ||
+                       (String(j.output_status || '').toLowerCase() === 'pending_output') ||
+                       (j.rea_executed === false);
+        if (inactivo) {
+            return { verdict: 'pendiente',
+                     reason: 'status=' + (j.status || '?') + ' · output=' + (j.output_status || '?') +
+                             ' · rea=' + (j.rea_executed === true ? 'true' : 'false'),
+                     detail: ctype };
+        }
+        return { verdict: 'listo', reason: 'metadatos activos', detail: ctype };
+    }
+
+    if (c.kind === 'list' || c.kind === 'media') {
+        var okList = (b.indexOf('#EXTM3U') === 0);
+        var okDash = /<MPD[\s>]/i.test(b) || b.indexOf('<?xml') === 0;
+        if (okList || okDash) return { verdict: 'listo', reason: okList ? '#EXTM3U' : 'MPD valido', detail: ctype };
+        if (/PROVIDER_SLOT_BUSY/.test(b)) return { verdict: 'ocupado', reason: 'PROVIDER_SLOT_BUSY', detail: ctype };
+        if (/not ready/i.test(b)) return { verdict: 'no_listo', reason: 'not ready', detail: ctype };
+        return { verdict: 'pendiente', reason: 'cuerpo no es playlist/DASH (' + b.slice(0, 40) + ')', detail: ctype };
+    }
+    return { verdict: 'listo', reason: 'HTTP ' + status, detail: ctype };
+}
+async function probeById(id, retries) {
     var c = CARDS.find(function (x) { return x.id === id; });
     if (!c) return;
     var n = retries == null ? 1 : retries;
-    setStatus(id, 'probando', c.url);
+    var total = n + 1;
+    setStatus(id, 'probando 1/' + total, c.url);
     var r = await fetchStatus(c);
-    if ((r.code === '503' || r.code === '404' || r.code === '0' || r.code === 'error') && n > 0) {
-      await new Promise(function (res) { setTimeout(res, 1600); });
-      return probeById(id, n - 1);
+    var intento = 1;
+    while ((r.verdict === 'ocupado' || r.verdict === 'timeout') && n > 0) {
+        n--; intento++;
+        setStatus(id, 'probando ' + intento + '/' + total, c.url + ' · ' + r.reason);
+        await new Promise(function (res) { setTimeout(res, 1200); });
+        r = await fetchStatus(c);
     }
-    setStatus(id, r.code, c.url + ' · ' + r.detail);
-    return r.code;
-  }
-
-  async function probeAll() {
+    var lbl = (VERDICT[r.verdict] || {}).label || r.verdict || r.code;
+    setStatus(id, lbl, c.url + ' · HTTP ' + r.code + ' · ' + r.reason);
+    return r.verdict;
+}
+async function probeAll() {
     var summary = $('#ape-out-summary');
     if (summary) summary.textContent = 'Probando salidas en secuencia…';
     var out = [];
