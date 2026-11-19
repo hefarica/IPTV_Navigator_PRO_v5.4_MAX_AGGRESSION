@@ -290,6 +290,12 @@ class LoopbackProxy(private val policy: AbrPolicy) {
             // (`streamThrough`, >2 MB o tamaño desconocido) NO pasa por aquí: ese texto no
             // se materializa, y el shim no finge haberlo leído.
             runCatching { ShimOttTap.ingest(body, target) }
+            // [QOE-CONTRACT] Lector del contrato QoE por canal (#EXT-X-APE-QOE-CONTRACT),
+            // ADITIVO y en el MISMO punto donde el body ya esta materializado. No toca
+            // `body`, ni `out`, ni la fijacion de variante: solo escribe el presupuesto de
+            // precarga en `policy` (dos @Volatile Int, sin I/O ni hilos nuevos). Es un tag
+            // DISTINTO de #EXTSHIMOTT y su esquema no se modifica (ver QoeContractTap).
+            runCatching { QoeContractTap.ingest(body, target, policy) }
             val base = it.request.url
             val out = Rewriter(policy, ::map).rewrite(body, base)
             recordPlaylist(body, base)
@@ -411,7 +417,16 @@ class LoopbackProxy(private val policy: AbrPolicy) {
     private fun afterSegment(target: String) {
         val list = playlistSegments
         val index = list.indexOf(target)
-        if (index >= 0 && index + 1 < list.size) prefetch(list[index + 1])
+        if (index >= 0) {
+            // `net.depth` del contrato QoE fija cuantas siguientes se precargan.
+            // Default 1 = comportamiento anterior exacto.
+            val depth = policy.prefetchDepth.coerceIn(QoeContractTap.PREFETCH_MIN, QoeContractTap.PREFETCH_MAX)
+            var k = 1
+            while (k <= depth && index + k < list.size) {
+                prefetch(list[index + k])
+                k++
+            }
+        }
         val total = cacheHits + cacheMisses
         val ratio = if (total > 0) cacheHits * 100 / total else 0
         Log.d("cache hit=$cacheHits miss=$cacheMisses ratio=$ratio%")
@@ -454,6 +469,15 @@ class LoopbackProxy(private val policy: AbrPolicy) {
             }
         }
         playlistSegments = segments
+        // `net.pb` del contrato QoE: segmentos a precargar al cargar la lista.
+        // Default 0 = comportamiento anterior exacto (solo MAP/KEY). Las peticiones
+        // del player van con prioridad 0 en la cola y ganan a estos prefetch (10).
+        val pb = policy.prebufferSegments.coerceIn(QoeContractTap.PREBUFFER_MIN, QoeContractTap.PREBUFFER_MAX)
+        var i = 0
+        while (i < pb && i < segments.size) {
+            prefetch(segments[i])
+            i++
+        }
     }
 
     private fun prefetch(url: String) {
@@ -592,6 +616,12 @@ class LoopbackProxy(private val policy: AbrPolicy) {
             // BG24 (t62): parámetros del gate visibles para diagnosticar retenciones.
             .put("ingress_timeout_ms", INGRESS_READ_TIMEOUT_MS)
             .put("admit_threads", ADMIT_THREADS)
+            // [QOE-CONTRACT] Evidencia del lector del contrato QoE: por knob, su estado
+            // (EXECUTED / EXECUTED_INFERRED / DECLARED / UNMAPPED), el valor aplicado y
+            // el motivo cuando no se aplico. Vacio si el canal no trae el tag.
+            .put("qoe_contract", QoeContractTap.statusJson())
+            .put("prefetch_depth", policy.prefetchDepth)
+            .put("prebuffer_segments", policy.prebufferSegments)
             .toString()
     }
 

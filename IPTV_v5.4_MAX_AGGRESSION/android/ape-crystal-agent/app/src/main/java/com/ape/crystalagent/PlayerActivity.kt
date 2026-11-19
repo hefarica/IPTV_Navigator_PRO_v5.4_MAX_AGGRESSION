@@ -48,6 +48,14 @@ class PlayerActivity : Activity() {
         }
 
         val a = ApePlayer(this); ape = a
+        /* CONTRATO QoE - ventana UNICA del buffer por canal.
+         *
+         * El LoadControl es inmutable una vez construido (FluidBridge.configureBuilder inyecta los
+         * ms y el player no los muta despues), asi que el presupuesto del canal tiene que estar
+         * escrito en las prefs ANTES de build(): aqui. Escalera neutra (solo sube), asi que
+         * encender el bucle no puede bajar continuidad. Cambiar ms DESPUES de esta linea o
+         * reconstruir el player a mitad de sesion seria invalido y NO se hace. */
+        QoeContractApply.applyBufferBeforeBuild(this)
         val p = a.build(); player = p
         view.player = p
         PlayerHub.attach(this, view, a)

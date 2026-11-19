@@ -72,6 +72,22 @@ class AgentService : Service() {
             } catch (t: Throwable) {
                 Log.w(TAG, "ExtShimOtt sink no instalado (el resto sigue): ${t.message}")
             }
+            // [QOE-CONTRACT] Aplicacion del contrato QoE por canal (#EXT-X-APE-QOE-CONTRACT).
+            // El shim, que vive en ESTE mismo proceso, deja la decision vigente al servir la
+            // playlist del canal; aqui se escribe con el MISMO applier (allowlist + get-antes-de-put
+            // + relectura para el recibo). Pull cada 10 s: no toca el hilo del proxy ni la
+            // reproduccion, es idempotente (el applier deduplica por valor) y con `qoe_apply=0`
+            // queda apagado sin reinstalar. Si no hay contrato vigente, no escribe nada.
+            scope.launch(Dispatchers.IO) {
+                while (isActive) {
+                    try {
+                        QoeContractApply.applyPending(this@AgentService, applier)
+                    } catch (t: Throwable) {
+                        Log.w(TAG, "qoe-contract: ${t.javaClass.simpleName}: ${t.message}")
+                    }
+                    delay(10_000L)
+                }
+            }
             ff = FeedForwardClient(cfg)
             qoe = QoEReporter(this, cfg)
             idata = IDataClient(cfg)

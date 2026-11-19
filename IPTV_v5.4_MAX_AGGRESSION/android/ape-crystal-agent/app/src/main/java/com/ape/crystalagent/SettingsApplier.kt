@@ -69,6 +69,15 @@ class SettingsApplier(ctx: Context) {
         return ApplyReport(applied, rejected)
     }
 
+    /**
+     * RECIBO REAL de una escritura: la clave vale [value] en ALGUNO de los tres namespaces?
+     *
+     * POR QUE EXISTE (contrato QoE): putString devolviendo true NO prueba que el framework
+     * aceptara el valor (ya hay un caso medido en este fichero: wm size mintiendo con rc=0).
+     * El consumidor del contrato solo puede declarar EXECUTED=1 si la relectura coincide.
+     */
+    fun isSetTo(key: String, value: String): Boolean =
+        read("global", key) == value || read("system", key) == value || read("secure", key) == value
     /** [2.2.0] Panel de diagnóstico: lee cada key en global/system/secure y muestra lo que el ARA ve. */
     fun diagnosticReport(): String {
         val sb = StringBuilder()
@@ -82,6 +91,7 @@ class SettingsApplier(ctx: Context) {
         sb.appendLine("Android: ${android.os.Build.VERSION.RELEASE} (SDK ${android.os.Build.VERSION.SDK_INT})")
         sb.appendLine("últimos settings: aplicados=$lastApplied rechazados=$lastRejected")
         sb.appendLine("EXTSHIMOTT: ${AraStatus.extShimOtt.ifEmpty { "sin tag recibido (el shim no lo vio o no había)" }}")
+        sb.appendLine("QOE-CONTRACT: ${AraStatus.qoeContract.ifEmpty { "sin contrato aplicado (nadie emite el tag todavía)" }}")
         sb.appendLine()
         sb.appendLine("== /sync (D3) ==")
         sb.appendLine("self-check contrato: ${AraStatus.syncSelfCheck.ifEmpty { "no ejecutado" }}")
@@ -108,6 +118,7 @@ class SettingsApplier(ctx: Context) {
     }
 
     private fun orderOf(row: String): Int {
+
         val k = row.trim().split(Regex("\\s+"), limit = 3).getOrNull(1) ?: return 90
         return when {
             k == "display_size_forced" -> 0
