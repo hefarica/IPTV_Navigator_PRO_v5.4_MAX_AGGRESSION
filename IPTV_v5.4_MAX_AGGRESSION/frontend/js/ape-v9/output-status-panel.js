@@ -211,6 +211,21 @@ function classify(c, status, body, ctype) {
     }
     return { verdict: 'listo', reason: 'HTTP ' + status, detail: ctype };
 }
+/* [2026-11-19] Por que un 503 no es un misterio: el provider-gate decide quien usa
+ * la UNICA conexion (player nivel 0 manda). El endpoint es solo lectura y no
+ * expone rutas ni IPs. Cache 5 s para no martillear cuando se pulsa "Probar todas". */
+var _gateCache = { at: 0, data: null };
+async function gateInfo() {
+    var now = Date.now();
+    if (_gateCache.data && (now - _gateCache.at) < 5000) return _gateCache.data;
+    try {
+        var r = await fetch('/prisma/api/ape-gate-status.php', { cache: 'no-store' });
+        if (!r.ok) return null;
+        var j = await r.json();
+        _gateCache = { at: now, data: j };
+        return j;
+    } catch (_e) { return null; }
+}
 async function probeById(id, retries) {
     var c = CARDS.find(function (x) { return x.id === id; });
     if (!c) return;
@@ -226,7 +241,25 @@ async function probeById(id, retries) {
         r = await fetchStatus(c);
     }
     var lbl = (VERDICT[r.verdict] || {}).label || r.verdict || r.code;
-    setStatus(id, lbl, c.url + ' · HTTP ' + r.code + ' · ' + r.reason);
+    var detail = c.url + ' · HTTP ' + r.code + ' · ' + r.reason;
+    var advice = '';
+    if (r.verdict === 'ocupado' || r.verdict === 'no_listo' || r.verdict === 'pendiente') {
+        var g = await gateInfo();
+        if (g && g.available && g.reason) {
+            if (g.reason === 'player_active') {
+                lbl = 'espera al player';
+                detail = 'player_active · ultimo latido hace ' + (g.player_age_s || '?') + ' s'
+                    + ' · senal ' + (g.player_signal || '?')
+                    + ' · ventana ' + (g.player_window_s || 180) + ' s'
+                    + ' · gate ALLOW ' + (g.allow_tail || 0) + '/DENY ' + (g.deny_tail || 0) + ' recientes';
+            } else if (g.reason !== 'gate_absent') {
+                detail = 'gate ' + (g.decision || '?') + ' · ' + g.reason
+                    + (g.player_age_s ? ' · hace ' + g.player_age_s + ' s' : '');
+            }
+            advice = g.advice || '';
+        }
+    }
+    setStatus(id, lbl, detail + (advice ? ' — ' + advice : ''));
     return r.verdict;
 }
 async function probeAll() {
