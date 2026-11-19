@@ -1,0 +1,55 @@
+#!/bin/sh
+# APE CRYSTAL FLOW — pre-push: despliega el panel/QoE al VPS antes de publicar.
+#
+# Git pasa los refs a publicar por STDIN:
+#   <local_ref> <local_sha> <remote_ref> <remote_sha>
+# Se calcula el diff remoto..local y se mira si toca el panel/QoE.
+#
+#  - Si no toca el panel        -> sale 0 sin desplegar.
+#  - Si toca el panel           -> ejecuta tools/ape-deploy-qoe.ps1 (idempotente).
+#  - Si el deploy no verifica   -> sale 1 y ABORTA el push.
+#  - APE_SKIP_DEPLOY=1          -> salta el deploy.
+
+if [ "$APE_SKIP_DEPLOY" = "1" ]; then
+    echo "[ape-deploy] omitido por APE_SKIP_DEPLOY=1"
+    exit 0
+fi
+
+PANEL_REGEX='^IPTV_v5.4_MAX_AGGRESSION/frontend/(index-v4\.html|app\.js|js/ape-v9/(profile-manager-v9|generation-controller|prefetch-presets|ape-profiles-config)\.js|js/ape-v9/streaming/)'
+
+GATE=0
+FILES=""
+while read local_ref local_sha remote_ref remote_sha; do
+    [ -z "$local_sha" ] && continue
+    if [ "$remote_sha" = "0000000000000000000000000000000000000000" ] || [ -z "$remote_sha" ]; then
+        FILES="$FILES$(git ls-tree -r --name-only "$local_sha")"$'\n'
+    else
+        FILES="$FILES$(git diff --name-only "$remote_sha..$local_sha")"$'\n'
+    fi
+done
+
+if printf '%s' "$FILES" | grep -Eq "$PANEL_REGEX"; then
+    GATE=1
+fi
+
+if [ "$GATE" -eq 0 ]; then
+    echo "[ape-deploy] el push no toca el panel/QoE -> sin deploy"
+    exit 0
+fi
+
+echo "[ape-deploy] el push toca el panel/QoE -> desplegando al VPS…"
+if command -v pwsh >/dev/null 2>&1; then
+    pwsh -NoProfile -File tools/ape-deploy-qoe.ps1
+else
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools/ape-deploy-qoe.ps1
+fi
+rc=$?
+
+if [ $rc -ne 0 ]; then
+    echo ""
+    echo "[ape-deploy] DEPLOY FALLIDO (rc=$rc). PUSH ABORTADO — el VPS NO tiene estos cambios."
+    echo "             Arregla y reintenta, o publica sin deploy: APE_SKIP_DEPLOY=1 git push"
+    exit 1
+fi
+echo "[ape-deploy] deploy verificado. Publicando el push."
+exit 0
