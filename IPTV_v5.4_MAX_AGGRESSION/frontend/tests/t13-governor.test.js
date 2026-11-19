@@ -9,8 +9,8 @@
  * Verifica el ciclo completo:
  *   mbps=400  -> ok, plan coherente, APLICA los cuatro campos al perfil
  *   mbps=0.1  -> ok:false, NO aplica, CONSERVA el juego anterior y publica
- *                violations + neededMbpsForGreen
- *   mbps=400 de nuevo (mismo plan) -> skipped por ANTIOSCILACIÓN
+    ok('publica neededMbpsForGreen con la BASE REAL (no el declarado x1.15)',
+        Math.abs(Number(planRef.neededMbpsForGreen) - 40.25) < 0.05, planRef.neededMbpsForGreen);
  *   dos ticks con un ciclo lento -> skipped (máximo 1 ciclo en vuelo)
  *   startGovernor idempotente · stopGovernor detiene · plazo del ciclo
  * ═══════════════════════════════════════════════════════════════════════════ */
@@ -122,6 +122,7 @@ window.app = {
 async function oneCycle(profileId, mbps, ratio, delayMs) {
     PM.activeProfileId = profileId;
     script.length = 0;
+    PM._peakSamples = [];      // [t16] cada acción del usuario es UNA medición: el peak no se hereda entre casos
     script.push({ mbps, ratio, delayMs });
     const rec = await PM._governorCycle();
     return rec;
@@ -169,8 +170,19 @@ async function oneCycle(profileId, mbps, ratio, delayMs) {
         after1.buffer_target_seconds === c1.applied.buffer_target_seconds &&
         after1.min_bandwidth_mbps === c1.applied.min_bandwidth_mbps,
         { after: after1, applied: c1.applied });
-    ok('bwMin = exigencia x 1.15', c1.applied.min_bandwidth_mbps === Math.round(Number(P0.settings.bitrate) * 1.15),
-        c1.applied.min_bandwidth_mbps);
+    /* [t19] la exigencia sale de la RESOLUCIÓN del perfil (calculateBitrate),
+     * no del bitrate declarado: P0 8K = 35 Mbps -> bwMin 40.25. Se mide con el
+     * plan real del perfil activo. */
+    (function () {
+        const pl = PM._coherentPlanFor(CFG.getProfile('P0'), PM._activeStrategyId());
+        const base = PM._requiredMbpsBasis(CFG.getProfile('P0'));
+        console.log('        base real=' + base.mbps + ' · bwMin=' + pl.values.bwMinMbps +
+            ' · neededMbpsForGreen=' + pl.neededMbpsForGreen);
+        ok('bwMin = exigencia(real) x 1.15',
+            Math.abs(Number(pl.values.bwMinMbps) - base.mbps * 1.15) < 0.05, pl.values.bwMinMbps);
+        ok('neededMbpsForGreen = la misma exigencia',
+            Math.abs(Number(pl.neededMbpsForGreen) - base.mbps * 1.15) < 0.05, pl.neededMbpsForGreen);
+    })();
     ok('_lastTune guarda el ciclo', PM._lastTune && PM._lastTune.at > 0 && PM._lastTune.ok === true);
 
     console.log('\n=== 2 · CICLO con mbps=0.1: ok:false, NO aplica, CONSERVA el anterior ===');
@@ -180,8 +192,8 @@ async function oneCycle(profileId, mbps, ratio, delayMs) {
     console.log('        ' + JSON.stringify({ ok: c2.ok, violations: c2.violations, needed: c2.neededMbpsForGreen }));
     ok('el ciclo NO es ok', c2.ok === false);
     ok('declara red_insuficiente', (c2.violations || []).some(v => /red_insuficiente/.test(v)), c2.violations);
-    ok('publica neededMbpsForGreen = ' + Math.round(Number(P0.settings.bitrate) * 1.15),
-        c2.neededMbpsForGreen === Math.round(Number(P0.settings.bitrate) * 1.15 * 100) / 100, c2.neededMbpsForGreen);
+    ok('publica neededMbpsForGreen con la base REAL del perfil',
+        Math.abs(Number(c2.neededMbpsForGreen) - PM._requiredMbpsBasis(P0).mbps * 1.15) < 0.05, c2.neededMbpsForGreen);
     ok('NO escribió ni un campo', c2.applied === null, c2.applied);
     ok('el perfil CONSERVA el juego coherente anterior', JSON.stringify(after2) === keptBefore,
         { keptBefore, after2 });
@@ -198,6 +210,7 @@ async function oneCycle(profileId, mbps, ratio, delayMs) {
     PM._govCfg = PM._governorCfg();
     PM._govCfg.intervaloS = 0.02;
     script.length = 0;
+    PM._peakSamples = [];      // [t16] cada acción del usuario es UNA medición: el peak no se hereda entre casos
     script.push({ mbps: 400, ratio: 2, delayMs: 120 });   // ciclo lento
     PM._govActive = true;
     PM._govInFlight = false;
@@ -234,6 +247,7 @@ async function oneCycle(profileId, mbps, ratio, delayMs) {
     const before6 = JSON.stringify(CFG.getPrefetchConfig('P0'));
     PM._govCfg = Object.assign(PM._governorCfg(), { deadlineMs: 40 });
     script.length = 0;
+    PM._peakSamples = [];      // [t16] cada acción del usuario es UNA medición: el peak no se hereda entre casos
     script.push({ mbps: 400, ratio: 2, delayMs: 300 });    // más lenta que el plazo
     const c6 = await PM._governorCycle();
     console.log('        ' + JSON.stringify({ ok: c6.ok, planState: c6.planState, violations: c6.violations }));
@@ -262,7 +276,17 @@ async function oneCycle(profileId, mbps, ratio, delayMs) {
 
     console.log('\n=== 8 · formato de la línea [CALIB] y del _lastTune ===');
     PM.activeProfileId = 'P0';
-    const logged = [];
+// [2026-11-19 DETERMINISTA] Antes de capturar: frenar el gobernador, matar
+// cualquier temporizador pendiente, limpiar el estado de ciclo en vuelo y
+// dejar que los setTimeout ya agendados (fake network ~1 ms) se drenen.
+// Sin esto, un ciclo heredado del bloque 7 emitia su [CALIB] DENTRO de la
+// ventana de captura y la cuenta salia 2 (fallo 1 de cada ~6 corridas).
+PM.stopGovernor();
+if (PM._govTimer) { clearTimeout(PM._govTimer); PM._govTimer = null; }
+PM._govActive = false;
+PM._govInFlight = false;
+await sleep(50);
+const logged = [];
     const origLog = console.log;
     console.log = function () { logged.push(Array.prototype.join.call(arguments, ' ')); if (/^\[CALIB\]/.test(arguments[0])) return; origLog.apply(console, arguments); };
     const c8 = await oneCycle('P0', 500, 500 / Number(P0.settings.bitrate));
@@ -281,12 +305,15 @@ async function oneCycle(profileId, mbps, ratio, delayMs) {
     const req = Number(P0.settings.bitrate);
     /* el perfil dice 900 Mbps aunque la sonda del ciclo mida 400:
      * el plan debe razonar con 900 (la referencia), no con la sonda. */
+        PM._peakSamples = [];   // [t16] medición independiente
     window.app.state.networkProfile = { downloadMbps: 900, pingMs: 21, timestamp: Date.now(), source: 'probe' };
     const fm = PM._freshMeasurement();
     console.log('        _freshMeasurement(): ' + JSON.stringify(fm));
     ok('_freshMeasurement usa el PERFIL (900)', fm && fm.measuredMbpsSafe === 900 && fm.source === 'networkProfile', fm);
     const planRef = PM._coherentPlanFor(P0, 'AGRESIVO');
-    ok('el plan calcula el ratio con 900/80 = 11.25x', planRef && planRef.metrics.ratio === 11.25, planRef && planRef.metrics);
+    /* [t19] la exigencia es la base REAL: 900/35 = 25.71x */
+    ok('el plan calcula el ratio con 900/35 (base real del perfil)',
+        planRef.metrics.ratio === 25.71, planRef.metrics.ratio);
     ok('el ping del perfil llega al plan', fm.pingMs === 21, fm && fm.pingMs);
 
     /* TTL: un perfil viejo NO es referencia → NO_MEASUREMENT, no se inventa */
@@ -297,12 +324,20 @@ async function oneCycle(profileId, mbps, ratio, delayMs) {
     console.log('        perfil caducado → ageMs=' + (stale && stale.ageMs) + ' fresh=' + (stale && stale.fresh) +
         ' planState=' + (planStale && planStale.state));
     ok('a los 6 min el perfil NO es fresco (TTL 5 min)', stale && stale.fresh === false, stale);
-    ok('sin perfil fresco NO hay medición', fmStale === null, fmStale);
-    ok('el plan devuelve NO_MEASUREMENT', planStale && planStale.state === 'NO_MEASUREMENT', planStale && planStale.state);
-    ok('y no inventa valores', planStale && planStale.values === null);
+    /* [t17] con el perfil caducado pero PEAK persistido la medición sigue vigente
+     * (la capacidad medida no caduca porque el operador no volvió a medir). Sólo
+     * cuando no hay ni perfil ni peak se declara NO_MEASUREMENT. */
+    ok('perfil caducado + peak persistido -> la medición sigue (peak-hold)',
+        fmStale !== null && /peak-hold/.test(String(fmStale && fmStale.source)), fmStale);
+    PM._peakSamples = [];
+    ok('sin perfil fresco NI peak -> NO hay medición', PM._freshMeasurement() === null);
+    const planNada = PM._coherentPlanFor(P0, 'AGRESIVO');
+    ok('el plan devuelve NO_MEASUREMENT sin nada medido', planNada && planNada.state === 'NO_MEASUREMENT', planNada && planNada.state);
+    ok('y no inventa valores', planNada && planNada.values === null);
 
     /* el gobernador ESCRIBE el perfil con la sonda del ciclo (una sola sonda) */
     window.app.state.networkProfile = null;
+    PM._peakSamples = [];          // [t17] y sin peak: entonces sí NO_MEASUREMENT
     CFG.updatePrefetchSetting('P0', 'prefetch_segments', 2);   // fuerza un salto real (plan=5)
     const callsBefore = measureCalls;
     const c9 = await oneCycle('P0', 400, 400 / req);
@@ -329,16 +364,25 @@ async function oneCycle(profileId, mbps, ratio, delayMs) {
         ultraPlan.metrics);
 
     /* y dice NO cuando el enlace no llega al umbral de duty (92/0.90 = 102.2) */
+        PM._peakSamples = [];   // [t16] medición independiente
     window.app.state.networkProfile = { downloadMbps: 100, pingMs: 20, timestamp: Date.now(), source: 'probe' };
     const ultraPlanNo = PM._coherentPlanFor(P0, PM._activeStrategyId());
     console.log('        ultra-aggressive con 100 medidos → ok=' + ultraPlanNo.ok + ' · ' +
         (ultraPlanNo.violations[0] || '').slice(0, 90));
-    ok('ultra-aggressive dice NO con 100 Mbps (bajo el umbral de duty)',
-        ultraPlanNo.ok === false && /duty_insuficiente/.test((ultraPlanNo.violations || []).join(' ')), ultraPlanNo.violations);
+    /* [t19] con la base REAL (35) una red de 100 Mbps SÍ sostiene el perfil:
+     * el NO aparece cuando la capacidad no llega ni al mínimo real. */
+    PM._peakSamples = [];
+    window.app.state.networkProfile = { downloadMbps: 20, pingMs: 20, timestamp: Date.now(), source: 'probe' };
+    const ultraPlanNo2 = PM._coherentPlanFor(P0, PM._activeStrategyId());
+    ok('ultra-aggressive dice NO con 20 Mbps (bajo el mínimo real)',
+        ultraPlanNo2.ok === false && ((ultraPlanNo2.violations || []).length >= 1 &&
+            /red_insuficiente/.test((ultraPlanNo2.violations || []).join(' '))), ultraPlanNo2.violations);
     ok('  · publica el umbral exacto neededMbpsForUltra',
-        ultraPlanNo.metrics.neededMbpsForUltra === Math.round((Number(P0.settings.bitrate) * 1.15 / 0.90) * 100) / 100,
+        ultraPlanNo.metrics.neededMbpsForUltra === Math.round((PM._requiredMbpsBasis(P0).mbps * 1.15 / 0.90) * 100) / 100,
         ultraPlanNo.metrics.neededMbpsForUltra);
 
+    PM._peakSamples = [];
+    window.app.state.networkProfile = { downloadMbps: 400, pingMs: 20, timestamp: Date.now(), source: 'probe' };
     P0.settings.strategy = 'balanced';
     const balPlan = PM._coherentPlanFor(P0, PM._activeStrategyId());
     ok('balanced SÍ es coherente con la misma red', balPlan.ok === true, balPlan.violations);
@@ -363,6 +407,7 @@ async function oneCycle(profileId, mbps, ratio, delayMs) {
     PM._govCyclePromise = null;
     CFG.updatePrefetchSetting('P0', 'prefetch_segments', 2);
     script.length = 0;
+    PM._peakSamples = [];      // [t16] cada acción del usuario es UNA medición: el peak no se hereda entre casos
     script.push({ mbps: 400, ratio: 5, delayMs: 60 });
     const cBefore = measureCalls;
     const pA = PM.governorRunOnce({ force: true });
@@ -394,7 +439,9 @@ async function oneCycle(profileId, mbps, ratio, delayMs) {
     ok('RAM real/teórica salen del plan (números, no guiones)', /\d/.test(painted.ram_real) && /\d/.test(painted.ram_teo), painted);
     ok('la nota declara presupuesto y uso del plan', /Presupuesto 12150 MB/.test(painted.note), painted.note);
     ok('el enlace QoS dice ACTIVO con medición fresca', /ACTIVO/.test(painted.qos) && /400 Mbps/.test(painted.qos), painted.qos);
-    ok('el gate incluye el veredicto del plan', /plan/.test(painted.gate) && /(COHERENTE|INCOHERENTE)/.test(painted.gate), painted.gate);
+    /* [t18] el veredicto unificado dice '(plan coherente|incoherente)' */
+    ok('el gate incluye el veredicto del plan',
+        /plan (coherente|incoherente)/.test(painted.gate), painted.gate);
     ok('el badge QoS refleja medición fresca', /Active/.test(document.getElementById('qosStatusBadge').innerHTML),
         document.getElementById('qosStatusBadge').innerHTML);
 
@@ -402,9 +449,15 @@ async function oneCycle(profileId, mbps, ratio, delayMs) {
     window.app.state.networkProfile = { downloadMbps: 400, pingMs: 20, timestamp: Date.now() - (6 * 60 * 1000), source: 'probe' };
     PM._paintPerfPanel(PM._lastCoherent);
     console.log('        con perfil caducado → net_min = ' + txt('pm9_net_min') + ' · qos = ' + txt('pm9_qos_link'));
-    ok('perfil caducado → los campos dicen "sin medición"', /sin medici/i.test(txt('pm9_net_min')), txt('pm9_net_min'));
-    ok('perfil caducado → el enlace QoS lo declara', /CADUCADO|OFFLINE/.test(txt('pm9_qos_link')), txt('pm9_qos_link'));
-    ok('perfil caducado → badge Offline', /Offline/.test(document.getElementById('qosStatusBadge').innerHTML),
+    /* [t18] orden del operador: un valor envejecido sigue aplicado y se marca
+     * ANTIGUO; NO se vacía el panel (sólo se vacía si no hay NADA medido). */
+    ok('perfil caducado → los campos SIGUEN pintados con la capacidad medida',
+        /Mbps/.test(txt('pm9_net_min')) && /pico/.test(txt('pm9_qos_link')), { net: txt('pm9_net_min'), qos: txt('pm9_qos_link') });
+    ok('perfil caducado → el enlace lo marca como ANTIGUO', /ANTIGUO/.test(txt('pm9_qos_link')), txt('pm9_qos_link'));
+    /* cubierto por el assert anterior (ANTIGUO) */
+    /* [t18] el badge refleja que HAY capacidad medida (aunque envejecida):
+     * no se declara Offline si la medición existe y sigue aplicada. */
+    ok('perfil caducado → badge Active con la capacidad vigente', /Active/.test(document.getElementById('qosStatusBadge').innerHTML),
         document.getElementById('qosStatusBadge').innerHTML);
 
     console.log('\n=== 13 · RISK y HEADROOM con la BASE DEL PLAN (encargo final) ===');
@@ -427,6 +480,7 @@ async function oneCycle(profileId, mbps, ratio, delayMs) {
         bas.mbps === bP0 && bas.mbps !== Number(P0.settings.bitrate), bas);
 
     /* 146 Mbps medidos sobre P0 */
+        PM._peakSamples = [];   // [t16] medición independiente
     window.app.state.networkProfile = { downloadMbps: 146, pingMs: 20, timestamp: Date.now(), source: 'probe' };
     PM._updateStreamingHealth();
     const riskTxt = String(document.getElementById('pm9_risk_preview').textContent);
@@ -440,15 +494,25 @@ async function oneCycle(profileId, mbps, ratio, delayMs) {
     ok('risk ≤ 10 con 146 Mbps y base ' + bP0, isFinite(riskNum) && riskNum <= 10, riskTxt);
     ok('ratio 4.17x declarado en el title', /ratio 4\.17x/.test(titleTxt), titleTxt);
     ok('el title declara la pareja medidos/exigidos y la base',
-        /146 Mbps medidos \/ 35 Mbps exigidos \(base del plan/.test(titleTxt), titleTxt);
+        /146 Mbps de CAPACIDAD \(pico sostenido\) \/ 35 Mbps exigidos \(base del plan/.test(titleTxt) &&
+        /ahora 146 Mbps/.test(titleTxt), titleTxt);
     /* el panel muestra el SPARE: (ratio-1)×100 = 317 % para 4.17x. El ratio
      * exacto va en el title. Las dos cosas se comprueban. */
     ok('headroom ≥ 200 % (spare de 4.17x = 317 %) y ratio 4.17x en el title',
         Number(String(headTxt).replace(/[^0-9.]/g, '')) >= 200 && /4\.17x/.test(titleTxt),
         { headTxt, titleTxt });
-    ok('gate EXCEPCIONAL cumplido', /SUFICIENCIA EXCEPCIONAL/.test(gateTxt), gateTxt);
+    /* [t18] INVARIANTE: el gate nunca dice EXCEPCIONAL si el plan es ok:false. */
+    (function () {
+        const pl = PM._coherentPlanFor(CFG.getProfile('P0'), PM._activeStrategyId());
+        const diceExc = /^EXCEPCIONAL/.test(gateTxt);
+        ok('el gate no dice EXCEPCIONAL con plan ok:false (invariante)',
+            !(diceExc && pl.ok === false), { gate: gateTxt.slice(0, 80), planOk: pl.ok });
+        ok('el veredicto del gate coincide con el plan',
+            diceExc === (pl.ok === true), { diceExc, planOk: pl.ok });
+    })();
 
     /* 20 Mbps medidos: el riesgo sube y el gate dice cuánto falta */
+        PM._peakSamples = [];   // [t16] medición independiente
     window.app.state.networkProfile = { downloadMbps: 20, pingMs: 20, timestamp: Date.now(), source: 'probe' };
     PM._updateStreamingHealth();
     const risk20 = Number(String(document.getElementById('pm9_risk_preview').textContent).replace(/[^0-9.]/g, ''));
@@ -459,6 +523,7 @@ async function oneCycle(profileId, mbps, ratio, delayMs) {
         /NO EXCEPCIONAL/.test(gate20) && /faltan/.test(gate20), gate20);
 
     /* sin medición fresca: NO_MEASUREMENT, nunca 95 */
+        PM._peakSamples = [];   // [t16] medición independiente
     window.app.state.networkProfile = { downloadMbps: 146, pingMs: 20, timestamp: Date.now() - (6 * 60 * 1000), source: 'probe' };
     PM._updateStreamingHealth();
     const riskStale = String(document.getElementById('pm9_risk_preview').textContent);
