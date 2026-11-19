@@ -5137,40 +5137,107 @@ ${__apeContinuityTags().join('\n')}
     // 🧊 ANTIFREEZE NUCLEAR ENGINE v10.0 — EXTHTTP Headers Module
     // Namespace: X-AF-* (AntiFreeze) — NO conflictúa con X-APE-* ni X-EL-*
     // ═══════════════════════════════════════════════════════════════════
-    function build_antifreeze_nuclear_headers(cfg, profile) {
+    /* ═══════════════════════════════════════════════════════════════════════════
+ * [2026-11-19] ANTI-FREEZE GOBERNADO POR EL SELECTOR DEL PANEL (L1..L5)
+ *
+ * DEFECTO MEDIDO QUE ESTO CORRIGE: el selector «Anti-Freeze (Buffer/Reconexión)»
+ * se leia en app.js y se pasaba como options.antiFreezeLevel, pero el motor
+ * (build_antifreeze_nuclear_headers) usaba valores FIJOS (buffer 180000,
+ * caching 120000/300000) y su escalera interna de 10 niveles indexada por
+ * DEVICE_TIER. Resultado: mover el selector NO cambiaba nada.
+ * Peor aun: en export-module ese MISMO valor elegia el nivel de la matriz de
+ * CABECERAS. Es decir, una opcion que dice «Buffer/Reconexion» mandaba sobre
+ * las cabeceras y no sobre el buffer.
+ *
+ * AHORA: el nivel pedido (1..5) MANDA sobre el techo de buffer/cacheo/reconexion.
+ * El piso sigue siendo DEVICE_TIER (nunca se baja de lo que el device soporta),
+ * asi que no se rompe la doctrina «nunca bajan».
+ * ═══════════════════════════════════════════════════════════════════════════ */
+const AF_PANEL_TABLE = {
+    1: { bufferTarget: '60000',  bufferMin: '30000',  bufferMax: '120000', prebuffer: '30',
+         net: '30000',  live: '30000',  file: '60000',  reconMax: '10', retryDelay: '200',
+         prefetchAggr: 'NORMAL',    pcache: '512MB',  dcache: '2048MB' },
+    2: { bufferTarget: '90000',  bufferMin: '45000',  bufferMax: '240000', prebuffer: '60',
+         net: '60000',  live: '60000',  file: '120000', reconMax: '25', retryDelay: '150',
+         prefetchAggr: 'HIGH',      pcache: '1024MB', dcache: '4096MB' },
+    3: { bufferTarget: '120000', bufferMin: '60000',  bufferMax: '360000', prebuffer: '90',
+         net: '90000',  live: '90000',  file: '180000', reconMax: '50', retryDelay: '100',
+         prefetchAggr: 'AGGRESSIVE', pcache: '1536MB', dcache: '6144MB' },
+    4: { bufferTarget: '150000', bufferMin: '60000',  bufferMax: '480000', prebuffer: '120',
+         net: '120000', live: '120000', file: '240000', reconMax: 'UNLIMITED', retryDelay: '50',
+         prefetchAggr: 'OBSCENE', pcache: '2048MB', dcache: '8192MB' },
+    5: { bufferTarget: '180000', bufferMin: '60000',  bufferMax: '600000', prebuffer: '120',
+         net: '120000', live: '120000', file: '300000', reconMax: 'UNLIMITED', retryDelay: '0',
+         prefetchAggr: 'LIVE_EDGE_MAX', pcache: '2048MB', dcache: '10240MB' }
+};
+const AF_PANEL_TO_TIER = { 1: 2, 2: 4, 3: 6, 4: 8, 5: 10 };
+
+function afReadPanelLevel() {
+    try {
+        let v = null;
+        if (typeof window !== 'undefined') {
+            if (window.APE_ANTIFREEZE_LEVEL !== undefined && window.APE_ANTIFREEZE_LEVEL !== null) {
+                v = window.APE_ANTIFREEZE_LEVEL;
+            } else if (window.app && window.app.state && window.app.state.antiFreezeLevel !== undefined) {
+                v = window.app.state.antiFreezeLevel;
+            }
+        }
+        const n = parseInt(v, 10);
+        return (n >= 1 && n <= 5) ? n : 3;   // 3 = Balanceado (el default del panel)
+    } catch (e) { return 3; }
+}
+
+/* Devuelve el nivel efectivo: el del panel manda, con piso en DEVICE_TIER. */
+function afResolve() {
+    const panel = afReadPanelLevel();
+    const autoTier = Math.min(Math.max(parseInt(DEVICE_TIER, 10) || 1, 1), 10);
+    const wantTier = AF_PANEL_TO_TIER[panel] || autoTier;
+    const tier = Math.max(autoTier, wantTier);       // NUNCA por debajo del device
+    return {
+        panel: panel,
+        tier: tier,
+        autoTier: autoTier,
+        values: AF_PANEL_TABLE[panel] || AF_PANEL_TABLE[3],
+        governedBy: (tier === wantTier) ? ('panel_L' + panel) : ('device_tier_' + autoTier)
+    };
+}
+function build_antifreeze_nuclear_headers(cfg, profile) {
         const lvl = ACTIVE_ISP_LEVEL;
         return {
             // ── Sub-capa 1: Antifreeze Core ──
             'X-AF-Version': '10.0-OBSCENE-AGGRESSION',
+        'X-AF-Requested-Level': 'L' + _af.panel,
+        'X-AF-Governed-By': _af.governedBy,
+        'X-AF-Effective-Tier': String(_af.tier) + '/10',
             'X-AF-Buffer-Strategy': 'NUCLEAR_NO_COMPROMISE',
             'X-AF-Engine-Mode': 'ZERO_TOLERANCE_FREEZE',
             // ── Sub-capa 2: Buffer Configuration ──
-            'X-AF-Buffer-Target': '180000',
-            'X-AF-Buffer-Min': '60000',
-            'X-AF-Buffer-Max': '600000',
-            'X-AF-Buffer-RAM-Cache': '2048MB',
-            'X-AF-Buffer-SSD-Cache': '10240MB',
+            'X-AF-Buffer-Target': _v.bufferTarget,
+            'X-AF-Buffer-Min': _v.bufferMin,
+            'X-AF-Buffer-Max': _v.bufferMax,
+            'X-AF-Buffer-RAM-Cache': _v.pcache,
+            'X-AF-Buffer-SSD-Cache': _v.dcache,
             'X-AF-Buffer-Underrun-Strategy': 'AGGRESSIVE_REFILL_INSTANT',
             'X-AF-Buffer-Overrun-Strategy': 'DROP_OLDEST',
-            'X-AF-Buffer-Prebuffer-Seconds': '120',
+            'X-AF-Buffer-Prebuffer-Seconds': _v.prebuffer,
             // ── Sub-capa 3: Prefetch Nuclear ──
             'X-AF-Prefetch-Segments': String(GLOBAL_PREFETCH.segments),
             'X-AF-Prefetch-Parallel': String(GLOBAL_PREFETCH.parallel),
-            'X-AF-Prefetch-Aggressiveness': 'OBSCENE',
+            'X-AF-Prefetch-Aggressiveness': _v.prefetchAggr,
             'X-AF-Prefetch-Adaptive': 'TRUE',
             'X-AF-Prefetch-Predictive': 'TRUE',
             'X-AF-Prefetch-All-Qualities': 'TRUE',
             // ── Sub-capa 4: Network Caching Nuclear ──
-            'X-AF-Network-Caching': '120000',
-            'X-AF-Live-Caching': '120000',
-            'X-AF-File-Caching': '300000',
+            'X-AF-Network-Caching': _v.net,
+            'X-AF-Live-Caching': _v.live,
+            'X-AF-File-Caching': _v.file,
             'X-AF-TCP-Caching': '60000',
             'X-AF-Disc-Caching': '30000',
             'X-AF-Sout-Mux-Caching': '120000',
             // ── Sub-capa 5: Reconnection Nuclear ──
-            'X-AF-Reconnect-Max': 'UNLIMITED',
+            'X-AF-Reconnect-Max': _v.reconMax,
             'X-AF-Reconnect-Delay-Min': '0',
-            'X-AF-Reconnect-Delay-Max': '50',
+            'X-AF-Reconnect-Delay-Max': _v.retryDelay,
             'X-AF-Reconnect-Parallel': '64',
             'X-AF-Reconnect-Instant-Failover': 'TRUE',
             'X-AF-Reconnect-Pool-Size': '50',
@@ -12813,13 +12880,27 @@ return lines.join('\n');
             // VIDEO-RANGE=PQ es la decision LOCKED del propietario (CLAUDE.md, 2026-06-16).
             const _p6k = String(profile || 'P3').toUpperCase();
             const _bw6kMap = { P0: 120000000, P1: 80000000, P2: 50000000, P3: 25000000, P4: 15000000, P5: 8000000 };
+            // [2026-11-15] DEPRECADO: ya NO se lee para emitir. El nivel se deriva del objetivo
+            // 5760x3240 con _apeHcLevel6k (abajo). No volver a usarlo: mapeaba por perfil y dejaba
+            // L123 (Level 4.1) sobre un picture de 18,66 Mpx.
             const _cd6kMap = {
                 P0: 'hvc1.2.4.L186.B0', P1: 'hvc1.2.4.L153.B0', P2: 'hvc1.2.4.L153.B0',
                 P3: 'hvc1.2.4.L123.B0', P4: 'hvc1.2.4.L120.B0', P5: 'hvc1.2.4.L93.B0'
             };
             const _bw6k = _bw6kMap[_p6k] || 25000000;
-            const _cd6k = _cd6kMap[_p6k] || 'hvc1.2.4.L123.B0';
             const _fps6k = _noProbeFps(profile);
+            // [2026-11-15 · owner decision P-4] Nivel derivado del objetivo declarado (5760x3240).
+            // A 60 fps exige Level 6.1 (L183); a 120 fps, Level 6.2 (L186). Familia hvc1.2.4.*
+            const _apeHcLevel6k = (function (w, h, fps) {
+                const T = [['L120', 2228224, 66845184], ['L123', 2228224, 133693056],
+                           ['L150', 8912896, 267386880], ['L153', 8912896, 534773760],
+                           ['L156', 8912896, 1069547520], ['L180', 35651584, 1069547520],
+                           ['L183', 35651584, 2139095040], ['L186', 35651584, 4278190080]];
+                const ps = w * h, sr = ps * fps;
+                for (let i = 0; i < T.length; i++) { if (ps <= T[i][1] && sr <= T[i][2]) return T[i][0]; }
+                return 'L186';
+            })(5760, 3240, Number(_fps6k) || 60);
+            const _cd6k = 'hvc1.2.4.' + _apeHcLevel6k + '.B0';
             _streamInfLine = `#EXT-X-STREAM-INF:BANDWIDTH=${_bw6k},AVERAGE-BANDWIDTH=${Math.round(_bw6k * 0.8)},CODECS="${_cd6k},mp4a.40.2",RESOLUTION=5760x3240,FRAME-RATE=${Number(_fps6k).toFixed(3)},VIDEO-RANGE=PQ`;
             _fpsSource = (_fps6k === 120) ? 'default-120' : 'default-60';
             // La fuente medida va declarada, y su multiplicador. Sin medida => UNKNOWN y

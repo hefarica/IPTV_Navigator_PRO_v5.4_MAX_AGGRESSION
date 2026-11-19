@@ -8965,6 +8965,11 @@ El servidor analizará 26,000+ canales en ~10 minutos.
                         ? window.headersManagerUI.activeLevel
                         : (this.state.antiFreezeLevel || 3)),
                 autoDetectLevel: (document.getElementById('v41AutoDetectLevel')?.checked ?? true),
+                    /* [2026-11-19] el NIVEL DE CABECERAS sale del selector de EVASION; 
+                     * el de Anti-Freeze gobierna buffer/reconexion dentro del generador. */
+                    manualEvasionLevel: (document.getElementById('manualEvasionLevel')?.value)
+                        ? parseInt(document.getElementById('manualEvasionLevel').value, 10)
+                        : (this.state.manualEvasionLevel || 3),
                 targetPlayer: (document.getElementById('v41TargetPlayer')?.value || 'generic'),
 
                 // ✅ V5.0: Serverless (opcional)
@@ -9116,6 +9121,11 @@ El servidor analizará 26,000+ canales en ~10 minutos.
                         ? window.headersManagerUI.activeLevel
                         : (this.state.antiFreezeLevel || 3)),
                 autoDetectLevel: (document.getElementById('v41AutoDetectLevel')?.checked ?? true),
+                    /* [2026-11-19] el NIVEL DE CABECERAS sale del selector de EVASION; 
+                     * el de Anti-Freeze gobierna buffer/reconexion dentro del generador. */
+                    manualEvasionLevel: (document.getElementById('manualEvasionLevel')?.value)
+                        ? parseInt(document.getElementById('manualEvasionLevel').value, 10)
+                        : (this.state.manualEvasionLevel || 3),
                 targetPlayer: (document.getElementById('v41TargetPlayer')?.value || 'generic'),
 
                 // ✅ V5.0 (opcional)
