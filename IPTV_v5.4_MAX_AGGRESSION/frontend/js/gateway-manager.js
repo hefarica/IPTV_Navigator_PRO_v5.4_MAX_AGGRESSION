@@ -1144,7 +1144,38 @@
                 dropdown.innerHTML = '<option value="">⏳ Cargando archivos...</option>';
                 dropdown.disabled = true;
 
-                const resp = await fetch(`${this.config.vps_url}/list_files.php`, { cache: 'no-store' });
+                /* [2026-11-19] CAUSA MEDIDA: el console daba HTTP 404 (no fallo de red) y
+             * /list_files.php responde 200 + JSON + CORS * en el host canonico.
+             * El 404 venia de la vps_url GUARDADA (host/path que ya no sirve).
+             * Cascada: RELATIVA primero (inmune a config vieja y a mixed content),
+             * luego la configurada, luego la canonica. Con la primera que responda
+             * 200 se repara el config solo. */
+            const resp = await (async () => {
+                const _cands = ['/list_files.php',
+                    `${this.config.vps_url}/list_files.php`,
+                    'https://iptv-ape.duckdns.org/list_files.php'];
+                const _seen = new Set(); let _last = null;
+                for (const _u of _cands) {
+                    if (_seen.has(_u)) continue; _seen.add(_u);
+                    try {
+                        const _r = await fetch(_u, { cache: 'no-store' });
+                        if (_r.ok) {
+                            if (_u !== _cands[1]) {
+                                try {
+                                    this.config.vps_url = (_u.charAt(0) === '/')
+                                        ? 'https://iptv-ape.duckdns.org'
+                                        : _u.replace(/\/list_files\.php$/, '');
+                                    this.saveConfig('vps_url reparada');
+                                    console.warn('[GATEWAY] vps_url estaba mal (404). Reparada a ' + this.config.vps_url);
+                                } catch (_e1) {}
+                            }
+                            return _r;
+                        }
+                        _last = new Error('HTTP ' + _r.status + ' en ' + _u);
+                    } catch (_e2) { _last = _e2; }
+                }
+                throw (_last || new Error('list_files.php sin respuesta'));
+            })();
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
                 const data = await resp.json();
