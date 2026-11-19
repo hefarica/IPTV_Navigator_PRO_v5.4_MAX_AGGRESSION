@@ -956,11 +956,20 @@
                             <div class="pm9-setting">
                                 <label>Estrategia</label>
                                 <select id="pm9_strategy" onchange="window.ProfileManagerV9.updateSetting('strategy', this.value)">
-                                    ${Object.keys(ProfileManagerV9.STRATEGY_CONFIG).map(s => `
-                                        <option value="${s}" ${activeProfile.settings.strategy === s ? 'selected' : ''}>
-                                            ${s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, ' ')}
-                                        </option>
-                                    `).join('')}
+                                    ${Object.keys(ProfileManagerV9.STRATEGY_CONFIG).map(s => {
+                                        /* [t17] etiqueta legible del tuner (español) y 'selected'
+                                         * por CLAVE CANÓNICA: acepta 'ultra-aggressive' y
+                                         * 'Ultra-Agresivo' sin dejar el select sin opción. */
+                                        const T = (typeof window !== 'undefined') ? window.APE_HEALTH_TUNER : null;
+                                        const label = (T && typeof T.strategyOf === 'function') ? T.strategyOf(s).name
+                                            : (s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, ' '));
+                                        const cur = (T && typeof T.strategyKey === 'function')
+                                            ? T.strategyKey(activeProfile.settings.strategy) : activeProfile.settings.strategy;
+                                        return `
+                                        <option value="${s}" ${cur === s ? 'selected' : ''}>
+                                            ${label}
+                                        </option>`;
+                                    }).join('')}
                                 </select>
                             </div>
                         </div>
@@ -1268,7 +1277,7 @@
                     <div id="ape-floating-save-menu" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000000; flex-direction: column; gap: 10px; background: rgba(15, 23, 42, 0.97); padding: 16px; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.5); box-shadow: 0 10px 25px rgba(0,0,0,0.6); backdrop-filter: blur(10px); min-width: 280px;">
                         <div style="color: #6ee7b7; font-size: 0.8rem; font-weight: bold; text-align: center; text-transform: uppercase;">💾 Guardar estado</div>
                         <button onclick="window.ProfileManagerV9.saveCurrentProfile()" style="background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.4); padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: 700;">💾 Guardar perfil actual (<span id="pm9-save-current-id">P0</span>)</button>
-                        <button onclick="window.ProfileManagerV9.saveAllProfiles()" style="background: rgba(139, 92, 246, 0.2); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.4); padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: 700;">📦 Guardar P0–P5 (estado actual)</button>
+                        <button onclick="window.ProfileManagerV9.saveAllProfiles()" style="background: rgba(139, 92, 246, 0.2); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.4); padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: 700;">📦 Guardar TODOS los perfiles (${this._allProfileIds().length})</button>
                         <button onclick="window.ProfileManagerV9.toggleSaveMenu()" style="background: transparent; color: #94a3b8; border: 1px solid rgba(148,163,184,0.3); padding: 7px 12px; border-radius: 8px; cursor: pointer;">Cancelar</button>
                     </div>
 
@@ -1294,21 +1303,25 @@
             // y aplica en bucle (30 s), se pausa con la pestaña oculta y nunca
             // solapa dos ciclos. No se duplica la medición: este es el único
             // arranque automático.
+            /* [t16 2026-11-19 · ORDEN DEL OPERADOR] CERO BUCLE Y CERO AUTO-MEDICIÓN.
+             * "tiene que medir cuando lo pido… ya luego no tiene porque repetirse
+             * una y otra vez, pues esto va a generar que este cambiando datos sin
+             * que se lo pida". Aquí SOLO se restaura el snapshot persistente: no
+             * se arranca el gobernador ni se lanza ninguna sonda. La única vía de
+             * medir es la acción explícita del usuario (botón único). */
             if (!this._bwAutoStarted) {
                 this._bwAutoStarted = true;
                 const _self = this;
-                /* [2026-11-18] Restaurar el plan autoguardado ANTES del primer
-                 * ciclo. Si caducó por TTL NO se aplica: se informa. */
                 setTimeout(function () {
                     try {
                         const rr = _self._restoreQoePlan();
                         if (typeof console !== 'undefined' && rr) {
-                            console.log('[AUTOGUARDADO] ' + (rr.restored
-                                ? 'plan restaurado para ' + _self.activeProfileId
+                            console.log('[SNAPSHOT] ' + (rr.restored
+                                ? ('plan restaurado para ' + _self.activeProfileId + (rr.stale ? ' (ANTIGUO, sin medir)' : ''))
                                 : 'no restaurado: ' + (rr.reason || 'sin datos')));
                         }
                     } catch (e) { /* no bloqueante */ }
-                    try { _self.startGovernor(); } catch (e) { /* no bloqueante */ }
+                    /* NO se llama a startGovernor(): sin acción del usuario no se mide. */
                 }, 0);
             }
         }
@@ -1385,7 +1398,10 @@
                 const basis = this._requiredMbpsBasis(profile);
                 const bwM = (typeof window !== 'undefined') ? window.APE_BW_METER : null;
                 if (np && np.fresh && basis.mbps > 0 && bwM && typeof bwM.riskFromRatio === 'function') {
-                    const ratio = Math.round((np.downloadMbps / basis.mbps) * 100) / 100;
+                    /* [t16] risk/headroom sobre la CAPACIDAD (peak), no sobre el dip */
+                    const capR = this._capacity();
+                    const capMbps = (capR && capR.mbps) ? capR.mbps : Number((np && np.downloadMbps) || 0);
+                    const ratio = Math.round((capMbps / basis.mbps) * 100) / 100;
                     const risk = bwM.riskFromRatio(ratio);
                     performance.evidence = true;
                     performance.headroomRatio = ratio;
@@ -1395,13 +1411,22 @@
                     performance.risk_level = risk <= 20 ? 'LOW' : risk <= 40 ? 'MODERATE'
                         : risk <= 60 ? 'ELEVATED' : risk <= 80 ? 'HIGH' : 'CRITICAL';
                     performance.risk_color = risk <= 30 ? '#10b981' : risk <= 60 ? '#eab308' : '#ef4444';
-                    performance.bw_measured_mbps = np.downloadMbps;
+                    performance.bw_measured_mbps = capMbps;
+                    performance.bw_now_mbps = Number((np && np.downloadMbps) || capMbps);
+                    performance.bw_peak_mbps = capMbps;
+                    performance.peak_hold = capR || null;
+                    performance.dip = !!(capR && capR.dip);
+                    performance.dip_ratio = capR ? capR.dipRatio : null;
+                    performance.peak_expired = !!(capR && capR.expired);
                     performance.required_basis_mbps = basis.mbps;
                     performance.required_basis_source = basis.source;
                     performance.stall_rate_percent = (typeof this._stallFromRatio === 'function')
                         ? this._stallFromRatio(ratio) : performance.stall_rate_percent;
-                    riskTitle = 'risk ' + risk + ' · ratio ' + ratio + 'x = ' + np.downloadMbps +
-                        ' Mbps medidos / ' + basis.mbps + ' Mbps exigidos (base del plan: ' + basis.source + ')';
+                    riskTitle = 'risk ' + risk + ' · ratio ' + ratio + 'x = ' + capMbps +
+                        ' Mbps de CAPACIDAD (pico sostenido) / ' + basis.mbps + ' Mbps exigidos (base del plan: ' +
+                        basis.source + ') · ahora ' + ((np && np.downloadMbps) || capMbps) + ' Mbps · pico ' + capMbps + ' Mbps' +
+                        ((capR && capR.dip) ? ' · DIP al ' + Math.round((capR.dipRatio || 0) * 100) + ' % del pico (inestabilidad, no falta de capacidad)' : '') +
+                        ((capR && capR.expired) ? ' · peak anterior EXPIRADO: recalibrado al nuevo maximo' : '');
                 } else {
                     performance.evidence = false;
                     performance.risk_score = null;
@@ -1467,19 +1492,11 @@
                 healthIndicator.style.boxShadow = `0 0 8px ${color}55`;
             }
 
+            /* [t20] etiqueta y color desde la FUENTE ÚNICA (el plan) */
             if (stabilityLabel) {
-                // FIX 2026-10-24: sin medición real → "SIN MEDICIÓN", nunca
-                // "UNSTABLE". Antes el piso del perfil se presentaba como
-                // ancho de banda observado y el panel quedaba rojo siempre.
-                const noEvidence = performance.evidence === false;
-                const label = noEvidence
-                    ? 'SIN MEDICIÓN'
-                    : (performance.stability?.label || performance.stall_class || 'OPTIMAL');
-                const color = noEvidence
-                    ? '#64748b'
-                    : (performance.stability?.color || performance.stall_color || '#10b981');
-                stabilityLabel.textContent = label;
-                stabilityLabel.style.color = color;
+                const v = this._verdict();
+                stabilityLabel.textContent = v.label;
+                stabilityLabel.style.color = v.color;
             }
 
             if (stallPreview) {
@@ -1523,10 +1540,18 @@
                 const hasMeasurement = (performance.evidence !== false) && plausible;
                 if (typeof window.evaluateSufficiency === 'function') {
                     const ev = window.evaluateSufficiency(ratio, performance.risk_score, hasMeasurement);
-                    headroomPreview.textContent = window.sufficiencyLabel
-                        ? window.sufficiencyLabel(ev) : (ev.headroomPct + '%');
+                    /* Operador: "+197 %" y "margen 1,3x" parecían lo mismo con bases
+                     * distintas. Se NOMBRA la base: el % es capacidad/exigido (red
+                     * frente al perfil); el 1,3x de la ley es el MÍNIMO de industria
+                     * (≈ +30 %), un umbral, no una medición. */
+                    headroomPreview.textContent = (window.sufficiencyLabel
+                        ? window.sufficiencyLabel(ev) : (ev.headroomPct + '%')) + ' (red)';
                     headroomPreview.style.color = ev.color || '#64748b';
-                    headroomPreview.title = ev.reason +
+                    headroomPreview.title = 'Headroom de RED = capacidad medida / exigido por el perfil' +
+                        (ratio !== null ? (' = ' + ratio + 'x') : ' = (sin medir)') +
+                        '. El 1,3x de la ley es el MÍNIMO recomendado de industria (~+30 %), NO un valor medido. ' +
+                        'El riesgo mostrado es riesgo de RED, no estabilidad de reproducción. ' +
+                        ev.reason +
                         (ev.target ? (' — gate: headroom >= ' + Math.round((ev.target.headroomRatio - 1) * 100) +
                           ' % y risk <= ' + ev.target.riskMax) : '');
                 } else if (performance.evidence === false) {
@@ -1544,33 +1569,80 @@
 
             // GATE DE SUFICIENCIA: declarar explicitamente si el perfil alcanza
             // el estado excepcional, y si no, cuanto le falta.
+            /* ═══════════════════════════════════════════════════════════════
+             * [t18] UN SOLO VEREDICTO, DOS DIMENSIONES ETIQUETADAS.
+             *
+             * El operador vio "SUFICIENCIA EXCEPCIONAL" al lado de un plan
+             * INCOHERENTE y preguntó por qué el panel decía UNSTABLE. No era un
+             * fallo de cálculo: eran DOS preguntas mezcladas.
+             *   · TRANSPORTE: disponible (capacidad×duty) vs exigido → MANDA.
+             *   · CODEC: capacidad vs bitrate del codec → informativo.
+             * Si el plan es ok:false el gate NUNCA dice EXCEPCIONAL ni verde.
+             * ═══════════════════════════════════════════════════════════════ */
+            const selfPM = this;
+            const dims = (function dimensiones() {
+                const prof = (selfPM.config && selfPM.config.getProfile) ? selfPM.config.getProfile(selfPM.activeProfileId) : null;
+                const plan = (typeof selfPM._coherentPlanFor === 'function')
+                    ? selfPM._coherentPlanFor(prof, selfPM._activeStrategyId()) : null;
+                const m = (plan && plan.metrics) || {};
+                const vv = (plan && plan.values) || {};
+                const cap = Number(m.measuredMbps);
+                const req = Number(m.requiredMbpsForStall || vv.bwMinMbps || m.requiredMbps);
+                const avail = (m.availableMbps === null || m.availableMbps === undefined)
+                    ? Number(m.measuredMbps) : Number(m.availableMbps);
+                /* [t20] Number(null)=0 colaba un ratio 0 falso: se distingue ausencia */
+                const ratioT = (m.dutyRatio === null || m.dutyRatio === undefined) ? null : Number(m.dutyRatio);
+                const codecMbps = (typeof selfPM._stallBitrateFor === 'function') ? Number(selfPM._stallBitrateFor(prof)) : null;
+                const ratioC = (isFinite(cap) && isFinite(codecMbps) && codecMbps > 0)
+                    ? Math.round((cap / codecMbps) * 100) / 100 : null;
+                return {
+                    plan: plan, ok: !!(plan && plan.ok), measured: m.measuredMbps === undefined ? null : cap,
+                    req: isFinite(req) ? req : null,
+                    avail: isFinite(avail) ? avail : null,
+                    ratioT: (ratioT !== null && ratioT !== undefined && isFinite(ratioT)) ? ratioT
+                        : ((isFinite(avail) && isFinite(req) && req > 0) ? (Math.round((avail / req) * 100) / 100)
+                            : (isFinite(Number(m.ratio)) ? Number(m.ratio) : null)),
+                    faltaUtil: (isFinite(req) && isFinite(avail)) ? Math.max(0, Math.round((req - avail) * 100) / 100) : null,
+                    codecMbps: (isFinite(codecMbps) && codecMbps > 0) ? codecMbps : null,
+                    ratioC: ratioC,
+                    stall: (m.stallEstimatePct === undefined || m.stallEstimatePct === null) ? null : m.stallEstimatePct,
+                    target: m.targetStallPct === undefined ? null : m.targetStallPct,
+                    causa: (plan && plan.violations && plan.violations.length) ? plan.violations[0] : null
+                };
+            })();
+            this._dims = dims;
+
             (function renderSufficiencyGate() {
                 const el = document.getElementById('pm9_sufficiency_gate');
                 if (!el) return;
-                if (typeof window.evaluateSufficiency !== 'function') { el.textContent = ''; return; }
-                const ratio = (typeof performance.headroomRatio === 'number')
-                    ? performance.headroomRatio : null;
-                const plausible = (ratio !== null && ratio >= 0.01 && ratio <= 100);
-                const hasM = (performance.evidence !== false) && plausible;
-                const ev = window.evaluateSufficiency(ratio, performance.risk_score, hasM);
-                if (ev.satisfiesExceptional) {
-                    el.textContent = 'SUFICIENCIA EXCEPCIONAL: headroom ' + ev.headroomPct +
-                        ' % (>= 200 %) y risk ' + ev.risk + ' (<= 10)';
+                const d = dims;
+                /* sin medición: ni color ni veredicto inventado */
+                if (d.measured === null) {
+                    el.textContent = 'NO EXCEPCIONAL (NO_MEASUREMENT): sin medición de red no hay veredicto';
+                    el.style.color = '#64748b';
+                    el.style.borderColor = 'rgba(148,163,184,.35)';
+                    el.title = 'Mide con el botón único: sin capacidad medida no se declara suficiencia.';
+                    return;
+                }
+                const trans = 'TRANSPORTE: ' + d.avail + '/' + d.req + ' Mbps (' + d.ratioT + 'x)' +
+                    (d.ok ? ' — cubre el mínimo' : (' — faltan ' + d.faltaUtil + ' Mbps útiles'));
+                const codec = (d.codecMbps !== null)
+                    ? ('CODEC: ' + d.measured + ' Mbps vs ' + d.codecMbps + ' Mbps de bitrate (' + d.ratioC + 'x) — decodificable' +
+                       (d.ok ? '' : ' [informativo: NO compensa un transporte rojo]'))
+                    : 'CODEC: sin bitrate de códec disponible';
+                if (d.ok) {
+                    el.textContent = 'EXCEPCIONAL (plan coherente) · ' + trans + ' · ' + codec;
                     el.style.color = '#10b981';
                     el.style.borderColor = 'rgba(16,185,129,.5)';
                 } else {
-                    const g = ev.gap || {};
-                    let msg = 'NO EXCEPCIONAL (' + ev.state + '): ';
-                    if (ev.state === 'NO_MEASUREMENT') msg += 'sin medicion de red, el headroom no es computable';
-                    else if (ev.state === 'IMPLAUSIBLE') msg += 'el ratio esta fuera de rango fisico: revisar bandwidthSafe';
-                    else {
-                        msg += 'headroom ' + ev.headroomPct + ' % (faltan ' + (g.headroomMissing || 0) +
-                            'x para 3.0x)' + (g.riskExcess ? (' · risk ' + ev.risk + ' excede en ' + g.riskExcess) : '');
-                    }
-                    el.textContent = msg;
-                    el.style.color = '#eab308';
-                    el.style.borderColor = 'rgba(234,179,8,.5)';
+                    el.textContent = 'NO EXCEPCIONAL (plan incoherente) · ' + trans + ' · ' + codec +
+                        (d.causa ? (' · causa: ' + d.causa) : '');
+                    el.style.color = '#ef4444';
+                    el.style.borderColor = 'rgba(239,68,68,.55)';
                 }
+                el.title = 'Para EXCEPCIONAL el TRANSPORTE debe dar capacidad ≥ 3x lo exigido (con este perfil: ' +
+                    (d.req ? Math.round(d.req * 3) : '?') + ' Mbps medidos) o bajar de perfil. ' +
+                    'El CODEC sólo dice si el bitrate es decodificable; no vuelve verde un transporte rojo.';
             })();
 
             // Actualizar panel de resumen (mostrar si hay warnings)
@@ -1588,15 +1660,20 @@
                 const warningText = document.getElementById('pm9_warning_text');
 
                 if (summaryStability) {
-                    summaryStability.textContent = performance.stability?.label || performance.stall_class || '--';
-                    summaryStability.style.color = performance.stability?.color || '#10b981';
+                    /* [t20] fuente única: el plan, no performance.stability */
+                    const vS = this._verdict();
+                    summaryStability.textContent = vS.label;
+                    summaryStability.style.color = vS.color;
                 }
+                const etiq = this._summaryLabels(performance);
                 if (summaryStall) {
-                    summaryStall.textContent = `${performance.stall_rate_percent?.toFixed(2) || '--'}%`;
+                    summaryStall.textContent = etiq.stall;
+                    summaryStall.title = etiq.stallTitle;
                 }
                 if (summaryRisk) {
-                    summaryRisk.textContent = `${performance.risk_score || '--'} (${performance.risk_level || 'N/A'})`;
+                    summaryRisk.textContent = etiq.risk;
                     summaryRisk.style.color = performance.risk_color || '#eab308';
+                    summaryRisk.title = etiq.riskTitle;
                 }
                 if (summaryMemory) {
                     summaryMemory.textContent = `${performance.memory_usage_mb || '--'} MB`;
@@ -1627,24 +1704,69 @@
                 rtRam.textContent = `${performance.memory_usage_mb}/${performance.memory_peak_mb || '~'} MB`;
             }
             if (rtStall) {
-                const stall = performance.stall_rate_percent || 0;
-                rtStall.textContent = stall <= 1.67 ? `<${stall}%` : `${stall}%`;
-                rtStall.style.color = this._getStallColor(stall);
+                /* [t18] "<0.00%" es imposible: se muestra el valor y, si no hay,
+                 * NO COMPUTADO. */
+                const spN = Number(performance.stall_rate_percent);
+                if (performance.evidence === false || !isFinite(spN)) {
+                    rtStall.textContent = 'NO COMPUTADO';
+                    rtStall.style.color = '#64748b';
+                } else {
+                    const stall = Math.max(0, spN);
+                    rtStall.textContent = stall.toFixed(2) + '%';
+                    rtStall.style.color = this._getStallColor(stall);
+                }
             }
 
-            // Actualizar banner de estabilidad
-            const stabilityBanner = document.querySelector('.pm9-stability-banner');
-            if (stabilityBanner && performance.stability) {
-                stabilityBanner.style.background = `${performance.stability.color}22`;
-                stabilityBanner.style.borderLeftColor = performance.stability.color;
-                const bannerContent = stabilityBanner.querySelector('span');
-                if (bannerContent) {
-                    bannerContent.innerHTML = `
-                        ${performance.stability.icon} <strong>${performance.stability.label}</strong>
-                        <span style="color: #64748b; margin-left: 8px;">Headroom: ${performance.headroom_percent}%</span>
-                        ${performance.unstable_margin ? `<span style="color: #64748b; margin-left: 8px;">(Margin: ${performance.unstable_margin}x)</span>` : ''}
-                    `;
+            /* [t18] La estabilidad del panel se DERIVA del plan: coherente=estable.
+             * Nada de un cálculo paralelo que diga UNSTABLE con un gate verde. */
+            try {
+                const dS = this._dims || {};
+                const lbl = document.getElementById('pm9_stability_label');
+                const ind = document.getElementById('pm9_health_indicator');
+                const spv = document.getElementById('pm9_stall_preview');
+                if (lbl) {
+                    if (dS.measured === null || dS.measured === undefined) {
+                        lbl.textContent = 'SIN MEDICIÓN';
+                        lbl.style.color = '#64748b';
+                    } else if (dS.ok) {
+                        lbl.textContent = 'ESTABLE (plan coherente)';
+                        lbl.style.color = '#10b981';
+                    } else {
+                        lbl.textContent = 'NO ESTABLE — transporte insuficiente';
+                        lbl.style.color = '#ef4444';
+                    }
                 }
+                if (ind) {
+                    const col = (dS.measured === null || dS.measured === undefined) ? '#64748b'
+                        : (dS.ok ? '#10b981' : '#ef4444');
+                    ind.style.background = col;
+                    ind.style.boxShadow = '0 0 8px ' + col + '55';
+                }
+                if (spv) {
+                    /* [t18] "<0.00%" junto a UNSTABLE es incoherente: se muestra la
+                     * ESTIMACIÓN del plan; si no es computable, se dice. */
+                    /* [t18] mismo formato honesto que el veredicto: si supera, LO DICE. */
+                    spv.textContent = (dS.stall === null || dS.stall === undefined)
+                        ? 'stall: NO COMPUTADO'
+                        : ('stall est. ' + dS.stall + ' %' + (dS.target === null ? ''
+                            : (Number(dS.stall) > Number(dS.target)
+                                ? (' SUPERA el target ' + dS.target + ' %')
+                                : (' ≤ target ' + dS.target + ' % (cumple)'))));
+                    spv.style.color = (dS.stall !== null && dS.target !== null && Number(dS.stall) > Number(dS.target))
+                        ? '#ef4444' : '#64748b';
+                    spv.title = 'Estimación del MODELO de stall para el plan aplicado (no observada en el reproductor).';
+                }
+            } catch (e) { /* no bloqueante */ }
+
+            // Actualizar banner de estabilidad
+            /* [t20] el banner EN VIVO usa la MISMA fuente que el resto. */
+            const stabilityBanner = document.querySelector('.pm9-stability-banner');
+            if (stabilityBanner) {
+                const b = this._verdictHtmlBanner();
+                stabilityBanner.style.background = b.v.color + '22';
+                stabilityBanner.style.borderLeftColor = b.v.color;
+                const bannerContent = stabilityBanner.querySelector('span');
+                if (bannerContent) bannerContent.innerHTML = b.inner;
             }
 
             // Actualizar métricas v3.1 si existen
@@ -1657,7 +1779,7 @@
             this._updateV31Metrics(performance);
 
             console.log('📊 Streaming Health updated:', {
-                stability: performance.stability?.label,
+                stability: (this._verdict() || {}).label,
                 stall: performance.stall_rate_percent,
                 risk: performance.risk_score,
                 warnings: performance.policy_warnings?.length || 0
@@ -1676,6 +1798,87 @@
         /**
          * Actualiza las métricas v3.1 en el panel inferior
          */
+        /* [t18] Etiquetas del bloque de resumen. Se extraen para poder probarlas
+         * sin DOM: el operador detectó "STALL RATE <0%" (imposible) y "Risk
+         * 5/100 (LOW)" junto a UNSTABLE sin decir qué mide cada número. */
+        _summaryLabels(perf) {
+            perf = perf || {};
+            const noEv = perf.evidence === false;
+            const sp = Number(perf.stall_rate_percent);
+            const stall = noEv ? 'sin medir (observada del reproductor)'
+                : (isFinite(sp) ? (Math.max(0, sp).toFixed(2) + '%') : 'sin medir');
+            const risk = 'red: ' + String(perf.risk_score === undefined || perf.risk_score === null ? '--' : perf.risk_score) +
+                '/100 (' + String(perf.risk_level || 'N/A') + ')';
+            return {
+                stall: stall,
+                stallTitle: noEv
+                    ? 'No hay evidencia de reproducción medida: la tasa de interrupción observada aún no existe'
+                    : 'Tasa de interrupción estimada por el modelo (no observada en el reproductor)',
+                risk: risk,
+                riskTitle: 'Riesgo de RED = f(capacidad medida / exigido por el perfil). NO es un veredicto de estabilidad de reproducción:'
+                    + ' la estabilidad se mide con el reproductor y, si no hay datos, figura como "sin medir".'
+            };
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════
+         * [t20] FUENTE ÚNICA DEL VEREDICTO (panel + widget V1.1 + banner + CTA).
+         * Todo sale del PLAN (this._dims, derivado de coherentPlan). Ningún
+         * widget calcula estabilidad por su cuenta; el headroom es UNA cifra.
+         *   plan ok   -> ESTABLE, verde, sin CTA
+         *   plan !ok  -> NO ESTABLE, rojo, CTA "ACCION URGENTE REQUERIDA"
+         *   sin medic -> SIN MEDICIÓN, gris, sin CTA
+         * ═══════════════════════════════════════════════════════════════════ */
+        _verdict() {
+            const d = this._dims || {};
+            if (d.measured === null || d.measured === undefined) {
+                return {
+                    state: 'NOM', ok: null, label: 'SIN MEDICIÓN', color: '#64748b',
+                    icon: '⚪', cta: false, headroomRatio: null, headroomPct: null,
+                    bwMin: (d.req === undefined ? null : d.req),
+                    stall: null, stallTarget: null, stallOk: null, cause: null
+                };
+            }
+            const ok = !!d.ok;
+            const ratio = (d.ratioT === null || d.ratioT === undefined) ? null : d.ratioT;
+            return {
+                state: ok ? 'OK' : 'BAD',
+                ok: ok,
+                label: ok ? 'ESTABLE (plan coherente)' : 'NO ESTABLE — transporte insuficiente',
+                color: ok ? '#10b981' : '#ef4444',
+                icon: ok ? '✅' : '⚠️',
+                cta: !ok,
+                headroomRatio: ratio,
+                headroomPct: (ratio === null) ? null : Math.round((ratio - 1) * 100),
+                bwMin: (d.req === undefined ? null : d.req),
+                stall: (d.stall === undefined ? null : d.stall),
+                stallTarget: (d.target === undefined ? null : d.target),
+                stallOk: (d.stall === null || d.stall === undefined || d.target === null || d.target === undefined)
+                    ? null : (Number(d.stall) <= Number(d.target)),
+                cause: ok ? null : (d.causa || null)
+            };
+        }
+
+        /* HTML del banner: MISMA fuente y MISMAS cifras que el panel superior */
+        _verdictHtmlBanner() {
+            const v = this._verdict();
+            const head = (v.headroomPct === null) ? 'Headroom: --'
+                : ('Headroom: ' + v.headroomRatio + 'x (' + v.headroomPct + ' %)');
+            return {
+                v: v,
+                style: 'background: ' + v.color + '22; border-left: 3px solid ' + v.color +
+                    '; padding: 6px 10px; margin-bottom: 10px; border-radius: 4px; display: flex;' +
+                    ' justify-content: space-between; align-items: center;',
+                inner: '<span style="font-size: 11px;"><strong>' + v.icon + ' ' + v.label + '</strong>' +
+                    '<span style="color: #64748b; margin-left: 8px;">' + head + '</span>' +
+                    (v.stall === null ? '' : '<span style="color: #64748b; margin-left: 8px;">stall ' +
+                        v.stall + ' % / target ' + v.stallTarget + ' %</span>') +
+                    '<span style="color: #64748b; margin-left: 8px;">BW mín ' +
+                    (v.bwMin === null ? '--' : v.bwMin + ' Mbps') + '</span></span>' +
+                    (v.cta ? '<span style="color: #ef4444; font-size: 10px;">⚠️ ' +
+                        String(v.cause || 'BW insuficiente').slice(0, 120) + '</span>' : '')
+            };
+        }
+
         _updateV31Metrics(performance) {
             // IDs explícitos (el selector legacy cogía la fila del TÍTULO, no la
             // del Risk Score, y por eso el número se quedaba clavado en 100).
@@ -1694,7 +1897,9 @@
             const noEvidence = performance.evidence === false;
             setText('pm9_risk_score', noEvidence ? '--' : `${performance.risk_score ?? '--'}/100`,
                 noEvidence ? '#64748b' : performance.risk_color);
-            setText('pm9_risk_level', noEvidence ? '(sin medición)' : `(${performance.risk_level || 'N/A'})`);
+            setText('pm9_risk_level', noEvidence
+                ? '(sin medición)'
+                : `(decode: ${performance.risk_level || 'N/A'} · no es salud global)`);
 
             // Health badge
             const healthBadge = document.getElementById('pm9_health_badge');
@@ -2663,25 +2868,11 @@
                             </div>
                             
                             <!-- Stability Class Banner -->
-                            ${performance.stability ? `
-                            <div class="pm9-stability-banner" style="
-                                background: ${performance.stability.color}22;
-                                border-left: 3px solid ${performance.stability.color};
-                                padding: 6px 10px;
-                                margin-bottom: 10px;
-                                border-radius: 4px;
-                                display: flex;
-                                justify-content: space-between;
-                                align-items: center;
-                            ">
-                                <span style="font-size: 11px;">
-                                    ${performance.stability.icon} <strong>${performance.stability.label}</strong>
-                                    <span style="color: #64748b; margin-left: 8px;">Headroom: ${performance.headroom_percent}%</span>
-                                    ${performance.unstable_margin ? `<span style="color: #64748b; margin-left: 8px;">(Margin: ${performance.unstable_margin}x)</span>` : ''}
-                                </span>
-                                ${!performance.is_stable ? '<span style="color: #ef4444; font-size: 10px;">⚠️ BW insuficiente</span>' : ''}
-                            </div>
-                            ` : ''}
+                            ${(function (PMi) {
+                                /* [t20] banner desde la FUENTE ÚNICA (el plan). */
+                                const b = PMi._verdictHtmlBanner();
+                                return '<div class="pm9-stability-banner" style="' + b.style + '">' + b.inner + '</div>';
+                            })(this)}
                             
                             <div class="pm9-prefetch-preview-grid">
                                 <div class="pm9-prefetch-metric">
@@ -2766,11 +2957,15 @@
                             ` : ''}
                             
                             <!-- Policy Status Badge -->
-                            ${performance.has_urgent ? `
-                            <div style="margin-top: 6px; padding: 4px 8px; background: rgba(239,68,68,0.2); border-radius: 4px; text-align: center;">
-                                <span style="font-size: 10px; color: #ef4444; font-weight: 600;">🚨 ACCIÓN URGENTE REQUERIDA</span>
-                            </div>
-                            ` : ''}
+                            ${(function (PMi) {
+                                /* [t20] la CTA la dicta el PLAN: sólo si es incoherente. */
+                                const v = PMi._verdict();
+                                if (!v.cta) return '';
+                                return '<div style="margin-top: 6px; padding: 4px 8px; background: rgba(239,68,68,0.2); border-radius: 4px; text-align: center;">' +
+                                    '<span style="font-size: 10px; color: #ef4444; font-weight: 600;">🚨 ACCIÓN URGENTE REQUERIDA</span>' +
+                                    (v.cause ? '<div style="font-size: 9px; color: #fca5a5; margin-top: 2px;">' + String(v.cause).slice(0, 160) + '</div>' : '') +
+                                    '</div>';
+                            })(this)}
                         </div>
                     </div>
                 </div>
@@ -2837,10 +3032,13 @@
                     const segmentsInput = document.getElementById('pm9_prefetch_segments');
                     if (segmentsInput) segmentsInput.value = segments;
 
-                    // AUTO-SYNC: Prefetch-dependent headers
-                    this.config.setHeaderOverride(this.activeProfileId, 'X-Prefetch-Segments', String(segments));
-                    this.config.setHeaderOverride(this.activeProfileId, 'X-Parallel-Segments', String(value));
-                    this.config.setHeaderOverride(this.activeProfileId, 'X-Concurrent-Downloads', String(value));
+                    /* [t21] el ajuste debe generar la CASCADA completa (misma aridad
+                     * que el perfil), no un único token: el perfil declara
+                     * X-Parallel-Segments="8,6,4,2" y X-Prefetch-Segments="12,10,8,6". */
+                    this._reconcilePlanCascades(profile, {
+                        prefetch_segments: segments,
+                        parallel_downloads: value
+                    });
                 }
 
                 // v3.1: Actualizar Streaming Health en tiempo real
@@ -2901,6 +3099,106 @@
          * ═══════════════════════════════════════════════════════════════════ */
         _networkProfileTtlMs() { return 5 * 60 * 1000; }
 
+        /* ═══════════════════════════════════════════════════════════════════
+         * PEAK-HOLD (t16 2026-11-18)
+         *
+         * DEFECTO MEDIDO POR EL OPERADOR: minuto 0 el panel daba 240,97 Mbps
+         * (Risk 5, headroom 635 %); un ciclo malo posterior dio 18,72 Mbps y el
+         * panel cayó a Risk 81 / headroom -43 % / plan INCOHERENTE. El plan se
+         * calculaba con la ULTIMA muestra, así que un dip borraba la capacidad.
+         *
+         * REGLA: la capacidad de referencia es el MAXIMO SOSTENIDO en ventana.
+         *   N   = 20 ciclos      (configurable en _peakCfg)
+         *   TTL = 10 min         (declarado; el peak caduca y entonces se baja)
+         * Un ciclo por debajo NO borra el peak ni el plan: se marca 'dip' y se
+         * conserva el ultimo plan coherente. Solo al CADUCAR el peak se recalcula
+         * desde el nuevo maximo y se declara 'peak expirado'. Sin muestras ->
+         * NO_MEASUREMENT (no se inventa nada).
+         * ═══════════════════════════════════════════════════════════════════ */
+        _peakCfg() {
+            return { maxCycles: 20, ttlMs: 10 * 60 * 1000, dipRatio: 0.8 };
+        }
+
+        _peakLoad() {
+            if (Array.isArray(this._peakSamples)) return this._peakSamples;
+            this._peakSamples = [];
+            try {
+                if (typeof localStorage !== 'undefined' && localStorage.getItem) {
+                    const raw = localStorage.getItem('ape_peak_hold_v1');
+                    if (raw) {
+                        const o = JSON.parse(raw);
+                        if (o && Array.isArray(o.samples)) {
+                            this._peakSamples = o.samples.filter(s => s && isFinite(Number(s.mbps)) && Number(s.mbps) > 0)
+                                .map(s => ({ mbps: Number(s.mbps), at: Number(s.at) || 0 }));
+                        }
+                    }
+                }
+            } catch (e) { /* sin persistencia: se sigue en memoria */ }
+            return this._peakSamples;
+        }
+
+        _peakSave() {
+            try {
+                if (typeof localStorage === 'undefined' || !localStorage.setItem) return;
+                localStorage.setItem('ape_peak_hold_v1', JSON.stringify({
+                    v: 1, ts: Date.now(), samples: this._peakSamples.slice(-this._peakCfg().maxCycles)
+                }));
+            } catch (e) { /* no bloqueante */ }
+        }
+
+        /* Registra una medición en la ventana del peak-hold. */
+        _peakRecord(mbps, atMs) {
+            const m = Number(mbps);
+            if (!isFinite(m) || m <= 0) return null;
+            const cfg = this._peakCfg();
+            const at = Number(atMs) || Date.now();
+            const arr = this._peakLoad();
+            const last = arr.length ? arr[arr.length - 1] : null;
+            if (last && last.mbps === m && (at - last.at) < 1000) return arr;   // idempotente en el mismo ms
+            arr.push({ mbps: m, at: at });
+            while (arr.length > cfg.maxCycles) arr.shift();
+            this._peakSave();
+            return arr;
+        }
+
+        /* Capacidad de referencia (peak) + valor instantaneo + estado del dip. */
+        _capacity() {
+            const cfg = this._peakCfg();
+            const arr = this._peakLoad();
+            const np = this._networkProfile();
+            if (np && np.fresh) {
+                const last = arr.length ? arr[arr.length - 1] : null;
+                if (!last || (Number(np.timestamp) || 0) > last.at) {
+                    this._peakRecord(np.downloadMbps, np.timestamp);
+                }
+            }
+            const nowMs = Date.now();
+            const vivos = arr.filter(s => (nowMs - s.at) <= cfg.ttlMs);
+            if (!vivos.length) {
+                return { mbps: null, now: null, peak: null, dip: false, expired: arr.length > 0,
+                         samples: 0, cfg: cfg, state: 'NO_MEASUREMENT' };
+            }
+            let peak = vivos[0];
+            for (let i = 1; i < vivos.length; i++) { if (vivos[i].mbps > peak.mbps) peak = vivos[i]; }
+            const instante = vivos[vivos.length - 1].mbps;
+            /* 'expirado': hubo una muestra mayor que la del peak actual y ya salio
+             * de la ventana -> el peak anterior caduco. */
+            const expirado = arr.some(s => s.mbps > peak.mbps);
+            return {
+                mbps: peak.mbps,                    // CAPACIDAD DE REFERENCIA
+                peak: peak.mbps,
+                peakAt: peak.at,
+                peakAgeMs: nowMs - peak.at,
+                now: instante,                      // ultima muestra (puede ser un dip)
+                dip: instante < peak.mbps * cfg.dipRatio,
+                dipRatio: Math.round((instante / peak.mbps) * 100) / 100,
+                expired: expirado,
+                samples: vivos.length,
+                cfg: cfg,
+                state: 'MEASURED'
+            };
+        }
+
         _networkProfile() {
             let np = null;
             try {
@@ -2936,9 +3234,33 @@
          * hizo (una sola medición por ciclo). */
         _freshMeasurement() {
             const np = this._networkProfile();
+            /* [t17] tras un reload NO hay networkProfile vivo pero SÍ snapshot y
+             * peak persistido: la capacidad medida sigue siendo válida. Sin
+             * muestras (ni perfil ni peak) se mantiene NO_MEASUREMENT. */
+            if (!np || !np.fresh) {
+                const capSolo = this._capacity();
+                if (capSolo && capSolo.mbps) {
+                    return {
+                        measuredMbpsSafe: capSolo.mbps,
+                        nowMbps: capSolo.now, peakMbps: capSolo.peak,
+                        dip: !!capSolo.dip, expired: !!capSolo.expired,
+                        pingMs: null,
+                        source: 'peak-hold (snapshot)',
+                        ageMs: capSolo.peakAgeMs
+                    };
+                }
+                return null;
+            }
             if (np && np.fresh) {
+                /* [t16] la referencia es la CAPACIDAD SOSTENIDA (peak-hold), no el
+                 * ultimo ciclo: un dip no debe romper el plan. */
+                const cap = this._capacity();
                 return {
-                    measuredMbpsSafe: np.downloadMbps,
+                    measuredMbpsSafe: (cap && cap.mbps) ? cap.mbps : np.downloadMbps,
+                    nowMbps: np.downloadMbps,
+                    peakMbps: (cap && cap.peak) ? cap.peak : np.downloadMbps,
+                    dip: !!(cap && cap.dip),
+                    expired: !!(cap && cap.expired),
                     headroomRatio: null,        // coherentPlan deriva measured/required
                     pingMs: np.pingMs,
                     source: 'networkProfile',
@@ -3020,8 +3342,11 @@
                 ? (this.config.getPrefetchConfig(this.activeProfileId) || {}) : {};
             const sid = strategyId || cfg.strategy;
             const meas = this._freshMeasurement() || {};
+            /* [t19] base REAL de la exigencia (la misma que pinta el display) */
+            const baseReal = this._requiredMbpsBasis(p);
             return T.coherentPlan({
-                requiredMbps: Number(st.bitrate) || 0,
+                requiredMbps: (baseReal && baseReal.mbps > 0) ? baseReal.mbps : (Number(st.bitrate) || 0),
+                /* requiredMbps ya se pasa arriba con la base REAL del perfil */
                 measuredMbpsSafe: meas.measuredMbpsSafe,
                 headroomRatio: meas.headroomRatio,
                 segDurationSec: Number(st.segment_duration_s) || 0,
@@ -3032,6 +3357,8 @@
                  * target de stall con los que el panel pintará el chip, para que
                  * el ok:true del plan y el verde del chip no puedan divergir. */
                 bitrateForStall: this._stallBitrateFor(p) || undefined,
+                /* trazabilidad: de dónde salió la exigencia */
+                requiredBasis: baseReal ? baseReal.source : 'sin base',
                 targetStallPct: this._stallTargetPct()
             });
         }
@@ -3121,7 +3448,10 @@
             const m = plan.metrics || {};
             const stallTxt = (m.stallEstimatePct === null || m.stallEstimatePct === undefined)
                 ? ''
-                : ' · stall est. ' + m.stallEstimatePct + ' % (target ≤ ' + m.targetStallPct + ' %)' +
+                : ' · stall est. ' + m.stallEstimatePct + ' % ' +
+                        ((Number(m.stallEstimatePct) <= Number(m.targetStallPct))
+                            ? ('≤ target ' + m.targetStallPct + ' %')
+                            : ('SUPERA el target ' + m.targetStallPct + ' %')) +
                   (m.stallBasis === 'required_fallback' ? ' [base conservadora: bitrate del perfil]' : '');
 
             if (plan.ok) {
@@ -3132,9 +3462,17 @@
                     v.parallel_downloads + ' paralelas' + stallTxt + '</span>' + clampTxt;
             }
             return base + ' <span style="color:#ef4444;font-weight:600;">· ✗ plan INCOHERENTE</span>' +
-                '<span style="color:#fca5a5;"> ' + (plan.violations || []).join(' · ') + '</span>' +
+                '<span style="color:#fca5a5;"> ' + (plan.violations || []).join(' · ')
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>' +
                 '<span style="color:#eab308;"> · red mínima para verde: ' +
-                plan.neededMbpsForGreen + ' Mbps medida' +
+                plan.neededMbpsForGreen + ' Mbps útiles / ' +
+                (function () {
+                    /* el panel sólo cuenta el 90 % de lo medido (duty de la
+                     * estrategia): el bruto necesario es útil / duty. */
+                    const duty = Number(m && m.demandDuty) || 1;
+                    return (Math.round((plan.neededMbpsForGreen / duty) * 100) / 100) + ' Mbps medidos' +
+                        (duty !== 1 ? ' (factor ' + duty + ')' : '');
+                })() +
                 (plan.neededBufferS ? ' · buffer mínimo para el target: ' + plan.neededBufferS + ' s' : '') +
                 '</span>' + stallTxt + clampTxt;
         }
@@ -3180,16 +3518,26 @@
             const player = Number(prof && prof.settings ? prof.settings.playerBuffer : 0) || 0;
             const np = this._networkProfile();
             const p = plan || this._lastCoherent || null;
+            /* [t18] con el modelo bajo demanda puede no haber networkProfile vivo
+             * y SÍ haber capacidad medida (peak/snapshot): eso cuenta como
+             * medición válida para pintar. */
+            const capP = this._capacity();
+            const hayCapacidad = !!(capP && capP.mbps);
+            const capMbps = hayCapacidad ? capP.mbps : (np ? np.downloadMbps : null);
 
-            /* ── Enlace al módulo QoS: su estado refleja si hay medición FRESCA ── */
-            const fresh = !!(np && np.fresh);
+            /* ── Enlace al módulo QoS: estado de la medición vigente ── */
+            const fresh = !!((np && np.fresh) || hayCapacidad);
             const edadS = np ? Math.round(np.ageMs / 1000) : null;
             const qosEl = (typeof document !== 'undefined') ? document.getElementById('pm9_qos_link') : null;
             if (qosEl) {
+                const capQ = this._capacity();
+                const snap = this._snapshotLabel();
+                if (snap && qosEl) { qosEl.title = snap; }
                 qosEl.textContent = fresh
-                    ? ('📡 Latencia Rayo: ACTIVO · ' + np.downloadMbps + ' Mbps' +
-                       (np.pingMs !== null ? ' · ' + np.pingMs + ' ms' : ' · ping no medido') +
-                       ' · hace ' + edadS + ' s (fuente ' + np.source + ')')
+                    ? ('📡 Latencia Rayo: ACTIVO · ahora ' + (np ? np.downloadMbps : capMbps) + ' Mbps · pico ' +
+                       ((capQ && capQ.peak) ? capQ.peak : capMbps) + ' Mbps' +
+                       ((np && np.pingMs !== null && np.pingMs !== undefined) ? ' · ' + np.pingMs + ' ms' : ' · ping no medido') +
+                       ' · hace ' + edadS + ' s (fuente ' + ((np && np.source) || (this._snapshotInfo && this._snapshotInfo.source) || 'desconocida') + ')')                    + (((np && np.fresh === false) || (this._snapshotInfo && this._snapshotInfo.stale)) ? ' · ANTIGUO' : '')
                     : ('📡 Latencia Rayo: ' + (np ? 'CADUCADO (' + edadS + ' s > ' + Math.round(np.ttlMs / 60000) + ' min)' : 'OFFLINE (sin medición)') +
                        ' — los campos de red quedan sin cifra hasta medir');
                 qosEl.style.color = fresh ? '#7dd3fc' : '#eab308';
@@ -3200,7 +3548,7 @@
             if (badge) {
                 if (fresh) {
                     badge.style.background = '#10b981';
-                    badge.innerHTML = 'Status: Active (' + np.downloadMbps + 'Mbps)';
+                    badge.innerHTML = 'Status: Active (' + ((np && np.downloadMbps) || capMbps) + 'Mbps)';
                 } else {
                     badge.style.background = '#ef4444';
                     badge.innerHTML = 'Status: Offline (sin medición)';
@@ -3211,14 +3559,17 @@
             const planTxt = (p && p.values)
                 ? (' · plan ' + (p.ok ? '✓ COHERENTE' : '✗ INCOHERENTE') +
                    (p.ok ? '' : ' (' + (p.violations || [])[0] + ')') +
-                   ' · stall est. ' + p.metrics.stallEstimatePct + ' % ≤ ' + p.metrics.targetStallPct + ' %')
+                   ' · stall est. ' + p.metrics.stallEstimatePct + ' % ' +
+                    ((Number(p.metrics.stallEstimatePct) <= Number(p.metrics.targetStallPct))
+                        ? ('≤ ' + p.metrics.targetStallPct + ' % (cumple)')
+                        : ('SUPERA el target ' + p.metrics.targetStallPct + ' %')))
                 : ' · plan: sin medición';
 
             if (!p || !p.values || !fresh) {
                 ['pm9_net_min', 'pm9_net_opt', 'pm9_jitter_max', 'pm9_buffer_total',
                  'pm9_ram_real', 'pm9_ram_theoretical'].forEach(id => setTxt(id, '-- (sin medición)', '#64748b'));
                 setTxt('pm9_ram_note', 'sin perfil de red fresco: no hay cifra que pintar', '#eab308');
-                if (gate) gate.textContent = 'Gate: sin medición fresca de red (TTL ' +
+                if (gate && !this._dims) gate.textContent = 'Gate: sin medición fresca de red (TTL ' +
                     Math.round(this._networkProfileTtlMs() / 60000) + ' min)' + planTxt;
                 return { painted: false, fresh: false };
             }
@@ -3237,8 +3588,15 @@
             const pct = m.ramBudgetMB ? Math.round((ramPure / m.ramBudgetMB) * 1000) / 10 : null;
             setTxt('pm9_ram_note', 'Presupuesto ' + m.ramBudgetMB + ' MB · el plan usa ' + ramPure + ' MB' +
                 (pct === null ? '' : ' (' + pct + ' %)') + ' · estrategia ' + (p.strategy ? p.strategy.name : '-') +
-                ' · retraso ≈ ' + v.bufferTargetS + ' s respecto al directo');
-            if (gate) {
+                ' · retraso ≈ ' + v.bufferTargetS + ' s respecto al directo' +
+                /* Operador: 5 segmentos no dicen nada sin la duración real. La
+                 * duración va en #EXTINF de la lista; aquí se declara la base
+                 * usada por el plan para que la cuenta sea auditable. */
+                ' · cobertura ' + v.prefetchSegments + ' seg × ' + (Number(m.segDurS) || 6) + ' s = ' +
+                (v.prefetchSegments * (Number(m.segDurS) || 6)) + ' s de contenido vs buffer ' + v.bufferTargetS + ' s');
+            /* [t18] el veredicto lo escribe el gate unificado (dos dimensiones).
+             * Aquí sólo se añade la parte del plan si ese gate no existe todavía. */
+            if (gate && !this._dims) {
                 gate.textContent = (gate.textContent || '').split(' · plan ')[0] + planTxt;
             }
             return { painted: true, fresh: true };
@@ -3284,6 +3642,48 @@
         /* Estrategia activa: la del PANEL (#pm9_strategy → settings.strategy), que
          * es la que el operador elige y la que dispara el recálculo. El preset de
          * prefetch queda como respaldo si el perfil no declara estrategia. */
+        /* ═══════════════════════════════════════════════════════════════════
+         * [t17 2026-11-19] LA ELECCIÓN DEL OPERADOR ES INTOCABLE.
+         *
+         * DEFECTO REPORTADO: selecciona ULTRA-AGRESIVO y el panel lo cambia a
+         * "Conservador" con paralelas=1. La estrategia no puede degradarse sola:
+         * si el plan no alcanza, se DECLARA ok:false con su motivo, pero la
+         * estrategia elegida se queda.
+         *
+         * ÚNICO escritor: _setUserStrategy() desde el <select> (updateSetting).
+         * Ningún plan, pintado, gobernador o preset escribe settings.strategy.
+         * _guardStrategy() lo verifica después de cada ciclo y RESTAURA con aviso
+         * si algo lo hubiese cambiado (defensa en profundidad).
+         * ═══════════════════════════════════════════════════════════════════ */
+        _setUserStrategy(profileId, value) {
+            const p = this.config && this.config.getProfile ? this.config.getProfile(profileId || this.activeProfileId) : null;
+            if (!p || !p.settings) return false;
+            const canon = (window.APE_HEALTH_TUNER && window.APE_HEALTH_TUNER.strategyKey)
+                ? window.APE_HEALTH_TUNER.strategyKey(value) : String(value);
+            p.settings.strategy = canon;
+            this._userStrategy = { id: profileId || this.activeProfileId, value: canon, at: Date.now() };
+            return true;
+        }
+
+        _guardStrategy(profile, expected) {
+            if (!profile || !profile.settings) return { ok: true };
+            const want = expected || (this._userStrategy && this._userStrategy.id === profile.id
+                ? this._userStrategy.value : profile.settings.strategy);
+            if (!want) return { ok: true };
+            if (String(profile.settings.strategy) !== String(want)) {
+                const mal = profile.settings.strategy;
+                profile.settings.strategy = want;
+                try {
+                    if (typeof console !== 'undefined') {
+                        console.warn('[t17] estrategia revertida por ' + mal + ' -> se restaura ' + want +
+                            ' (la elige el operador, no el plan)');
+                    }
+                } catch (e) {}
+                return { ok: false, restored: want, was: mal };
+            }
+            return { ok: true };
+        }
+
         _activeStrategyId() {
             const p = (this.config && this.config.getProfile)
                 ? this.config.getProfile(this.activeProfileId) : null;
@@ -3331,6 +3731,106 @@
         }
 
         /* Escritura de los 4 valores en un perfil CONCRETO (no sólo el activo). */
+        /* [t21] aridad de un campo: nº de posiciones de la cascada del PERFIL */
+        _arityOf(profile, headerName) {
+            if (!this.config || typeof this.config.getHeaderValue !== 'function') return 1;
+            const v = this.config.getHeaderValue(profile.id, headerName);
+            return (v === null || v === undefined || String(v) === '') ? 1 : String(v).split(',').length;
+        }
+
+        /* [t21] cascada MONÓTONA de n posiciones a partir del valor del plan.
+         * No repite el mismo valor (ese era el defecto de X-Color-Depth): baja
+         * por niveles hasta 1, preservando la aridad del perfil. */
+        _cascadeOf(base, n) {
+            const b = Math.max(1, Math.round(Number(base) || 1));
+            const k = Math.max(1, Number(n) || 1);
+            const out = [];
+            for (let i = 0; i < k; i++) out.push(Math.max(1, b - i));
+            return out.join(',');
+        }
+
+        /* [t21] escribe las cascadas que gobierna el plan conservando su aridad. */
+        _reconcilePlanCascades(profile, applied) {
+            const r = { plan: {} };
+            if (!profile || !this.config || typeof this.config.setHeaderOverride !== 'function') return r;
+            const a = applied || {};
+            const pares = [
+                ['X-Parallel-Segments', a.parallel_downloads],
+                ['X-Prefetch-Segments', a.prefetch_segments],
+                ['X-Concurrent-Downloads', a.parallel_downloads]
+            ];
+            const self = this;
+            pares.forEach(function (par) {
+                const name = par[0], val = par[1];
+                if (val === undefined || val === null) return;
+                const ar = self._arityOf(profile, name);
+                const cas = self._cascadeOf(val, ar);
+                self.config.setHeaderOverride(profile.id, name, cas);
+                r.plan[name] = { posiciones: ar, valor: cas };
+            });
+            return r;
+        }
+
+        /* [t21] GUARD DE CIERRE: ningún campo vacío; ninguna cascada gobernada por
+         * el plan con una sola posición. Devuelve el informe para el botón. */
+        _guardFields(profile) {
+            const inf = { vacios: [], rellenados: [], aridad: [], declarados: [], ok: true };
+            if (!profile || !this.config) return inf;
+            const self = this;
+            const hdrs = ['Keep-Alive', 'Connection', 'Accept-Encoding', 'Sec-CH-UA-Platform',
+                'X-Dolby-Vision-Profile', 'X-Dolby-Vision-Level', 'X-APE-STRATEGY', 'X-Color-Depth',
+                'X-Segment-Duration', 'X-Prefetch-Segments', 'X-Parallel-Segments', 'X-Frame-Rates'];
+            hdrs.forEach(function (name) {
+                const v = self.config.getHeaderValue(profile.id, name);
+                if (v === null || v === undefined || String(v).trim() === '') {
+                    let donor = null;
+                    const all = (self.config.profiles ? Object.keys(self.config.profiles) : []);
+                    for (let i = 0; i < all.length; i++) {
+                        const pv = self.config.getHeaderValue(all[i], name);
+                        if (pv !== null && pv !== undefined && String(pv).trim() !== '') { donor = String(pv); break; }
+                    }
+                    if (donor) {
+                        self.config.setHeaderOverride(profile.id, name, donor);
+                        inf.rellenados.push(name + ' = ' + donor);
+                    } else {
+                        /* [t21] sin donante en otros perfiles: se deriva del PROPIO
+                         * perfil (SSOT de codec). Dolby Vision se declara con el
+                         * codec real del perfil, nunca con un valor inventado. */
+                        const st = profile.settings || {};
+                        const cadena = String(st.codec_chain_video || '') + ',' + String(st.codec_full || '');
+                        let derivado = null;
+                        if (name === 'X-Dolby-Vision-Profile') {
+                            const dv = /dvh1\.[0-9.]+/.exec(cadena);
+                            if (dv) derivado = dv[0];
+                        } else if (name === 'X-Dolby-Vision-Level') {
+                            const lv = /L(\d{2,3})/.exec(cadena);
+                            if (lv) derivado = 'L' + lv[1];
+                        }
+                        if (derivado) {
+                            self.config.setHeaderOverride(profile.id, name, derivado);
+                            inf.rellenados.push(name + ' = ' + derivado + ' (derivado del codec del perfil)');
+                        } else {
+                            inf.declarados.push(name + ' (sin Dolby Vision en este perfil: N/A declarado)');
+                        }
+                    }
+                }
+            });
+            ['X-Prefetch-Segments', 'X-Parallel-Segments', 'X-Concurrent-Downloads'].forEach(function (name) {
+                const v = self.config.getHeaderValue(profile.id, name);
+                if (v !== null && v !== undefined && String(v).indexOf(',') < 0) {
+                    inf.aridad.push(name + ' = ' + v + ' (una sola posición)');
+                    inf.ok = false;
+                }
+            });
+            ['Connection', 'Accept-Encoding', 'Sec-CH-UA-Platform'].forEach(function (name) {
+                const v = self.config.getHeaderValue(profile.id, name);
+                if (v !== null && v !== undefined && String(v).indexOf(',') < 0) {
+                    inf.declarados.push(name + ' = ' + v + ' (aridad 1 por diseño del SSOT)');
+                }
+            });
+            return inf;
+        }
+
         _applyPlanValuesFor(profileId, values) {
             const applied = {};
             if (!this.config || typeof this.config.updatePrefetchSetting !== 'function') return applied;
@@ -3393,6 +3893,16 @@
                 if ((i + 1) % 3 === 0) await new Promise(function (r) { setTimeout(r, 0); });
             }
 
+            /* [t21] CASCADAS + GUARD DE CIERRE sobre el perfil activo: ningún
+             * campo vacío y ninguna cascada gobernada por el plan con una sola
+             * posición. Se informa en el resultado del botón. */
+            try {
+                const pAct = this.config.getProfile(this.activeProfileId);
+                const aplAct = (report.profiles[this.activeProfileId] || {}).applied || {};
+                report.cascadas = this._reconcilePlanCascades(pAct, aplAct);
+                report.guard = this._guardFields(pAct);
+            } catch (e) { report.guard = { ok: false, vacios: ['(error: ' + (e && e.message) + ')'] }; }
+
             /* 4 · AUTOGUARDAR — DESPUÉS de aplicar, nunca antes */
             const saved = this._saveQoePlan(report.profiles, measured);
             report.saved = !!saved;
@@ -3400,6 +3910,8 @@
             report.state = report.appliedIds.length ? 'APPLIED' : 'SIN_PERFILES';
             report.coherent = Object.keys(report.profiles).some(function (k) { return report.profiles[k].ok; });
 
+            /* [t17] ningún paso del flujo puede haber cambiado la estrategia */
+            try { this._guardStrategy(this.config.getProfile(this.activeProfileId)); } catch (e) {}
             /* 5 · repintar */
             try {
                 this._paintCoherentValues();
@@ -3418,11 +3930,34 @@
                     measurement: measured ? {
                         mbpsSafe: measured.mbpsSafe, mbpsP95: measured.mbpsP95,
                         jitterMbps: measured.jitterMbps, bufferbloatMs: measured.bufferbloatMs,
-                        rttIdleMs: measured.rttIdleMs, source: measured.source
+                        rttIdleMs: measured.rttIdleMs, source: measured.source || 'explicit'
                     } : null,
                     profiles: plans || {}
                 };
+                /* [t16] HISTORICO de mediciones explícitas (trazabilidad). No
+                 * recalcula nada: sólo se anexa. Gana siempre la última. */
+                try {
+                    const prev = JSON.parse(localStorage.getItem('ape_qoe_plan_v1') || 'null');
+                    const hist = (prev && Array.isArray(prev.history)) ? prev.history : [];
+                    hist.push({ ts: rec.ts, mbpsSafe: rec.measurement ? rec.measurement.mbpsSafe : null,
+                                mbpsP95: rec.measurement ? rec.measurement.mbpsP95 : null,
+                                jitterMbps: rec.measurement ? rec.measurement.jitterMbps : null,
+                                bufferbloatMs: rec.measurement ? rec.measurement.bufferbloatMs : null,
+                                source: rec.measurement ? rec.measurement.source : 'explicit',
+                                profiles: Object.keys(rec.profiles || {}).length });
+                    while (hist.length > 20) hist.shift();
+                    rec.history = hist;
+                } catch (e) { /* sin historico: el snapshot sigue válido */ }
                 localStorage.setItem('ape_qoe_plan_v1', JSON.stringify(rec));
+                this._snapshotInfo = {
+                    ts: rec.ts, ageMs: 0, stale: false,
+                    source: rec.measurement ? rec.measurement.source : 'explicit',
+                    mbps: rec.measurement ? rec.measurement.mbpsSafe : null,
+                    p95: rec.measurement ? rec.measurement.mbpsP95 : null,
+                    jitter: rec.measurement ? rec.measurement.jitterMbps : null,
+                    bufferbloatMs: rec.measurement ? rec.measurement.bufferbloatMs : null,
+                    plan: null
+                };
                 return rec;
             } catch (e) { return null; }
         }
@@ -3440,19 +3975,60 @@
         }
 
         /* Restaura el plan guardado. Si caducó NO se aplica: se informa. */
+        /* [t16 · ORDEN DEL OPERADOR] El snapshot se restaura y se APLICA siempre.
+         * Ningún TTL borra ni mueve el plan: si envejeció se marca ANTIGUO
+         * (visible + title) y los valores siguen aplicados hasta que el operador
+         * vuelva a medir. Prohibido que un temporizador cambie un valor. */
         _restoreQoePlan() {
             const o = this._loadQoePlan();
             if (!o) return { restored: false, reason: 'sin plan guardado' };
-            if (!o.fresh) return { restored: false, stale: true, ts: o.ts, reason: 'plan caducado (TTL)' };
             const mine = o.profiles[this.activeProfileId];
-            if (!mine) return { restored: false, reason: 'el plan no tiene este perfil' };
+            if (!mine) return { restored: false, reason: 'el plan no tiene este perfil', ts: o.ts };
+            const p = (this.config && this.config.getProfile) ? this.config.getProfile(this.activeProfileId) : null;
             const applied = this._applyPlanValuesFor(this.activeProfileId, {
                 prefetch_segments: mine.prefetchSegments,
                 parallel_downloads: mine.parallelDownloads,
                 buffer_target_seconds: mine.bufferTargetS,
                 min_bandwidth_mbps: mine.bwMinMbps
             });
-            return { restored: true, plan: mine, applied: applied };
+            const ageMs = Date.now() - (Number(o.ts) || 0);
+            this._snapshotInfo = {
+                ts: Number(o.ts) || 0, ageMs: ageMs, stale: !o.fresh,
+                source: (o.measurement && o.measurement.source) || 'desconocida',
+                mbps: o.measurement ? o.measurement.mbpsSafe : null,
+                p95: o.measurement ? o.measurement.mbpsP95 : null,
+                jitter: o.measurement ? o.measurement.jitterMbps : null,
+                bufferbloatMs: o.measurement ? o.measurement.bufferbloatMs : null,
+                plan: mine
+            };
+            if (mine.basis > 0) this._peakRecord(Number(o.measurement && o.measurement.mbpsSafe) || 0, this._snapshotInfo.ts);
+            /* [t21] un snapshot viejo puede traer campos vacíos: se completan con
+             * el perfil en vez de aplicarse a medias. */
+            try {
+                this._reconcilePlanCascades(p, {
+                    prefetch_segments: mine.prefetchSegments,
+                    parallel_downloads: mine.parallelDownloads
+                });
+                const g = this._guardFields(p);
+                this._snapshotInfo.guard = g;
+                if (g && (g.rellenados.length || g.vacios.length)) {
+                    if (typeof console !== 'undefined') {
+                        console.log('[t21] snapshot: rellenados=' + g.rellenados.length +
+                            ' · vacios sin relleno=' + g.vacios.length);
+                    }
+                }
+            } catch (e) { /* no bloqueante */ }
+            return { restored: true, stale: !!this._snapshotInfo.stale, plan: mine, applied: applied,
+                     ageMs: ageMs, snapshot: this._snapshotInfo };
+        }
+
+        /* Texto del panel: "medido hace X (fuente Y)" + marca ANTIGUO. */
+        _snapshotLabel() {
+            const s = this._snapshotInfo;
+            if (!s || !s.ts) return null;
+            const sSeg = Math.round(s.ageMs / 1000);
+            const hace = sSeg < 90 ? (sSeg + ' s') : (sSeg < 5400 ? (Math.round(sSeg / 60) + ' min') : (Math.round(sSeg / 3600) + ' h'));
+            return 'medido hace ' + hace + ' (fuente ' + s.source + ')' + (s.stale ? ' · ANTIGUO' : '');
         }
 
         /* ── Feedback visual: LED minimalista (CSS puro, sin librerías) ───── */
@@ -3712,6 +4288,8 @@
                 : null;
             /* el plan del ciclo es el que pinta el panel: una sola fuente */
             if (plan) self._lastCoherent = plan;
+            /* [t17] pase lo que pase con el plan, la estrategia no se revierte */
+            self._guardStrategy(profile);
 
             const rec = {
                 at: r.at, ok: false, values: null, violations: [], applied: null,
@@ -4122,7 +4700,10 @@
             // Regla 3 leía s.fps (viejo) al cambiar fps y s.resolution (viejo) en cascadas.
             // Medido: cambiar 30 -> 60 fps recalculaba el bitrate con 30. El valor se
             // escribe primero y las reglas derivan de él.
-            profile.settings[key] = value;
+            /* [t17] 'strategy' pasa por el escritor único y se normaliza a la clave
+             * canónica del panel (ultra-aggressive, no 'Ultra-Agresivo'). */
+            if (key === 'strategy') { this._setUserStrategy(this.activeProfileId, value); }
+            else { profile.settings[key] = value; }
 
             // Motor de Reglas Reactivas (Reactive Engine v9.0)
             this._applyReactiveRules(profile, key, value);
@@ -4227,7 +4808,9 @@
                 // streaming-calculator.js:45 (SAFETY_MARGIN = 1.15).
                 if (this.config && this.config.updatePrefetchSetting) {
                     const margin = this._safetyMargin();
-                    const minBwMbps = Math.round(value * margin * 100) / 100;
+                    const __baseRealBW = (typeof ProfileManagerV9 !== "undefined" && ProfileManagerV9._requiredMbpsBasis)
+                    ? ProfileManagerV9._requiredMbpsBasis(profile).mbps : Number(value);
+                const minBwMbps = Math.round((__baseRealBW * margin) * 100) / 100;
                     this.config.updatePrefetchSetting(profile.id, 'min_bandwidth_mbps', minBwMbps);
                     console.log(`🧠 Reactive PRO [v13.1]: BW Mínimo Prefetch AUTO → ${minBwMbps} Mbps (${margin}× ${value})`);
                 }
@@ -5074,11 +5657,11 @@
             const bytes = snap ? snap.length : 0;
             try {
                 if (window.app && typeof window.app.showToast === 'function') {
-                    window.app.showToast('P0–P5 guardados (' + Math.round(bytes / 1024) + ' KB)', 'success');
+                    window.app.showToast(this._allProfileIds().length + ' perfiles guardados (' + Math.round(bytes / 1024) + ' KB)', 'success');
                 }
             } catch (e) { /* no bloqueante */ }
             this.toggleSaveMenu();
-            console.log('✅ P0–P5 guardados:', { profilesBytes: bytes });
+            console.log('✅ perfiles guardados:', { profilesBytes: bytes });
         }
 
         saveAndClose() {

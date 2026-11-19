@@ -1984,7 +1984,13 @@ try {
             m.appendChild(cur);
             var all = document.createElement('button');
             all.type = 'button';
-            all.textContent = '📦 AUTO-AJUSTAR P0–P5 (todos)';
+            /* [2026-11-19] El destino real es TODOS los perfiles que existan (12 hoy, o
+* los que el operador cree con +), no P0-P5: qosRunAll('all') ->
+* _qosRunAllImpl('all') -> _allProfileIds() -> Object.keys(cfg.profiles).
+* El label decia 5 y era falso; ahora muestra el numero real. */
+        var _nAll = (window.ProfileManagerV9 && typeof window.ProfileManagerV9._allProfileIds === 'function')
+            ? window.ProfileManagerV9._allProfileIds().length : 0;
+        all.textContent = '📦 AUTO-AJUSTAR TODOS los perfiles' + (_nAll ? ' (' + _nAll + ')' : '');
             all.style.cssText = 'background:rgba(139,92,246,.2);color:#c4b5fd;border:1px solid rgba(139,92,246,.45);padding:10px 14px;border-radius:8px;cursor:pointer;font-weight:700;';
             all.onclick = function () { applyScope('all'); };
             m.appendChild(all);
