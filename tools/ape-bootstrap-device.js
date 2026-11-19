@@ -29,7 +29,7 @@ const PKG = 'com.ape.crystalagent';
 const DIST = process.env.APE_DIST_URL || 'https://iptv-ape.duckdns.org/ara/version.json';
 
 function adb(args, opts) {
-  return execFileSync('adb', args, Object.assign({ encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }, opts || {})).trim();
+  return execFileSync(process.env.APE_ADB || 'adb', args, Object.assign({ encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }, opts || {})).trim();
 }
 function tryAdb(args) { try { return adb(args); } catch (e) { return null; } }
 
