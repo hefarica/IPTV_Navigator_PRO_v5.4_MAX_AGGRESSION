@@ -541,8 +541,8 @@ function ape_pulse_fetch(string $u, string $ua): array
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_MAXREDIRS      => 4,
-        CURLOPT_CONNECTTIMEOUT => 4,
-        CURLOPT_TIMEOUT        => 6,
+        CURLOPT_CONNECTTIMEOUT => 2,
+        CURLOPT_TIMEOUT        => 2,
         CURLOPT_ENCODING       => '',
         CURLOPT_USERAGENT      => $ua !== '' ? $ua : 'IPTVSmartersPro',
         CURLOPT_HTTPHEADER     => ['Accept: */*'],
@@ -613,6 +613,16 @@ if ($mode === 'proxy') {
             // en la lista, asi que un hipo de 2 s se servia al player como 502 permanente.
             // 429 y 408 son el mismo fenomeno con otro nombre.
             if (($code === 0 || $code >= 500 || $code === 513 || $code === 461 || $code === 429 || $code === 408 || $code === 302)) {
+                // [2026-11-16 #2 SWR] Deadline: si hay copia buena <=11 s (targetduration del
+                // proveedor), servirla YA en vez de encadenar retries (2 s cada uno => 8-12 s).
+                $__g = function_exists('apcu_fetch') ? apcu_fetch($goodKey) : false;
+                if (is_array($__g) && !empty($__g['body']) && (time() - (int)($__g['t'] ?? 0)) <= 11) {
+                    header('Content-Type: application/x-mpegURL');
+                    header('Cache-Control: no-cache, no-store, must-revalidate');
+                    header('X-APE-Pulse: logged;mode=proxy;stale=1;why=retry_guard;age_s=' . (time() - (int)$__g['t']) . ';zapping=' . ($zap ? '1' : '0'));
+                    echo (string) $__g['body'];
+                    exit;
+                }
                 usleep($code === 461 ? 400000 : ($code === 302 ? 150000 : 250000));
                 list($raw, $code, $eff) = ape_pulse_fetch($uNorm, $uaPulse);
                 // [2026-11-14] El token del 302 ROTA: medido 200,302,302 en tres
@@ -665,7 +675,7 @@ if ($mode === 'proxy') {
                  * Tope fisico: si alguien baja el targetduration por debajo de 10 s,
                  * este valor debe bajarse con el. No es "cuanto mas mejor". */
                 apcu_store($plKey, ['body' => $body, 'kind' => $kind], 8);
-                    apcu_store($goodKey, ['body' => $body], 60);
+                    apcu_store($goodKey, ['body' => $body, 't' => time()], 11);
                 }
             } else {
                 // 4) stale-while-error: última playlist buena (60 s) antes que un error
@@ -735,6 +745,114 @@ if ($mode === 'proxy') {
     header('Cache-Control: no-cache, no-store, must-revalidate');
     header('X-APE-Pulse: logged;mode=proxy;zapping=' . ($zap ? '1' : '0')
         . ';cache=' . ($fromCache ? 'hit' : 'miss') . ';kind=' . $kind);
+    /* [QOE-CONTRACT 2026-11-16] Emite #EXT-X-APE-QOE-CONTRACT por canal (JSON).
+     * Canary por FLAG FILE: sin /etc/ara/pulse/qoe_emit.enabled -> 0 bytes de diff.
+     * Los valores vienen del controlador ya validado (8091 loopback, ~1 ms);
+     * aqui solo se re-clampean a rango. Si el controlador no responde -> linea
+     * AUSENTE, nunca vacia ni inventada. No toca resolucion/codec/fps/bitrate. */
+    if (is_file('/etc/ara/pulse/qoe_emit.enabled') && $id !== '') {
+        /* [QOE-EMIT-INSTR 2026-11-19] Instrumentacion + reintento corto.
+         *
+         * DEFECTO MEDIDO (A/B 10 x 12 s, upstream local de media playlist):
+         *   4/10 requests devolvian 207 B SIN el tag y SIEMPRE tardaban ~309 ms;
+         *   las que emitian (345 B) tardaban ~10 ms. 309 ms = el techo
+         *   CURLOPT_TIMEOUT_MS 300 ms, o sea la llamada moria en el timeout.
+         * CAUSA: el controlador vive en el MISMO pool PHP-FPM (pm=dynamic,
+         *   start_servers=2, min_spare=1). Cuando hay que arrancar un hijo para
+         *   atender la llamada, el spawn supera los 300 ms; con un hijo ya
+         *   caliente la latencia es 0.49 ms p50 / 0.93 ms max (medida hoy sobre
+         *   8091 con 5 muestras: 0.64-1.35 ms). El defecto NO es del controlador
+         *   (contesta en ~1 ms) sino del plazo del emisor frente al spawn.
+         * FIX: segundo intento con 800 ms SOLO si el primero falla. El reintento
+         *   cuesta ~1 ms (hijo ya caliente) y cubre el spawn. 800 ms = >800x la
+         *   latencia caliente medida, muy por debajo del timeout del request.
+         * INSTRUMENTACION: contadores en state/qoe_emit_stats.json (flock).
+         *   Un fallo NUNCA inventa la linea: se omite y se registra el motivo.
+         *   No se loguean credenciales ni la URL upstream. */
+        $__stFile = '/var/www/html/prisma/state/qoe_emit_stats.json';
+        $__t0 = microtime(true);
+        $__ms = 0;
+        $__qk = 0;
+        $__reason = 'nodata';
+        $__tries = 0;
+        $__d = null;
+        for ($__try = 1; $__try <= 2; $__try++) {
+            $__tries = $__try;
+            $__budget = ($__try === 1) ? 300 : 800;
+            $__t = microtime(true);
+            $__q = curl_init('http://127.0.0.1:8091/prisma/api/qoe-controller.php?ch=' . rawurlencode($id) . '&tgt=ott');
+            curl_setopt_array($__q, array(
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_CONNECTTIMEOUT_MS => 200,
+                CURLOPT_TIMEOUT_MS => $__budget,
+            ));
+            $__qj = curl_exec($__q);
+            $__qk = (int) curl_getinfo($__q, CURLINFO_RESPONSE_CODE);
+            curl_close($__q);
+            $__ms = (int) round((microtime(true) - $__t) * 1000);
+            if ($__qj === false) {
+                $__reason = 'timeout';
+                continue;
+            }
+            if ($__qk !== 200) {
+                $__reason = 'http';
+                if ($__qk >= 500) { continue; }
+                break;
+            }
+            $__dd = json_decode((string) $__qj, true);
+            if (!is_array($__dd) || empty($__dd['ok']) || !isset($__dd['net']) || !is_array($__dd['net'])) {
+                $__reason = 'nodata';
+                break;
+            }
+            $__d = $__dd;
+            $__reason = '';
+            break;
+        }
+        $__cls = ($__d !== null) ? 'ok'
+            : ($__reason === 'timeout' ? 'fail_timeout' : ($__reason === 'http' ? 'fail_http' : 'fail_nodata'));
+        $__fp = @fopen($__stFile, 'c+');
+        if ($__fp !== false) {
+            if (flock($__fp, LOCK_EX)) {
+                $__raw = stream_get_contents($__fp);
+                $__s = json_decode((string) $__raw, true);
+                if (!is_array($__s)) {
+                    $__s = array('ok' => 0, 'fail_timeout' => 0, 'fail_http' => 0, 'fail_nodata' => 0,
+                                 'retried' => 0, 'last_at' => 0, 'last_ms' => 0, 'max_ms' => 0, 'last_state' => '');
+                }
+                $__s[$__cls] = (int) (isset($__s[$__cls]) ? $__s[$__cls] : 0) + 1;
+                $__s['last_at'] = time();
+                $__s['last_ms'] = $__ms;
+                $__s['last_state'] = $__cls;
+                if ($__ms > (int) $__s['max_ms']) { $__s['max_ms'] = $__ms; }
+                if ($__tries > 1) { $__s['retried'] = (int) $__s['retried'] + 1; }
+                $__s['total_ms'] = (int) (isset($__s['total_ms']) ? $__s['total_ms'] : 0) + (int) round((microtime(true) - $__t0) * 1000);
+                ftruncate($__fp, 0);
+                rewind($__fp);
+                fwrite($__fp, json_encode($__s, JSON_UNESCAPED_SLASHES));
+                fflush($__fp);
+                flock($__fp, LOCK_UN);
+            }
+            fclose($__fp);
+        }
+        if ($__d === null) {
+            error_log('[QOE-EMIT] miss ch=' . $id . ' reason=' . $__reason . ' ms=' . $__ms
+                . ' code=' . $__qk . ' tries=' . $__tries);
+        } else {
+            $__n = $__d['net'];
+            $__tag = array(
+                'ch' => $id, 'v' => 1, 'p' => 'pulse',
+                'net' => array(
+                    'depth' => max(2, min(8, (int) (isset($__n['depth']) ? $__n['depth'] : 3))),
+                    'pb'    => max(2, min(6, (int) (isset($__n['pb']) ? $__n['pb'] : 3))),
+                    'fm'    => max(1, min(5, (int) (isset($__n['fm']) ? $__n['fm'] : 2))),
+                    'probe' => max(50, min(200, (int) (isset($__n['probe']) ? $__n['probe'] : 200))),
+                ),
+                'src'   => isset($__d['src']) ? (string) $__d['src'] : 'heuristic',
+                'truth' => 'DECLARED',
+            );
+            $body = rtrim($body, "\r\n") . "\n#EXT-X-APE-QOE-CONTRACT:" . json_encode($__tag, JSON_UNESCAPED_SLASHES) . "\n";
+        }
+    }
     echo $body;
     exit;
 }
