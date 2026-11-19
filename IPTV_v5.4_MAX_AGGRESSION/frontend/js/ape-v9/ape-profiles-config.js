@@ -4686,6 +4686,8 @@
             this.profiles = this._ensureBandwidthFloor(
                 persistedProfiles || JSON.parse(JSON.stringify(DEFAULT_PROFILES))
             );
+            /* [t15 2026-11-18] 6 perfiles SIMULATE 6K materializados del LAB */
+            this._merge12kProfiles();
             this.manifest = this._loadManifest() || JSON.parse(JSON.stringify(DEFAULT_MANIFEST));
 
             // 🔄 Auto-migration v12.0 ELITE: upgrade old multilayer to 7-layer strategy
@@ -5811,6 +5813,48 @@
         /**
          * Obtiene todos los perfiles
          */
+        /* [t15 2026-11-18] Materializa los 6 perfiles SIMULATE 6K (P0.5..P5.5)
+         * desde APE_PROFILES_12K, que genera tools/gen-profiles-12k.js leyendo el
+         * LAB (su sha256 va en la cabecera del fichero generado). NO hay valores
+         * tecleados a mano. El 6K es SIMULATE: objetivo de display, EXECUTED=0;
+         * la receta de detalle del tier viaja en settings.flt y en vlcopt. */
+        _merge12kProfiles() {
+            const M = (typeof window !== 'undefined') ? window.APE_PROFILES_12K : null;
+            if (!M || !M.profiles) return 0;
+            let n = 0;
+            Object.keys(M.profiles).forEach((id) => {
+                const p = M.profiles[id];
+                if (!p || !p.is6k) return;
+                if (this.profiles[id]) return;      // no pisar un perfil ya persistido
+                this.profiles[id] = {
+                    name: p.name,
+                    settings: {
+                        resolution: p.resolution,
+                        codec: p.codec,
+                        bitrate: p.bitrate,
+                        fps: p.fps,
+                        bufferSeconds: (p.segment_duration_s || 6) * 2,
+                        playerBuffer: p.playerBuffer || 0,
+                        strategy: p.strategy || 'balanced',
+                        detail_tier: 6,
+                        simulate: true,
+                        executor: 'display',
+                        executed: 0,
+                        flt: p.flt
+                    },
+                    vlcopt: { 'video-filter': p.filter_chain_lab || '' },
+                    level: 'simulate-6k',
+                    quality: '6K'
+                };
+                n++;
+            });
+            if (n && typeof console !== 'undefined') {
+                console.log('[APE-Profiles] 12K: ' + n + ' perfiles SIMULATE 6K materializados del LAB (sha256 ' +
+                    String((M.lab && M.lab.sha256) || '').slice(0, 12) + '...)');
+            }
+            return n;
+        }
+
         getAllProfiles() {
             return this.profiles;
         }

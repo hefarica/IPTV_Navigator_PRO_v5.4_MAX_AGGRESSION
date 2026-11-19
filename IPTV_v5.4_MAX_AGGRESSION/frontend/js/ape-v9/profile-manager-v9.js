@@ -3175,8 +3175,8 @@
             const nowMs = Date.now();
             const vivos = arr.filter(s => (nowMs - s.at) <= cfg.ttlMs);
             if (!vivos.length) {
-                return { mbps: null, now: null, peak: null, dip: false, expired: arr.length > 0,
-                         samples: 0, cfg: cfg, state: 'NO_MEASUREMENT' };
+                return { mbps: (arr.length ? Math.max.apply(null, arr.map(function (s) { return s.mbps; })) : null), now: (arr.length ? arr[arr.length - 1].mbps : null), peak: (arr.length ? Math.max.apply(null, arr.map(function (s) { return s.mbps; })) : null), dip: false, expired: arr.length > 0,
+                         samples: arr.length, cfg: cfg, state: (arr.length ? 'MEASURED_STALE' : 'NO_MEASUREMENT') };
             }
             let peak = vivos[0];
             for (let i = 1; i < vivos.length; i++) { if (vivos[i].mbps > peak.mbps) peak = vivos[i]; }
@@ -3539,7 +3539,7 @@
                        ((np && np.pingMs !== null && np.pingMs !== undefined) ? ' · ' + np.pingMs + ' ms' : ' · ping no medido') +
                        ' · hace ' + edadS + ' s (fuente ' + ((np && np.source) || (this._snapshotInfo && this._snapshotInfo.source) || 'desconocida') + ')')                    + (((np && np.fresh === false) || (this._snapshotInfo && this._snapshotInfo.stale)) ? ' · ANTIGUO' : '')
                     : ('📡 Latencia Rayo: ' + (np ? 'CADUCADO (' + edadS + ' s > ' + Math.round(np.ttlMs / 60000) + ' min)' : 'OFFLINE (sin medición)') +
-                       ' — los campos de red quedan sin cifra hasta medir');
+                       ' — valores guardados: se mantienen hasta que vuelvas a medir');
                 qosEl.style.color = fresh ? '#7dd3fc' : '#eab308';
                 qosEl.style.borderColor = fresh ? 'rgba(56,189,248,.3)' : 'rgba(234,179,8,.4)';
             }
@@ -5637,6 +5637,7 @@
         }
 
         saveCurrentProfile() {
+        try { this._pushProfilesToVps('saveCurrentProfile'); } catch (e) { /* no bloqueante */ }
             if (!this.config) return;
             this._applyDerivedProfile(this.config.getProfile(this.activeProfileId));
             const snap = this._persistProfileSnapshot('ProfileManagerV9.saveCurrentProfile');
@@ -5650,10 +5651,48 @@
             console.log('✅ Perfil guardado:', this.activeProfileId, { profilesBytes: bytes });
         }
 
+        /* [2026-11-19] Al GUARDAR, empujar los perfiles al VPS para que su
+         * generacion/consumo use exactamente lo que el operador tiene aqui.
+         * Fire-and-forget: si el VPS no responde, el guardado local ya esta
+         * hecho y no se pierde nada. Devuelve la promesa para poder esperarla
+         * en el boton si se quiere. */
+        _pushProfilesToVps(source) {
+            try {
+                const cfg = this.config;
+                if (!cfg || !cfg.profiles) return Promise.resolve({ ok: false, reason: 'no_config' });
+                const S = (typeof window !== 'undefined' && window.APE_PROFILES_SYNC) || {};
+                const url = S.url || '/prisma/api/ape-profiles-state.php';
+                const headers = { 'Content-Type': 'application/json' };
+                if (S.token) headers['X-APE-Token'] = S.token;
+                const body = JSON.stringify({ source: source || 'panel', profiles: cfg.profiles });
+                return fetch(url, { method: 'POST', headers: headers, body: body, keepalive: true, cache: 'no-store' })
+                    .then(function (r) { return r.json().then(function (j) { return Object.assign({ http: r.status }, j); }); })
+                    .then((res) => {
+                        const ok = !!res.ok;
+                        console.log('[SYNC] perfiles -> VPS:', ok ? ('OK ' + res.profiles + ' perfiles, ' + res.bytes + ' B') : ('FALLO ' + (res.error || res.http)));
+                        try {
+                            if (ok && window.app && typeof window.app.showToast === 'function') {
+                                window.app.showToast('VPS actualizado: ' + res.profiles + ' perfiles', 'success');
+                            } else if (!ok && window.app && typeof window.app.showToast === 'function') {
+                                window.app.showToast('VPS NO actualizado: ' + (res.error || res.http), 'error');
+                            }
+                        } catch (e) { /* no bloqueante */ }
+                        return res;
+                    })
+                    .catch(function (e) {
+                        console.log('[SYNC] perfiles -> VPS: red ' + ((e && e.message) || e));
+                        return { ok: false, reason: 'network' };
+                    });
+            } catch (e) {
+                return Promise.resolve({ ok: false, reason: 'exception' });
+            }
+        }
+
         saveAllProfiles() {
             if (!this.config) return;
             this.normalizeAllProfiles();
             const snap = this._persistProfileSnapshot('ProfileManagerV9.saveAllProfiles');
+        try { this._pushProfilesToVps('saveAllProfiles'); } catch (e) { /* no bloqueante */ }
             const bytes = snap ? snap.length : 0;
             try {
                 if (window.app && typeof window.app.showToast === 'function') {

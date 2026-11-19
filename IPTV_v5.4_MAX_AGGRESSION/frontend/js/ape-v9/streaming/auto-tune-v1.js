@@ -565,7 +565,11 @@
          * Buffer final = el MAYOR de absorber el déficit y cumplir el target. */
         var bft = bufferForTargetStallDetailed({
             requiredMbps: required, measuredMbpsSafe: measured, bwMinMbps: bwMinMbps,
-            stallBandwidthMbps: ultraDemand ? availableMbps : null,
+            /* [t19] el modelo de stall razona con la CAPACIDAD medida (o con el
+             * duty si la estrategia lo impone), NO con el minimo exigido: usar
+             * bwMin como "bandwidth" daba ratio 1,15 fijo y condenaba a rojo. */
+            stallBandwidthMbps: ultraDemand ? availableMbps
+                : ((isNum(measured) && measured > 0) ? measured : null),
             bitrateForStall: ultraDemand ? requiredForStall : inputs.bitrateForStall,
             targetStallPct: inputs.targetStallPct,
             basisOverride: ultraDemand ? 'measured_duty' : null
@@ -590,12 +594,23 @@
             if (bufferS > capS) { bufferS = Math.max(RANGES.bufferTargetS.min, Math.round(capS)); latencyCapped = true; }
         }
         /* 4 · prefetch = segmentos que caben en ese buffer */
-        var segments = clamp(Math.ceil(bufferS / segDur), RANGES.prefetchSegments.min, RANGES.prefetchSegments.max);
+        /* [t17] ultra-aggressive es la estrategia de MÁXIMA cola: su config no
+         * puede degradarse a la de conservador. Segmentos mínimos 6. Un
+         * parallel=1 con estrategia ultra es un DEFECTO, no una decisión. */
+        var isUltra = (st.name === 'Ultra-Agresivo');
+        var segMin = isUltra ? 6 : RANGES.prefetchSegments.min;
+        var segments = clamp(Math.ceil(bufferS / segDur), segMin, RANGES.prefetchSegments.max);
         /* 5 · paralelo útil = 2×ratio, jamás por encima del preset (autocongestión).
          * ultra-low-latency añade su propio techo duro: min(2, floor(2×ratio)). */
         var parallelCap = st.parallelCap;
         if (st.latencyFirst) parallelCap = Math.min(Number(parallelCap) || 2, 2);
-        var parallel = clamp(Math.min(Math.floor(2 * ratio) || 1, parallelCap), RANGES.parallelDownloads.min, RANGES.parallelDownloads.max);
+        /* [t17] suelo de paralelas: 2 para ultra, 1 para el resto. Se calcula
+         * del RATIO (capacidad), no de un valor por defecto. */
+        var parFloor = isUltra ? 2 : RANGES.parallelDownloads.min;
+        var parPorRatio = Math.floor(2 * ratio);
+        if (!isFinite(parPorRatio) || parPorRatio < parFloor) { parPorRatio = parFloor; }
+        var parallel = clamp(Math.min(parPorRatio, parallelCap), RANGES.parallelDownloads.min, RANGES.parallelDownloads.max);
+        if (isUltra && parallel < 2) { parallel = clamp(2, RANGES.parallelDownloads.min, RANGES.parallelDownloads.max); }
         /* 7 · tiempo de llenado con la red MEDIDA */
         var fillS = r2((bufferS * required) / measured);
         /* 8 · STALL ESTIMADO con la MISMA relación del calculador del panel, sobre
@@ -608,25 +623,38 @@
             (bft.stallBandwidthMbps !== undefined ? bft.stallBandwidthMbps : bwMinMbps)));
 
         var violations = [];
-        if (measured < required * margin) {
-            violations.push('red_insuficiente: medido ' + r2(measured) + ' Mbps < exigido×margen ' + bwMinMbps + ' Mbps');
+        /* [t17] UNA SOLA causa dominante. Antes convivían 'red_insuficiente' y
+         * 'buffer_insuficiente_para_target' (ésta con su propio "ratio < 1,15"),
+         * y el texto se contradecía: decía ratio 1,03x < 1,15 mientras
+         * disponible 237,93 > exigido 230. Ahora, si el problema es de RED, se
+         * declara una vez con disponible, exigido, ratio y los Mbps que faltan;
+         * el buffer/stall NO se añade como segunda causa. */
+        var causaRedUltra = false;
+        if (ultraDemand) {
+            if (!dutyOk) {
+                causaRedUltra = true;
+                violations.push('red_insuficiente: disponible ' + availableMbps + ' Mbps (capacidad ' +
+                    r2(measured) + ' × ' + demandDuty + ') < exigido ' + requiredForStall + ' Mbps · ratio ' +
+                    (availableMbps / requiredForStall).toFixed(2) + 'x · faltan ' +
+                    r2(neededMbpsForUltra - measured) + ' Mbps medidos (' +
+                    r2(requiredForStall - availableMbps) + ' Mbps de capacidad)');
+            }
+        } else if (measured < required * margin) {
+            violations.push('red_insuficiente: medido ' + r2(measured) + ' Mbps < exigido×margen ' + bwMinMbps +
+                ' Mbps · ratio ' + (measured / (required * margin)).toFixed(2) + 'x · faltan ' +
+                r2(required * margin) + ' Mbps');
         }
-        /* [2026-11-18 · corrección del capitán] Puerta SIMÉTRICA de ultra:
-         * disponible (medido×duty) contra exigido (perfil×margen). Antes se
-         * evaluaba al revés y ultra salía UNSTABLE con 400 Mbps medidos. */
-        if (ultraDemand && !dutyOk) {
-            violations.push('duty_insuficiente: disponible ' + availableMbps + ' Mbps (medido ' +
-                r2(measured) + ' × ' + demandDuty + ') < exigido ' + requiredForStall +
-                ' Mbps — ultra-aggressive necesita ≥ ' + neededMbpsForUltra + ' Mbps medidos');
-        }
-        if (fillS > bufferS * DEFAULTS.fillFactorMax) {
+        if (!causaRedUltra && fillS > bufferS * DEFAULTS.fillFactorMax) {
             violations.push('llenado_lento: ' + fillS + ' s para ' + bufferS + ' s de buffer (máx ' + (bufferS * DEFAULTS.fillFactorMax) + ' s)');
         }
         if (ramFinal > ramMB) {
             violations.push('ram_excedida: ' + r2(ramFinal) + ' MB > ' + ramMB + ' MB');
         }
-        if (parallel > Math.max(1, Math.floor(2 * ratio))) {
-            violations.push('autocongestion: paralelo ' + parallel + ' > 2×ratio');
+        /* el mismo suelo que la asignación: si ultra abre 2 por estrategia, eso
+         * no es autocongestión (sería contradictorio penalizar lo que se exige) */
+        var parTecho = Math.max(isUltra ? 2 : 1, Math.floor(2 * ratio));
+        if (parallel > parTecho) {
+            violations.push('autocongestion: paralelo ' + parallel + ' > ' + parTecho + ' (2×ratio con suelo de estrategia)');
         }
         /* 9 · CONDICIÓN DURA: ok:true sólo si el stall estimado cumple el target.
          * Si el buffer necesario no cabe en el rango (o la RAM lo recorta), se
@@ -640,8 +668,9 @@
         var stallPricePct = null;
         if (st.latencyFirst) {
             stallPricePct = stallEst;
-        } else if (ultraDemand && !dutyOk) {
-            /* ya está declarado en duty_insuficiente */
+        } else if (causaRedUltra) {
+            /* la red ya está declarada como causa dominante: no se añade una
+             * segunda causa (buffer/stall) que contradiría el texto */
         } else if (bft && bft.forced) {
             violations.push('buffer_insuficiente_para_target: ' + bft.unreachable);
         } else if (bft && bft.seconds !== null && stallEst !== null && stallEst > targetStallPct) {
@@ -674,6 +703,7 @@
                 bufferClampedByRange: clampedByRange,
                 latencyCapped: latencyCapped,
                 stallBasis: bft ? bft.basis : 'sin_plan',
+                segDurS: segDur,          // base de la cobertura segmentos×duración
                 stallBitrateMbps: stallBitrate,
                 stallRatio: bft ? bft.ratio : null,
                 /* ultra-agresivo: disponible vs exigido, con la dirección correcta
