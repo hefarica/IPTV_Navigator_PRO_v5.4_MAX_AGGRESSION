@@ -5758,6 +5758,10 @@ function build_antifreeze_nuclear_headers(cfg, profile) {
             // importa y la auditoria desaparecia en silencio. Solo los 5 que
             // gobiernan comportamiento o lo declaran; el resto de X-AF-* puede caer.
             'X-AF-Buffer-Target', 'X-AF-Network-Caching',
+            /* [2026-11-19 VERIF-AF F1] estas 2 SE PERDIAN: el motor las calculaba
+             * (file 60000..300000, recon 10..UNLIMITED) pero el recorte de 200
+             * las tiraba por no estar priorizadas. Verificado con listas reales. */
+            'X-AF-File-Caching', 'X-AF-Reconnect-Max',
             'X-AF-Requested-Level', 'X-AF-Governed-By', 'X-AF-Effective-Tier'
         ];
 
@@ -11275,7 +11279,11 @@ return lines.join('\n');
         for (const _k of _priorityOrderKeys(_httpPayload)) {   // CALIB 2026-11-01
             const _v = String(_httpPayload[_k]);
             const _entryBytes = _k.length + _v.length + 6;
-            if (_finalCount < 200 && (_finalBytes + _entryBytes) < 8192) {
+            /* [2026-11-19 VERIF-AF F2] 198 y no 200: DESPUES de este bucle se inyectan
+     * 2 claves mas (X-Device-Id y X-CMAF-Program-Date-Time), y nginx cuenta
+     * cabeceras: el bloque salia con 202 y el limite es 200. Reservando 2 el
+     * total emitido queda en 200 exactas. */
+    if (_finalCount < 198 && (_finalBytes + _entryBytes) < 8192) {
                 _finalPrimary[_k] = _v;
                 _finalCount++;
                 _finalBytes += _entryBytes;
