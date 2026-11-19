@@ -6,6 +6,11 @@
 
 const factory = require('../js/ape-v9/streaming/auto-tune-v1.js');
 const tuner = factory({});
+/* RANGES de la doctrina vigente: se leen del propio tuner para no duplicar
+ * constantes en el test (si el tuner no lo expone, el assert falla en vez de
+ * inventarse un rango). */
+const RANGES = tuner.RANGES || (factory({}).RANGES) || (factory({}).ranges);
+if (!RANGES) { console.log('  FAIL  el tuner no expone RANGES'); process.exit(1); }
 
 let pass = 0, fail = 0;
 function ok(name, cond, detail) {
@@ -14,10 +19,10 @@ function ok(name, cond, detail) {
 }
 
 console.log('\n=== 1 · FORMULA 1: buffer absorbe el deficit ===');
-ok('r=3 → piso 6 s', tuner.bufferForRatio(3) === 6, tuner.bufferForRatio(3));
-ok('r=1 → 6 s (sin deficit, buffer = segDur)', tuner.bufferForRatio(1) === 6, tuner.bufferForRatio(1));
+ok('r=3 → piso del RANGO (10 s): el buffer mínimo del panel es 10', tuner.bufferForRatio(3) === RANGES.bufferTargetS.min, tuner.bufferForRatio(3));
+ok('r=1 → piso del RANGO (10 s), no 6 s: segDur 6 se recorta al mínimo del panel', tuner.bufferForRatio(1) === RANGES.bufferTargetS.min, tuner.bufferForRatio(1));
 ok('r=0.6 → 18 s', tuner.bufferForRatio(0.6) === 18, tuner.bufferForRatio(0.6));
-ok('r=0.3 no pasa de 20 s', tuner.bufferForRatio(0.3) === 20, tuner.bufferForRatio(0.3));
+ok('r=0.3 no pasa del TECHO vigente (32 s, autorizado por el operador)', tuner.bufferForRatio(0.3) === RANGES.bufferTargetS.max, tuner.bufferForRatio(0.3));
 ok('sin ratio → null (no inventa)', tuner.bufferForRatio(null) === null);
 
 console.log('\n=== 2 · FORMULA 2: prefetch que cabe en ese buffer ===');
@@ -42,7 +47,8 @@ const good = { bufferTargetS: 12, prefetchSegments: 3, parallelDownloads: 6, rea
 ok('propuesta valida aceptada', tuner.validate(good).ok === true);
 const outRange = { bufferTargetS: 99, prefetchSegments: 0, parallelDownloads: 99, readTimeoutMs: 9 };
 const vr = tuner.validate(outRange);
-ok('recorta a los rangos', vr.ok && vr.config.bufferTargetS === 20 && vr.config.parallelDownloads === 8, vr.config);
+ok('recorta a los rangos (igualdad EXACTA contra RANGES)',
+    vr.ok && vr.config.bufferTargetS === RANGES.bufferTargetS.max && vr.config.parallelDownloads === RANGES.parallelDownloads.max, vr.config);
 ok('reporta los recortes', vr.clamped.length === 4, vr.clamped.length);
 const forbidden = Object.assign({}, good, { codec: 'hvc1.2.4.L183.B0' });
 ok('RECHAZA si toca codec', tuner.validate(forbidden).ok === false, tuner.validate(forbidden).rejected);
@@ -108,4 +114,3 @@ console.log('\n=== 7 · PLAN: determinista vs LLM, gana el validado ===');
     console.log('  PASS ' + pass + ' · FAIL ' + fail);
     process.exit(fail === 0 ? 0 : 1);
 })();
-

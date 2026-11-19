@@ -85,7 +85,11 @@ console.log('\n=== 4 · headroom 4x → excepcional ===');
 console.log('\n=== 5 · jitter: un bin malo manda (min, no media) ===');
 {
     const s = meter.summarize(winVar([10, 10, 1, 10, 10]), 5);
-    ok('avg 65.6 sobre 5 bins', s.mbpsAvg === 65.6, s.mbpsAvg);
+    /* doctrina vigente: se descarta el bin de calentamiento (warmup) y se
+ * promedia sobre los 4 bins EN RÉGIMEN. El 65,6 de 5 bins incluía el
+ * primero, que no mide régimen. */
+ok('avg 62 sobre 4 bins (warmup descartado)', s.mbpsAvg === 62, s.mbpsAvg);
+ok('warmupBinsDropped === 1', s.warmupBinsDropped === 1, s.warmupBinsDropped);
     ok('safe = min (8)', s.mbpsSafe === 8, s.mbpsSafe);
     const r = meter.integrate(20, winVar([10, 10, 1, 10, 10]), { windowS: 5 });
     ok('con un bin malo el ratio cae a 0.4', r.headroomRatio === 0.4, r.headroomRatio);

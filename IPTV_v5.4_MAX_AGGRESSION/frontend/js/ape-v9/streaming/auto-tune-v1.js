@@ -568,8 +568,11 @@
             /* [t19] el modelo de stall razona con la CAPACIDAD medida (o con el
              * duty si la estrategia lo impone), NO con el minimo exigido: usar
              * bwMin como "bandwidth" daba ratio 1,15 fijo y condenaba a rojo. */
+            /* [t19/t26] con bitrate real, el stall razona con la CAPACIDAD
+             * medida; con base conservadora (sin calculador) razona con bwMin,
+             * que es la exigencia completa. */
             stallBandwidthMbps: ultraDemand ? availableMbps
-                : ((isNum(measured) && measured > 0) ? measured : null),
+                : ((inputs.bitrateForStall && isNum(measured) && measured > 0) ? measured : null),
             bitrateForStall: ultraDemand ? requiredForStall : inputs.bitrateForStall,
             targetStallPct: inputs.targetStallPct,
             basisOverride: ultraDemand ? 'measured_duty' : null
@@ -631,11 +634,27 @@
          * el buffer/stall NO se añade como segunda causa. */
         var causaRedUltra = false;
         if (ultraDemand) {
-            if (!dutyOk) {
+            /* [t26] PRECEDENCIA medida: la causa dominante se decide por el
+             * orden de las dos preguntas, no por el texto.
+             *   1) ¿la red llega al MÍNIMO exigido?   no → red_insuficiente
+             *   2) ¿llega con el duty de la estrategia? no → duty_insuficiente
+             * Antes el bloque de duty se evaluaba primero y se comía el caso
+             * "medido == exigido" (230 con exigido 230), declarándolo como red. */
+            if (measured < requiredForStall) {
+                /* la red NO llega al mínimo: se declara con disponible, capacidad,
+                 * duty y el DÉFICIT real (no el total exigido) */
                 causaRedUltra = true;
                 violations.push('red_insuficiente: disponible ' + availableMbps + ' Mbps (capacidad ' +
                     r2(measured) + ' × ' + demandDuty + ') < exigido ' + requiredForStall + ' Mbps · ratio ' +
                     (availableMbps / requiredForStall).toFixed(2) + 'x · faltan ' +
+                    r2(neededMbpsForUltra - measured) + ' Mbps medidos (' +
+                    r2(requiredForStall - availableMbps) + ' Mbps de capacidad)');
+            } else if (!dutyOk) {
+                causaRedUltra = true;
+                violations.push('duty_insuficiente: disponible ' + availableMbps + ' Mbps (capacidad ' +
+                    r2(measured) + ' × ' + demandDuty + ') < exigido ' + requiredForStall + ' Mbps · ratio ' +
+                    (availableMbps / requiredForStall).toFixed(2) + 'x · se necesitan ' +
+                    neededMbpsForUltra + ' Mbps medidos · faltan ' +
                     r2(neededMbpsForUltra - measured) + ' Mbps medidos (' +
                     r2(requiredForStall - availableMbps) + ' Mbps de capacidad)');
             }
@@ -683,6 +702,8 @@
         return {
             ok: violations.length === 0,
             state: violations.length === 0 ? 'COHERENTE' : 'INCOHERENTE',
+            /* [t26] la spec lee el buffer necesario en el nivel superior */
+            neededBufferS: (bft && bft.seconds !== null) ? bft.seconds : null,
             strategy: st,
             strategyKey: strategyKey(st.name),
             values: {

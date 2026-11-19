@@ -225,7 +225,10 @@ function makeServer(mode) {
     LS['ape_qoe_plan_v1'] = JSON.stringify(rec);
     const restOld = PM._restoreQoePlan();
     console.log('        caducado → ' + JSON.stringify({ restored: restOld.restored, stale: !!restOld.stale }));
-    ok('caducado NO restaura', restOld.restored === false && restOld.stale === true, restOld);
+    /* [doctrina del operador] GUARDAR es PERMANENTE: un snapshot caducado SÍ se
+ * aplica y se marca ANTIGUO. Nada se borra hasta que él vuelva a guardar. */
+ok('caducado SÍ se aplica (GUARDAR es permanente)', restOld.restored === true, restOld);
+ok('caducado se marca ANTIGUO', restOld.stale === true, restOld);
 
     /* ── 5 · APLICAR A TODOS ────────────────────────────────────────────── */
     console.log('\n=== 5 · aplicar a TODOS: cada perfil con SU bitrate, idempotente ===');
