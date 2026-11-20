@@ -600,3 +600,34 @@ ruta antes de mi comprobación de confinamiento y el fichero resultante no exist
 
 Con esto las rutas del arnés quedan: solo loopback, testigo por corrida, `Origin` validado, confinadas al
 frontend del staging, IDs y nombres de salida validados por patrón, y rechazo medido en cada caso.
+## 28 · Selector automático: rastreado en el código, todavía no observable en el artefacto
+
+Fuente leída (`m3u8-typed-arrays-ultimate.js:8010`), no supuesta:
+
+```
+function determineProfile(channel) {
+  name    = channel.name                          → CAPA 3 · peso 20  ('8K'→P0, '4K'/'UHD'→P1, 'FHD'/'1080'→P3, 'HD'→P3(15), '720'→P4, 'SD'/'480'→P5)
+  group   = channel.category_name || group || group_title
+  resMeta = channel.resolution || channel.heuristics.resolution → CAPA 1 · peso 40 (8k→P0, 4k/2160→P1, 1080→P3, 720→P4, 480→P5)
+  bitrate = channel.bitrate || channel.heuristics.bitrate (kbps) → CAPA 2 · peso 30 (≥30000→P0, ≥15000→P1, ≥6000→P3, ≥2500→P4, resto→P5)
+  scores = {P0,P1,P3,P4,P5}   (+ CAPA 4 group-title, peso 15)
+}
+```
+
+Uso real: `13921: const profile = forceProfile || determineProfile(channel) || 'P3'`.
+
+Comprobación sobre el artefacto real (`APE_PRIVADO/fase8/salida_P0__1795193883902.m3u8`, 3 canales
+`… BEIN SPORTS FHD …`):
+
+```
+PROFILE= emitidos → #EXT-X-APE-CACHING-PRECEDENCE:PROFILE=P0,P1,P2,P3,P4,P5 …
+```
+
+Son declaraciones **de cabecera** del LAB (precedencia de caché), **no** la decisión por canal. El
+sidecar del mismo archivo dice `"selectedProfile":"P0"` — la selección de la operación — y no hay aún
+una etiqueta por canal que exponga la decisión de `determineProfile`.
+
+**Conclusión acreditada**: el selector automático está rastreado a fuente (entradas, pesos y salida
+posible), pero su decisión no es observable en el artefacto exportado tal como está hoy. La cobertura
+automática sigue **NOT_RUN**; lo que falta es una señal por canal (tag propio o instrumentación del
+generador) — instrumentarlo sale del alcance de esta ronda. No se fabrica su resultado.
