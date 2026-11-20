@@ -55,6 +55,31 @@
       fr.readAsText(f, 'utf-8');
     });
   }
-  root.APEM3uLocal = { parse: parse, load: load, wire: wire };
+
+  /* Lectura en STREAMING: no materializa el archivo completo en una cadena.
+     Necesario para listas de cientos de MB (medido: resp.text() falla a 754 MB). */
+  async function cargarStream(url, opciones) {
+    var o = opciones || {};
+    var resp = await fetch(url, o.fetchInit || {});
+    if (!resp.ok) throw new Error('http_' + resp.status);
+    var reader = resp.body.getReader();
+    var dec = new TextDecoder('utf-8');
+    var resto = '', canales = 0, bytes = 0, actual = null, t0 = performance.now();
+    for (;;) {
+      var r = await reader.read();
+      if (r.done) break;
+      bytes += r.value.length;
+      resto += dec.decode(r.value, { stream: true });
+      var idx;
+      while ((idx = resto.indexOf('\n')) >= 0) {
+        var l = resto.slice(0, idx); resto = resto.slice(idx + 1);
+        if (l.indexOf('#EXTINF:') === 0) { actual = true; }
+        else if (actual && /^https?:\/\//.test(l)) { canales++; actual = null; }
+      }
+      if (o.onProgress && canales % 1000 === 0) { o.onProgress({ bytes: bytes, canales: canales }); }
+    }
+    return { canales: canales, bytes: bytes, ms: Math.round(performance.now() - t0) };
+  }
+  root.APEM3uLocal = { parse: parse, load: load, wire: wire, cargarStream: cargarStream };
   if (document.readyState !== 'loading') wire(); else document.addEventListener('DOMContentLoaded', wire);
 })(typeof globalThis !== 'undefined' ? globalThis : this);

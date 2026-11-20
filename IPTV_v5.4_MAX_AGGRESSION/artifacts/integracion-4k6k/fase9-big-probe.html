@@ -1,33 +1,18 @@
 <!doctype html><meta charset="utf-8"><pre id="out">p</pre>
-<script src="js/ape-m3u-local-loader.js?v=20261120-f4"></script>
+<script src="js/ape-m3u-local-loader.js?v=20261120-f9"></script>
 <script>
 (async function(){
-  var R={};
-  var t=(new URL(location.href)).hash.replace('#',''); var P={}; t.replace(/([?&]?)(\w+)=([^&]*)/g,function(m,s,k,v){P[k]=decodeURIComponent(v);return m;});
+  var R={}; var P={}; location.hash.replace(/([?&]?)(\w+)=([^&]*)/g,function(m,s,k,v){P[k]=decodeURIComponent(v);return m;});
   var h={}; if(P.t) h['X-APE-Token']=P.t;
   try {
-    var t0=performance.now();
-    var resp=await fetch('/grande.m3u8',{headers:h});
-    R.status=resp.status;
-    var txt=await resp.text();
-    R.ms_fetch=Math.round(performance.now()-t0);
-    R.bytes_utf8=new TextEncoder().encode(txt).length;
-    R.chars=txt.length;
-    if(performance.memory){R.heap_mb_fetch=Math.round(performance.memory.usedJSHeapSize/1048576);}
-    var t1=performance.now();
-    var lista=window.APEM3uLocal.parse(txt);
-    R.ms_parse=Math.round(performance.now()-t1);
-    R.canales=lista.length;
-    R.primero=lista[0]?lista[0].name:null;
-    if(performance.memory){R.heap_mb_parse=Math.round(performance.memory.usedJSHeapSize/1048576);}
-    txt=null; lista=null;
-    if(window.gc){window.gc();}
-    if(performance.memory){R.heap_mb_tras_liberar=Math.round(performance.memory.usedJSHeapSize/1048576);}
-    /* cancelación: abortar a mitad de otra descarga */
     var c=new AbortController();
-    var p2=fetch('/grande.m3u8',{headers:h,signal:c.signal}).then(function(){return 'no-abort';}).catch(function(e){return 'abortado:'+e.name;});
-    setTimeout(function(){c.abort();},30);
-    R.cancelacion=await p2;
+    var p=window.APEM3uLocal.cargarStream('/grande.m3u8',{fetchInit:{headers:h,signal:c.signal},
+      onProgress:function(x){ R.ultimo=x; }});
+    setTimeout(function(){ c.abort(); }, 250);
+    try { await p; R.aborto='no-abortado-antes-de-250ms'; } catch(e){ R.aborto='abortado:'+e.name; }
+    var r=await window.APEM3uLocal.cargarStream('/grande.m3u8',{fetchInit:{headers:h}});
+    R.canales=r.canales; R.bytes=r.bytes; R.ms=r.ms;
+    if(performance.memory){ R.heap_mb=Math.round(performance.memory.usedJSHeapSize/1048576); R.heap_limite_mb=Math.round(performance.memory.jsHeapSizeLimit/1048576); }
   } catch(e){ R.error=String(e&&e.message||e); }
   document.getElementById('out').textContent='BIG:'+JSON.stringify(R);
 })();

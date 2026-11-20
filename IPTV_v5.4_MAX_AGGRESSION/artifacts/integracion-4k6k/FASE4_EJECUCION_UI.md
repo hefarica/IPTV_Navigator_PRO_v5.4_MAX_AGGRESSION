@@ -700,3 +700,28 @@ parseo incremental en chunks) y repetir; entonces sí se podrán medir tiempo, h
 cancelación sobre los 754 MB reales. Queda como la operación pendiente, con causa acreditada.
 
 Nota de limpieza: Chrome quedó colgado tras la prueba y se terminó explícitamente (`Stop-Process chrome`).
+## 32 · Streaming implementado; la medición de 754 MB sigue sin cerrar
+
+Se añadió `cargarStream(url, {fetchInit, onProgress})` al cargador: `resp.body.getReader()` +
+`TextDecoder(stream:true)`, parseo incremental por líneas y contador de canales, **sin materializar el
+archivo completo en una cadena**. `node --check` = 0.
+
+Segunda medición con la sonda actualizada:
+
+```
+intento 1 (resp.text()):  BIG={"status":200,"error":"Failed to fetch"}   ← cuerpo de 754 MB
+intento 2 (streaming):    SIN_MARCADOR bytes=1159                        ← la página no llegó al marcador
+```
+
+No hay métricas que publicar de esta segunda corrida: la página quedó a medias dentro del presupuesto
+(`--virtual-time-budget=600000`) y Chrome terminó por el `kill` del arnés. **Causa probable, no
+diagnosticada del todo**: el tiempo virtual de headless no avanza como el reloj real durante una
+transferencia de 754 MB, de modo que los `setTimeout` del propio test (abort a 250 ms, presupuesto) se
+disparan antes que la lectura.
+
+Siguiente paso concreto: repetir **sin `--virtual-time-budget`**, con deadline de cliente amplio y
+midiendo con el reloj real; si sigue fallando, capturar `chrome --enable-logging` y el OOM del renderer.
+El código de streaming ya está listo y es el que hay que ejercitar.
+
+Ninguna cifra de memoria, tiempo o cancelación se reporta para 754 MB porque **no se obtuvo**: el
+resultado de esta ronda es el código de streaming y el diagnóstico del intento, no una medición.
