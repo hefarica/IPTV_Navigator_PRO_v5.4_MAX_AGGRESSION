@@ -59,6 +59,7 @@ Medido sobre la lista real de 754.247.241 B: `entries=11222`, `attr_entries=1122
 | `intentTag` | sonda node (OFF y ON) | 1 línea · payload parsea · `executed=false` · `rea` intacta · EXTSHIMOTT intacto · 1 URI |
 | `enrich` OFF | sonda node | `off_igual=true`, misma referencia (coste 0) |
 | `enrich` ON | sonda node | añade solo `APE-4K6K-INTENT`; `url`/`extra` intactos; idempotente |
+| **Navegador real** (Chrome 157.0.8103.80) | `node %TEMP%\fase2-browser3.js` (loopback + `--headless=old --dump-dom`) | `{"loaded":true,"flagDefault":false,"offMs":0.1,"offIdentical":true,"onAdded":["APE-4K6K-INTENT"],"reaKept":true,"tagOk":true,"intentStatus":"requested_only"}` |
 
 Hashes de esta fase (sha256, 16 primeros):
 
@@ -94,7 +95,7 @@ El árbol principal **no** se ha tocado: `index-v4.html` y el generador siguen i
 
 | Tramo | Estado | Motivo |
 |---|---|---|
-| Prueba en navegador real (carga + flag + resultado visible) | **NO COMPUTADO** | Chrome 157.0.8103.80 presente; `--headless=new --dump-dom` funciona con `data:` URL, pero la página local/loopback no devolvió DOM en 120 s (job cancelado). Repro: `node %TEMP%\fase2-browser.js` sirviendo `frontend/` por loopback y apuntando a `_fase2_probe.html`; alternativa sancionada por el repo: `ui-predictive-prefetch.verify.js` (CDP `--remote-debugging-port`) |
+| Prueba en navegador real (carga + flag + resultado visible) | **PASS medido** | Chrome 157.0.8103.80 headless sobre el `frontend/` del worktree servido por loopback: módulo cargado, flag OFF por defecto, `enrich` OFF devuelve la misma referencia en 0,1 ms, ON añade solo `APE-4K6K-INTENT`, `rea` intacta, `intentTag` emitido. Nota: el worktree estaba en `5376eef6` (anterior a esta fase) y hubo que traer el adaptador `20c8a66f…`; el primer intento falló con `intentTag is not a function`, lo que confirma que la prueba depende del código real y no de una copia |
 | Hook real en el generador (`_apeAppendLegacyEnhancementMetadata` / finalizador por canal) | **NO HECHO** | la inserción debe ir en el emisor por canal (línea ~13662 de `m3u8-typed-arrays-ultimate.js`) y no se cablea a ciegas sin la prueba de navegador. El helper `intentTag()` está listo y probado |
 | Generación/exportación real OFF vs ON (bytes) | **NO COMPUTADO** | requiere la UI + LAB JSON del propietario; el hook no está cableado |
 | Consumidor real del sidecar | **NO COMPUTADO** | no existe consumidor probado; por eso no se emite `outputPolicy` hacia REA |
@@ -124,7 +125,7 @@ El árbol principal **no** se ha tocado: `index-v4.html` y el generador siguen i
 |---|---|
 | Habilidad registrada | sí (fase 1, entrada única, sin duplicar) |
 | Adaptador probado (Node) | **sí** — 183 aserciones |
-| App conectada | **solo staging** (1 línea de carga, sin hook de generador) |
+| App conectada | **sí en staging**, carga real verificada en Chrome 157 (módulo desde la misma ruta que usa `index-v4.html`); hook de generación **pendiente** |
 | Generador/exportador probado OFF/ON | **no** |
 | Consumidor probado | **no** |
 | Staging | sí (worktree + diff) |
