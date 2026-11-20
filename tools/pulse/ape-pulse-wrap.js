@@ -44,6 +44,7 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 const crypto = require('crypto');
+const { StringDecoder } = require('string_decoder');
 const { ApeUrlBuilder } = require(process.env.APE_URL_BUILDER || '/opt/ape-pulse/ape-url-builder.js');
 
 const POLICY_VERSION = '1';
@@ -331,7 +332,35 @@ function normalizeUpstream(u) {
 }
 
 /**
- * [FIX 2026-11-15] Reescribe el `d=` de una URL de /pulse con la resolucion REAL del canal.
+ * [ORDEN DEL OPERADOR 2026-11-20 · "preserve el d= original byte a byte"]
+ * El `d=` que el canal YA trae NO se reescribe.
+ *
+ * MEDIDO antes del arreglo, sobre APE_LISTA_1795151699916_DIRECTA_CABLEADA:
+ *   origen    d={"t":"generic","s":"unknown","r":2048,"w":1920,"h":1080,"f":30,"hdr":"sdr","p":"P3"}
+ *   entregado d={"t":"generic","s":"unknown","r":2048,"w":1920,"h":1080,"f":60}
+ * se perdian `hdr` y `p` y cambiaba f 30->60 en los 11.222 canales (321.517 B
+ * de diferencia entre el fichero del worker y el servido). Cambiar un valor que
+ * el generador ya escribio no es un fix, es una mutacion silenciosa.
+ *
+ * Ahora: si la URL trae un `d=` que decodifica a un objeto, se conserva VERBATIM.
+ * Solo se reconstruye cuando falta o viene corrupto, que es el caso para el que
+ * se escribio rebuildDeviceData (d= constante e identico en todos los canales,
+ * m3u8-typed-arrays-ultimate.js:13213).
+ */
+function deviceTokenUsable(url) {
+  const m = url.match(/[?&]d=([^&]*)/);
+  if (!m || !m[1]) { return false; }
+  try {
+    let s = m[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (s.length % 4) { s += '='; }
+    const o = JSON.parse(Buffer.from(s, 'base64').toString('utf8'));
+    return o !== null && typeof o === 'object' && !Array.isArray(o) && Object.keys(o).length > 0;
+  } catch (e) { return false; }
+}
+
+/**
+ * [FIX 2026-11-15] Reescribe el `d=` de una URL de /pulse con la resolucion REAL del canal
+ * — SOLO cuando el `d=` falta o no decodifica (ver deviceTokenUsable arriba).
  *
  * El `d=` lo ponia el generador como constante (m3u8-typed-arrays-ultimate.js:13213) y
  * equivale a {t:generic,s:unknown,r:2048,w:1920,h:1080,f:30} — el perfil 'generic' de
@@ -348,6 +377,7 @@ function normalizeUpstream(u) {
  * /pulse/ y sin esto el fix no llegaba nunca (medido: wrapped=0, d_rebuilt=None).
  */
 function rebuildDeviceData(url) {
+  if (deviceTokenUsable(url)) { counters.dKept = (counters.dKept || 0) + 1; return url; }
   if (!cur || !cur.truth) { return url; }
   const w = parseInt(cur.truth.w, 10);
   const h = parseInt(cur.truth.h, 10);
@@ -543,12 +573,25 @@ function flushChunk(chunk) {
 const src = fs.createReadStream(inPath);
 const stream = inPath.endsWith('.gz') ? src.pipe(zlib.createGunzip()) : src;
 
+/* [BUG MEDIDO 2026-11-20] `d.toString('utf8')` decodifica CADA TROZO por separado.
+ * Si una secuencia UTF-8 multibyte cae partida entre dos trozos, las dos mitades
+ * no son UTF-8 valido y Node las sustituye por U+FFFD. Efecto real medido sobre
+ * APE_LISTA_1795151699916_DIRECTA_CABLEADA (linea 8.450.535, canal 125649):
+ *   entrada  tvg-name="✦●✦ GENERAL HD✦●✦ [MEGA]"
+ *   salida   tvg-name="���●✦ GENERAL HD✦●✦ [MEGA]"
+ * 0xE2 0x9C 0xA6 (3 B) -> 3x U+FFFD (9 B): +6 B en el fichero, un nombre de canal
+ * mutado. StringDecoder arrastra los bytes incompletos al trozo siguiente, que es
+ * exactamente lo que hace falta; el corte por lineas ya lo maneja `pending`.
+ */
+const decoder = new StringDecoder('utf8');
+
 stream.on('data', (d) => {
-  try { flushChunk(d.toString('utf8')); }
+  try { flushChunk(decoder.write(d)); }
   catch (e) { counters.errors++; console.error('wrap-error:', e.message); }
 });
 stream.on('error', (e) => { console.error('read-error:', e.message); try { out.end(); } catch (_) { } process.exit(1); });
 stream.on('end', () => {
+  try { flushChunk(decoder.end()); } catch (e) { counters.errors++; }
   if (pending.length) onLine(pending);
   out.end(() => {
     try { fs.renameSync(tmp, outPath); } catch (e) { console.error('rename-error:', e.message); process.exit(1); }
