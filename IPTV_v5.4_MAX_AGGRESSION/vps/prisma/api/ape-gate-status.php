@@ -15,6 +15,13 @@
 declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
+/* [2026-11-19] CORS para que el panel funcione tambien servido en local
+ * (http://127.0.0.1:5500), donde el origen es distinto. Estas rutas no
+ * exponen datos sensibles: gate-status es solo lectura y profiles-state
+ * exige token. */
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, X-APE-Token');
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
 

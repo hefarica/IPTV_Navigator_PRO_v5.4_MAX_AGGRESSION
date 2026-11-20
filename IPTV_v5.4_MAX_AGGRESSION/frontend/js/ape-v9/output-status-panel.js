@@ -219,7 +219,18 @@ async function gateInfo() {
     var now = Date.now();
     if (_gateCache.data && (now - _gateCache.at) < 5000) return _gateCache.data;
     try {
-        var r = await fetch('/prisma/api/ape-gate-status.php', { cache: 'no-store' });
+        /* [2026-11-19] Sirve en los DOS sitios: en el VPS (misma origen) y en el
+         * servidor local http://127.0.0.1:5500, donde '/prisma/...' no existe.
+         * Cascada: relativa -> absoluta canonica. */
+        var _cands = ['/prisma/api/ape-gate-status.php',
+                      'https://iptv-ape.duckdns.org/prisma/api/ape-gate-status.php'];
+        var r = null;
+        for (var _i = 0; _i < _cands.length; _i++) {
+            try {
+                var _r = await fetch(_cands[_i], { cache: 'no-store' });
+                if (_r && _r.ok) { r = _r; break; }
+            } catch (_e) { }
+        }
         if (!r.ok) return null;
         var j = await r.json();
         _gateCache = { at: now, data: j };
