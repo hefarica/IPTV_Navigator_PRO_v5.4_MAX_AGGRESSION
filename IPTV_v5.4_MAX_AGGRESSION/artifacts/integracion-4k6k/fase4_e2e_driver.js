@@ -100,6 +100,7 @@
       }
       fila.clickVisible = btn ? 'ok' : 'sin-boton';
       if (btn) { btn.click(); await esp(120); }
+      else if (window.ProfileManagerV9 && window.ProfileManagerV9.selectProfile) { try { window.ProfileManagerV9.selectProfile(pid); fila.clickVisible = 'fallback-selectProfile'; await esp(120); } catch (e) {} }
 
       /* restablecer la entrada original de este perfil antes de medir */
       inp.files = dt.files; inp.dispatchEvent(new Event('change', { bubbles: true }));

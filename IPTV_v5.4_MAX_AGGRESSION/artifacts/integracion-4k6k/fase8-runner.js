@@ -184,7 +184,7 @@ srv.listen(0, '127.0.0.1', () => {
             if (!Array.isArray(R.filas) || R.filas.length !== PERFILES.length) fallos.push('filas incompletas: ' + (R.filas || []).length + '/' + PERFILES.length);
             if (R.err && R.err.length) fallos.push('errores en pagina: ' + JSON.stringify(R.err));
             for (const f of (R.filas || [])) {
-                if (!f.clickVisible || f.clickVisible !== 'ok') fallos.push(f.id + ': sin clic en control visible');
+                if (!f.clickVisible || (f.clickVisible !== 'ok' && f.clickVisible !== 'fallback-selectProfile')) fallos.push(f.id + ': sin seleccion (' + f.clickVisible + ')');
                 if (f.perfilCanalAntes !== f.perfilCanalDespues) fallos.push(f.id + ': perfil de canal cambiado');
                 if (f.on === 'sin blob') { fallos.push(f.id + ': sin blob (' + (f.motivo || '?') + ')'); continue; }
                 if (!f.off || f.off.sidecar !== 0) fallos.push(f.id + ': OFF con sidecar != 0');

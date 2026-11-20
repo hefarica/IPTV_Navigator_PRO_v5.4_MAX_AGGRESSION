@@ -799,3 +799,27 @@ La aserción lo detectó y salió con código 1 — el arnés no se dejó engañ
 el `L3_EXTVLCOPT` propio de cada perfil (105000/72000/58000/55000/52000/30000).
 
 Suite Node del adaptador tras el cambio: **PASS 204 · FAIL 0** (sin regresión).
+## 36 · El fix del `.5` FUNCIONA y queda verificado con el valor del LAB (105000)
+
+Corrida `node fase8-runner.js P0.5` con el parche del §35 activo:
+
+```
+{"ok":true,"perfiles":["P0.5"],"fallos":[]}              ← sin fallos
+OFF  bytes=256.182  sidecar=0
+ON   bytes=260.201  sidecar=3  profile=P0.5  selectedProfile=P0.5  target=5760x3240
+     sha256=9a5e03793d500948776672d7a3833ded70dcf3a8448bd45f830d65558b25549a
+idempotente=true  recuperacionExacta=true  perfilCanal antes=después=null
+export ok=true bytes=260.201 sha256=<idéntico>  archivo=salida_P0.5__1795195247692.m3u8
+EMITIDO: #EXTVLCOPT:network-caching=105000     ← L3 del LAB para P0.5 (esperado 105000)
+```
+
+Antes del parche, el mismo perfil emitía **55000** (el valor de P3). Ahora emite **105000**, el suyo.
+El defecto del §34 queda **corregido y medido**: la selección visible ya gobierna el tuning del generador.
+
+Matiz honesto sobre el control: en esta corrida el contenedor **no renderizó** botón para `P0.5`
+(`clickVisible: fallback-selectProfile`), así que la selección se hizo con `ProfileManagerV9.selectProfile`,
+que es exactamente el método que invoca el botón. La ruta de **control visible** está validada aparte con los
+12 IDs (§16, `clickVisible=ok` en las doce filas). No se presenta una como la otra.
+
+Nota de operación: la página no cerró tras el resultado y el arnés cortó a los 420 s con `timeout` en el
+diagnóstico, pero con el marcador ya presente y `ok:true`; Chrome se terminó a mano después.
