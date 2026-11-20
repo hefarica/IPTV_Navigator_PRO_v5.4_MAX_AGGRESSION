@@ -897,3 +897,30 @@ Verificación tras el cambio:
 
 P3.5 y P0 en verde con la aserción correcta. El rojo anterior quedó identificado como defecto del arnés,
 no como defecto del generador.
+## 40 · Herencia campo a campo (todos los `#EXTVLCOPT`) y un hallazgo de anti-degradación
+
+`herencia-multi-check.js` compara **todos** los `#EXTVLCOPT:*` del LAB (`level_3_per_channel` y `vlcopt`)
+contra los emitidos por canal en el archivo exportado.
+
+```
+P0.5 : PASS=28  FAIL=10   (video 5760x3240 ✓, network-caching 105000 ✓, filter 5760 ✓)
+P0   : PASS=17  FAIL=23   (video 1920x1080 ✗, network-caching 55000 ✗, filter 3840x2160 ✗)
+```
+
+**Hallazgo grave (P0)**: con P0 seleccionado y el parche acotado a los `.5`, el artefacto emitía
+`video-width=1920`, `video-height=1080`, `network-caching=55000` y el filtro escalando a 3840x2160 —
+es decir, **la geometría y el tuning de P3**, contradiciendo el objetivo declarado de P0. Es el mismo
+defecto de identidad de perfil, pero sobre los base, y toca la ley anti-degradación en el artefacto
+(no en el bitstream).
+
+**Decisión tomada con esa medición**: la inyección de `forceProfile` se restauró **para todos** los perfiles.
+
+**Estado de la verificación: INCOMPLETA.** La corrida posterior terminó con
+`{"ok":false,"fallos":["marcador ausente"],"resultado":null}` y el arnés salió con código ≠ 0 (correcto).
+Los archivos en disco son de la corrida anterior, así que **no afirmo** que el cambio corrija el P0 hasta
+repetir la corrida.
+
+Divergencias medidas que NO he corregido y quedan como hallazgos:
+`video-hdr` (LAB true → emitido false en P0.5) · `video-hdr-mode` (HDR10PLUS/DOLBY_VISION_P8 → HLG/SDR)
+· `video-hdr-nits` (1000 → 4000, 10000 → 400) · `audio-channels` (2 → 6) · `clock-jitter` (1000/2000 → 0)
+· `saturation` (1.06 → 1.08) · `http-user-agent`/`http-referrer` con plantillas `{config.*}` sin resolver.
