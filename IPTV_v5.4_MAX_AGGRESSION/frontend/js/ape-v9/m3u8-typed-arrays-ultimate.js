@@ -109,10 +109,22 @@
         if (!window.APE_HDCP_PROFILE_FRESH_AT) {
             window.APE_HDCP_PROFILE_FRESH_AT = 0;
         }
-        window.refreshApeHdcpProfile = function () {
+        /* [2026-11-19] Las rutas relativas a /prisma/api NO existen cuando el panel se
+ * sirve en local (127.0.0.1 / Live Server): los tres bulk (HDCP, PQ, imagen)
+ * devolvian 404 y el generador local se quedaba SIN los perfiles por canal del
+ * VPS, es decir, generaba con valores por defecto. En local se usa el origen
+ * canonico; en el VPS se mantiene la ruta relativa (mas rapida, sin DNS). */
+window.APE_API_ORIGIN = window.APE_API_ORIGIN || (function () {
+    try {
+        var h = (typeof location !== 'undefined' && location.hostname) ? location.hostname : '';
+        var local = !h || /^(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(h);
+        return local ? 'https://iptv-ape.duckdns.org' : '';
+    } catch (_e) { return ''; }
+})();
+window.refreshApeHdcpProfile = function () {
             const now = Date.now();
             if ((now - window.APE_HDCP_PROFILE_FRESH_AT) < 60000) return;  // TTL 60s
-            const url = window.APE_HDCP_BULK_ENDPOINT_ABS || '/prisma/api/channel-hdcp-bulk.php';
+            const url = window.APE_HDCP_BULK_ENDPOINT_ABS || (window.APE_API_ORIGIN + '/prisma/api/channel-hdcp-bulk.php');
             try {
                 fetch(url, { cache: 'no-store', mode: 'cors' })
                     .then(function (r) { return r.json(); })
@@ -141,7 +153,7 @@
         window.refreshApePqProfile = function () {
             const now = Date.now();
             if ((now - window.APE_PQ_PROFILE_FRESH_AT) < 60000) return;  // TTL 60s
-            const url = window.APE_PQ_BULK_ENDPOINT_ABS || '/prisma/api/channel-pq-bulk.php';
+            const url = window.APE_PQ_BULK_ENDPOINT_ABS || (window.APE_API_ORIGIN + '/prisma/api/channel-pq-bulk.php');
             try {
                 fetch(url, { cache: 'no-store', mode: 'cors' })
                     .then(function (r) { return r.json(); })
@@ -169,7 +181,7 @@
         window.refreshApeImageProfile = function () {
             const now = Date.now();
             if ((now - window.APE_IMAGE_PROFILE_FRESH_AT) < 60000) return;  // TTL 60s
-            const url = window.APE_IMAGE_BULK_ENDPOINT_ABS || '/prisma/api/channel-image-bulk.php';
+            const url = window.APE_IMAGE_BULK_ENDPOINT_ABS || (window.APE_API_ORIGIN + '/prisma/api/channel-image-bulk.php');
             try {
                 fetch(url, { cache: 'no-store', mode: 'cors' })
                     .then(function (r) { return r.json(); })
