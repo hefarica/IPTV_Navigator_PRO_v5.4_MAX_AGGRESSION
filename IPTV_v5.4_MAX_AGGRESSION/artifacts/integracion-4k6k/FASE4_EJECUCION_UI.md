@@ -1,0 +1,114 @@
+# Fase 4 — flujo UI real: lo ejecutado y el impedimento exacto
+
+## 1 · Baseline verificado en esta corrida
+
+```
+git log --oneline       84f3231f → da11b79d → 0293044b → a831545e
+adaptador sha256        7e72ee39eb98ce55a6e7f2acd077a1ac65fead7b4333afd5ecdf0f0eff5c198c
+worktree                C:\Users\HFRC\Desktop\IPTV_FASE2_STAGING (6 ficheros, +155/−18)
+```
+
+## 2 · Tercer gate de esquema, medido y corregido
+
+El importador de la app (`APE_PROFILES_CONFIG.importFromLABData`, `ape-profiles-config.js:5087`)
+rechazaba el LAB de fusión con:
+
+```
+Schema invalido: lab_version='APE_v9.0', schema_variant='all_profiles'
+(esperado omega_* o bulletproof:true)
+```
+
+Era un gate **distinto** del que ya se corrigió en `ape-lab-import-helper.js`. Se amplió solo la
+aceptación (`_meta.type === 'all_profiles'` o `lab_schema_variant === 'all_profiles'`), sin mutar
+valores y sin abrir la puerta a JSON ajeno.
+
+Resultado en Chrome 157 cargando `index-v4.html#ape-e2e` del worktree:
+
+```json
+{"ui":{"fileInput":false,"btnGenerateAudited":true,"btnGenerateTypedArrays":true,
+ "btnExportToLAB":true,"genFn":true,"cfg":true,"norm":true,"ape4k6k":true},
+ "import":{"family":"profiles","ids":12,"configProfiles":12,"tiene5":6,"applied":true,
+ "status":{"ok":true,"labExportedAt":"2026-11-20T03:52:30.647Z","labVersion":"APE_v9.0",
+ "profiles":["P0","P1","P2","P3","P4","P5","P0.5","P1.5","P2.5","P3.5","P4.5","P5.5"]}},
+ "gen":{"canalesApp":0},"err":[]}
+```
+
+**La app real importa el LAB de fusión con los 12 IDs exactos y el gate en `ok:true`.**
+
+## 3 · Selector de archivo: no existe en este frontend
+
+`input[type=file]` = **false** en la app. El LAB entra por el importador de `APE_PROFILES_CONFIG`, no
+por un diálogo nativo. Esto no es una omisión del arnés: es el estado medido del frontend.
+
+## 4 · Privacidad del destino, verificada antes de escribir
+
+```
+C:\Users\HFRC\APE_PRIVADO   propietario LAPTOP-A80AL617\HFRC
+ACL: NT AUTHORITY\SYSTEM      Allow FullControl
+     BUILTIN\Administradores  Allow FullControl
+     LAPTOP-A80AL617\HFRC     Allow FullControl
+     (sin Users, sin Everyone, sin Authenticated Users)
+```
+
+El arnés sirve `/lab.json` **solo por loopback** (bind 127.0.0.1, puerto efímero) y el fichero se lee
+desde la ruta privada sin copiarlo al repo.
+
+## 5 · Impedimento exacto para generar/exportar
+
+`gen.canalesApp = 0`. El botón real `#btnGenerateAudited` dispara
+`window.APEGenerationController.prepublishAndGenerate()`, que necesita canales en el estado de la app.
+La vía de ingesta que existe en el frontend es el formulario de proveedor:
+
+```
+index-v4.html:1159  <button type="submit" form="connectionForm" id="btnConnect">
+index-v4.html:1231  btnProbeQuality → app.probeAllChannelsBackend()
+```
+
+Es decir: **la app carga canales conectándose a un proveedor (Xtream/M3U) autorizado**. No hay en el
+código activo un cargador de fichero M3U local:
+
+- `input[type=file]` → no existe en `index-v4.html`
+- `channelsMaster =` → sin asignaciones en `js/**`
+- el parser de ingesta (`js/ape-v9/ape-m3u8-ingestion-parser.js`) elabora líneas HLS, no construye el
+  catálogo de canales de la UI
+
+No tengo credenciales de proveedor y fabricar canales para que la matriz salga verde es exactamente
+lo que la orden prohíbe. Por eso este tramo queda **NOT_RUN con causa acreditada**, no por falta de
+montaje: el arnés, el driver y los botones están montados y ejecutados.
+
+## 6 · Matriz de estado (evidencia de esta ronda)
+
+| ID | Import en app real | OFF/ON metadata | Generación UI | Export/reimport | Motivo |
+|---|---|---|---|---|---|
+| P0 | PASS | PASS (Node+Chrome) | NOT_RUN | NOT_RUN | sin canales en la app |
+| P1 | PASS | PASS | NOT_RUN | NOT_RUN | idem |
+| P2 | PASS | PASS | NOT_RUN | NOT_RUN | idem |
+| P3 | PASS | PASS | NOT_RUN | NOT_RUN | idem |
+| P4 | PASS | PASS | NOT_RUN | NOT_RUN | idem |
+| P5 | PASS | PASS | NOT_RUN | NOT_RUN | idem |
+| P0.5 | PASS (`.5` preservado) | PASS | NOT_RUN | NOT_RUN | idem |
+| P1.5 | PASS | PASS | NOT_RUN | NOT_RUN | idem |
+| P2.5 | PASS | PASS | NOT_RUN | NOT_RUN | idem |
+| P3.5 | PASS | PASS | NOT_RUN | NOT_RUN | idem |
+| P4.5 | PASS | PASS | NOT_RUN | NOT_RUN | idem |
+| P5.5 | PASS | PASS | NOT_RUN | NOT_RUN | idem |
+
+`determineProfile` automático: **NOT_RUN** por la misma causa (necesita un canal para decidir).
+
+## 7 · Rollback
+
+Vaciar la marca de `ape-profiles-config.js` (una condición dentro de `isVersionSupported`) y quitar
+`_fase4_e2e_driver.js` del `index-v4.html` del worktree. El `else` original queda intacto: sin el
+normalizador y sin la marca, la app vuelve a rechazar `profiles` como antes. La habilidad instalada no
+se toca.
+
+## 8 · Dos formas de desbloquear, ambas reales
+
+1. **Alta de un servidor autorizado en el panel** (`connectionForm`: alias, URL base, usuario, API) y
+   pulsar `btnConnect` → canales reales → generar/exportar/reimportar los 12 perfiles.
+2. **Cargar la lista local autorizada** `APE_4K_PREMIUM_6K_METADATA.m3u8` (754.247.241 B,
+   sha256 `001713fc…`) desde `APE_PRIVADO`, añadiendo en staging el cargador de fichero M3U mínimo
+   sobre el parser existente. Esto además cierra la medición de memoria/cancelación con un archivo
+   representativo, que es requisito de la orden.
+
+Ninguna de las dos requiere tocar producción ni el VPS.
