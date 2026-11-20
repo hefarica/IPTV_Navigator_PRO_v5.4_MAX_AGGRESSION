@@ -655,3 +655,27 @@ propietario y la lista exportada por la app.
 Límite declarado: la cabecera `#EXT-X-APE-CACHING-PRECEDENCE` solo expone P0–P5; los seis perfiles
 `.5` no aparecen ahí, así que su herencia **no** queda acreditada por esta vía. Tampoco se han comparado
 buffers, prefetch, headers ni límites: solo `vlcopt.network-caching`.
+## 30 · Herencia de los seis Premium (`.5`): NO se cumple en el artefacto
+
+Mismo método que el §29, sobre los archivos `.5` exportados de la corrida 12/12:
+
+```
+perfil | LAB network-caching | emitido en la lista | archivo           | resultado
+P0.5   | 15000               | ["55000"]            | salida_P0.5__…     | FAIL
+P1.5   | 12000               | ["55000"]            | salida_P1.5__…     | FAIL
+P2.5   | 10000               | ["55000"]            | salida_P2.5__…     | FAIL
+P3.5   | 10000               | ["55000"]            | salida_P3.5__…     | FAIL
+P4.5   | 10000               | ["55000"]            | salida_P4.5__…     | FAIL
+P5.5   | 12000               | ["55000"]            | salida_P5.5__…     | FAIL
+HERENCIA_6K PASS=0 FAIL=6   EXIT=1
+```
+
+Los seis perfiles Premium reciben **55000** en la lista, que no coincide con el valor de su propio perfil en
+el LAB. Es exactamente el hueco que la orden exige no dar por cerrado: **el tuning Premium importado no
+llega al artefacto en este campo**.
+
+Atribución cuidadosa: los archivos se generaron con una selección de perfil activa, así que 55000 puede
+venir de otra capa (cabecera/selector) y no de un fallo del importador. Para atribuirlo con precisión
+falta generar con cada `.5` seleccionado e instrumentar la precedencia, porque la cabecera
+`#EXT-X-APE-CACHING-PRECEDENCE` **no publica los `.5`**. Lo que sí queda medido: el valor del perfil
+`.5` del LAB **no aparece** en la lista exportada.
