@@ -268,3 +268,26 @@ Comprobación directa sobre `salida_P0.m3u8`: **3 líneas sidecar**, la primera 
 
 Pendiente: repetir P4/P5/P0.5 hasta 12/12 con blob y export, `determineProfile` automático y medición
 de memoria con la lista de 754 MB.
+## 15 · CIERRE: 12/12 perfiles con export y reimportación verificados
+
+Repetidos los tres que quedaron pendientes (P4, P5, P0.5) con el mismo arnés:
+
+| ID | OFF bytes | ON sidecar | perfil · target | export sha (disco) | reimportación |
+|---|---|---|---|---|---|
+| P4 | 286.447 | 3 | P4 · 3840x2160 | `0660bd5d…` ✔ | 3 canales · secuencia idéntica |
+| P5 | 286.323 | 3 | P5 · 3840x2160 | `5c13186a…` ✔ | idéntica |
+| P0.5 | 260.177 | 3 | P0.5 · 5760x3240 | `2b61662f…` ✔ | idéntica |
+
+Con las nueve anteriores: **12/12 perfiles completaron selección real → OFF → ON → export a
+`C:\Users\HFRC\APE_PRIVADO\salida_<ID>.m3u8` → reimportación por el control real con secuencia de
+canales idéntica.** `err: []`.
+
+**Cobertura automática: NO COMPUTADA con causa acreditada.** `typeof window.determineProfile` es
+`undefined` en esta build: el selector automático del generador **no está expuesto como global**, así
+que no se puede invocar desde la UI ni se puede fabricar su resultado. La cobertura manual de los 12
+IDs está completa; la automática requiere instrumentar el generador (fuera de este alcance).
+
+Sigue NOT_RUN: medición de memoria/cancelación con la lista de 754 MB y cualquier prueba de render,
+cadencia o hardware. El consumidor dedicado del sidecar (lectura de versión/capacidades y plan en UI)
+tampoco existe: lo que está probado es que la app **reimporta** el archivo con el sidecar y conserva
+la secuencia de canales, no que un consumidor interprete la intención.
