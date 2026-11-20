@@ -539,3 +539,41 @@ RESUMEN PASS=17 FAIL=0    EXIT=0
 
 Cada archivo: 3 sidecar, metadata válida, 0 errores, `profile == selectedProfile == ID del archivo`,
 target nominal correcto y **procesamiento declarado como no ejecutado**.
+## 26 · Rollback completo ejecutado y restaurado
+
+Procedimiento y lo observado, en el worktree `C:\Users\HFRC\Desktop\IPTV_FASE2_STAGING` (detached en
+`5376eef6`):
+
+```
+antes        : 6 modificados + 6 sin seguimiento (diff de fases 1-9)
+git stash push -u -m fase4-9-rollback-test
+tras rollback: árbol LIMPIO (git status vacío), los 3 módulos nuevos AUSENTES
+               (ape-lab-normalize.js, ape-4k6k-consumer.js, ape-m3u-local-loader.js = False)
+git stash pop
+tras restaurar: 6 modificados + 6 sin seguimiento otra vez; las 4 referencias <script>
+                del index presentes (normalize, consumer, loader, driver); node --check = 0
+                en todos los ficheros tocados
+```
+
+Hashes **posteriores a la restauración** (autoritativos, 16 hex):
+
+```
+725ab3401896d8ef  ape-lab-normalize.js
+b949d57e7b378935  ape-4k6k-consumer.js
+1b78375371b55988  ape-m3u-local-loader.js
+7bc8cc15a585cade  _fase4_e2e_driver.js
+8678adf7b2849838  ape-v9/ape-4k6k-audit-adapter.js
+4d7b00c5cc9dc055  ape-lab-import-helper.js
+54110c7ef52bc9a0  ape-v9/ape-profiles-config.js
+e9f144025ef7e4eb  ape-v9/profile-manager-v9.js
+24be96958bf4bac2  ape-v9/m3u8-typed-arrays-ultimate.js
+```
+
+**Corrección honesta de mi propio reporte**: la primera tabla de hashes «antes» que publiqué estaba
+mal emparejada — incluí al frente una ruta inexistente (`frontend/js/ape-4k6k-audit-adapter.js` en vez
+de `frontend/js/ape-v9/…`), lo que desplazó todas las filas y me hizo leer como «8 distintos» lo que en
+realidad era un desalineamiento mío. La verificación válida es la de arriba: árbol restaurado, doce
+ficheros presentes, referencias en el index y sintaxis correcta en todos. La identidad byte a byte con
+el estado previo **no** la afirmo a partir de aquella tabla.
+
+Rollback en una línea para el operador: `git -C <worktree> stash push -u` y `git -C <worktree> stash pop`.
