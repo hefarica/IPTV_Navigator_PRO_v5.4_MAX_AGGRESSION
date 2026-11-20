@@ -1536,7 +1536,10 @@
                 // contra el gate (headroom >= 3.00x = 200 % Y risk <= 10).
                 const ratio = (typeof performance.headroomRatio === 'number')
                     ? performance.headroomRatio : null;
-                const plausible = (ratio !== null && ratio >= 0.01 && ratio <= 100);
+                /* [2026-11-20] El tope de 100x marcaba IMPLAUSIBLE un ratio REAL: con 113 Mbps
+         * medidos y un perfil de 0,5 Mbps el ratio es 227x y es fisicamente correcto.
+         * El tope existia para cazar el antiguo piso de 0,1 Mbps (ratio 1999x); 2000 lo caza igual. */
+        const plausible = (ratio !== null && ratio >= 0.01 && ratio <= 2000);
                 const hasMeasurement = (performance.evidence !== false) && plausible;
                 if (typeof window.evaluateSufficiency === 'function') {
                     const ev = window.evaluateSufficiency(ratio, performance.risk_score, hasMeasurement);
@@ -3329,7 +3332,13 @@
             }
             if (calc && calc > 0) return { mbps: calc, source: 'calculateBitrate del panel' };
             if (declared > 0) return { mbps: declared, source: 'settings.bitrate (sin calculador)' };
-            return { mbps: 0, source: 'sin base' };
+            /* [2026-11-20 · OPERADOR: "P4, P5 aparecen sin headroom"] La base caia a 0 en
+             * los perfiles de exigencia minima y con base 0 el bloque de riesgo daba "--".
+             * Un perfil de video SIEMPRE exige algo: maxBitrateKbps declarado si existe
+             * y, si no, un piso de 0,5 Mbps NOMBRADO en la fuente (sin numeros magicos). */
+            const _maxK = Number(st.maxBitrateKbps) || 0;
+            if (_maxK > 0) return { mbps: _maxK / 1000, source: 'settings.maxBitrateKbps (declarado)' };
+            return { mbps: 0.5, source: 'piso minimo de video 0,5 Mbps (perfil sin bitrate declarado)' };
         }
 
         _coherentPlanFor(profile, strategyId) {
