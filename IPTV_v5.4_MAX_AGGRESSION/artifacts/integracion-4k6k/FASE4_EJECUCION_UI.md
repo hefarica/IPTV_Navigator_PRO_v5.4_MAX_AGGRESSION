@@ -773,3 +773,29 @@ Coincide exactamente con el `L3` de **P3**, el perfil por defecto del manager.
 Conclusión firme: en los perfiles Premium `.5`, la selección **no gobierna** el `network-caching` emitido;
 el artefacto cae a un valor fijo heredado de P3. El defecto es real (antes lo había medido contra el campo
 equivocado, ahora contra los dos campos correctos), y afecta a 5 de los 6 Premium en este campo.
+## 35 · Fix propuesto para el `.5` (inyectar la selección como forceProfile) — aplicado, NO verificado
+
+Causa raíz del §34 localizada en el controlador: `prepublishAndGenerate(options = {})` se invoca **sin
+opciones** (`generation-controller.js:1825`), así que `forceProfile` queda `undefined` y el generador resuelve
+por canal (`determineProfile(channel) || 'P3'`) → los `.5` caen a P3.
+
+Parche aplicado en staging (compatible, con `try/catch` y sin tocar el default):
+si el llamador no fija `options.forceProfile`, se toma `ProfileManagerV9.activeProfileId` (o
+`APE_PROFILES_CONFIG.activeProfileId`). Con el default P3 el comportamiento previo no cambia.
+
+**Intento de verificación (P0.5):**
+
+```
+{"ok":false,"fallos":["P0.5: sin clic en control visible","P0.5: selectedProfile != P0.5"]}
+sidecar seleccionado: P3 · #EXTVLCOPT:network-caching=55000
+```
+
+El runner falló **antes** de ejercitar el parche: en esta corrida el contenedor del profile manager **no
+renderizó botón para `P0.5`** (`clickVisible: "sin-boton"`), de modo que no hubo selección y todo quedó en P3.
+La aserción lo detectó y salió con código 1 — el arnés no se dejó engañar.
+
+**Estado del fix: aplicado, NO verificado.** Falta una corrida donde el botón de cada `.5` exista en el DOM
+(p. ej. activando el toggle 6K antes de seleccionar) y comprobar que el `network-caching` emitido coincide con
+el `L3_EXTVLCOPT` propio de cada perfil (105000/72000/58000/55000/52000/30000).
+
+Suite Node del adaptador tras el cambio: **PASS 204 · FAIL 0** (sin regresión).
