@@ -291,3 +291,47 @@ Sigue NOT_RUN: medición de memoria/cancelación con la lista de 754 MB y cualqu
 cadencia o hardware. El consumidor dedicado del sidecar (lectura de versión/capacidades y plan en UI)
 tampoco existe: lo que está probado es que la app **reimporta** el archivo con el sidecar y conserva
 la secuencia de canales, no que un consumidor interprete la intención.
+## 16 · Control VISIBLE y separación selección / asignación / QoE
+
+Los 12 IDs se seleccionaron **pulsando los botones renderizados** dentro de `#profile-manager-container`
+(7 botones visibles con `onclick`), no llamando a la API por consola:
+
+```
+id     clickVisible  perfilCanalAntes  perfilCanalDespues  sidecar.profile  sidecar.selectedProfile  target
+P0     ok            null              null                P0               P0                       7680x4320
+P1..P5 ok            null              null                P1..P5           P1..P5                   3840x2160
+P0.5   ok            null              null                P0.5             P0.5                     5760x3240
+...    ok            null              null                ...              ...                      5760x3240
+```
+
+- **`perfilCanalAntes` = `perfilCanalDespues` = null**: la selección global **no reasigna** el perfil de
+  los canales. La invariante que pediste se cumple y se mide.
+- El sidecar ahora lleva **dos campos distintos**: `outputPolicy.profile` (perfil efectivo del canal) y
+  `selectedProfile` (el elegido para esta operación desde el control visible). En estas filas coinciden
+  porque el canal no traía perfil propio; cuando el canal traiga uno, `profile` lo reflejará y
+  `selectedProfile` seguirá siendo la selección de la operación.
+- Precedencia corregida: el canal manda; la selección global solo actúa como **respaldo** cuando el
+  canal no trae perfil (no pisa asignaciones preexistentes).
+
+## 17 · Selector automático: rastreado, no invocable
+
+- `determineProfile(channel)` vive **dentro** del generador (`m3u8-typed-arrays-ultimate.js:8010`) y se
+  usa en `13921: const profile = forceProfile || determineProfile(channel) || 'P3'`.
+- `typeof window.determineProfile === 'undefined'`: **no está expuesto** como global (medido en Chrome).
+- Ejecutarlo desde la UI exigiría pasar por el generador sin `forceProfile`, con canales sin perfil
+  asignado; el cargador de la app asigna perfil propio (`null` aquí tras mi carga), así que la ruta
+  automática no se puede aislar sin instrumentar el generador. **Operación concreta bloqueada: invocar
+  el selector automático aislado. Causa acreditada: función interna, sin punto de entrada público.**
+
+## 18 · Límites de esta ronda (sin maquillar)
+
+- **Consumidor dedicado del sidecar**: no implementado todavía. Hoy está probado que el archivo con
+  sidecar se **reimporta** y conserva la secuencia de canales; falta un lector que valide
+  versión/capacidades y muestre el plan en UI.
+- **Herencia efectiva del LAB (buffers/prefetch/headers por ID)**: no verificada campo por campo.
+- **Lista de 754 MB**: no usada en el navegador (memoria/cancelación/UI sin medir).
+- **Rutas HTTP del arnés**: bind exclusivo en `127.0.0.1` con puerto efímero; `/lab.json`, `/entrada.m3u8`,
+  `/guardar` y `/salida.m3u8` solo responden a conexiones locales. No hay forwarding ni túnel. La ruta
+  `/guardar` escribe con nombre saneado (`[^A-Za-z0-9.]` fuera) dentro de `APE_PRIVADO`.
+- **Rollback completo del diff**: no ejecutado todavía; el diseño de cada sustitución conserva el `else`
+  original, pero falta probarlo retirando los cambios y repitiendo.

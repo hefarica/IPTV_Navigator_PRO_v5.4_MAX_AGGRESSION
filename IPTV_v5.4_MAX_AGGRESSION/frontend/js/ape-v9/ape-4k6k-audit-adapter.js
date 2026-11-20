@@ -261,7 +261,9 @@
                 act0 = String(root.APE_PROFILES_CONFIG.activeProfileId).toUpperCase();
             }
         } catch (e) { act0 = ''; }
-        if (PROFILE_IDS.indexOf(act0) >= 0) return act0;
+        /* [FASE 7 · orden del operador] La selección global NO reasigna el perfil
+         * del canal: se registra aparte. Aquí solo se usa como respaldo cuando el
+         * canal no trae ninguno (no se pisa una asignación preexistente). */        if (PROFILE_IDS.indexOf(raw) < 0 && PROFILE_IDS.indexOf(act0) >= 0) return act0;
         var raw = String((ch && (ch.ape_profile || ch.apeProfile || ch.profile)) || '').toUpperCase();
         if (PROFILE_IDS.indexOf(raw) >= 0) return raw;
         /* [FASE 5 · 2026-11-20] Medido en la app: al seleccionar otro ID con
@@ -337,11 +339,21 @@
 
     function wh(o) { return o.w + 'x' + o.h; }
 
+    function currentSelection() {
+        var a = '';
+        try {
+            if (root && root.ProfileManagerV9 && root.ProfileManagerV9.activeProfileId) a = String(root.ProfileManagerV9.activeProfileId).toUpperCase();
+            else if (root && root.APE_PROFILES_CONFIG && root.APE_PROFILES_CONFIG.activeProfileId) a = String(root.APE_PROFILES_CONFIG.activeProfileId).toUpperCase();
+        } catch (e) { a = ''; }
+        return PROFILE_IDS.indexOf(a) >= 0 ? a : null;
+    }
     function buildIntent(profile) {
         var o = objective(profile);
         return {
             schema: SCHEMA_INTENT,
             status: 'requested_only',
+            /* Perfil ELEGIDO para esta operación (control visible), distinto del perfil propio del canal. */
+            selectedProfile: currentSelection(),
             targetResolution: wh(o.target),
             targetWidth: o.target.w,
             targetHeight: o.target.h,
