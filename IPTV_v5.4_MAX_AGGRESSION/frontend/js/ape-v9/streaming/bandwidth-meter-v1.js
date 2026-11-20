@@ -1,3 +1,23 @@
+/* [2026-11-20] ORIGEN DE SONDA. Medido: sirviendo el panel en
+ * http://127.0.0.1:5500 el medidor caia a ficheros LOCALES (index-v4.html,
+ * el generador) porque /lists/streamlink.m3u8 no existe ahi. Eso mide el DISCO
+ * del PC, no la red: daba cifras sin sentido (18 Mbps con una linea de cientos).
+ * En local se sondea el VPS canonico (que ya tiene CORS en /lists/); en el VPS
+ * se sigue usando la ruta relativa. La sonda es la lista grande (228 MB), como
+ * Ookla: fichero grande + varios flujos en paralelo. */
+function apeProbeOrigin() {
+    try {
+        var h = (root.location && root.location.hostname) ? root.location.hostname : '';
+        var local = !h || /^(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(h);
+        return local ? 'https://iptv-ape.duckdns.org' : '';
+    } catch (_e) { return ''; }
+}
+function apeProbeUrl(path) {
+    var o = apeProbeOrigin();
+    var p = String(path || '/lists/streamlink.m3u8');
+    if (!o) return p;
+    return o + (p.charAt(0) === '/' ? p : '/' + p);
+}
 /* ═══════════════════════════════════════════════════════════════════════════
  * APE BANDWIDTH METER v1.0 — el PRODUCTOR de medición que faltaba
  *
@@ -280,14 +300,18 @@
     function probe(opts) {
         opts = opts || {};
         var windowS = clamp(Number(opts.windowS) || LAW.WINDOW_S_DEFAULT, 1, LAW.WINDOW_S_MAX);
-        var baseUrl = String(opts.probeUrl || LAW.PROBE_URL_DEFAULT);
+        var baseUrl = apeProbeUrl(opts.probeUrl || LAW.PROBE_URL_DEFAULT);
         /* [2026-11-17] AUTODESCUBRIMIENTO DEL OBJETIVO.
          * El objetivo por defecto (/lists/streamlink.m3u8) existe en el VPS pero
          * NO en un Live Server local: la sonda fallaba entera y el panel se
          * quedaba en "SIN MEDICION" aunque la red fuera perfecta. Se prueban
          * candidatos que SIEMPRE estan: el generador y el propio panel. */
-        var cands = opts.probeUrl ? [baseUrl] : ['index-v4.html',
-            'js/ape-v9/m3u8-typed-arrays-ultimate.js', baseUrl];
+        /* [2026-11-20] ORDEN CAMBIADO: la lista grande primero. Los ficheros locales
+         * se eliminaron como respaldo porque medir el disco no es medir la red.
+         * Si la red falla, se declara el fallo; no se inventa una cifra. */
+        var cands = opts.probeUrl ? [baseUrl] : [baseUrl,
+            apeProbeUrl('/index-v4.html'),
+            apeProbeUrl('/js/ape-v9/m3u8-typed-arrays-ultimate.js')];
         var ci = 0;
         var maxBytes = Number(opts.maxBytes) || LAW.PROBE_MAX_BYTES;
         var fetchFn = opts.fetch || NATIVE_FETCH || root.fetch;

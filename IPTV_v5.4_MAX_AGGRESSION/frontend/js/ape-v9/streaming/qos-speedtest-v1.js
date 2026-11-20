@@ -1,3 +1,20 @@
+/* [2026-11-20] ORIGEN DE SONDA. Servido el panel fuera del VPS, la ruta relativa
+ * no existe; se sondea el VPS canonico (ya tiene CORS en /lists/). En el VPS se
+ * usa la ruta relativa. La sonda es la lista grande, como Ookla: fichero grande
+ * y varios flujos en paralelo. */
+function apeProbeOrigin() {
+    try {
+        var h = (root.location && root.location.hostname) ? root.location.hostname : '';
+        var local = !h || /^(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(h);
+        return local ? 'https://iptv-ape.duckdns.org' : '';
+    } catch (_e) { return ''; }
+}
+function apeProbeUrl(path) {
+    var o = apeProbeOrigin();
+    var p = String(path || '/lists/streamlink.m3u8');
+    if (!o) return p;
+    return o + (p.charAt(0) === '/' ? p : '/' + p);
+}
 /* ═══════════════════════════════════════════════════════════════════════════
  * APE QOS SPEEDTEST v1 — medición de capacidad tipo Ookla (sin su UI)
  *
@@ -59,7 +76,8 @@
 
     function sameOriginPath() {
         try {
-            if (root.location && root.location.pathname) return root.location.pathname;
+            /* [2026-11-20] la sonda es la lista grande del servidor, no el pathname */
+        return apeProbeUrl('/lists/streamlink.m3u8');
         } catch (e) { /* noop */ }
         return '/index-v4.html';
     }
