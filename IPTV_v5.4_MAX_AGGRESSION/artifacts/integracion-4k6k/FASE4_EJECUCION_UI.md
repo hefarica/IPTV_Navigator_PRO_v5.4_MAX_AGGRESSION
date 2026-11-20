@@ -924,3 +924,27 @@ Divergencias medidas que NO he corregido y quedan como hallazgos:
 `video-hdr` (LAB true → emitido false en P0.5) · `video-hdr-mode` (HDR10PLUS/DOLBY_VISION_P8 → HLG/SDR)
 · `video-hdr-nits` (1000 → 4000, 10000 → 400) · `audio-channels` (2 → 6) · `clock-jitter` (1000/2000 → 0)
 · `saturation` (1.06 → 1.08) · `http-user-agent`/`http-referrer` con plantillas `{config.*}` sin resolver.
+## 41 · P0 CORREGIDO Y VERIFICADO: el artefacto ya declara 7680x4320, no la geometría de P3
+
+Corrida tras restaurar la inyección para todos: `{"ok":true,"perfiles":["P0"],"fallos":[]}`.
+Archivo `salida_P0__1795196092579.m3u8` (292.810 B, guardar y salida_ok con el mismo tamaño):
+
+```
+video-width            = 7680      (antes 1920)
+video-height           = 4320      (antes 1080)
+adaptive-maxwidth      = 7680      (antes 1920)
+adaptive-maxheight     = 4320      (antes 1080)
+network-caching        = 105000    (antes 55000)
+video-fps              = 30        (coincide con el LAB de P0)
+```
+
+El defecto de anti-degradación medido en el §40 queda **corregido en el artefacto**: con P0 seleccionado, la
+lista declara ahora su geometría 8K real y no la de P3.
+
+Cadena completa de esta corrección, toda medida:
+1. §34/§35: la selección visible no llegaba al generador (`forceProfile` undefined) → fix de inyección.
+2. §38: acotarlo a los `.5` dejaba el defecto en los base → medido con P0 emitiendo 1920x1080.
+3. §41: inyección para todos → **P0 emite 7680x4320 + 105000**.
+
+Pendiente con esto: repetir la matriz 12/12 completa (una sola corrida) para dejar la tabla final con la
+aserción de recuperación ya corregida.
