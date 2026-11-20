@@ -498,3 +498,18 @@ completo idéntico al de memoria y verificado por relectura, `idempotente=true`,
 Diferencia que sigo sin explicar: la reimportación devuelve 36 B menos que el archivo exportado en todas
 las filas (p. ej. 291.575 vs 291.611). Es constante, no aleatoria; apunta a normalización del paso
 texto→File, y queda como incógnita aislada.
+## 24 · Los 36 B de la reimportación: era mi unidad, no una pérdida
+
+Medido sobre el archivo real en disco (`APE_PRIVADO/fase8/salida_P0__1795193536992.m3u8`):
+
+```
+bytes=293002  chars=292966  diferencia=36  chars_multibyte=18
+utf8_del_texto=293002  == bytes del archivo? true
+```
+
+El driver comparaba `t2.length` (**caracteres UTF-16**) contra `export.bytes` (**bytes UTF-8**). La lista
+tiene 18 caracteres no ASCII (`✦`), cada uno aporta 2 bytes extra en UTF-8 → 18 × 2 = **36**. El
+contenido reimportado es idéntico byte a byte (`Buffer.byteLength(texto) === bytes del archivo`).
+
+Conclusión: **no había pérdida ni normalización**. Era un error de medición mío en el arnés, y queda
+corregido en la documentación para que nadie lo lea como defecto del producto.
