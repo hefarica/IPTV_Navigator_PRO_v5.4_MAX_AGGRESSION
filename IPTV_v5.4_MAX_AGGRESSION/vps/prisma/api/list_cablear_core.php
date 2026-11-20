@@ -191,6 +191,23 @@ if (!defined('APE_CABLEAR_CORE')) {
             }
             $cand = $listsRoot . '/' . $lista;
 
+            /* [2026-11-20 · OPERADOR: "que lea absolutamente todo"] MEDIDO: para
+             * muchas listas el fichero de /lists/ es un STUB de 8-42 B (REGLA 84:
+             * el contenido real vive en el .gz) y ademas existe una copia COMPLETA
+             * en /lists/pulse/, que es EXACTAMENTE la que nginx sirve porque su
+             * try_files prueba pulse primero:
+             *     try_files /lists/pulse/$ape_list.m3u8 /lists/$ape_list.m3u8 =404;
+             * Cableando el stub se leian 0 canales (envueltos=0, canales=0) aunque
+             * el ticket dijera "done". Aqui se resuelve igual que nginx:
+             *   1) /lists/pulse/<nombre>  si existe y no vacio  (lo que se sirve)
+             *   2) /lists/<nombre>        si no es stub
+             *   3) /lists/<nombre>        (stub) -> el tamano real se toma del .gz
+             */
+            $pulse = $listsRoot . '/pulse/' . $lista;
+            if (is_file($pulse) && is_readable($pulse) && (int) @filesize($pulse) > 1024) {
+                $cand = $pulse;
+            }
+
             /* 5 — no salir del directorio (B3). D1: contra realpath(raiz). */
             $rootReal = realpath($listsRoot);
             $candReal = realpath($cand);

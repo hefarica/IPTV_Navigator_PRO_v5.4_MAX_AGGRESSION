@@ -241,13 +241,26 @@ procesar() { # <fichero-en-tomados>
     cerrar "$f" "$FALLIDOS" failed E_LISTA_NOMBRE_INVALIDO
     return 1
   fi
-  # El directorio real del fichero debe ser exactamente /lists (symlinks fuera).
-  local rdir; rdir="$(cd "$(dirname "$src")" 2>/dev/null && pwd -P)"
-  [ "$rdir" = "$(cd "$LISTS" 2>/dev/null && pwd -P)" ] || {
-    MOTIVO="path real fuera de /lists: ${rdir:-?}"
-    cerrar "$f" "$FALLIDOS" failed E_LISTA_FUERA_DE_LISTS
-    return 1
-  }
+  # El directorio REAL del fichero debe colgar de la raiz REAL de listas.
+  # [2026-11-20 · OPERADOR: "que lea absolutamente todo"] MEDIDO: exigir
+  # IGUALDAD exacta contra realpath($LISTS) rechazaba /lists/pulse/<nombre>,
+  # que es justo la copia COMPLETA que nginx sirve (su try_files prueba
+  # pulse/ primero) y la que el encolado elige cuando /lists/<nombre> es un
+  # stub de 8-42 B (REGLA 84). Resultado medido antes del arreglo: ticket
+  # failed con E_LISTA_FUERA_DE_LISTS y canales=0.
+  # La barrera que importa se CONSERVA: pwd -P resuelve symlinks, y la ruta
+  # resuelta tiene que empezar por la raiz resuelta; cualquier escape a /etc,
+  # /tmp o a un enlace que apunte fuera del arbol sigue rechazandose.
+  local rdir root_real
+  rdir="$(cd "$(dirname "$src")" 2>/dev/null && pwd -P)"
+  root_real="$(cd "$LISTS" 2>/dev/null && pwd -P)"
+  case "${rdir:-}/" in
+    "${root_real:-/nonexistent}/"*) ;;
+    *) MOTIVO="path real fuera de ${root_real:-?}: ${rdir:-?}"
+       say "E_LISTA_FUERA_DE_LISTS $base -> ${rdir:-?}"
+       cerrar "$f" "$FALLIDOS" failed E_LISTA_FUERA_DE_LISTS
+       return 1 ;;
+  esac
   [ -f "$src" ] || {
     MOTIVO="no existe la lista $nbase"
     say "E_LISTA_NO_EXISTE $base -> $nbase"
@@ -321,6 +334,34 @@ procesar() { # <fichero-en-tomados>
     return 1
   fi
 
+  # ── conteo REAL de lo cableado (medido sobre la salida, no supuesto) ─────
+  # [2026-11-20] MEDIDO: el ticket se cerraba con progreso.{lineas,canales,
+  # envueltos,ya_estaban,sin_id,bytes_salida} a CERO aunque el fichero tuviera
+  # 11.222 canales. El panel pintaba "canales: 0" sobre un trabajo completo y
+  # el operador leia que no se habia leido nada. Los numeros salen de contar el
+  # fichero que se publica y el de origen; ninguno se inventa.
+  local nlineas canales_out env_out env_in envueltos ya_estaban sin_id
+  nlineas="$(wc -l < "$tmp" 2>/dev/null || echo 0)"
+  canales_out="$(grep -c '^#EXTINF' "$tmp" 2>/dev/null || true)"
+  env_out="$(grep -c 'iptv-ape.duckdns.org/pulse/' "$tmp" 2>/dev/null || true)"
+  env_in="$(grep -c 'iptv-ape.duckdns.org/pulse/' "$src_use" 2>/dev/null || true)"
+  case "$nlineas"    in ''|*[!0-9]*) nlineas=0 ;; esac
+  case "$canales_out" in ''|*[!0-9]*) canales_out=0 ;; esac
+  case "$env_out"    in ''|*[!0-9]*) env_out=0 ;; esac
+  case "$env_in"     in ''|*[!0-9]*) env_in=0 ;; esac
+  envueltos=$(( env_out - env_in )); [ "$envueltos" -lt 0 ] && envueltos=0
+  ya_estaban="$env_in"
+  sin_id=$(( canales_out - env_out )); [ "$sin_id" -lt 0 ] && sin_id=0
+
+  # [2026-11-20 · MEDIDO, NO SUPUESTO] Aqui hubo una optimizacion que publicaba
+  # un ENLACE al origen cuando no habia nada que envolver (ahorraba ~708 MB por
+  # lista ya envuelta). Se RETIRA con evidencia: el artefacto que nginx sirve NO
+  # es este; es pulse/<nombre>, que lo produce pulse-sync envolviendo lists/*
+  # (ver /var/log/ara/pulse-sync.log: "wrap ... (675MB, mode=cartridge,
+  # policy=1)"). Publicar un enlace aqui dejaba DOS nombres con contenido
+  # divergente (lists/X -> origen sin envolver, pulse/X -> envuelto) y rompia la
+  # semantica del pipeline. Se escribe el fichero real; el conteo honesto del
+  # ticket se queda, que es lo que el panel necesitaba.
   # mv atomico: un lector nunca ve el fichero a medias
   if ! mv -f "$tmp" "$path_final"; then
     rm -f "$tmp"; MOTIVO="no pude mover a $path_final"
@@ -333,11 +374,14 @@ procesar() { # <fichero-en-tomados>
   bytes="$(stat -c%s "$path_final" 2>/dev/null || echo 0)"
   sha="$(sha256sum "$path_final" 2>/dev/null | cut -d' ' -f1)"
 
-  json_set "$f" "salida.nombre=$outname" "salida.path_final=$path_final" \
+  json_set "$f" \
+    "progreso.lineas=$nlineas" "progreso.canales=$canales_out" "progreso.envueltos=$envueltos" \
+    "progreso.ya_estaban=$ya_estaban" "progreso.sin_id=$sin_id" "progreso.bytes_salida=$bytes" \
+    "salida.nombre=$outname" "salida.path_final=$path_final" \
     "salida.bytes=$bytes" "salida.publicada=$publicada" "salida.sha256=$sha" \
-    "salida.url=$BASE_URL/$outname" || true
+    "salida.url=$BASE_URL/$outname" "salida.url_gz=$BASE_URL/$outname.gz" || true
   cerrar "$f" "$HECHOS" done -
-  say "done $base -> $outname (${bytes} B, sha256=${sha:0:12}, publicada=$publicada, libre=$(free_mb "$dst_dir")MB)"
+  say "done $base -> $outname (${canales_out} canales, ${envueltos} envueltos, ${ya_estaban} ya estaban, ${nlineas} lineas, ${bytes} B, sha256=${sha:0:12}, publicada=$publicada, libre=$(free_mb "$dst_dir")MB)"
   return 0
 }
 
