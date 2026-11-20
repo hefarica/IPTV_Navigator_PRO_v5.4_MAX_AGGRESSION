@@ -147,3 +147,34 @@ Lectura:
   iterar la selección de perfil (el control de perfil de la app) y repetir las tres pasadas por ID.
 - **`determineProfile` automático** desde la UI.
 - **Reimportación** del archivo generado y verificación de restauración exacta en la UI.
+## 11 · Doce IDs por el control REAL del profile manager (medido)
+
+`window.ProfileManagerV9.selectProfile(pid)` es el control que usan los propios botones de la UI
+(`profile-manager-v9.js:4593,4661`). Recorrido: 12 selecciones + 1 clic real a `#btnGenerateAudited`
+por estado, con los 3 canales reales.
+
+```
+id    sel   OFF(blob)                       ON(blob, sidecar, intentProfile, target)
+P0    true  290138 / d1838ab7 sidecar=0     sin blob (transitorio)
+P1    true  288078 / 1906a757 sidecar=0     291067 / sidecar=3 / P3 / 3840x2160 / premium 5760x3240
+P2    true  286006 / d844965a sidecar=0     289257 / 3 / P3 / 3840x2160
+P3    true  sin blob (transitorio)          289117 / 3 / P3 / 3840x2160
+P4    true  286559 / 08fc0822 sidecar=0     289049 / 3 / P3 / 3840x2160
+P5    true  283709 / c0a8b485 sidecar=0     286091 / 3 / P3 / 3840x2160
+P0.5  true  259547 / dcdc4a15 sidecar=0     260931 / 3 / P3 / 3840x2160
+P1.5  true  257634 / 4e29aa3f sidecar=0     260818 / 3 / P3 / 3840x2160
+P2.5  true  259772 / 2f6d0f27 sidecar=0     262190 / 3 / P3 / 3840x2160
+P3.5  true  259498 / c0969d53 sidecar=0     260365 / 3 / P3 / 3840x2160
+P4.5  true  257801 / dcd2baee sidecar=0     260538 / 3 / P3 / 3840x2160
+P5.5  true  256787 / f108b0ad sidecar=0     259407 / 3 / P3 / 3840x2160
+```
+
+**Hallazgo real:** en las 10 pasadas ON que produjeron blob, el sidecar dice `intentProfile=P3` y
+`target=3840x2160` **aunque se seleccionara otro ID**. Causa: el adaptador resuelve el perfil del
+canal (`readProfile(ch,'runtime')`) y los canales cargados no traen campo de perfil, así que cae al
+default. La selección del manager **no** llega al sidecar.
+
+Eso es exactamente la «herencia no conectada» que la orden §4 exige corregir: falta leer el perfil
+activo del manager (`ProfileManagerV9`) cuando el canal no trae uno propio, en vez de un default fijo.
+Dos filas sin blob (P0-ON, P3-OFF) son transitorios del clic bajo tiempo virtual, no un fallo de
+contrato: la misma combinación produjo blob en las demás.
