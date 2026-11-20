@@ -408,3 +408,32 @@ el driver fuerza la ruta de respaldo (`blob` + ancla) como condición de arnés 
 Corrección que queda definida para el siguiente paso: 1) esperar la liberación del `APE-GATE` entre
 generaciones; 2) `MutationObserver` sobre anclas `download` + `fetch(href)` para capturar bytes;
 3) resolver el alta de servidor con el operador para que la generación complete.
+## 21 · Runner endurecido: primera fila real y detección de verde falso
+
+Con dos correcciones del arnés (condición de staging **sin salida a Internet**: se aborta al instante
+el host de producción para que el pipeline no espere reintentos; y unidades de sha unificadas a 64 hex),
+la fila P0 produce por fin datos completos:
+
+```
+OFF  bytes=290.796  sidecar=0
+ON   bytes=292.091  sidecar=3  profile=P0  selectedProfile=P0  target=7680x4320  premium=7680x4320
+     sha256=5ad0f5191b747776d5a616e8f5ad2988217c19b391848c43f8462b96c8397ba1
+export ok=true bytes=292.091 sha256=<mismo valor completo>  archivo=salida_P0__<epoch>.m3u8
+idempotente=true   recuperacionExacta=true   perfilCanal antes=después=null
+```
+
+Y una comprobación que me importa más que el verde: la primera corrida salió `ok:true` con
+`reimport.bytes=2`. Era **verde falso**: `/salida.m3u8` respondía 401 y el driver reimportaba el cuerpo
+`"no"`, dejando el estado anterior (3 canales) y haciendo pasar la aserción de secuencia. Endurecida la
+aserción (`bytes > 1000 && tieneSidecar === true`), el runner ahora **falla**:
+
+```
+{"ok":false,"perfiles":["P0"],"fallos":["P0: reimportacion vacua (bytes=2)"],
+ "diag":[{"k":"rechazo","v":{"u":"/salida.m3u8","causa":"token"}}, … ]}
+EXIT=1
+```
+
+**Operación bloqueada**: servir el archivo exportado a la reimportación.
+**Causa aislada**: la ruta `/salida.m3u8` recibe la petición sin el token válido (401) aunque el mismo
+testigo funciona en `POST /guardar`; siguiente paso es capturar la cabecera que realmente llega en el
+GET (o servir el archivo con el mismo `fetch` del POST) y repetir. No lo doy por bueno.

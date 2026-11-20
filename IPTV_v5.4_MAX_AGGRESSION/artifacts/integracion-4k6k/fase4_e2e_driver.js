@@ -18,10 +18,19 @@
      camino que el test puede observar. */
   try { delete window.showSaveFilePicker; } catch (e) { }
   window.showSaveFilePicker = undefined;
+  /* CONDICIÓN DE ARNÉS: staging sin salida a Internet. Se abortan al instante las
+     llamadas al host de produccion para que el pipeline no espere reintentos. */
+  (function () { var of = window.fetch;
+    window.fetch = function (u, o) {
+      var s = String(u && u.url ? u.url : u);
+      if (s.indexOf('iptv-ape.duckdns.org') >= 0) return Promise.reject(new Error('staging_sin_red'));
+      return of.apply(window, arguments);
+    };
+  })();
   function q(s) { return document.querySelector(s); }
   function esp(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   async function sha(buf) { var d = await crypto.subtle.digest('SHA-256', buf);
-    return Array.from(new Uint8Array(d)).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('').slice(0, 16); }
+    return Array.from(new Uint8Array(d)).map(function (b) { return b.toString(16).padStart(2, '0'); }).join(''); }
   function perfilCanal() { var cs = (window.app && window.app.state && window.app.state.channelsMaster) || []; return cs[0] ? (cs[0].profile || cs[0].ape_profile || null) : null; }
   function uris(t) { return (t.match(/^https?:\/\/.*$/gm) || []).join('\n'); }
   function extinf(t) { return (t.match(/^#EXTINF:.*$/gm) || []).join('\n'); }
@@ -102,8 +111,8 @@
         var on1 = await leer(await generar(true));
         var on2 = await leer(await generar(true));
         fila.perfilCanalDespues = perfilCanal();
-        fila.off = { bytes: off.bytes, sha: off.sha, sidecar: (off.texto.match(/^#EXT-X-APE-4K6K-INTENT:/gm) || []).length };
-        fila.on = { bytes: on1.bytes, sha256: on1.sha, sha: on1.sha,
+        fila.off = { bytes: off.bytes, sha: off.sha.slice(0,16), sidecar: (off.texto.match(/^#EXT-X-APE-4K6K-INTENT:/gm) || []).length };
+        fila.on = { bytes: on1.bytes, sha256: on1.sha, sha: on1.sha.slice(0,16),
           sidecar: (on1.texto.match(/^#EXT-X-APE-4K6K-INTENT:/gm) || []).length, nombre: on1.nombre };
         var js = sidecarJson(on1.texto);
         if (js) {
@@ -121,7 +130,7 @@
           uris(rec) === uris(off.texto) && extinf(rec) === extinf(off.texto));
         var r = await fetch('/guardar', { method: 'POST', headers: Object.assign({ 'X-Perfil': pid }, H), body: on1.texto });
         fila.export = await r.json();
-        var t2 = await (await fetch('/salida.m3u8?p=' + encodeURIComponent(pid), { headers: H })).text();
+        var t2 = await (await fetch('/salida.m3u8?p=' + encodeURIComponent(pid), { headers: { 'X-APE-Token': token } })).text();
         var dt2 = new DataTransfer(); dt2.items.add(new File([t2], 'salida.m3u8', { type: 'audio/x-mpegurl' }));
         inp.files = dt2.files; inp.dispatchEvent(new Event('change', { bubbles: true }));
         await esp(500);

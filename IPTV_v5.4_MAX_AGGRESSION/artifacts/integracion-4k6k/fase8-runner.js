@@ -157,10 +157,12 @@ srv.listen(0, '127.0.0.1', () => {
                     const ruta = path.join(OUTDIR, f.export.archivo);
                     if (!fs.existsSync(ruta)) fallos.push(f.id + ': archivo ausente ' + f.export.archivo);
                     else {
-                        const sha = crypto.createHash('sha256').update(fs.readFileSync(ruta)).digest('hex').slice(0, 16);
+                        const sha = crypto.createHash('sha256').update(fs.readFileSync(ruta)).digest('hex');
                         if (sha !== f.export.sha256) fallos.push(f.id + ': relectura sha distinta');
                     }
                 }
+                /* la reimportacion solo cuenta si de verdad se leyó el archivo exportado */
+                if (!f.reimport || f.reimport.bytes <= 1000 || f.reimport.tieneSidecar !== true) fallos.push(f.id + ': reimportacion vacua (bytes=' + (f.reimport && f.reimport.bytes) + ')');
                 if (!f.reimport || f.reimport.mismaSecuencia !== true) fallos.push(f.id + ': reimportacion no identica');
                 if (f.idempotente !== true) fallos.push(f.id + ': no idempotente');
                 if (f.recuperacionExacta !== true) fallos.push(f.id + ': recuperacion no exacta');
