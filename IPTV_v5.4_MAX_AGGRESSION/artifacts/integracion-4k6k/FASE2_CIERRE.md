@@ -49,7 +49,6 @@ Medido sobre la lista real de 754.247.241 B: `entries=11222`, `attr_entries=1122
 `kind=iptv_catalog`, `media_override=catalog_signature`.
 
 ## 2 · Matriz de resultados (comando · hash · resultado)
-
 | Prueba | Comando | Resultado |
 |---|---|---|
 | Suite Node del adaptador | `node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ape-4k6k-audit-adapter.test.js` | **PASS 183 · FAIL 0** · exit 0 |
@@ -96,8 +95,8 @@ El árbol principal **no** se ha tocado: `index-v4.html` y el generador siguen i
 | Tramo | Estado | Motivo |
 |---|---|---|
 | Prueba en navegador real (carga + flag + resultado visible) | **PASS medido** | Chrome 157.0.8103.80 headless sobre el `frontend/` del worktree servido por loopback: módulo cargado, flag OFF por defecto, `enrich` OFF devuelve la misma referencia en 0,1 ms, ON añade solo `APE-4K6K-INTENT`, `rea` intacta, `intentTag` emitido. Nota: el worktree estaba en `5376eef6` (anterior a esta fase) y hubo que traer el adaptador `20c8a66f…`; el primer intento falló con `intentTag is not a function`, lo que confirma que la prueba depende del código real y no de una copia |
-| Hook real en el generador (`_apeAppendLegacyEnhancementMetadata` / finalizador por canal) | **NO HECHO** | la inserción debe ir en el emisor por canal (línea ~13662 de `m3u8-typed-arrays-ultimate.js`) y no se cablea a ciegas sin la prueba de navegador. El helper `intentTag()` está listo y probado |
-| Generación/exportación real OFF vs ON (bytes) | **NO COMPUTADO** | requiere la UI + LAB JSON del propietario; el hook no está cableado |
+| Hook real en el generador | **HECHO en staging** | el emisor por canal termina en `_apeAppendExtshimottTag(...)`; se sustituyó su `return` por `var b = X; if (flag && insertIntentTag) b = insertIntentTag(b, channel); return b`. Con OFF el bloque sale idéntico (probado en el navegador sobre el index real) |
+| Generación/exportación real OFF vs ON (bytes de la lista completa) | **NO COMPUTADO** | requiere tu LAB JSON y una corrida de la UI. Lo que sí está medido: el hook OFF devuelve el bloque idéntico (identidad por referencia), y el diff del generador es una sola sentencia sustituida |
 | Consumidor real del sidecar | **NO COMPUTADO** | no existe consumidor probado; por eso no se emite `outputPolicy` hacia REA |
 | 754 MB en navegador (memoria pico, cancelación) | **NO COMPUTADO** | no se descarga la lista productiva para benchmarks |
 | Device / VPS / APK / QoE en hardware | **NO COMPUTADO** | sin device; producción intacta por instrucción |

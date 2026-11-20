@@ -677,6 +677,46 @@ const baseList = [
             out.indexOf('#EXT-X-APE-4K6K-INTENT:') < out.indexOf('https://');
     })());
 
+    /* ── 18.b insertIntentTag: el hook real del emisor por canal ─────────── */
+    section('18.b insertIntentTag(): bloque por canal, LF/CRLF y sin tocar nada más');
+    const bloqueLF = '#EXTINF:-1 tvg-id="1",Canal\n#EXTHTTP:{"a":"b"}\n#EXTSHIMOTT:{"ver":1}\nhttps://iptv-ape.duckdns.org/pulse/1.m3u8?u=x&d=y';
+    const insLF = api.insertIntentTag(bloqueLF, tagCh, true);
+    ok('inserta exactamente UNA línea nueva', insLF.split('\n').length === bloqueLF.split('\n').length + 1);
+    ok('la URI sigue siendo la última línea', /^https:\/\//.test(insLF.split('\n').pop()));
+    ok('el tag queda inmediatamente antes de la URI', (function () {
+        const l = insLF.split('\n');
+        return l[l.length - 2].indexOf('#EXT-X-APE-4K6K-INTENT:') === 0;
+    })());
+    ok('las demás líneas quedan idénticas y en el mismo orden', (function () {
+        const antes = bloqueLF.split('\n'), despues = insLF.split('\n').filter(l => l.indexOf('#EXT-X-APE-4K6K-INTENT:') !== 0);
+        return J(antes) === J(despues);
+    })());
+    ok('sin salto final => sigue sin salto final', bloqueLF.slice(-1) !== '\n' && insLF.slice(-1) !== '\n');
+    ok('conserva CRLF cuando el bloque es CRLF', (function () {
+        const crlf = bloqueLF.split('\n').join('\r\n');
+        const out = api.insertIntentTag(crlf, tagCh, true);
+        return out.indexOf('\r\n#EXT-X-APE-4K6K-INTENT:') > 0 && out.indexOf('\n\n') < 0;
+    })());
+    ok('bloque cuya última línea no es URI => devuelve el MISMO string', (function () {
+        const raro = '#EXTINF:-1 tvg-id="1",Canal\n#EXTSHIMOTT:{"ver":1}';
+        return api.insertIntentTag(raro, tagCh, true) === raro;
+    })());
+    ok('bloque vacío o no-string => se devuelve tal cual',
+        api.insertIntentTag('', tagCh, true) === '' && api.insertIntentTag(null, tagCh, true) === null);
+    /* Defecto detectado en navegador: el helper insertaba aunque el flag estuviera OFF. */
+    ok('con la bandera OFF insertIntentTag devuelve el MISMO bloque', (function () {
+        const previo = global.APE_4K6K_AUDIT;
+        global.APE_4K6K_AUDIT = 0;
+        const r = api.insertIntentTag(bloqueLF, tagCh);
+        global.APE_4K6K_AUDIT = previo;
+        return r === bloqueLF;
+    })());
+    ok('el perfil del canal viaja al payload del tag', (function () {
+        const out = api.insertIntentTag(bloqueLF, { ape_profile: 'P4' }, true);
+        const linea = out.split('\n').find(l => l.indexOf('#EXT-X-APE-4K6K-INTENT:') === 0);
+        return JSON.parse(linea.slice('#EXT-X-APE-4K6K-INTENT:'.length)).outputPolicy.profile === 'P4';
+    })());
+
     console.log('\n══════════════════════════════════════════════════════════════');
     console.log('  PASS ' + pass + ' · FAIL ' + fail);
     console.log('══════════════════════════════════════════════════════════════');

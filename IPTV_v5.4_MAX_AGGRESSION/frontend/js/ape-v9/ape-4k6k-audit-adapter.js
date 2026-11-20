@@ -856,8 +856,40 @@
         return INTENT_TAG + JSON.stringify(payload);
     }
 
+    /* ── INSERCIÓN EN EL BLOQUE (§4: una URI por canal, tag antes de la URI) ── *
+     * Recibe el bloque YA finalizado de UN canal (tags + URI) y devuelve el
+     * bloque con la línea del sidecar justo antes de la URI. Reglas:
+     *   · si la última línea no es una URI `http(s)://`, NO se toca el bloque:
+     *     preferimos no emitir antes que romper un bloque raro;
+     *   · conserva el fin de línea detectado (LF o CRLF) y la ausencia de salto
+     *     final (si el bloque no terminaba en salto, sigue sin terminarlo);
+     *   · no reordena ni toca ninguna otra línea (EXTHTTP, EXTVLCOPT, KODIPROP,
+     *   · con la bandera OFF devuelve el bloque TAL CUAL (identidad por
+     *     referencia): ningún llamador puede emitir metadata nueva sin activar
+     *     el flag, aunque olvide el guard. `force === true` es solo para pruebas.
+     */
+    function insertIntentTag(block, ch, force) {
+        if (force !== true && !isEnabled()) return block;
+        if (typeof block !== 'string' || block === '') return block;
+        var tag = intentTag(ch);
+        var eol = block.indexOf('\r\n') >= 0 ? '\r\n' : '\n';
+        var sinSaltoFinal = !(block.slice(-1) === '\n');
+        var trabajo = sinSaltoFinal ? block : block.slice(0, -1);
+        var idx = trabajo.lastIndexOf(eol);
+        var ultima;
+        if (idx < 0) {
+            ultima = trabajo;                       /* bloque de una sola línea */
+            trabajo = '';
+        } else {
+            ultima = trabajo.slice(idx + eol.length);
+            trabajo = trabajo.slice(0, idx + eol.length);
+        }
+        if (!/^\s*https?:\/\//i.test(ultima)) return block;   /* no es un bloque con URI */
+        return trabajo + tag + eol + ultima + (sinSaltoFinal ? '' : eol);
+    }
+
     return {
-        version: '1.0.0',
+        version: '1.1.0',
         FLAG: FLAG,
         SCHEMAS: {
             intent: SCHEMA_INTENT, extends: SCHEMA_EXTENDS,
@@ -880,6 +912,7 @@
         overlay: overlay,
         enrich: enrich,
         intentTag: intentTag,
+        insertIntentTag: insertIntentTag,
         _sha256Hex: sha256Hex,
         _utf8Bytes: utf8Bytes
     };
