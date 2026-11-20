@@ -513,3 +513,29 @@ contenido reimportado es idéntico byte a byte (`Buffer.byteLength(texto) === by
 
 Conclusión: **no había pérdida ni normalización**. Era un error de medición mío en el arnés, y queda
 corregido en la documentación para que nadie lo lea como defecto del producto.
+## 25 · Consumidor del sidecar implementado y verificado sobre 17 archivos reales
+
+`js/ape-4k6k-consumer.js` (staging, cargado en `index-v4.html` tras el adaptador) lee la línea
+`#EXT-X-APE-4K6K-INTENT:`, y valida: `schema=ape-4k-premium6k-intent/1`, `status=requested_only`,
+`profile` y `selectedProfile` dentro de los 12 IDs, `targetResolution`/`premiumResolution` con forma
+`WxH`, `reaFieldsWritten === 0` y `outputPolicy.executed === false`.
+
+Separa los tres niveles de forma explícita, para no confundirlos:
+- **metadata leída y validada**: `metadata_valid`, `sidecars`, `planes`
+- **aplicable al reproductor**: `aplicables: []` con motivo `sin_motor_de_aplicacion`
+- **procesamiento de vídeo**: `procesamiento: 'no_ejecutado'` y `processing_executed: false`, siempre
+
+Verificación con el script `consumer-verify.js` sobre **los 17 archivos exportados** en
+`APE_PRIVADO/fase8` (12 de la corrida 12/12 + 5 anteriores):
+
+```
+archivos=17
+P0__ | d78c43f6855f4080 | 3 | true | 0 | P0 | P0 | 7680x4320 | no_ejecutado | PASS
+P1__ | d740d6bacc4b71d6 | 3 | true | 0 | P1 | P1 | 3840x2160 | no_ejecutado | PASS
+P2.5_ | 74a9abc91b6f8780 | 3 | true | 0 | P2.5 | P2.5 | 5760x3240 | no_ejecutado | PASS
+… (17 filas, una por archivo)
+RESUMEN PASS=17 FAIL=0    EXIT=0
+```
+
+Cada archivo: 3 sidecar, metadata válida, 0 errores, `profile == selectedProfile == ID del archivo`,
+target nominal correcto y **procesamiento declarado como no ejecutado**.
