@@ -74,7 +74,19 @@ Historial de esa misma prueba (evidencia de que mide el código real, no una cop
 | `frontend/js/ape-v9/ape-4k6k-audit-adapter.js` | +35: `insertIntentTag` (flag-aware) y `version 1.1.0` |
 | `frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js` | +11/−1: el guard del emisor por canal |
 
-## 5 · Lo que sigue sin medirse
+## 5 · Presupuesto medido del hook (11.222 llamadas, un canal cada una)
+
+```
+OFF  llamadas=11222  total_ms=2,19   por_canal_us=0,195
+ON   llamadas=11222  total_ms=45,04  por_canal_us=4,0    lineas_salida=4
+```
+
+OFF: **2,19 ms por lista completa** de 11.222 canales (0,2 µs por canal) — indistinguible del ruido.
+ON: **45 ms una sola vez** por lista, añadiendo una línea por canal. No hay copia de la lista, ni
+parseo adicional, ni memoria proporcional al fichero: el hook trabaja bloque por bloque, en el mismo
+punto donde el generador ya construía la cadena.
+
+## 6 · Lo que sigue sin medirse
 
 - **Bytes de la lista completa OFF vs código previo**: requiere tu LAB JSON y una corrida de la UI.
   El argumento actual es estructural (una sentencia sustituida + identidad por referencia),
