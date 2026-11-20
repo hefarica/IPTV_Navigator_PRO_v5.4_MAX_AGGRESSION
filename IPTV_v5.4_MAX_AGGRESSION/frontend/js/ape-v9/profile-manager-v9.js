@@ -3341,7 +3341,68 @@
             return { mbps: 0.5, source: 'piso minimo de video 0,5 Mbps (perfil sin bitrate declarado)' };
         }
 
-        _coherentPlanFor(profile, strategyId) {
+        /* ═════════════════════════════════════════════════════════════════════════
+     * APLICACION AUTOMATICA DE PARAMETROS (2026-11-20)
+     *
+     * Entrada: la medicion r del ciclo (r.measurement.mbpsSafe, r.headroomRatio).
+     * Motor:   APE_HEALTH_TUNER.deterministic(mbps, ratio, segDur) — formulas ya
+     *          escritas (bufferForRatio, timeoutForRatio, prefetchForBuffer,
+     *          parallelForRatio). AQUI NO SE ELIGE NINGUN VALOR A MANO.
+     * Salida:  por CADA uno de los 12 perfiles, con SU propio ratio
+     *          (medido / exigido por ese perfil):
+     *            settings.buffer            = bufferTargetS * 1000  (ms)
+     *            vlcopt['network-caching']  = bufferTargetS * 1000  (ms, VLC)
+     *            settings.network_timeout_ms= readTimeoutMs
+     *            prefetch_config.prefetch_segments / parallel_downloads
+     *          y se persiste (config.save) para que la generacion lo herede.
+     * Si no hay medicion valida NO se toca nada y se devuelve null.
+     * ═════════════════════════════════════════════════════════════════════════ */
+    _applyAutoTune(r) {
+        try {
+            const T = (typeof window !== 'undefined') ? window.APE_HEALTH_TUNER : null;
+            const cfg = this.config;
+            if (!T || typeof T.deterministic !== 'function' || !cfg || typeof cfg.getProfile !== 'function') return null;
+            const acc = (r && r.measurement) || {};
+            const mbps = (typeof acc.mbpsSafe === 'number' && isFinite(acc.mbpsSafe) && acc.mbpsSafe > 0) ? acc.mbpsSafe : null;
+            if (mbps === null) return null;
+            const ids = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P0.5', 'P1.5', 'P2.5', 'P3.5', 'P4.5', 'P5.5'];
+            const aplicado = [];
+            for (const id of ids) {
+                const p = cfg.getProfile(id);
+                if (!p) continue;
+                const req = this._requiredMbpsBasis(p).mbps;
+                if (!(req > 0)) continue;
+                const ratio = Math.round((mbps / req) * 100) / 100;
+                const det = T.deterministic(mbps, ratio, 6);
+                if (!det) continue;
+                const cacheMs = Math.round(det.bufferTargetS * 1000);
+                p.settings = p.settings || {};
+                p.settings.buffer = cacheMs;
+                p.settings.bufferSeconds = det.bufferTargetS;
+                p.settings.network_timeout_ms = det.readTimeoutMs;
+                p.vlcopt = p.vlcopt || {};
+                p.vlcopt['network-caching'] = String(cacheMs);
+                p.prefetch_config = p.prefetch_config || {};
+                p.prefetch_config.prefetch_segments = det.prefetchSegments;
+                p.prefetch_config.parallel_downloads = det.parallelDownloads;
+                aplicado.push({ id: id, ratio: ratio, cacheMs: cacheMs, timeoutMs: det.readTimeoutMs,
+                    prefetch: det.prefetchSegments, parallel: det.parallelDownloads });
+            }
+            if (!aplicado.length) return null;
+            if (typeof cfg.save === 'function') cfg.save();
+            this._lastAutoTune = { at: Date.now(), mbps: mbps, perfiles: aplicado };
+            if (typeof console !== 'undefined') {
+                console.log('[AUTO-TUNE] aplicado a ' + aplicado.length + ' perfiles · medido ' + mbps +
+                    ' Mbps · ' + aplicado.map(a => a.id + ':' + a.cacheMs + 'ms/' + a.timeoutMs + 'ms/' + a.ratio + 'x').join(' '));
+            }
+            if (typeof document !== 'undefined') {
+                try { this.render(); } catch (_r) { }
+            }
+            return this._lastAutoTune;
+        } catch (_e) { return null; }
+    }
+
+    _coherentPlanFor(profile, strategyId) {
             const T = (typeof window !== 'undefined') ? window.APE_HEALTH_TUNER : null;
             if (!T || typeof T.coherentPlan !== 'function') return null;
             const p = profile || (this.config && this.config.getProfile
@@ -4297,6 +4358,12 @@
                 : null;
             /* el plan del ciclo es el que pinta el panel: una sola fuente */
             if (plan) self._lastCoherent = plan;
+        /* [2026-11-20 · OPERADOR: "aplicar los parametros de manera automatica"]
+         * Tras CADA medicion, el gobernador APLICA lo que deriva el motor a los 12
+         * perfiles: buffer (settings.buffer y vlcopt network-caching) y el timeout
+         * de red. Cada perfil usa SU propio ratio (medido / exigido por el perfil),
+         * no el del perfil activo. Se persiste para que la lista lo herede. */
+        try { self._applyAutoTune(r); } catch (_at) { /* aditivo: nunca rompe el ciclo */ }
             /* [t17] pase lo que pase con el plan, la estrategia no se revierte */
             self._guardStrategy(profile);
 

@@ -10533,7 +10533,12 @@ return lines.join('\n');
         lines.push(`#EXTVLCOPT:clock-synchro=1`);
         /* [2026-11-20] El timeout NO se elige a mano: sale de la misma formula que
          * el buffer (timeoutForRatio). Sin medicion se restaura el valor previo. */
-        lines.push(`#EXTVLCOPT:network-timeout=${_apeAuto ? _apeAuto.timeoutMs : 60000}`);
+        /* [2026-11-20] timeout: MEDICION > settings.network_timeout_ms que dejo el
+         * gobernador en el perfil > 60000 (valor previo). Nada elegido a mano. */
+        const _pmTo = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG
+            && typeof window.APE_PROFILES_CONFIG.getProfile === 'function')
+            ? Number((window.APE_PROFILES_CONFIG.getProfile(profile) || {}).settings?.network_timeout_ms) : NaN;
+        lines.push(`#EXTVLCOPT:network-timeout=${_apeAuto ? _apeAuto.timeoutMs : (isFinite(_pmTo) && _pmTo > 0 ? _pmTo : 60000)}`);
         if (_apeAuto) {
             lines.push(`#EXT-X-APE-AUTO-TUNE:BASIS=measured;CACHE_MS=${_apeAuto.cacheMs};TIMEOUT_MS=${_apeAuto.timeoutMs};PREFETCH=${_apeAuto.prefetch};PARALLEL=${_apeAuto.parallel};RATIO=${_apeAuto.ratio};MBPS=${_apeAuto.mbps === null ? 'unknown' : _apeAuto.mbps};SOURCE=APE_HEALTH_TUNER.deterministic`);
         }
