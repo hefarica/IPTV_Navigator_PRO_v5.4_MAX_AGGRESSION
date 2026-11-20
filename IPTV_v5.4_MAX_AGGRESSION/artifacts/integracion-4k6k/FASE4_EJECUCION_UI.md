@@ -823,3 +823,25 @@ que es exactamente el método que invoca el botón. La ruta de **control visible
 
 Nota de operación: la página no cerró tras el resultado y el arnés cortó a los 420 s con `timeout` en el
 diagnóstico, pero con el marcador ya presente y `ok:true`; Chrome se terminó a mano después.
+## 37 · Los seis Premium verificados: 6/6 emiten su propio tuning
+
+Corrida `node fase8-runner.js "P1.5,P2.5,P3.5,P4.5,P5.5"` → `{"ok":true,"perfiles":[5],"fallos":[]}`.
+Y comprobación del valor emitido en cada archivo (script `premium-emision-check.js`):
+
+```
+perfil | esperado (L3 del LAB) | emitido en la lista | archivo            | resultado
+P0.5   | 105000                | 105000              | salida_P0.5__…     | PASS
+P1.5   |  72000                |  72000              | salida_P1.5__…     | PASS
+P2.5   |  58000                |  58000              | salida_P2.5__…     | PASS
+P3.5   |  55000                |  55000              | salida_P3.5__…     | PASS
+P4.5   |  52000                |  52000              | salida_P4.5__…     | PASS
+P5.5   |  30000                |  30000              | salida_P5.5__…     | PASS
+PREMIUM_EMISION PASS=6 FAIL=0   EXIT=0
+```
+
+Los seis perfiles Premium heredan ahora **su propio** valor del LAB (antes caían todos a 55000, el de P3).
+El defecto del §34 está **cerrado con medición en los seis**, no solo en el caso piloto del §36.
+
+En las cinco filas de esta corrida, además: `off.sidecar=0`, `on.sidecar=3`,
+`profile == selectedProfile == id`, `export.ok=true` con sha completo y relectura, `idempotente=true`,
+`recuperacionExacta=true`, `reimport.tieneSidecar=true` y `mismaSecuencia=true`.
