@@ -857,37 +857,31 @@
     }
 
     /* ── INSERCIÓN EN EL BLOQUE (§4: una URI por canal, tag antes de la URI) ── *
-     * Recibe el bloque YA finalizado de UN canal (tags + URI) y devuelve el
-     * bloque con la línea del sidecar justo antes de la URI. Reglas:
-     *   · si la última línea no es una URI `http(s)://`, NO se toca el bloque:
-     *     preferimos no emitir antes que romper un bloque raro;
-     *   · conserva el fin de línea detectado (LF o CRLF) y la ausencia de salto
-     *     final (si el bloque no terminaba en salto, sigue sin terminarlo);
+     * [FASE 2 · corregido contra el generador REAL] El bloque de un canal NO
+     * termina en la URI: el emisor añade metadata después (medido con el LAB
+     * real: 65.278 caracteres que acaban en `#EXT-X-APE-CRYSTAL-UHD:...`).
+     * La regla correcta es localizar la ÚNICA línea de URI e insertar justo antes.
+     *   · si hay 0 o más de 1 línea de URI, NO se toca el bloque (no se adivina);
+     *   · conserva el fin de línea (LF/CRLF) y la ausencia de salto final;
      *   · no reordena ni toca ninguna otra línea (EXTHTTP, EXTVLCOPT, KODIPROP,
-     *   · con la bandera OFF devuelve el bloque TAL CUAL (identidad por
-     *     referencia): ningún llamador puede emitir metadata nueva sin activar
-     *     el flag, aunque olvide el guard. `force === true` es solo para pruebas.
+     *     EXT-X-*, EXTSHIMOTT incluidos);
+     *   · con la bandera OFF devuelve el bloque TAL CUAL (identidad): ningún
+     *     llamador puede emitir metadata nueva sin activar el flag, aunque olvide
+     *     el guard. `force === true` es solo para pruebas.
      */
     function insertIntentTag(block, ch, force) {
         if (force !== true && !isEnabled()) return block;
         if (typeof block !== 'string' || block === '') return block;
-        var tag = intentTag(ch);
         var eol = block.indexOf('\r\n') >= 0 ? '\r\n' : '\n';
-        var sinSaltoFinal = !(block.slice(-1) === '\n');
-        var trabajo = sinSaltoFinal ? block : block.slice(0, -1);
-        var idx = trabajo.lastIndexOf(eol);
-        var ultima;
-        if (idx < 0) {
-            ultima = trabajo;                       /* bloque de una sola línea */
-            trabajo = '';
-        } else {
-            ultima = trabajo.slice(idx + eol.length);
-            trabajo = trabajo.slice(0, idx + eol.length);
+        var lineas = block.split(eol);
+        var idx = -1, n = 0, i;
+        for (i = 0; i < lineas.length; i++) {
+            if (/^\s*https?:\/\//i.test(lineas[i])) { n++; idx = i; }
         }
-        if (!/^\s*https?:\/\//i.test(ultima)) return block;   /* no es un bloque con URI */
-        return trabajo + tag + eol + ultima + (sinSaltoFinal ? '' : eol);
+        if (n !== 1) return block;                 /* ambiguo o sin URI: intacto */
+        lineas.splice(idx, 0, intentTag(ch));
+        return lineas.join(eol);
     }
-
     return {
         version: '1.1.0',
         FLAG: FLAG,

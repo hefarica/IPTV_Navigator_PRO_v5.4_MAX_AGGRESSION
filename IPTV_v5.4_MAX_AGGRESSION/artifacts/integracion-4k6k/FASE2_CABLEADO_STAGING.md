@@ -95,3 +95,42 @@ punto donde el generador ya construía la cadena.
 - **Privacidad de exportación en Windows**: `chmod(0600)` no aplica en NTFS; la exportación privada
   de staging debe usar un destino con ACL verificada (`icacls`) o fallar con motivo. Pendiente de
   definir el destino con el propietario.
+
+## 7 · Comparación de bytes con el generador REAL y el LAB REAL
+
+Arnés: `gen-4k6k-compare.js` (reusa los mocks y el `eval` de
+`frontend/tests/e2e-bulletproof-full-audit.js`), LAB
+`C:\Users\HFRC\Downloads\LAB_CALIBRATED_BULLETPROOF_20260418_210955.json` (579.602 B,
+`profiles_calibrated` P0..P5), 10 canales P0×4/P1×3/P3×3.
+
+El generador es **polimórfico por diseño** (LIST-ID, fingerprint, UA rotativa, tokens de evasión):
+dos corridas idénticas dan 698 líneas distintas, así que comparar bytes crudos sin más es inválido.
+El arnés fija las fuentes de azar (`Math.random` sembrado, `Date` fijo, `crypto`, `performance`,
+`hrtime`) y **demuestra primero que es determinista**: dos corridas del mismo código dan el mismo
+sha256 (`a24ef8db…`, 653.262 B).
+
+| Estado | Bytes | Líneas | EXTINF | URIs | EXTSHIMOTT | Sidecar | sha256 |
+|---|---|---|---|---|---|---|---|
+| previo (sin hook) | 653.262 | 10.316 | 10 | 10 | 10 | 0 | `a24ef8db…` |
+| cableado OFF | 653.262 | 10.316 | 10 | 10 | 10 | 0 | `a24ef8db…` |
+| cableado ON | 661.232 | 10.326 | 10 | 10 | 10 | **10** | `c76d13c4…` |
+
+```
+previo == off              : true
+on − sidecar == previo     : true
+lineas añadidas por ON     : 10  (una por canal)
+EXTSHIMOTT previo / on     : 10 / 10   (intacto)
+URIs previo / on           : 10 / 10   (una por canal)
+```
+
+**Defecto que encontró esta prueba y que ninguna prueba sintética vio:**
+el bloque real de un canal mide ~65 KB y **no acaba en la URI** (termina en
+`#EXT-X-APE-CRYSTAL-UHD:...`). La primera versión de `insertIntentTag` exigía que la última línea
+fuera la URI y por eso devolvía el bloque sin insertar (10 llamadas, 0 inserciones). Ahora localiza
+la **única** línea de URI e inserta justo antes; con 0 o ≥2 URIs no toca el bloque.
+
+Repro:
+```
+node IPTV_v5.4_MAX_AGGRESSION/artifacts/integracion-4k6k/gen-4k6k-compare.js \
+  <generador.js> previo|off|on <salida.m3u8>
+```

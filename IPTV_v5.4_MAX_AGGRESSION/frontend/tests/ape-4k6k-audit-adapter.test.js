@@ -729,6 +729,37 @@ const baseList = [
         reimportada.join('\n') === listaBase);
     ok('reexportar sobre lo reimportado da los MISMOS bytes (idempotente)',
         exportar(reimportada.join('\n'), true) === exportON);
+    /* ── Forma REAL del bloque del generador (medida con el LAB real) ────── *
+     * El bloque de un canal mide ~65 KB y NO acaba en la URI: el emisor añade
+     * metadata después. El tag debe ir antes de la ÚNICA línea de URI. */
+    const bloqueReal = [
+        '#EXTINF:-1 tvg-id="x",Canal X',
+        '#EXTHTTP:{"User-Agent":"v"}',
+        '#EXTSHIMOTT:{"ver":1}',
+        'https://iptv-ape.duckdns.org/pulse/x.m3u8?u=a&d=b',
+        '#EXT-X-APE-CRYSTAL-UHD:PROFILE=P0;VPP_INTENSITY=40;SCOPE=DISPLAY;PIXELS=0',
+        '#EXT-X-APE-REA:{"status":"requested_only"}'
+    ].join('\n');
+    ok('bloque real: el tag va antes de la URI aunque haya metadata después', (function () {
+        const out = api.insertIntentTag(bloqueReal, tagCh, true);
+        const l = out.split('\n');
+        const iTag = l.findIndex(x => x.indexOf('#EXT-X-APE-4K6K-INTENT:') === 0);
+        const iUri = l.findIndex(x => /^https:\/\//.test(x));
+        return iTag === iUri - 1 && l.length === bloqueReal.split('\n').length + 1;
+    })());
+    ok('bloque real: la metadata posterior a la URI se conserva intacta', (function () {
+        const out = api.insertIntentTag(bloqueReal, tagCh, true);
+        const sinTag = out.split('\n').filter(x => x.indexOf('#EXT-X-APE-4K6K-INTENT:') !== 0).join('\n');
+        return sinTag === bloqueReal;
+    })());
+    ok('bloque con DOS URIs => no se toca (ambigüedad no se adivina)', (function () {
+        const dos = '#EXTINF:-1,C\nhttps://a/1.m3u8\n#EXTSHIMOTT:{"ver":1}\nhttps://a/2.m3u8';
+        return api.insertIntentTag(dos, tagCh, true) === dos;
+    })());
+    ok('bloque sin URI => no se toca', (function () {
+        const sin = '#EXTINF:-1,C\n#EXTSHIMOTT:{"ver":1}';
+        return api.insertIntentTag(sin, tagCh, true) === sin;
+    })());
     /* Defecto detectado en navegador: el helper insertaba aunque el flag estuviera OFF. */
     ok('con la bandera OFF insertIntentTag devuelve el MISMO bloque', (function () {
         const previo = global.APE_4K6K_AUDIT;
