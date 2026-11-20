@@ -845,3 +845,32 @@ El defecto del §34 está **cerrado con medición en los seis**, no solo en el c
 En las cinco filas de esta corrida, además: `off.sidecar=0`, `on.sidecar=3`,
 `profile == selectedProfile == id`, `export.ok=true` con sha completo y relectura, `idempotente=true`,
 `recuperacionExacta=true`, `reimport.tieneSidecar=true` y `mismaSecuencia=true`.
+## 38 · Corrección de lectura: cabecera `LAB_VLCOPT` ≠ directiva `#EXTVLCOPT` por canal
+
+Al medir con el parche activo aparecieron DOS campos distintos que yo estaba tratando como uno:
+
+| Campo | Qué es | P0 | P0.5 |
+|---|---|---|---|
+| `#EXT-X-APE-CACHING-PRECEDENCE:…LAB_VLCOPT=N` | **declaración de cabecera** por perfil | 19000 | 105000 |
+| `#EXTVLCOPT:network-caching=N` | **directiva por canal** en cada bloque | **55000** | **105000** |
+
+El §29 comparó `vlcopt` del LAB contra la **cabecera** y llamó a eso "herencia 6/6". El §37 comparó el L3
+del LAB contra la **directiva por canal** de los `.5`. Son campos distintos: la afirmación «6/6 base» vale
+para la cabecera, **no** para la directiva por canal. Queda corregido aquí.
+
+Estado medido hoy de la directiva por canal:
+
+```
+P0   sin inyección  → 55000   (valor de respaldo, no el del perfil)
+P0.5 con inyección  → 105000  (su L3 del LAB)
+```
+
+### Parche acotado
+
+La inyección de `forceProfile` se limitó a los IDs que contienen `.5`, porque para los base cambiaba su
+comportamiento (pasaban a los L3: 105000/72000/58000/…). Con el acotado: `{"ok":true,"perfiles":["P0","P0.5"],
+"fallos":[]}` → P0 sigue en 55000 (respaldo) y P0.5 en 105000 (suyo).
+
+**Decisión pendiente y no tomada por mí**: si los perfiles base deberían emitir su `vlcopt`
+(19000/12000/10000/8000/10000/5000) en la directiva por canal en vez del respaldo 55000. Es una decisión de
+producto sobre qué campo es autoritativo, no una corrección técnica que yo pueda elegir.
