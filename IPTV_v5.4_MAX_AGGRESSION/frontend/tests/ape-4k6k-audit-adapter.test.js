@@ -703,6 +703,32 @@ const baseList = [
     })());
     ok('bloque vacío o no-string => se devuelve tal cual',
         api.insertIntentTag('', tagCh, true) === '' && api.insertIntentTag(null, tagCh, true) === null);
+    /* ── 18.c Ciclo exportar → reimportar → reexportar (texto, no objetos) ── */
+    section('18.c export/reimport: restauración exacta e idempotencia de bytes');
+    const listaBase = [
+        '#EXTM3U', '#EXT-X-VERSION:9',
+        '#EXTINF:-1 tvg-id="a" tvg-name="A",A', '#EXTHTTP:{"User-Agent":"v"}', '#EXTSHIMOTT:{"ver":1}', 'https://x/pulse/a.m3u8?u=1&d=2',
+        '#EXTINF:-1 tvg-id="b" tvg-name="B",B', '#EXTSHIMOTT:{"ver":1}', 'https://x/pulse/b.m3u8?u=3&d=4',
+        '#EXTINF:-1 tvg-id="c" tvg-name="C",C', 'https://x/pulse/c.m3u8?u=5&d=6'
+    ].join('\n');
+    const TAG = '#EXT-X-APE-4K6K-INTENT:';
+    function exportar(texto, on) {
+        return texto.split('\n').map(function (l) {
+            return /^https?:\/\//.test(l) ? (on ? api.insertIntentTag(l, { ape_profile: 'P3' }, true) : l) : l;
+        }).join('\n');
+    }
+    const exportON = exportar(listaBase, true);
+    const reimportada = exportON.split('\n').filter(function (l) { return l.indexOf(TAG) !== 0; });
+    ok('OFF: la lista no cambia ni un byte', exportar(listaBase, false) === listaBase);
+    ok('ON: solo se añaden líneas de sidecar (una por URI)', (function () {
+        const nuevas = exportON.split('\n').length - listaBase.split('\n').length;
+        const uris = (listaBase.match(/^https?:\/\//gm) || []).length;
+        return nuevas === uris && nuevas === 3;
+    })());
+    ok('reimportar (quitar el sidecar) devuelve la lista ORIGINAL exacta',
+        reimportada.join('\n') === listaBase);
+    ok('reexportar sobre lo reimportado da los MISMOS bytes (idempotente)',
+        exportar(reimportada.join('\n'), true) === exportON);
     /* Defecto detectado en navegador: el helper insertaba aunque el flag estuviera OFF. */
     ok('con la bandera OFF insertIntentTag devuelve el MISMO bloque', (function () {
         const previo = global.APE_4K6K_AUDIT;
