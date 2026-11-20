@@ -1,6 +1,6 @@
 {
   "spec_version": "iptv-enterprise-300-skills-v1",
-  "generated_at": "2026-05-17T02:53:09Z",
+  "generated_at": "2026-11-20T07:00:27Z",
   "team_agent_supremo": {
     "specialists": {
       "S1": {
@@ -66,11 +66,11 @@
     }
   },
   "totals": {
-    "skills_total": 307,
-    "anchors": 16,
+    "skills_total": 308,
+    "anchors": 17,
     "satellites": 291,
     "by_specialist": {
-      "S1": 31,
+      "S1": 32,
       "S2": 30,
       "S3": 31,
       "S4": 30,
@@ -5606,6 +5606,25 @@
       "external_packages": [],
       "validation_commands": [
         "python .agents/skills/iptv-suprema-2026-premium/scripts/validate_suprema_profile.py profiles/IPTV_PREMIUM.json"
+      ]
+    },
+    {
+      "name": "ape-iptv-auditoria-4k-premium6k",
+      "specialist": "S1",
+      "specialist_name": "IPTV/HLS Architect",
+      "domain": "IPTV/Auditoría M3U 4K-Premium6K",
+      "kind": "anchor",
+      "parent_anchor": null,
+      "status": "installed",
+      "description": "Auditar listas IPTV M3U/M3U8 grandes y metadata APE, extender REA con solicitudes 4K y Premium 6K simulada por perfil, conservar URLs/IDs/campos y validar idempotencia y escalado offline. Usar para auditar, corregir o enriquecer listas IPTV, revisar cartuchos URL u/d, HEVC, perfiles visuales, zapping y contradicciones entre calidad declarada y video real. No presentar metadata como transcodificación ni como un daemon instalado.",
+      "installed_at": "2026-11-20T06:55:51Z",
+      "risk_level": "medium",
+      "source_repos": [],
+      "external_packages": [],
+      "validation_commands": [
+        "python -m unittest discover -s .agents/skills/ape-iptv-auditoria-4k-premium6k/scripts -p \"test_*.py\" -v",
+        "python .agents/skills/ape-iptv-auditoria-4k-premium6k/scripts/verificar_lista.py --help",
+        "node frontend/tests/ape-4k6k-audit-adapter.test.js"
       ]
     }
   ]
