@@ -102,8 +102,14 @@ const LAB_PATH = process.env.APE_LAB_JSON_PATH ||
         tvg_logo: 'http://logo.example.com/logo.png'
     }));
 
+    /* Dos formas de LAB conviven: LAB_CALIBRATED_BULLETPROOF usa
+     * profiles_calibrated (P0..P5) y APE_FUSION_PREMIUM_6K_4K_ZAPPING_ATOMICO
+     * usa profiles (12 perfiles P0..P5 + P0.5..P5.5). */
+    const fuente = lab.profiles_calibrated || lab.profiles || {};
+    const forma = lab.profiles_calibrated ? 'profiles_calibrated' : 'profiles';
     const bulletproof_profiles = {};
-    for (const [pid, pdata] of Object.entries(lab.profiles_calibrated)) bulletproof_profiles[pid] = pdata;
+    for (const [pid, pdata] of Object.entries(fuente)) bulletproof_profiles[pid] = pdata;
+    console.log('INFO lab=' + forma + ' perfiles=' + Object.keys(bulletproof_profiles).length + ' version=' + (lab._meta ? lab._meta.version : (lab.lab_version || '?')));
     const options = {
         bulletproof_loaded: true,
         bulletproof_profiles: bulletproof_profiles,

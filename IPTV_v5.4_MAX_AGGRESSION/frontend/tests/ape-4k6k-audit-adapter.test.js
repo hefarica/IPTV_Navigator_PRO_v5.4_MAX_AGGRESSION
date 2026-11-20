@@ -760,6 +760,36 @@ const baseList = [
         const sin = '#EXTINF:-1,C\n#EXTSHIMOTT:{"ver":1}';
         return api.insertIntentTag(sin, tagCh, true) === sin;
     })());
+    /* ── El objetivo sale del PERFIL (LAB del propietario) ───────────────── */
+    ok('perfil 8K (7680x4320) => objetivo 7680, no se degrada la declaración', (function () {
+        const previo = global.APE_PROFILES_CONFIG;
+        global.APE_4K6K_AUDIT = 1;
+        global.APE_PROFILES_CONFIG = { profiles: { P0: { settings: { resolution: '7680x4320' } } } };
+        const r = api.enrich([{ ape_profile: 'P0' }])[0]['APE-4K6K-INTENT'];
+        global.APE_PROFILES_CONFIG = previo;
+        global.APE_4K6K_AUDIT = 0;
+        return r.targetResolution === '7680x4320' && r.outputPolicy.premiumResolution === '7680x4320' &&
+            r.profileTarget === '7680x4320' && r.profileTargetPreserved === true;
+    })());
+    ok('perfil 1080p => objetivo simulado 3840x2160 y premium 5760x3240', (function () {
+        const previo = global.APE_PROFILES_CONFIG;
+        global.APE_4K6K_AUDIT = 1;
+        global.APE_PROFILES_CONFIG = { profiles: { P3: { settings: { resolution: '1920x1080' } } } };
+        const r = api.enrich([{ ape_profile: 'P3' }])[0]['APE-4K6K-INTENT'];
+        global.APE_PROFILES_CONFIG = previo;
+        global.APE_4K6K_AUDIT = 0;
+        return r.targetResolution === '3840x2160' && r.outputPolicy.premiumResolution === '5760x3240' &&
+            r.profileTarget === '1920x1080' && r.profileTargetPreserved === false;
+    })());
+    ok('perfil 6K (5760x3240) => objetivo y premium 5760x3240', (function () {
+        const previo = global.APE_PROFILES_CONFIG;
+        global.APE_4K6K_AUDIT = 1;
+        global.APE_PROFILES_CONFIG = { profiles: { 'P2.5': { settings: { resolution: '5760x3240' } } } };
+        const r = api.enrich([{ ape_profile: 'P2.5' }])[0]['APE-4K6K-INTENT'];
+        global.APE_PROFILES_CONFIG = previo;
+        global.APE_4K6K_AUDIT = 0;
+        return r.targetResolution === '5760x3240' && r.outputPolicy.premiumResolution === '5760x3240';
+    })());
     /* Defecto detectado en navegador: el helper insertaba aunque el flag estuviera OFF. */
     ok('con la bandera OFF insertIntentTag devuelve el MISMO bloque', (function () {
         const previo = global.APE_4K6K_AUDIT;

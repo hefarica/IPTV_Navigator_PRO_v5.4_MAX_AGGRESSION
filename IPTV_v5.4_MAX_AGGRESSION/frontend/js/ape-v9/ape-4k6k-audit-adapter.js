@@ -280,15 +280,45 @@
      * intención viaja en un campo propio y versionado. Mismo contenido, dueño
      * distinto: nadie que lea `rea` ve un campo que no esperaba.
      */
+    /* [FASE 2 · corregido con el LAB del propietario] El objetivo del PERFIL manda.
+     * Medido en APE_FUSION_PREMIUM_6K_4K_ZAPPING_ATOMICO (12 perfiles):
+     *   P0 = 7680x4320 · P1/P2 = 3840x2160 · P3/P4/P5 = 1080p/720p/480p ·
+     *   P0.5..P5.5 = 5760x3240
+     * Declarar 3840 fijo sobre P0 seria DEGRADAR su declaracion (ley anti-degradacion).
+     * Regla: objetivo = max(perfil, standard_4k); premium = max(perfil, premium_6k).
+     */
+    function profileResolution(pid) {
+        var cfg = readProfilesConfig();
+        var p = (cfg && isObj(cfg.profiles)) ? cfg.profiles[pid] : null;
+        var res = p && ((p.settings && p.settings.resolution) || p.resolution);
+        var m = (typeof res === 'string') ? res.match(/^(\d{2,5})x(\d{2,5})$/) : null;
+        return m ? { w: parseInt(m[1], 10), h: parseInt(m[2], 10) } : null;
+    }
+
+    function objective(pid) {
+        var own = profileResolution(pid);
+        var std = { w: 3840, h: 2160 };
+        var prem = { w: 5760, h: 3240 };
+        return {
+            own: own,
+            target: (own && own.w > std.w) ? own : std,
+            premium: (own && own.w > prem.w) ? own : prem,
+            profileWasHigher: !!(own && own.w > prem.w)
+        };
+    }
+
+    function wh(o) { return o.w + 'x' + o.h; }
+
     function buildIntent(profile) {
+        var o = objective(profile);
         return {
             schema: SCHEMA_INTENT,
             status: 'requested_only',
-            targetResolution: '3840x2160',
-            targetWidth: 3840,
-            targetHeight: 2160,
-            boxWidth: 3840,
-            boxHeight: 2160,
+            targetResolution: wh(o.target),
+            targetWidth: o.target.w,
+            targetHeight: o.target.h,
+            boxWidth: o.target.w,
+            boxHeight: o.target.h,
             mode: 'upscale_if_needed',
             enhancementRequested: true,
             execution: 'not_verified',
@@ -297,14 +327,14 @@
             /* El consumidor REA no ha sido probado con esta extensión: se declara. */
             reaPolicyPreserved: true,
             reaFieldsWritten: 0,
-            /* EXACTAMENTE 13 claves, igual que antes; ahora dentro del sidecar. */
+            /* EXACTAMENTE 13 claves; ahora el objetivo sale del perfil real. */
             outputPolicy: {
                 schema: SCHEMA_INTENT,
                 profile: profile,
                 defaultVariant: 'standard_4k',
-                floorLock: '3840x2160',
+                floorLock: wh(o.target),
                 premiumRequested: true,
-                premiumResolution: '5760x3240',
+                premiumResolution: wh(o.premium),
                 premiumKind: 'simulated_spatial_upscale',
                 preserveHigherSource: true,
                 sourceTruthUnchanged: true,
@@ -312,10 +342,12 @@
                 hdrPolicy: 'preserve_verified_source',
                 nativeResolutionClaim: false,
                 executed: false
-            }
+            },
+            /* Trazabilidad del perfil medido: si el perfil ya era mayor, se dice. */
+            profileTarget: o.own ? wh(o.own) : null,
+            profileTargetPreserved: o.profileWasHigher
         };
     }
-
     /* §6 caso 2: REA con JSON inválido ⇒ ABORTA. Prohibido "arreglarlo" en silencio.
      * Se acepta objeto (forma normal) y string JSON (forma serializada). */
     function normaliseRea(raw, label) {
