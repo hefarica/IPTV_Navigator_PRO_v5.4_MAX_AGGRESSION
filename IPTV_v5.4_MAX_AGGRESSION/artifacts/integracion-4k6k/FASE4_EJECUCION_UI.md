@@ -679,3 +679,24 @@ venir de otra capa (cabecera/selector) y no de un fallo del importador. Para atr
 falta generar con cada `.5` seleccionado e instrumentar la precedencia, porque la cabecera
 `#EXT-X-APE-CACHING-PRECEDENCE` **no publica los `.5`**. Lo que sí queda medido: el valor del perfil
 `.5` del LAB **no aparece** en la lista exportada.
+## 31 · Lista real de 754 MB en navegador: intento ejecutado y resultado NEGATIVO medido
+
+Arnés `fase9-big-harness.js` + `fase9-big-probe.html` (staging, loopback con testigo, `Content-Length` real):
+sirve el archivo real `APE_4K_PREMIUM_6K_METADATA.m3u8` (754.247.241 B, sha256 `001713fc…`) y lo carga en
+Chrome 157 midiendo descarga, parseo, heap y cancelación.
+
+```
+BIG={"status":200,"error":"Failed to fetch"}
+```
+
+Lectura honesta: la respuesta HTTP llegó a **200** (el servidor entregó la cabecera con el tamaño
+correcto), y el fallo ocurre **al leer el cuerpo** (`resp.text()` de 754 MB en una sola cadena).
+Es decir: **el camino actual del cargador (fetch → text → parse) no soporta el archivo real**; no es un
+problema del fichero ni de la ruta, es del modo de lectura. No hay números de memoria que reportar
+porque la operación no llegó a completarse; inventarlos sería exactamente lo prohibido.
+
+Consecuencia para el arnés: hay que cambiar el cargador a **lectura en streaming** (`ReadableStream` +
+parseo incremental en chunks) y repetir; entonces sí se podrán medir tiempo, heap pico, canales y
+cancelación sobre los 754 MB reales. Queda como la operación pendiente, con causa acreditada.
+
+Nota de limpieza: Chrome quedó colgado tras la prueba y se terminó explícitamente (`Stop-Process chrome`).
