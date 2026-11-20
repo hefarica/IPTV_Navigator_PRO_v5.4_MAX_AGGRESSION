@@ -977,3 +977,22 @@ P5.5   | 5760x3240        |  30000          | P5.5
 Mi script de comprobación marcó 4 «FAIL» porque esperaba el valor de `vlcopt['video-width']` en vez de la
 resolución nominal del perfil: **error de mi tabla de expectativas, no del artefacto** (P3 emitiendo
 1920x1080 es lo correcto para P3). El runner, con sus aserciones propias, dio verde en las doce.
+## 43 · Dos «divergencias» del §40 eran mi comparación, no el producto
+
+- `http-user-agent` y `http-referrer`: el LAB trae **plantillas** (`{config.user_agent}`, `{config.referer}`) y
+  el artefacto emite valores **resueltos** (UA de Chrome/Android, `https://www.netflix.com/`). El generador
+  **sí resuelve** la plantilla; mi tabla marcaba FAIL porque comparaba la plantilla literal contra el valor
+  resuelto. No es defecto.
+- `video-fps` de P0: el LAB declara 30 y el artefacto emite 30 → correcto (mi lectura previa de 60 venía de
+  otra corrida, antes de la inyección del perfil).
+
+## 44 · Lo que queda genuinamente abierto en HDR (localizado, sin juzgar)
+
+`#EXTVLCOPT:video-hdr` y `video-hdr-mode` se emiten en `m3u8-typed-arrays-ultimate.js:4133-4142`, con una
+compuerta `_isHDR` en la línea 4410 que puede forzar el valor declarado. En P0.5 el LAB dice
+`video-hdr=true` / `video-hdr-mode=HDR10PLUS` y el artefacto emitió `false` / `SDR`.
+
+**No lo declaro defecto ni lo corrijo**: hay una compuerta deliberada cuyo criterio (¿probe del canal?
+¿capacidad del device?) no he medido. La siguiente ronda debe leer 4400-4430 y decidir con el criterio a la
+vista, no por la etiqueta. Lo mismo aplica a `audio-channels` (2→6), `clock-jitter` (1000/2000→0) y
+`saturation` (1.06→1.08).
