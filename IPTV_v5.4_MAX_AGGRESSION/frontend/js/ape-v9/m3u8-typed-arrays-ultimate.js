@@ -9500,7 +9500,8 @@ try {
         if (typeof key !== 'string' || key.length === 0) return null;   // sin clave ⇒ sin línea
         if (_apeIsTiviMateUa(ua)) return null;                          // TiviMate ignora el tag ⇒ no ensuciar
         const host = (typeof cfg.host === 'string' && cfg.host) ? cfg.host.replace(/\/+$/, '') : 'https://iptv-ape.duckdns.org';
-        const p = /^P[0-5]$/.test(String(profile || '')) ? String(profile) : 'P3';
+        /* [2026-11-20] Un canal con P0.5/P1.5.. caia a P3 (1080p) = degradacion silenciosa. */
+            const p = /^P[0-5](?:[._]5)?$/.test(String(profile || '')) ? String(profile) : 'P3';
         const id = String((channel && (channel.id || channel.name)) || '');
         if (!id) return null;
         const c = _apeB64Url(_apeUtf8Bytes(id));
@@ -9538,7 +9539,8 @@ try {
             const ok = wl.some(hh => hh && (host === hh || host.endsWith('.' + hh)));
             if (!ok) return ua;                             // host no autorizado ⇒ UA intacto
         }
-        const p = /^P[0-5]$/.test(String(profile || '')) ? String(profile) : 'P3';
+        /* [2026-11-20] Un canal con P0.5/P1.5.. caia a P3 (1080p) = degradacion silenciosa. */
+            const p = /^P[0-5](?:[._]5)?$/.test(String(profile || '')) ? String(profile) : 'P3';
         const dev = (String(cfg.devModel || 'generic').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 32)) || 'generic';
         const soc = (String(cfg.soc || 'unknown').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 32)) || 'unknown';
         return base + ' APE/1.0 dev=' + dev + ' soc=' + soc + ' p=' + p;
@@ -9558,7 +9560,8 @@ try {
     // Es METADATA para el daemon/ARA: la playlist no toca píxeles (PIXELS=0, SCOPE=DISPLAY).
     const _APE_CRYSTAL_VPP = { P0: 40, P1: 35, P2: 45, P3: 55, P4: 70, P5: 85 };
     function _apeCrystalVppLine(profile) {
-        const p = /^P[0-5]$/.test(String(profile || '')) ? String(profile) : 'P3';
+        /* [2026-11-20] Un canal con P0.5/P1.5.. caia a P3 (1080p) = degradacion silenciosa. */
+            const p = /^P[0-5](?:[._]5)?$/.test(String(profile || '')) ? String(profile) : 'P3';
         const n = _APE_CRYSTAL_VPP[p];
         return '#EXT-X-APE-CRYSTAL-UHD:PROFILE=' + p + ';VPP_INTENSITY=' + n + ';SCOPE=DISPLAY;PIXELS=0';
     }

@@ -4902,7 +4902,8 @@
                 const imported = obj.profiles || obj;
                 if (!imported || typeof imported !== 'object') throw new Error('No profiles key found');
                 // Validar que tenga P0-P5 al menos
-                const pids = Object.keys(imported).filter(k => /^P[0-5]$/.test(k));
+                /* [2026-11-20] Acepta tambien los emulados P0.5..P5.5: con /^P[0-5]$ se DESCARTABAN al importar. */
+        const pids = Object.keys(imported).filter(k => /^P[0-5](?:[._]5)?$/.test(k));
                 if (pids.length === 0) throw new Error('No P0-P5 profiles found in JSON');
                 const hasREA = Object.prototype.hasOwnProperty.call(obj, 'rea_processing');
                 const importedREA = hasREA ? this._validatedREAProcessing(obj.rea_processing) : this.reaProcessing;

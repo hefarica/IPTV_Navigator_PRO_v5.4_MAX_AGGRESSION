@@ -5579,13 +5579,14 @@
                     let profilesData = null;
                     if (data && data.profiles && typeof data.profiles === 'object') {
                         profilesData = data.profiles;
-                    } else if (data && /^P[0-5]$/.test(Object.keys(data)[0] || '')) {
+                    } else if (data && /^P[0-5](?:[._]5)?$/.test(Object.keys(data)[0] || '')) {
                         profilesData = data;
                     }
 
                     if (!profilesData) throw new Error('El archivo no contiene perfiles válidos (P0-P5).');
 
-                    const pids = Object.keys(profilesData).filter(k => /^P[0-5]$/.test(k));
+                    /* [2026-11-20] /^P[0-5]$/ descartaba P0.5..P5.5: se importaban 6 de 12. */
+    const pids = Object.keys(profilesData).filter(k => /^P[0-5](?:[._]5)?$/.test(k));
                     if (pids.length === 0) throw new Error('No se encontraron perfiles P0-P5 en el JSON.');
 
                     // Usar importProfiles de la clase (hace deep merge con DEFAULT_PROFILES)
@@ -5789,7 +5790,47 @@
                     const text = await file.text();
                     const data = JSON.parse(text);
 
-                    // [2026-11-08] Huella criptografica del fichero importado. Cierra la carencia
+                    /* ═══════════════════════════════════════════════════════════════
+             * [2026-11-20] EL BOTON "Import LAB" TAMBIEN ACEPTA LOS all_profiles
+             *
+             * Los ficheros APE_ALL_PROFILES_*.json (PREMIUM_120_60_30,
+             * 6K_4K_CASCADA, y cualquier export de "Guardar TODOS") traen la forma
+             *   { _meta:{type:'all_profiles'}, profiles:{P0..P5,P0.5..P5.5} }
+             * y NO traen lab_version. Este boton los rechazaba con
+             *   "Schema no soportado: undefined"
+             * aunque el proyecto SI sabe aplicarlos (importAllProfiles). Aqui se
+             * detectan ANTES de la validacion de schema y se aplican por la misma
+             * via, preservando las 12 entradas y TODAS sus claves: settings (71),
+             * quality_levels, headers, vlcopt, kodiprop, prefetch_config, bounds,
+             * optimized_knobs, fitness, _objective... El deep merge del motor
+             * rellena lo que falte y NO borra lo que venga.
+             * ═══════════════════════════════════════════════════════════════ */
+            if (data && data.profiles && typeof data.profiles === 'object' && !data.lab_version) {
+                const _ids = Object.keys(data.profiles).filter(k => /^P[0-5](?:[._]5)?$/.test(k));
+                if (_ids.length > 0) {
+                    let _ok = false;
+                    if (typeof this.config.importProfiles === 'function') {
+                        _ok = this.config.importProfiles({
+                            profiles: data.profiles,
+                            manifest: data.manifest,
+                            strategicHeaders: data.strategicHeaders,
+                            rea_processing: data.rea_processing
+                        });
+                    } else {
+                        this.config.profiles = data.profiles;
+                        if (typeof this.config.save === 'function') this.config.save();
+                        _ok = true;
+                    }
+                    if (!_ok) throw new Error('importProfiles reporto fallo');
+                    this.render();
+                    console.log('[IMPORT] all_profiles via boton LAB: ' + _ids.length + ' perfiles -> ' + _ids.join(', '));
+                    alert('✅ ' + _ids.length + ' perfiles importados: ' + _ids.join(', ')
+                        + '\n\nFuente: ' + file.name
+                        + '\nSe conservan settings, quality_levels, headers, vlcopt y kodiprop.');
+                    return;
+                }
+            }
+            // [2026-11-08] Huella criptografica del fichero importado. Cierra la carencia
                     // 'sha256=unverified': el DNA de la lista podia nombrar el LAB pero no probar
                     // QUE fichero exacto se importo. Se calcula sobre los bytes reales del upload.
                     let labSha256 = null;

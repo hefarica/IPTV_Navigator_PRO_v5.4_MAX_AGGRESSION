@@ -781,7 +781,7 @@
 
     function findBestProfile() {
         var api = global.APE_PROFILES_CONFIG;
-        var ids = Object.keys(api.profiles || {}).filter(function (id) { return /^P[0-5]$/.test(id); });
+        var ids = Object.keys(api.profiles || {}).filter(function (id) { return /^P[0-5](?:[._]5)?$/.test(id); });
         var cands = ids.map(scoreProfile);
         var feasible = cands.filter(function (c) { return c.feasible; });
         feasible.sort(function (a, b) {
