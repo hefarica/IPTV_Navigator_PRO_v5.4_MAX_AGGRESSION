@@ -631,3 +631,27 @@ una etiqueta por canal que exponga la decisión de `determineProfile`.
 posible), pero su decisión no es observable en el artefacto exportado tal como está hoy. La cobertura
 automática sigue **NOT_RUN**; lo que falta es una señal por canal (tag propio o instrumentación del
 generador) — instrumentarlo sale del alcance de esta ronda. No se fabrica su resultado.
+## 29 · Herencia del LAB verificada campo a campo (6/6)
+
+Método: se compara el valor del LAB importado con el valor que el generador **emite** en la cabecera del
+listado, sobre un archivo real (`APE_PRIVADO/fase8/salida_P5__1795193883902.m3u8`) y con
+`herencia-check.js` (artefacto):
+
+```
+export=salida_P5__1795193883902.m3u8
+perfil | LAB network-caching | emitido LAB_VLCOPT | match
+P0 | 19000 | 19000 | PASS
+P1 | 12000 | 12000 | PASS
+P2 | 10000 | 10000 | PASS
+P3 |  8000 |  8000 | PASS
+P4 | 10000 | 10000 | PASS
+P5 |  5000 |  5000 | PASS
+HERENCIA_VLCOPT PASS=6 FAIL=0   EXIT=0
+```
+
+Es la primera prueba de **herencia efectiva** —no declarada— con dos artefactos reales: el LAB del
+propietario y la lista exportada por la app.
+
+Límite declarado: la cabecera `#EXT-X-APE-CACHING-PRECEDENCE` solo expone P0–P5; los seis perfiles
+`.5` no aparecen ahí, así que su herencia **no** queda acreditada por esta vía. Tampoco se han comparado
+buffers, prefetch, headers ni límites: solo `vlcopt.network-caching`.
