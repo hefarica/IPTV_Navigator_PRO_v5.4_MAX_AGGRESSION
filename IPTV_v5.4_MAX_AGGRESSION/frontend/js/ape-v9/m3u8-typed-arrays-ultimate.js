@@ -10414,11 +10414,56 @@ return lines.join('\n');
             && typeof window.APE_PROFILES_CONFIG.getProfile === 'function')
             ? window.APE_PROFILES_CONFIG.getProfile(profile) : null;
         const _labBufMs = parseInt(_pmProfile796?.vlcopt?.['network-caching'], 10);
+        /* ═══════════════════════════════════════════════════════════════════
+         * [2026-11-20 · ORDEN DEL OPERADOR] "no cambies valores, revisa la
+         * estructura y luego el origen ... para que esto se haga de manera
+         * automatica tomando en cuenta el proceso de preprocesamiento automatico
+         * que se esta implementando desde la toma de la velocidad de red y esos
+         * parametros como se alinean a estos que deben ser ajustados se incluyan".
+         *
+         * ORIGEN UNICO: APE_HEALTH_TUNER (streaming/auto-tune-v1.js) ya deriva con
+         * formulas deterministas desde el RATIO MEDIDO:
+         *   bufferTargetS = clamp(segDur*(1+max(0,1/r-1)*3), 10, 32) [s]
+         *   readTimeoutMs = clamp(45000+max(0,1/r-1)*30000, 45e3, 120e3)
+         *   prefetchSegments, parallelDownloads
+         * El generador NUNCA lo consultaba: emitia el cache del LAB y luego lo
+         * pisaba con optimized_knobs.buffer_seconds. Aqui se CONECTA. No se elige
+         * ningun valor a mano: sin medicion fresca devuelve null y manda el perfil.
+         * ═══════════════════════════════════════════════════════════════════ */
+        if (typeof window !== 'undefined' && typeof window._APE_AUTO_PLAYER !== 'function') {
+            window._APE_AUTO_PLAYER = function (profileId) {
+                try {
+                    var T = window.APE_HEALTH_TUNER;
+                    var PM = window.ProfileManagerV9;
+                    if (!T || typeof T.deterministic !== 'function' || !PM) return null;
+                    var last = PM._lastBw;
+                    if (!last || !last.ok) return null;
+                    var acc = last.measurement || {};
+                    var mbps = (typeof acc.mbpsSafe === 'number' && isFinite(acc.mbpsSafe)) ? acc.mbpsSafe : null;
+                    var ratio = (typeof last.headroomRatio === 'number' && isFinite(last.headroomRatio)) ? last.headroomRatio : null;
+                    if (!(ratio > 0)) return null;
+                    var plan = T.deterministic(mbps, ratio, 6);
+                    if (!plan) return null;
+                    return {
+                        basis: 'measured', profile: profileId || null,
+                        ratio: ratio, mbps: mbps,
+                        cacheMs: Math.round(plan.bufferTargetS * 1000),
+                        timeoutMs: plan.readTimeoutMs,
+                        prefetch: plan.prefetchSegments,
+                        parallel: plan.parallelDownloads
+                    };
+                } catch (_e) { return null; }
+            };
+        }
+        const _apeAuto = (typeof window !== 'undefined' && typeof window._APE_AUTO_PLAYER === 'function')
+            ? window._APE_AUTO_PLAYER(profile) : null;
         const _labBufMB = parseInt(_pmProfile796?.hlsjs?.maxBufferSize, 10);
         const _labBufSeg = parseInt(_pmProfile796?.prefetch_config?.prefetch_segments, 10);
 
-        const _buf796 = !Number.isNaN(_labBufMs) ? _labBufMs
-            : ((typeof CAPACITY_OVERDRIVE !== 'undefined') ? (CAPACITY_OVERDRIVE.buffer_ms || 60000) : 60000);
+        /* Precedencia: MEDICION (auto-tune) > LAB vlcopt > CAPACITY_OVERDRIVE. */
+        const _buf796 = _apeAuto ? _apeAuto.cacheMs
+            : (!Number.isNaN(_labBufMs) ? _labBufMs
+            : ((typeof CAPACITY_OVERDRIVE !== 'undefined') ? (CAPACITY_OVERDRIVE.buffer_ms || 60000) : 60000));
         const _bufMB = !Number.isNaN(_labBufMB) ? Math.round(_labBufMB / (1024 * 1024))
             : ((typeof CAPACITY_OVERDRIVE !== 'undefined') ? (CAPACITY_OVERDRIVE.buffer_mb || 60) : 60);
         const _bufSeg = !Number.isNaN(_labBufSeg) ? _labBufSeg
@@ -10486,9 +10531,12 @@ return lines.join('\n');
         // master clock → deriva A/V progresiva con cadenas de filtro pesadas
         // (minterpolate 120fps). =1 re-esclaviza video al clock maestro.
         lines.push(`#EXTVLCOPT:clock-synchro=1`);
-        /* [2026-11-20] 60 s de timeout = un canal muerto bloquea el zap un minuto.
-         * 20 s es el orden de VLC por defecto para IPTV y sigue dando margen. */
-        lines.push(`#EXTVLCOPT:network-timeout=20000`);
+        /* [2026-11-20] El timeout NO se elige a mano: sale de la misma formula que
+         * el buffer (timeoutForRatio). Sin medicion se restaura el valor previo. */
+        lines.push(`#EXTVLCOPT:network-timeout=${_apeAuto ? _apeAuto.timeoutMs : 60000}`);
+        if (_apeAuto) {
+            lines.push(`#EXT-X-APE-AUTO-TUNE:BASIS=measured;CACHE_MS=${_apeAuto.cacheMs};TIMEOUT_MS=${_apeAuto.timeoutMs};PREFETCH=${_apeAuto.prefetch};PARALLEL=${_apeAuto.parallel};RATIO=${_apeAuto.ratio};MBPS=${_apeAuto.mbps === null ? 'unknown' : _apeAuto.mbps};SOURCE=APE_HEALTH_TUNER.deterministic`);
+        }
         lines.push(`#EXTVLCOPT:network-reconnect=true`);
         lines.push(`#EXTVLCOPT:network-reconnect-delay=500`);
         lines.push(`#EXTVLCOPT:network-reconnect-count=99`);
@@ -12539,7 +12587,13 @@ return lines.join('\n');
             || (cfg && cfg.buffer)
             || (_pmBufP && _pmBufP.settings && _pmBufP.settings.buffer)
         ) || 0);
-                const bufMs = _bufPerfilMs > 0 ? _bufPerfilMs : (opt.buffer_seconds || 0) * 1000;
+                const _atB = (typeof window !== 'undefined' && typeof window._APE_AUTO_PLAYER === 'function')
+            ? window._APE_AUTO_PLAYER(profile) : null;
+        /* [2026-11-20] MEDICION > settings.buffer del perfil > buffer_seconds del LAB.
+         * Antes este bloque PISABA el cache con buffer_seconds (55 s) porque
+         * cfg.buffer llegaba vacio: eso producia network-caching=55000. */
+        const bufMs = _atB ? _atB.cacheMs
+            : (_bufPerfilMs > 0 ? _bufPerfilMs : (opt.buffer_seconds || 0) * 1000);
                 if (bufMs > 0) {
                     upsertVlcopt(lines, 'network-caching', bufMs);
                     upsertVlcopt(lines, 'live-caching', bufMs);
