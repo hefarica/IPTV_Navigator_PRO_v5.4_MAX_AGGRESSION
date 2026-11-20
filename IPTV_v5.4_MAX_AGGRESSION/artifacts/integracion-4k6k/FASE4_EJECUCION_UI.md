@@ -466,3 +466,35 @@ respuesta recorta algo. Queda como diferencia observada aislada, no como equival
 Con esto el runner endurecido deja de ser un arnés que solo falla: **una fila pasa con todas las
 aserciones verdes y exit 0**, y las dos veces anteriores que intentó pasar en falso, la aserción
 endurecida lo impidió.
+## 23 · 12/12 perfiles en el runner endurecido — verde con exit 0
+
+Una sola corrida, `node fase8-runner.js "P0,P1,P2,P3,P4,P5,P0.5,P1.5,P2.5,P3.5,P4.5,P5.5"`:
+
+```
+{"ok":true,"perfiles":[12],"fallos":[]}   EXIT=0
+```
+
+| ID | guardar (bytes) | salida_ok (bytes) | ON sha256 (64 hex, primeros 16) |
+|---|---|---|---|
+| P0 | 291.611 | 291.611 | `d78c43f6855f4080` |
+| P1 | 291.032 | 291.032 | `d740d6bacc4b71d6` |
+| P2 | 288.735 | 288.735 | — |
+| P3 | 289.087 | 289.087 | — |
+| P4 | 288.512 | 288.512 | — |
+| P5 | 286.140 | 286.140 | — |
+| P0.5 | 261.393 | 261.393 | — |
+| P1.5 | 262.596 | 262.596 | — |
+| P2.5 | 261.289 | 261.289 | — |
+| P3.5 | 261.411 | 261.411 | — |
+| P4.5 | 261.223 | 261.223 | — |
+| P5.5 | 258.830 | 258.830 | — |
+
+En las doce filas: `clickVisible=ok`, `perfilCanalAntes=perfilCanalDespues=null` (sin reasignación),
+`off.sidecar=0`, `on.sidecar=3`, `on.profile == on.selectedProfile == id`, target nominal correcto
+(P0 = 7680x4320 con premium 7680x4320; el resto 3840x2160 / 5760x3240), `export.ok=true` con sha256
+completo idéntico al de memoria y verificado por relectura, `idempotente=true`,
+`recuperacionExacta=true`, `reimport.tieneSidecar=true` y `mismaSecuencia=true`.
+
+Diferencia que sigo sin explicar: la reimportación devuelve 36 B menos que el archivo exportado en todas
+las filas (p. ej. 291.575 vs 291.611). Es constante, no aleatoria; apunta a normalización del paso
+texto→File, y queda como incógnita aislada.

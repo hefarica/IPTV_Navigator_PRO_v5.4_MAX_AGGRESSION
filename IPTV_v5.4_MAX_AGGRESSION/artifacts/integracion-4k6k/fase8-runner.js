@@ -142,7 +142,7 @@ srv.listen(0, '127.0.0.1', () => {
     cp.stdout.on('data', d => { buf += d; });
     cp.on('error', e => { log('chrome_error', String(e.message)); fin(4); });
     let terminado = false;
-    const timer = setTimeout(() => { log('timeout', { bytes: buf.length }); fin(5); }, 200000);
+    const timer = setTimeout(() => { log('timeout', { bytes: buf.length }); fin(5); }, 420000);
     function fin(code) {
         if (terminado) return; terminado = true;
         clearTimeout(timer);
