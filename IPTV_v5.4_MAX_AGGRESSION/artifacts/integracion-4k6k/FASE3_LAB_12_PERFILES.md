@@ -118,3 +118,47 @@ OFF equivalente medido con el **generador real** y **los dos LAB**: `previo == o
   fallback (`if (global.APELabNormalize) … else <comportamiento anterior>`). Sin el fichero, el
   importador vuelve a comportarse como antes: la skill y el adaptador no se tocan.
 - La habilidad instalada no se desinstala.
+
+## 8 · Verificación del esquema por perfil (medida, no supuesta)
+
+```
+P0..P5   claves=34   faltan_vs_P0=0
+P0.5..P4.5 claves=30 faltan_vs_P0=10 -> color,headers,lab_sync,calibration_version,
+                       buffer_aggression_policy,error_decision_tree,error_407_specialized_tree,
+                       multi_provider_integration,master_audit_unified,guarantees_10
+P5.5     claves=29   + quality_levels (total 11 ausentes)
+P5.5 tiene quality_levels=false
+aggression_levels truncado con "..." en = P0,P1,P2,P3,P4,P5 (6)
+```
+
+La ausencia **no lanza** y **no cambia el ID**: el normalizador y el adaptador sólo leen `settings`,
+`vlcopt`, `kodiprop` y las claves que cada perfil trae; los árboles 407/lab_sync ausentes en los `.5`
+no se fabrican y el sidecar no los toca.
+
+## 9 · Doce IDs en Chrome real (sin forzar P0)
+
+Arnés [`fase3-browser-12perfiles.js`](fase3-browser-12perfiles.js): sirve el `frontend/` del worktree por
+loopback y expone `/lab.json` apuntando a la **ruta privada** del LAB (no se copia al repo), abre
+`_fase3_12perfiles.html` en Chrome 157 `--headless=old --dump-dom`, normaliza el LAB real con
+`js/ape-lab-normalize.js`, lo aplica a `APE_PROFILES_CONFIG.profiles` y recorre los 12 IDs.
+
+```
+loaded=true family=profiles ids=12 error=none
+P0   | 7680x4320 | 7680x4320 | true  | 854 bytes | offIdent=true
+P1   | 3840x2160 | 5760x3240 | false | 855 | true
+P2   | 3840x2160 | 5760x3240 | false | 855 | true
+P3   | 3840x2160 | 5760x3240 | false | 855 | true
+P4   | 3840x2160 | 5760x3240 | false | 854 | true
+P5   | 3840x2160 | 5760x3240 | false | 853 | true
+P0.5 | 5760x3240 | 5760x3240 | false | 857 | true
+P1.5 | 5760x3240 | 5760x3240 | false | 857 | true
+P2.5 | 5760x3240 | 5760x3240 | false | 857 | true
+P3.5 | 5760x3240 | 5760x3240 | false | 857 | true
+P4.5 | 5760x3240 | 5760x3240 | false | 857 | true
+P5.5 | 5760x3240 | 5760x3240 | false | 857 | true
+```
+
+`offIdent=true` en los doce: con OFF no se emite sidecar en ningún perfil.
+
+Lo que este arnés **no** es: no sustituye la selección del profile manager en la UI ni demuestra que
+un perfil genere la lista por la ruta de la app. Eso sigue NOT_RUN, igual que renderer y cadencia.
