@@ -1,23 +1,22 @@
-/* [2026-11-20] ORIGEN DE SONDA. Medido: sirviendo el panel en
- * http://127.0.0.1:5500 el medidor caia a ficheros LOCALES (index-v4.html,
- * el generador) porque /lists/streamlink.m3u8 no existe ahi. Eso mide el DISCO
- * del PC, no la red: daba cifras sin sentido (18 Mbps con una linea de cientos).
- * En local se sondea el VPS canonico (que ya tiene CORS en /lists/); en el VPS
- * se sigue usando la ruta relativa. La sonda es la lista grande (228 MB), como
- * Ookla: fichero grande + varios flujos en paralelo. */
+/* [2026-11-20] ORIGEN DE SONDA (v2). La v1 usaba `root`, que NO existe en estos
+ * modulos: lanzaba ReferenceError, el catch devolvia '' y la sonda se quedaba en
+ * /lists/streamlink.m3u8 relativa -> 404 -> el medidor no medía la red.
+ * Ahora usa `location` directamente, que siempre existe en el navegador. */
 function apeProbeOrigin() {
     try {
-        var h = (root.location && root.location.hostname) ? root.location.hostname : '';
-        var local = !h || /^(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(h);
+        var h = (typeof location !== 'undefined' && location.hostname) ? location.hostname : '';
+        if (!h) return '';
+        var local = /^(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(h);
         return local ? 'https://iptv-ape.duckdns.org' : '';
     } catch (_e) { return ''; }
 }
 function apeProbeUrl(path) {
-    var o = apeProbeOrigin();
     var p = String(path || '/lists/streamlink.m3u8');
+    var o = apeProbeOrigin();
     if (!o) return p;
     return o + (p.charAt(0) === '/' ? p : '/' + p);
 }
+
 /* ═══════════════════════════════════════════════════════════════════════════
  * APE BANDWIDTH METER v1.0 — el PRODUCTOR de medición que faltaba
  *
