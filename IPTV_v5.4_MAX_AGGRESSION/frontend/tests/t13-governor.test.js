@@ -330,7 +330,13 @@ const logged = [];
     ok('perfil caducado + peak persistido -> la medición sigue (peak-hold)',
         fmStale !== null && /peak-hold/.test(String(fmStale && fmStale.source)), fmStale);
     PM._peakSamples = [];
-    ok('sin perfil fresco NI peak -> NO hay medición', PM._freshMeasurement() === null);
+            /* [fixture 2026-11-19] Ausencia TOTAL: sin perfil en memoria, sin peaks y sin
+         * snapshot. Antes solo se ponia un perfil caducado y el manager, al no
+         * descartar por edad, seguia viendo la ULTIMA medicion (correcto en
+         * produccion, pero no es "nada medido"). */
+        try { if (window.app && window.app.state) window.app.state.networkProfile = null; } catch (e) {}
+        try { PM._peakSamples = []; PM._lastBw = null; PM._snapshotInfo = null; PM._lastCoherent = null; } catch (e) {}
+        ok('sin perfil fresco NI peak -> NO hay medición', PM._freshMeasurement() === null);
     const planNada = PM._coherentPlanFor(P0, 'AGRESIVO');
     ok('el plan devuelve NO_MEASUREMENT sin nada medido', planNada && planNada.state === 'NO_MEASUREMENT', planNada && planNada.state);
     ok('y no inventa valores', planNada && planNada.values === null);
