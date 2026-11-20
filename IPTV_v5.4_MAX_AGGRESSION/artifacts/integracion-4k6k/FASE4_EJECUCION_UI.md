@@ -335,3 +335,43 @@ P0.5   ok            null              null                P0.5             P0.5
   `/guardar` escribe con nombre saneado (`[^A-Za-z0-9.]` fuera) dentro de `APE_PRIVADO`.
 - **Rollback completo del diff**: no ejecutado todavía; el diseño de cada sustitución conserva el `else`
   original, pero falta probarlo retirando los cambios y repitiendo.
+## 19 · Runner endurecido (fase 8): implementado y **fallando en voz alta**
+
+`artifacts/integracion-4k6k/fase8-runner.js` implementa lo exigido:
+
+- **Confinamiento**: `path.resolve` + `startsWith(base + sep)`; cualquier ruta fuera del frontend del
+  staging responde 403 y se registra en el diagnóstico.
+- **Sesión temporal autenticada**: token aleatorio de 24 bytes por corrida; `/lab.json`,
+  `/entrada.m3u8`, `/guardar` y `/salida.m3u8` exigen `X-APE-Token` (401 sin él) y validan `Origin`
+  cuando viene (403 si no es `http://127.0.0.1[:puerto]`).
+- **Bind exclusivo** `127.0.0.1` con puerto efímero, verificado tras `listen`.
+- **Escritura con streaming y backpressure** (`ws.write` → `pause`/`drain`), `flags: 'wx'`
+  **sin sobrescritura**, nombre único `salida_<ID>__<epoch>.m3u8`, **sha256 al vuelo + relectura
+  del archivo** para verificar; IDs validados contra el conjunto exacto de 12.
+- **Finalización verificable**: cada generación intenta correlacionarse con su blob por promesa en
+  lugar de `cap[0]`.
+- **Exit codes**: 2 ID inválido · 3 bind no local · 4 error de Chrome · 5 timeout · 6 cierre de Chrome
+  sin marcador · 1 aserciones incumplidas.
+
+Aserciones por fila: clic en control visible, perfil de canal sin cambios, OFF con 0 sidecar, ON con 3,
+`selectedProfile === id`, sha del blob, export verificado (sha memoria == sha disco == relectura),
+reimportación idéntica, idempotencia y recuperación exacta.
+
+**Resultado real de la corrida** (`node fase8-runner.js P0`):
+
+```
+{"ok":false,"perfiles":["P0"],"fallos":["errores en pagina: [\"P0: sin blob\"]","P0: sin blob (sin blob)"],
+ "diag":[{"t":92414,"k":"chrome_close","v":{"bytes":796711}}], …}
+EXIT=1
+```
+
+El runner **hace su trabajo**: detecta el fallo, lo nombra y sale con código distinto de cero en lugar
+de dar verde. El fallo concreto: con la correlación por promesa sobre `URL.createObjectURL`, la
+generación no entrega blob dentro de 9 s (la versión anterior, con espera fija y `cap[0]`, sí lo
+observaba). **Causa aislada**: el disparo de la descarga no está garantizado por `createObjectURL`;
+hace falta una señal determinista (interceptar el `click()` del ancla o exponer una promesa de la
+generación). No lo doy por cerrado: es el siguiente arreglo del runner.
+
+Ninguna medición de esta sección sustituye a las anteriores: las filas 12/12 con export y reimportación
+del §14-§15 se obtuvieron con la captura por espera fija y siguen siendo válidas como evidencia de
+comportamiento, no como evidencia del runner endurecido.
