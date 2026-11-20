@@ -40,26 +40,57 @@ def main():
     record = json.loads(args.audit_json.read_text())
     recovered = hashlib.sha256()
     channels = 0
+    archives = 0
+    eol_missing = 0
     for block in blocks(args.patched):
         assert patch_block(block) == block, 'Parche no idempotente.'
         if block[0].startswith('#EXTINF:'):
             channels += 1
+        for raw in block:
+            if raw.startswith('#EXT-X-APE-AUDIT-ORIGINAL:'):
+                archives += 1
+                if '"eol"' not in raw:
+                    eol_missing += 1
         for line in restore_block(block):
             recovered.update(line.encode())
         if channels and channels % 2000 == 0:
             print(f'Verificados {channels} canales', flush=True)
     expected = record['before']['sha256_uncompressed_text']
-    assert recovered.hexdigest() == expected, 'No se recupera el texto original exacto.'
-    assert channels == record['before']['channels']
+    restored = recovered.hexdigest()
+    # [2026-11-20 · MEDIDO] La revision anterior de la habilidad NO escribe el campo
+    # `eol` en APE-AUDIT-ORIGINAL, asi que en un fichero CRLF el texto original no es
+    # recuperable byte a byte. Medido en APE_4K_PREMIUM_6K_METADATA.m3u8: 0 de 56.110
+    # entradas con `eol`, y el verificador abortaba con AssertionError en vez de decir
+    # por que. Ahora se distingue el caso y se devuelve un veredicto con motivo
+    # (exit 3 = verificado pero NO exacto), en vez de un PASS falso o un crash mudo.
+    exact = (restored == expected and channels == record['before']['channels'])
+    reason = None
+    if not exact:
+        if eol_missing:
+            reason = ('archivos APE-AUDIT-ORIGINAL sin campo "eol": %d de %d '
+                      '(formato de la revision anterior); el texto CRLF no es '
+                      'recuperable byte a byte' % (eol_missing, archives))
+        elif channels != record['before']['channels']:
+            reason = 'canales verificados %d != declarados %d' % (
+                channels, record['before']['channels'])
+        else:
+            reason = 'sha256 del texto restaurado distinto del declarado por la auditoria'
     result = {
         'all_channels_checked': channels,
         'idempotent_all_blocks': True,
-        'exact_original_text_recoverable': True,
-        'restored_original_sha256': recovered.hexdigest(),
+        'exact_original_text_recoverable': exact,
+        'restored_original_sha256': restored,
+        'expected_original_sha256': expected,
+        'audit_original_entries': archives,
+        'audit_original_sin_eol': eol_missing,
+        'reason': reason,
         'uri_sequence_unchanged': record['preservation_checks']['uri_sequence_unchanged'],
     }
     args.output_json.write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps(result))
+    if not exact:
+        print('VERDICT=NO_EXACTO · motivo: ' + (reason or '?'), flush=True)
+        raise SystemExit(3)
 
 
 if __name__ == '__main__':
