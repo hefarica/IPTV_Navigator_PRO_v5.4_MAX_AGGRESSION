@@ -46,7 +46,22 @@
   var _ultimo = null;
 
   // ── Utilidades ─────────────────────────────────────────────────────────────
-  function base() { return String(window.APE_VPS_BASE || '').replace(/\/+$/, ''); }
+  function base() {
+    /* [2026-11-20] ORIGEN DE LA API. Medido: en local el panel pedia
+     * /prisma/api/cablear-listas.php con ruta RELATIVA y el Live Server devolvia
+     * el 404 de nginx que se ve en pantalla ("no se pudo leer /lists/").
+     * El endpoint EXISTE y responde 200 en el VPS (verificado).
+     * Si window.APE_VPS_BASE esta definido, manda. Si no, fuera del VPS se usa el
+     * origen canonico; dentro del VPS, la ruta relativa. */
+    var b = String(window.APE_VPS_BASE || '').replace(/\/+$/, '');
+    if (b) return b;
+    try {
+        var h = (typeof location !== 'undefined' && location.hostname) ? location.hostname : '';
+        if (!h) return '';
+        if (/^(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(h)) return 'https://iptv-ape.duckdns.org';
+    } catch (e) { /* noop */ }
+    return '';
+}
   function abs(p) { return base() + p; }
 
   function esc(s) {
