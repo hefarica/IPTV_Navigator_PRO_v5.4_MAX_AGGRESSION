@@ -249,7 +249,21 @@
      *   patch (enrich) usa "runtime" (:135) · audit usa "unknown" (:203). */
     function readProfile(ch, fallback) {
         var raw = String((ch && (ch.ape_profile || ch.apeProfile || ch.profile)) || '').toUpperCase();
-        return PROFILE_IDS.indexOf(raw) >= 0 ? raw : fallback;
+        if (PROFILE_IDS.indexOf(raw) >= 0) return raw;
+        /* [FASE 5 · 2026-11-20] Medido en la app: al seleccionar otro ID con
+         * ProfileManagerV9.selectProfile(pid), el sidecar seguía diciendo P3 para
+         * los 12 perfiles. Causa: el canal cargado no trae campo de perfil y aquí
+         * se caía al default. La selección activa del manager SÍ es la fuente
+         * efectiva cuando el canal no la trae; se consulta antes del default. */
+        var act = '';
+        try {
+            if (root && root.ProfileManagerV9 && root.ProfileManagerV9.activeProfileId) {
+                act = String(root.ProfileManagerV9.activeProfileId).toUpperCase();
+            } else if (root && root.APE_PROFILES_CONFIG && root.APE_PROFILES_CONFIG.activeProfileId) {
+                act = String(root.APE_PROFILES_CONFIG.activeProfileId).toUpperCase();
+            }
+        } catch (e) { act = ''; }
+        return PROFILE_IDS.indexOf(act) >= 0 ? act : fallback;
     }
     function readId(ch) {
         var i, v;

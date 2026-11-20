@@ -178,3 +178,33 @@ Eso es exactamente la «herencia no conectada» que la orden §4 exige corregir:
 activo del manager (`ProfileManagerV9`) cuando el canal no trae uno propio, en vez de un default fijo.
 Dos filas sin blob (P0-ON, P3-OFF) son transitorios del clic bajo tiempo virtual, no un fallo de
 contrato: la misma combinación produjo blob en las demás.
+## 12 · Matriz final simulada en la UI (12 IDs, OFF + ON estables)
+
+Tras conectar el perfil activo del manager en `readProfile` (cuando el canal no trae campo), relanzada
+la matriz: **las 12 filas completaron sin transitorios** (`err: []`).
+
+```
+id     sel   OFF sidecar   ON sidecar   intentProfile  target
+P0     true  0             3            P3             3840x2160
+P1     true  0             3            P3             3840x2160
+P2     true  0             3            P3             3840x2160
+P3     true  0             3            P3             3840x2160
+P4     true  0             3            P3             3840x2160
+P5     true  0             3            P3             3840x2160
+P0.5   true  0             3            P3             3840x2160
+P1.5   true  0             3            P3             3840x2160
+P2.5   true  0             3            P3             3840x2160
+P3.5   true  0             3            P3             3840x2160
+P4.5   true  0             3            P3             3840x2160
+P5.5   true  0             3            P3             3840x2160
+```
+
+**OFF = 0 sidecar en los 12 · ON = 3 sidecar en los 12** (una por canal). Estable y reproducible.
+
+**Persiste `intentProfile=P3`**: el canal que entrega la app **ya trae su propio campo de perfil**
+(`P3` por defecto del cargador del frontend), así que `readProfile` lo devuelve antes de consultar el
+manager. El fix del manager solo actúa cuando el canal no trae perfil. Para que la selección mande hay
+que hacer que el cargador/selectProfile escriba el perfil en los canales cargados (lo que hace la UI
+real al aplicar perfiles), o bien que el sidecar use el activo del manager **por encima** del campo del
+canal cuando este sea un default no elegido por el usuario. Esa decisión de precedencia exige el
+consentimiento del contrato del profile manager, no se toma a ciegas.
