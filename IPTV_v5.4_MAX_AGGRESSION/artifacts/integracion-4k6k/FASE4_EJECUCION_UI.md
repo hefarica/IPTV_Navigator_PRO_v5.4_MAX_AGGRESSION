@@ -747,3 +747,29 @@ BIG={"cancelacion":"abortado:AbortError","ms_cancel":292,"heap_post_cancel_mb":2
 Esto cierra el tramo de la lista grande con números reales, y explica el fallo anterior: `resp.text()`
 no puede materializar 754 MB en una cadena, mientras que el lector en streaming los procesa con 140 MB de
 heap y libera al cancelar. No hay extrapolación ni dataset menor: es el archivo autorizado completo.
+## 34 · El fallo de herencia `.5` se confirma con una tercera fuente (corrige el §30)
+
+El generador documenta **dos** valores distintos por perfil en el LAB (`m3u8-typed-arrays-ultimate.js:2885-2887`):
+`vlcopt['network-caching']` (19000/12000/10000/8000/10000/5000) y
+`player_enslavement.level_3_per_channel.EXTVLCOPT['network-caching']` (105000/72000/58000/55000/52000/30000).
+La emisión usa `fromLab(vo['network-caching'], …)` (línea 4093), así que mi referencia del §30 (`vlcopt`) era
+**la fuente equivocada**: queda corregido aquí.
+
+Comparación de las tres fuentes para los seis Premium:
+
+```
+perfil | LAB vlcopt | LAB L3_EXTVLCOPT | emitido en la lista
+P0.5   | 15000      | 105000           | 55000
+P1.5   | 12000      |  72000           | 55000
+P2.5   | 10000      |  58000           | 55000
+P3.5   | 10000      |  55000           | 55000   ← única coincidencia
+P4.5   | 10000      |  52000           | 55000
+P5.5   | 12000      |  30000           | 55000
+```
+
+**El valor emitido (55000) no coincide ni con `vlcopt` ni con el `L3` propio de cada `.5`**, salvo en P3.5.
+Coincide exactamente con el `L3` de **P3**, el perfil por defecto del manager.
+
+Conclusión firme: en los perfiles Premium `.5`, la selección **no gobierna** el `network-caching` emitido;
+el artefacto cae a un valor fijo heredado de P3. El defecto es real (antes lo había medido contra el campo
+equivocado, ahora contra los dos campos correctos), y afecta a 5 de los 6 Premium en este campo.
