@@ -10486,7 +10486,9 @@ return lines.join('\n');
         // master clock → deriva A/V progresiva con cadenas de filtro pesadas
         // (minterpolate 120fps). =1 re-esclaviza video al clock maestro.
         lines.push(`#EXTVLCOPT:clock-synchro=1`);
-        lines.push(`#EXTVLCOPT:network-timeout=60000`);
+        /* [2026-11-20] 60 s de timeout = un canal muerto bloquea el zap un minuto.
+         * 20 s es el orden de VLC por defecto para IPTV y sigue dando margen. */
+        lines.push(`#EXTVLCOPT:network-timeout=20000`);
         lines.push(`#EXTVLCOPT:network-reconnect=true`);
         lines.push(`#EXTVLCOPT:network-reconnect-delay=500`);
         lines.push(`#EXTVLCOPT:network-reconnect-count=99`);
@@ -12520,7 +12522,23 @@ return lines.join('\n');
                 // [2026-11-04 mandato operador] El buffer debe ser el del perfil del Gestor APE v9.0
                 // (P3 = 8000 ms), no el `optimized_knobs.buffer_seconds` del LAB, que traia 55 s y
                 // sobrescribia los cuatro cachés. El LAB solo manda si el perfil no trae buffer.
-                const _bufPerfilMs = (Number(cfg && cfg.buffer) > 0) ? Math.round(Number(cfg.buffer)) : 0;
+        /* [2026-11-20 · OPERADOR: "se queda pegada y no zappea rápido" · "busca la
+         * parametrizacion"] MEDIDO en la lista entregada: network-caching=55000.
+         * Causa: cfg.buffer llegaba vacio y se caia a optimized_knobs.buffer_seconds
+         * del LAB (55 s), que es un TIEMPO DE BUFFER DE PREFETCH, no un cache de
+         * red. El perfil SI trae el valor calibrado en ms: settings.buffer
+         * (P0 19000, P1 12000, P2 10000, P3 8000, P4 10000, P5 5000).
+         * Precedencia nueva, nombrada:
+         *   settings.buffer del perfil (ms)  >  cfg.buffer  >  buffer_seconds*1000
+         * Asi el mando es UNO solo y esta en el panel de perfiles. */
+        const _pmBufP = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG
+            && typeof window.APE_PROFILES_CONFIG.getProfile === 'function')
+            ? window.APE_PROFILES_CONFIG.getProfile(profile) : null;
+        const _bufPerfilMs = Math.round(Number(
+            (cfg && cfg.settings && cfg.settings.buffer)
+            || (cfg && cfg.buffer)
+            || (_pmBufP && _pmBufP.settings && _pmBufP.settings.buffer)
+        ) || 0);
                 const bufMs = _bufPerfilMs > 0 ? _bufPerfilMs : (opt.buffer_seconds || 0) * 1000;
                 if (bufMs > 0) {
                     upsertVlcopt(lines, 'network-caching', bufMs);
