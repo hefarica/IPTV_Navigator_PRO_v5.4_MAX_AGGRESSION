@@ -222,14 +222,25 @@ async function gateInfo() {
         /* [2026-11-19] Sirve en los DOS sitios: en el VPS (misma origen) y en el
          * servidor local http://127.0.0.1:5500, donde '/prisma/...' no existe.
          * Cascada: relativa -> absoluta canonica. */
-        var _cands = ['/prisma/api/ape-gate-status.php',
-                      'https://iptv-ape.duckdns.org/prisma/api/ape-gate-status.php'];
+        /* [2026-11-19] Si el panel se sirve en local (127.0.0.1, localhost, file://)
+         * la ruta relativa NO existe y solo genera 404 en consola. Se detecta el
+         * origen y se va DIRECTO a la canonica. En el VPS (mismo origen) se usa la
+         * relativa, que es mas rapida y no depende de DNS. */
+        var _host = (typeof location !== 'undefined' && location.hostname) ? location.hostname : '';
+        var _isLocal = !_host || /^(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(_host);
+        var _cands = _isLocal
+            ? ['https://iptv-ape.duckdns.org/prisma/api/ape-gate-status.php']
+            : ['/prisma/api/ape-gate-status.php',
+               'https://iptv-ape.duckdns.org/prisma/api/ape-gate-status.php'];
         var r = null;
         for (var _i = 0; _i < _cands.length; _i++) {
             try {
                 var _r = await fetch(_cands[_i], { cache: 'no-store' });
                 if (_r && _r.ok) { r = _r; break; }
-            } catch (_e) { }
+                console.warn('[GATE] ' + _cands[_i] + ' -> HTTP ' + (_r ? _r.status : '?'));
+            } catch (_e) {
+                console.warn('[GATE] ' + _cands[_i] + ' -> ' + ((_e && _e.message) || 'error de red'));
+            }
         }
         if (!r.ok) return null;
         var j = await r.json();
