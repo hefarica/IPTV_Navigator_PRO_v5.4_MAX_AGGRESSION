@@ -112,3 +112,38 @@ se toca.
    representativo, que es requisito de la orden.
 
 Ninguna de las dos requiere tocar producción ni el VPS.
+
+## 9 · FLUJO UI EJECUTADO (esta ronda) — generación real con lista real
+
+Se añadió en staging el **control que faltaba** (autorizado por la orden §2): `js/ape-m3u-local-loader.js`
++ `<input type="file" id="apeM3uLocal">`. Es un cargador mínimo: parsea M3U y lo entrega al **mismo**
+estado que usa la app (`window.app.state.channelsMaster`); no hay generador ni ruta paralela.
+
+Entrada real usada: 3 canales extraídos de `APE_4K_PREMIUM_6K_METADATA.m3u8`
+(754.247.241 B, sha256 `001713fc…`) a `C:\Users\HFRC\APE_PRIVADO\entrada_3ch.m3u8`
+(311.477 B, sha256 `c2c9125d…`), servida **solo por loopback**.
+
+Chrome 157 · `index-v4.html#ape-e2e` · importador real + picker real + `#btnGenerateAudited` real:
+
+```
+paso  flag   bytes    líneas  sidecar  EXTINF  URIs  sha(16)
+0     OFF    288269   3257    0        3       3     33148645b4c01ef2
+1     ON     290190   3260    3        3       3     8236c1552a967abf
+2     OFF    286722   3257    0        3       3     c2d4116382e6554e
+```
+
+Lectura:
+
+- **ON añade exactamente 3 líneas sidecar** (una por canal) y **no toca** EXTINF (3) ni URIs (3).
+- **OFF no emite sidecar** y vuelve al mismo número de líneas (3.257).
+- Los bytes entre pasadas OFF **no** son idénticos porque el generador es polimórfico por diseño
+  (LIST-ID, fingerprint, UA rotativa): la equivalencia byte a byte OFF vs código previo se demostró
+  fuera de la UI con el mismo generador y el azar fijado (`previo == off`, sha `a24ef8db…`).
+- `err: []` en todo el recorrido.
+
+## 10 · Lo que sigue pendiente (declarado)
+
+- **Los 12 IDs por selección manual en el control real**: el flujo ya está montado y funciona; falta
+  iterar la selección de perfil (el control de perfil de la app) y repetir las tres pasadas por ID.
+- **`determineProfile` automático** desde la UI.
+- **Reimportación** del archivo generado y verificación de restauración exacta en la UI.
