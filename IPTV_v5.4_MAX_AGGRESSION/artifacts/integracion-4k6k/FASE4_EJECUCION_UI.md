@@ -375,3 +375,36 @@ generación). No lo doy por cerrado: es el siguiente arreglo del runner.
 Ninguna medición de esta sección sustituye a las anteriores: las filas 12/12 con export y reimportación
 del §14-§15 se obtuvieron con la captura por espera fija y siguen siendo válidas como evidencia de
 comportamiento, no como evidencia del runner endurecido.
+## 20 · Causa raíz de «sin descarga» en el runner endurecido (medida, no supuesta)
+
+Se instrumentó `console.error`/`warn` y `window.onerror` dentro de la página. Log sanitizado:
+
+```
+E:❌ Headers Mode: FALTA O VACÍO
+E:❌ APE Config: FALTA O VACÍO
+E:❌ Headers Activos: FALTA O VACÍO
+E:❌ Canales sin serverId: … ; W: 3 canales con serverId inválido
+W:[DYNAMIC-PROBE] No se encontraron credenciales activas. Abortando probe.
+W: ALL LS KEYS: iptv_headers_active_v41, iptv_headers_mode_v41
+E:❌ [buildCredentialsMap v10.3] ALL SOURCES EMPTY AFTER NUCLEAR SCAN
+E:   This means NO server credentials exist ANYWHERE in the browser.
+W:[APE-GATE] generación ya en curso — invocación duplicada IGNORADA
+W:🔴 [CÓRTEX STEALTH] host=iptv-ape.duckdns.org status=0 (inalcanzable) retry=1 delay=2094ms
+```
+
+Dos hechos distintos y ambos accionables:
+
+1. **No hay credenciales de servidor en el navegador** (`buildCredentialsMap` → *ALL SOURCES EMPTY*).
+   El pipeline necesita resolver URL por servidor; con la lista local sin alta de servidor, la
+   generación no completa. **Operación bloqueada: generación completa en la UI. Causa: falta de
+   credenciales de servidor, que son del operador y no se fabrican.**
+2. **El cerrojo `APE-GATE` ignora invocaciones concurrentes**: el runner endurecido lanza OFF, ON y ON
+   encadenadas; si la primera no termina, las siguientes se descartan. El runner debe **esperar la
+   liberación del gate** entre generaciones, no solo la descarga. Es un defecto del arnés, ya localizado.
+
+También se detectó que el pipeline intenta `showSaveFilePicker` (File System Access) antes del blob;
+el driver fuerza la ruta de respaldo (`blob` + ancla) como condición de arnés documentada.
+
+Corrección que queda definida para el siguiente paso: 1) esperar la liberación del `APE-GATE` entre
+generaciones; 2) `MutationObserver` sobre anclas `download` + `fetch(href)` para capturar bytes;
+3) resolver el alta de servidor con el operador para que la generación complete.
