@@ -130,7 +130,7 @@
           uris(rec) === uris(off.texto) && extinf(rec) === extinf(off.texto));
         var r = await fetch('/guardar', { method: 'POST', headers: Object.assign({ 'X-Perfil': pid }, H), body: on1.texto });
         fila.export = await r.json();
-        var t2 = await (await fetch('/salida.m3u8?p=' + encodeURIComponent(pid), { headers: { 'X-APE-Token': token } })).text();
+        var t2 = await (await fetch('/salida.m3u8?f=' + encodeURIComponent((fila.export && fila.export.archivo) || '') + '&t=' + encodeURIComponent(token), { headers: { 'X-APE-Token': token } })).text();
         var dt2 = new DataTransfer(); dt2.items.add(new File([t2], 'salida.m3u8', { type: 'audio/x-mpegurl' }));
         inp.files = dt2.files; inp.dispatchEvent(new Event('change', { bubbles: true }));
         await esp(500);

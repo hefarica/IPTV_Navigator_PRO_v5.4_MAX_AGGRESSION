@@ -437,3 +437,32 @@ EXIT=1
 **Causa aislada**: la ruta `/salida.m3u8` recibe la petición sin el token válido (401) aunque el mismo
 testigo funciona en `POST /guardar`; siguiente paso es capturar la cabecera que realmente llega en el
 GET (o servir el archivo con el mismo `fetch` del POST) y repetir. No lo doy por bueno.
+## 22 · Runner endurecido en VERDE real (no vacuo): P0 completo
+
+Causa del 401/404: `/salida.m3u8` servía `salida_<ID>.m3u8` mientras `/guardar` escribía
+`salida_<ID>__<epoch>.m3u8`. Ahora se sirve **exactamente** el archivo devuelto por `/guardar`,
+validando el nombre con `/^salida_[A-Za-z0-9.]+__\d+\.m3u8$/` y exigiendo testigo por cabecera **o**
+query (el navegador no siempre reenvía cabeceras en subrecursos; el testigo sigue siendo aleatorio por
+corrida y solo en loopback).
+
+```
+{"ok":true,"perfiles":["P0"],"fallos":[], …,"EXIT":0}
+
+OFF  bytes=290.855  sidecar=0
+ON   bytes=292.159  sidecar=3  profile=P0  selectedProfile=P0
+     target=7680x4320  premium=7680x4320  reaFieldsWritten=0  executed=false
+     sha256=2d87fefcd8fe6e151cee0ea74d0715efda48174e11d224cf72bd4aa38a5e02ff
+export  ok=true bytes=292.159 sha256=<idéntico completo> archivo=salida_P0__1795193847343.m3u8
+reimport canales=3 mismaSecuencia=true bytes=292.123 tieneSidecar=true
+idempotente=true  recuperacionExacta=true  perfilCanal antes=después=null
+diag: guardar 292159 ok · salida_ok 292159 · chrome_close
+```
+
+Nota honesta: la reimportación reporta **292.123 B frente a 292.159 B** del archivo. La secuencia de
+canales y el sidecar se conservan (`mismaSecuencia=true`, `tieneSidecar=true`), pero hay 36 B de
+diferencia que **no explico todavía**: o el paso texto→File normaliza saltos/final, o el `text()` de la
+respuesta recorta algo. Queda como diferencia observada aislada, no como equivalencia asumida.
+
+Con esto el runner endurecido deja de ser un arnés que solo falla: **una fila pasa con todas las
+aserciones verdes y exit 0**, y las dos veces anteriores que intentó pasar en falso, la aserción
+endurecida lo impidió.

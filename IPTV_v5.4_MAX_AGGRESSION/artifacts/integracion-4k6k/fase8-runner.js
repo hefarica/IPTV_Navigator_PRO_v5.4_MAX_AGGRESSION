@@ -53,7 +53,15 @@ const srv = http.createServer((req, res) => {
 
     const esSensible = ['/lab.json', '/entrada.m3u8', '/salida.m3u8', '/guardar'].indexOf(u) >= 0;
     if (esSensible) {
-        if (req.headers['x-ape-token'] !== TOKEN) { log('rechazo', { u: u, causa: 'token' }); return responder(res, 401, 'text/plain', 'no'); }
+        /* El testigo se acepta por cabecera y, para GET, también por query:
+           el navegador no siempre reenvía la cabecera en subrecursos. Sigue
+           siendo un secreto aleatorio por corrida, en loopback. */
+        var tokH = req.headers['x-ape-token'] || '';
+        var tokQ = new URL(req.url, 'http://127.0.0.1').searchParams.get('t') || '';
+        if (tokH !== TOKEN && tokQ !== TOKEN) {
+            log('rechazo', { u: u, causa: 'token', lenH: tokH.length, lenQ: tokQ.length });
+            return responder(res, 401, 'text/plain', 'no');
+        }
         const org = req.headers.origin;
         if (org && !ORIGIN_OK(org)) { log('rechazo', { u: u, causa: 'origin', org: org }); return responder(res, 403, 'text/plain', 'no'); }
     }
@@ -68,11 +76,13 @@ const srv = http.createServer((req, res) => {
         return;
     }
     if (u === '/salida.m3u8') {
-        const p = new URL(req.url, 'http://127.0.0.1').searchParams.get('p') || '';
-        if (!IDS.has(p)) return responder(res, 400, 'text/plain', 'id');
-        const f = path.join(OUTDIR, 'salida_' + p + '.m3u8');
-        fs.readFile(f, (e, b) => {
-            if (e) return responder(res, 404, 'text/plain', 'nf');
+        /* se sirve EXACTAMENTE el archivo que /guardar escribió (nombre con epoch) */
+        const q = new URL(req.url, 'http://127.0.0.1').searchParams;
+        const f = String(q.get('f') || '');
+        if (!/^salida_[A-Za-z0-9.]+__\d+\.m3u8$/.test(f)) { log('salida_rechazo', { f: f }); return responder(res, 400, 'text/plain', 'nom'); }
+        fs.readFile(path.join(OUTDIR, f), (e, b) => {
+            if (e) { log('salida_404', { f: f }); return responder(res, 404, 'text/plain', 'nf'); }
+            log('salida_ok', { f: f, bytes: b.length });
             responder(res, 200, 'audio/x-mpegurl', b);
         });
         return;
