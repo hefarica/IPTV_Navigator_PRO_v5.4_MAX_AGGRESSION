@@ -16,31 +16,44 @@
     dt.items.add(new File([txt], 'entrada_3ch.m3u8', { type: 'audio/x-mpegurl' }));
     inp.files = dt.files; inp.dispatchEvent(new Event('change', { bubbles: true }));
     await esp(600);
+    var base = (window.app.state.channelsMaster || []).map(function (c) { return c.name + '|' + c.url; });
     var cap = []; var orig = URL.createObjectURL;
     URL.createObjectURL = function (b) { cap.push(b); return orig.call(URL, b); };
     var pm = window.ProfileManagerV9;
 
     for (var i = 0; i < IDs.length; i++) {
       var pid = IDs[i], fila = { id: pid };
-      if (pm && typeof pm.selectProfile === 'function') { try { pm.selectProfile(pid); fila.sel = true; } catch (e) { fila.sel = String(e.message); } }
-      else { fila.sel = 'sin ProfileManagerV9'; }
-      await esp(200);
-      for (var k = 0; k < 2; k++) {
-        window.APE_4K6K_AUDIT = (k === 1);          /* OFF, ON */
-        cap.length = 0;
-        q('#btnGenerateAudited').click();
-        await esp(2500);
-        if (!cap.length) { fila[k === 1 ? 'on' : 'off'] = 'sin blob'; continue; }
-        var buf = await cap[0].arrayBuffer();
-        var t = new TextDecoder().decode(buf);
-        var linea = t.split('\n').filter(function (l) { return l.indexOf('#EXT-X-APE-4K6K-INTENT:') === 0; })[0];
-        var d = { bytes: buf.byteLength, sha: await sha(buf),
-                  sidecar: t.split('\n').filter(function (l) { return l.indexOf('#EXT-X-APE-4K6K-INTENT:') === 0; }).length };
-        if (linea) { try { var j = JSON.parse(linea.slice('#EXT-X-APE-4K6K-INTENT:'.length));
-          d.intentProfile = j.outputPolicy.profile; d.target = j.targetResolution;
-          d.premium = j.outputPolicy.premiumResolution; } catch (e) { d.parse = String(e.message); } }
-        fila[k === 1 ? 'on' : 'off'] = d;
-      }
+      try { if (pm) pm.selectProfile(pid); } catch (e) {}
+      await esp(150);
+      window.APE_4K6K_AUDIT = false; cap.length = 0; q('#btnGenerateAudited').click(); await esp(1800);
+      if (cap.length) { var bo = await cap[0].arrayBuffer(); fila.off = { bytes: bo.byteLength, sha: await sha(bo) }; }
+      window.APE_4K6K_AUDIT = true; cap.length = 0; q('#btnGenerateAudited').click(); await esp(2200);
+      if (!cap.length) { fila.on = 'sin blob'; R.filas.push(fila); continue; }
+      var buf = await cap[0].arrayBuffer(); var t = new TextDecoder().decode(buf);
+      var linea = t.split('\n').filter(function (l) { return l.indexOf('#EXT-X-APE-4K6K-INTENT:') === 0; })[0];
+      fila.on = { bytes: buf.byteLength, sha: await sha(buf),
+        sidecar: t.split('\n').filter(function (l) { return l.indexOf('#EXT-X-APE-4K6K-INTENT:') === 0; }).length };
+      if (linea) { try { var j = JSON.parse(linea.slice('#EXT-X-APE-4K6K-INTENT:'.length));
+        fila.on.profile = j.outputPolicy.profile; fila.on.target = j.targetResolution; } catch (e) {} }
+
+      /* EXPORT a archivo privado (loopback -> APE_PRIVADO) */
+      try {
+        var r = await fetch('/guardar', { method: 'POST', headers: { 'X-Perfil': pid }, body: t });
+        fila.export = await r.json();
+      } catch (e) { fila.export = 'error: ' + e.message; }
+
+      /* REIMPORT del archivo recién exportado por el MISMO control de la app */
+      try {
+        var r2 = await fetch('/salida.m3u8?p=' + encodeURIComponent(pid));
+        var t2 = await r2.text();
+        var dt2 = new DataTransfer();
+        dt2.items.add(new File([t2], 'salida.m3u8', { type: 'audio/x-mpegurl' }));
+        inp.files = dt2.files; inp.dispatchEvent(new Event('change', { bubbles: true }));
+        await esp(500);
+        var ahora = (window.app.state.channelsMaster || []).map(function (c) { return c.name + '|' + c.url; });
+        fila.reimport = { canales: ahora.length,
+          mismaSecuencia: JSON.stringify(ahora) === JSON.stringify(base) };
+      } catch (e) { fila.reimport = 'error: ' + e.message; }
       R.filas.push(fila);
     }
     URL.createObjectURL = orig;

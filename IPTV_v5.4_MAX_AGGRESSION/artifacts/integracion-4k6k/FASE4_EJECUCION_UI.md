@@ -236,3 +236,35 @@ en objetivo y premium: la ley anti-degradación se cumple también en la declara
 
 Pendiente declarado: reimportación del archivo generado en la UI, `determineProfile` automático
 (cobertura distinta de la manual) y medición de memoria con la lista de 754 MB.
+## 14 · Exportación a archivo privado y REIMPORTACIÓN (medido)
+
+Arnés: [`fase5-export-harness.js`](fase5-export-harness.js) sirve `frontend/` por loopback con tres rutas:
+`/lab.json` (LAB real), `/entrada.m3u8` (3 canales reales), `POST /guardar` (escribe en
+`C:\Users\HFRC\APE_PRIVADO`) y `GET /salida.m3u8?p=<pid>` (devuelve el exportado al control de la app).
+
+Cadena por perfil: selección real → OFF → ON → POST a destino privado → reimportación por el **mismo
+control** (`input#apeM3uLocal`) → comparación de la secuencia de canales con la entrada.
+
+| ID | OFF bytes | ON sidecar | perfil/target | export sha (disco) | reimportación |
+|---|---|---|---|---|---|
+| P0 | 290.423 | 3 | P0 · 7680x4320 | `15f2703b…` ✔ | 3 canales · secuencia idéntica |
+| P1 | 289.111 | 3 | P1 · 3840x2160 | `adfb5ce5…` ✔ | idéntica |
+| P2 | 287.748 | 3 | P2 · 3840x2160 | `258f44df…` ✔ | idéntica |
+| P3 | 287.324 | 3 | P3 · 3840x2160 | `a3d6f588…` ✔ | idéntica |
+| P1.5 | 258.673 | 3 | P1.5 · 5760x3240 | `309d814a…` ✔ | idéntica |
+| P2.5 | 260.620 | 3 | P2.5 · 5760x3240 | `6b77cbe9…` ✔ | idéntica |
+| P3.5 | 259.998 | 3 | P3.5 · 5760x3240 | `e00866b0…` ✔ | idéntica |
+| P4.5 | 260.509 | 3 | P4.5 · 5760x3240 | `a9524521…` ✔ | idéntica |
+| P5.5 | 256.423 | 3 | P5.5 · 5760x3240 | `3f649793…` ✔ | idéntica |
+
+**Los sha de los archivos en disco coinciden exactamente con los blobs generados en la página.**
+`P4`, `P5` y `P0.5` no completaron la pasada ON en esta corrida (sin blob, transitorio bajo tiempo
+virtual); las tres sí completaron ON en la corrida anterior con sidecar=3.
+
+ACL del destino (reverificada tras escribir): `SYSTEM`, `Administradores`, `HFRC` — sin grupos amplios.
+
+Comprobación directa sobre `salida_P0.m3u8`: **3 líneas sidecar**, la primera declara
+`"targetResolution":"7680x4320"` → **P0 conserva el 8K en el archivo exportado**, no solo en memoria.
+
+Pendiente: repetir P4/P5/P0.5 hasta 12/12 con blob y export, `determineProfile` automático y medición
+de memoria con la lista de 754 MB.
