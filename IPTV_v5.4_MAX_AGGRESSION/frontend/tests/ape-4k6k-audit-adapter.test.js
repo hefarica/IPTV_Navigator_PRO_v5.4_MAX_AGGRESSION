@@ -181,7 +181,8 @@ const baseList = [
     ok('ON: misma longitud (ni un canal perdido ni duplicado)', onList.length === input.length);
     ok('ON: el input original NO se muta', J(input) === inputBytesBefore);
 
-    const APPROVED = ['rea', 'APE-AUDIT-ORIGINAL'];
+    /* Fase 2: la intención vive en su sidecar y `rea` queda intacta. */
+    const APPROVED = ['APE-4K6K-INTENT'];
     let unexpectedChanges = [];
     onList.forEach((outCh, i) => {
         const inCh = input[i], keysIn = Object.keys(inCh), keysOut = Object.keys(outCh);
@@ -194,24 +195,25 @@ const baseList = [
             if (J(outCh[k]) !== J(inCh[k])) unexpectedChanges.push('~' + k + '@' + i);
         });
     });
-    ok('ON: sólo se AÑADEN rea + APE-AUDIT-ORIGINAL; nada más cambia',
+    ok('ON: sólo se AÑADE el sidecar APE-4K6K-INTENT; rea no cambia',
         unexpectedChanges.length === 0, unexpectedChanges.slice(0, 8));
 
-    /* ── 4.b Las 12 escalares del REA (§1.2) con literales exactos ────────── */
-    section('5. §1.2 — 12 escalares REA con literales exactos');
-    const rea0 = onList[0].rea;
+    /* ── 4.b Los escalares de la intención, con literales exactos ─────────── */
+    section('5. sidecar — escalares de la intención con literales exactos');
+    const rea0 = onList[0]['APE-4K6K-INTENT'];
     const scalars = {
-        policyId: 'ape-4k-premium6k-intent/1', status: 'requested_only',
+        schema: 'ape-4k-premium6k-intent/1', status: 'requested_only',
         targetResolution: '3840x2160', targetWidth: 3840, targetHeight: 2160,
         boxWidth: 3840, boxHeight: 2160, mode: 'upscale_if_needed',
         enhancementRequested: true, execution: 'not_verified',
-        capacityGate: 'device_runtime', outputPreference: 'preserve_verified_source'
+        capacityGate: 'device_runtime', outputPreference: 'preserve_verified_source',
+        reaPolicyPreserved: true, reaFieldsWritten: 0
     };
     const badScalar = Object.keys(scalars).filter(k => J(rea0[k]) !== J(scalars[k]));
-    ok('las 12 escalares coinciden una a una', badScalar.length === 0, badScalar);
-    ok('schema del REA previo se conserva (no se reescribe)', (function () {
+    ok('los escalares del sidecar coinciden una a uno', badScalar.length === 0, badScalar);
+    ok('la política REA base se conserva VERBATIM (policyId intacto)', (function () {
         const r = api.enrich([makeChannel({ rea: { schema: 'ape.rea-intent/1', policyId: 'rea-adaptive-v1' } })])[0];
-        return r.rea.schema === 'ape.rea-intent/1' && r.rea.policyId === 'ape-4k-premium6k-intent/1';
+        return r.rea.schema === 'ape.rea-intent/1' && r.rea.policyId === 'rea-adaptive-v1';
     })());
 
     /* ── 4.c outputPolicy EXACTAMENTE 13 claves (§1.3) ───────────────────── */
@@ -232,7 +234,7 @@ const baseList = [
         Object.keys(OP).filter(k => J(rea0.outputPolicy[k]) !== J(OP[k])));
     ok('floorLock es STRING, no objeto (§2.3 punto 2)', typeof rea0.outputPolicy.floorLock === 'string');
     ok('perfil del patch sin ape-profile => "runtime" (§6 caso 9)',
-        api.enrich([{ tvg_id: 'Z' }])[0].rea.outputPolicy.profile === 'runtime');
+        api.enrich([{ tvg_id: 'Z' }])[0]['APE-4K6K-INTENT'].outputPolicy.profile === 'runtime');
 
     /* ── 4.d §1.4 claves preservadas ─────────────────────────────────────── */
     section('7. §1.4 — claves REA previas preservadas');
@@ -247,19 +249,20 @@ const baseList = [
         ['schema', 'hdr', 'hdrVerified', 'integration', 'runtimeFallback', 'runtimePackage', 'sourceStatus']
             .every(k => withRea.rea[k] !== undefined));
     ok('preserva una clave DESCONOCIDA adicional', withRea.rea.customUnknown === 42);
-    /* Fixture: 9 claves, de las cuales SÓLO `targetResolution` está entre las 12
-     * sobrescritas ⇒ preservadas 8 · 8 + 12 escalares + 1 outputPolicy = 21. */
-    ok('REA previa de 9 claves => 21 claves (8 preservadas + 12 + outputPolicy)',
-        Object.keys(withRea.rea).length === 21, Object.keys(withRea.rea).length);
-    ok('APIT archiva la REA previa (present:true, valor original)',
-        withRea['APE-AUDIT-ORIGINAL'].present === true &&
-        withRea['APE-AUDIT-ORIGINAL'].value.targetResolution === null);
+    /* Fase 2: `rea` ya NO se reescribe ⇒ sus 9 claves quedan exactamente igual. */
+    ok('REA previa de 9 claves => se conservan las 9 (sin añadir ni quitar)',
+        Object.keys(withRea.rea).length === 9, Object.keys(withRea.rea).length);
+    ok('targetResolution previo (null) se conserva tal cual',
+        withRea.rea.targetResolution === null);
+    ok('no se crea APE-AUDIT-ORIGINAL: no hay nada que archivar',
+        withRea['APE-AUDIT-ORIGINAL'] === undefined);
 
     /* ── 4.e §6 caso 2: REA inválida ABORTA ──────────────────────────────── */
     section('8. §6 caso 2 — REA inválida aborta (no se repara en silencio)');
-    ok('REA string JSON válida se extiende', (function () {
+    ok('REA string JSON válida se conserva y se le añade el sidecar', (function () {
         const r = api.enrich([makeChannel({ rea: '{"schema":"ape.rea-intent/1","k":1}' })])[0];
-        return r.rea.k === 1 && r.rea.policyId === 'ape-4k-premium6k-intent/1';
+        return r.rea === '{"schema":"ape.rea-intent/1","k":1}' &&
+            r['APE-4K6K-INTENT'].status === 'requested_only';
     })());
     ok('REA string no-JSON lanza', (function () {
         try { api.enrich([makeChannel({ rea: '{roto' })]); return false; } catch (_) { return true; }
@@ -319,7 +322,7 @@ const baseList = [
     ]);
     const mix = api.enrich(mixInput);
     ok('enrich NO reescribe QoE.p', J(mix[1].qoe) === J(mixInput[1].qoe));
-    ok('la intención lleva el perfil VISUAL', mix[1].rea.outputPolicy.profile === 'P0');
+    ok('la intención lleva el perfil VISUAL', mix[1]['APE-4K6K-INTENT'].outputPolicy.profile === 'P0');
     const au = api.audit(mixInput).before;
     ok('audit REGISTRA el desajuste', au.qoe_profile_mismatch === 1, au.qoe_profile_mismatch);
     ok('formato exacto <perfil>-><qoe_p>', au.qoe_profile_mismatches['P0->P3'] === 1, au.qoe_profile_mismatches);
@@ -336,8 +339,11 @@ const baseList = [
     ok('sha256 1ª == 2ª pasada', sha256(J(p1)) === sha256(J(p2)), [sha256(J(p1)), sha256(J(p2))]);
     ok('3ª pasada estable (punto fijo)', J(p3) === J(p1));
     ok('APE-AUDIT-ORIGINAL NO se re-archiva', J(p2[0]['APE-AUDIT-ORIGINAL']) === J(p1[0]['APE-AUDIT-ORIGINAL']));
-    ok('orden de claves estable (rea justo antes del archivo)',
-        Object.keys(p1[0]).indexOf('rea') === Object.keys(p1[0]).indexOf('APE-AUDIT-ORIGINAL') - 1);
+    ok('orden de claves estable (el sidecar va al final, tras rea)', (function () {
+        const ks = Object.keys(p1[0]);
+        const iIntent = ks.indexOf('APE-4K6K-INTENT'), iRea = ks.indexOf('rea');
+        return iIntent === ks.length - 1 && (iRea < 0 || iRea === iIntent - 1);
+    })());
     const ext2 = api.enrich(clone([withRea]))[0];
     ok('extensión de REA existente también idempotente', J(ext2) === J(withRea));
 
@@ -348,10 +354,10 @@ const baseList = [
     const ch8k = api.enrich(clone([makeChannel()]))[0];
     ok('8K conserva su resolución de fuente', ch8k.resolution === '7680x4320');
     ok('8K conserva su height', ch8k.height === 4320);
-    ok('declara preserveHigherSource:true', ch8k.rea.outputPolicy.preserveHigherSource === true);
-    ok('declara nativeResolutionClaim:false', ch8k.rea.outputPolicy.nativeResolutionClaim === false);
-    ok('declara sourceTruthUnchanged:true', ch8k.rea.outputPolicy.sourceTruthUnchanged === true);
-    ok('declara hdrPolicy preserve_verified_source', ch8k.rea.outputPolicy.hdrPolicy === 'preserve_verified_source');
+    ok('declara preserveHigherSource:true', ch8k['APE-4K6K-INTENT'].outputPolicy.preserveHigherSource === true);
+    ok('declara nativeResolutionClaim:false', ch8k['APE-4K6K-INTENT'].outputPolicy.nativeResolutionClaim === false);
+    ok('declara sourceTruthUnchanged:true', ch8k['APE-4K6K-INTENT'].outputPolicy.sourceTruthUnchanged === true);
+    ok('declara hdrPolicy preserve_verified_source', ch8k['APE-4K6K-INTENT'].outputPolicy.hdrPolicy === 'preserve_verified_source');
     ok('no afirma que la fuente sea 4K nativa', J(ch8k).indexOf('"sourceResolution"') < 0);
 
     /* ═══════════════════════════════════════════════════════════════════════
@@ -627,7 +633,7 @@ const baseList = [
     })());
     ok('audit(null) con 0 canales', api.audit(null).before.channels === 0);
     ok('perfil desconocido en patch => "runtime"',
-        api.enrich([{ tvg_id: 'Z', ape_profile: 'P9' }])[0].rea.outputPolicy.profile === 'runtime');
+        api.enrich([{ tvg_id: 'Z', ape_profile: 'P9' }])[0]['APE-4K6K-INTENT'].outputPolicy.profile === 'runtime');
 
     /* ── 23. Aislamiento ─────────────────────────────────────────────────── */
     section('23. AISLAMIENTO — nada previo se altera');
@@ -642,6 +648,34 @@ const baseList = [
         global.APE_PROFILES_CONFIG.profiles['P0.5'] === undefined &&
         api.overlay().profiles['P0.5'] !== undefined);
     global.APE_4K6K_AUDIT = 0;
+
+    /* ═══════════════════════════════════════════════════════════════════════
+     * 18. FASE 2 — EMISIÓN DEL SIDECAR Y FRONTERA CON EXTSHIMOTT
+     * ═══════════════════════════════════════════════════════════════════════ */
+    section('18. intentTag(): una URI por canal, tag propio, EXTSHIMOTT intacto');
+    const tagCh = { ape_profile: 'P3', rea: { schema: 'ape.rea-intent/1', policyId: 'rea-adaptive-v1' } };
+    const tagLine = api.intentTag(tagCh);
+    ok('intentTag es una sola línea con el prefijo propio',
+        typeof tagLine === 'string' && tagLine.indexOf('\n') < 0 &&
+        tagLine.indexOf('#EXT-X-APE-4K6K-INTENT:') === 0);
+    ok('payload del tag parsea y declara intención no ejecutada', (function () {
+        const p = JSON.parse(tagLine.slice('#EXT-X-APE-4K6K-INTENT:'.length));
+        return p.schema === 'ape-4k-premium6k-intent/1' && p.status === 'requested_only' &&
+            p.outputPolicy.executed === false && p.reaFieldsWritten === 0;
+    })());
+    ok('intentTag NO muta la REA del canal',
+        tagCh.rea.policyId === 'rea-adaptive-v1' && Object.keys(tagCh.rea).length === 2);
+    ok('el tag no contiene EXTSHIMOTT (v1 sigue cerrado)', tagLine.indexOf('EXTSHIMOTT') < 0);
+    ok('insertado antes de la URI deja una sola URI y EXTSHIMOTT intacto', (function () {
+        const bloque = ['#EXTINF:-1 tvg-id="1",Canal', '#EXTHTTP:{"User-Agent":"x"}',
+            '#EXTSHIMOTT:{"ver":1}', 'https://iptv-ape.duckdns.org/pulse/1.m3u8?u=x&d=y'];
+        const lineas = bloque.slice();
+        lineas.splice(lineas.length - 1, 0, tagLine);
+        const out = lineas.join('\n');
+        return (out.match(/^https?:\/\//gm) || []).length === 1 &&
+            out.indexOf('#EXTSHIMOTT:{"ver":1}') > 0 &&
+            out.indexOf('#EXT-X-APE-4K6K-INTENT:') < out.indexOf('https://');
+    })());
 
     console.log('\n══════════════════════════════════════════════════════════════');
     console.log('  PASS ' + pass + ' · FAIL ' + fail);

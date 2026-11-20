@@ -55,10 +55,12 @@
     var SCHEMA_AUDIT = 'ape-audit/1';                  // :170
     var SCHEMA_ARCHIVE = 'ape-4k6k-audit-original/1';  // envoltorio del archivo de objetos
 
-    var ARCHIVE_FIELD = 'APE-AUDIT-ORIGINAL';
+    var ARCHIVE_FIELD = 'APE-AUDIT-ORIGINAL';          /* formato PYTHON: no lo escribe este adaptador */
+    var INTENT_FIELD = 'APE-4K6K-INTENT';              /* sidecar propio de esta integración (fase 2) */
     var OUT_TAG = '#EXT-X-APE-OUTPUT-REQUEST:';
     var PREMIUM_TAG = '#EXT-X-APE-PREMIUM-REQUEST:';
     var LEGACY_TAG = '#EXT-X-APE-AUDIT-ORIGINAL:';
+    var INTENT_TAG = '#EXT-X-APE-4K6K-INTENT:';
     var POLICY_TAG = '#EXT-X-APE-AUDIT-POLICY:';
     var REA_TAG = '#EXT-X-APE-REA:';
     var QOE_TAG = '#EXT-X-APE-QOE-CONTRACT:';
@@ -266,38 +268,52 @@
         return null;
     }
 
-    /* ── INTENCIÓN REA (§1.2: 12 escalares + §1.3: outputPolicy de 13 claves) ─ */
-    function extendRea(old, profile) {
-        var out = shallow(isObj(old) ? old : {});     /* §1.4: lo no listado sobrevive */
-        out.policyId = SCHEMA_INTENT;
-        out.status = 'requested_only';
-        out.targetResolution = '3840x2160';
-        out.targetWidth = 3840;
-        out.targetHeight = 2160;
-        out.boxWidth = 3840;
-        out.boxHeight = 2160;
-        out.mode = 'upscale_if_needed';
-        out.enhancementRequested = true;
-        out.execution = 'not_verified';
-        out.capacityGate = 'device_runtime';
-        out.outputPreference = 'preserve_verified_source';
-        /* EXACTAMENTE 13 claves (§1.3). No se añade ninguna. */
-        out.outputPolicy = {
+    /* ── INTENCIÓN 4K/6K: SIDECAR versionado, la política REA NO se toca ───── *
+     * [FASE 2 · 2026-11-20 · orden del operador] La versión anterior escribía
+     * `rea.policyId` (rea-adaptive-v1 → ape-4k-premium6k-intent/1) y
+     * `rea.targetResolution` (null → 3840x2160). Un consumidor que decida por
+     * policyId o por la semántica de targetResolution vería un cambio de
+     * política, y tener el valor viejo archivado no lo vuelve compatible: el
+     * archivo prueba procedencia, no compatibilidad.
+     *
+     * Ahora `rea` se devuelve VERBATIM (misma referencia y mismos bytes) y la
+     * intención viaja en un campo propio y versionado. Mismo contenido, dueño
+     * distinto: nadie que lea `rea` ve un campo que no esperaba.
+     */
+    function buildIntent(profile) {
+        return {
             schema: SCHEMA_INTENT,
-            profile: profile,
-            defaultVariant: 'standard_4k',
-            floorLock: '3840x2160',
-            premiumRequested: true,
-            premiumResolution: '5760x3240',
-            premiumKind: 'simulated_spatial_upscale',
-            preserveHigherSource: true,
-            sourceTruthUnchanged: true,
-            inheritExistingVisualTuning: true,
-            hdrPolicy: 'preserve_verified_source',
-            nativeResolutionClaim: false,
-            executed: false
+            status: 'requested_only',
+            targetResolution: '3840x2160',
+            targetWidth: 3840,
+            targetHeight: 2160,
+            boxWidth: 3840,
+            boxHeight: 2160,
+            mode: 'upscale_if_needed',
+            enhancementRequested: true,
+            execution: 'not_verified',
+            capacityGate: 'device_runtime',
+            outputPreference: 'preserve_verified_source',
+            /* El consumidor REA no ha sido probado con esta extensión: se declara. */
+            reaPolicyPreserved: true,
+            reaFieldsWritten: 0,
+            /* EXACTAMENTE 13 claves, igual que antes; ahora dentro del sidecar. */
+            outputPolicy: {
+                schema: SCHEMA_INTENT,
+                profile: profile,
+                defaultVariant: 'standard_4k',
+                floorLock: '3840x2160',
+                premiumRequested: true,
+                premiumResolution: '5760x3240',
+                premiumKind: 'simulated_spatial_upscale',
+                preserveHigherSource: true,
+                sourceTruthUnchanged: true,
+                inheritExistingVisualTuning: true,
+                hdrPolicy: 'preserve_verified_source',
+                nativeResolutionClaim: false,
+                executed: false
+            }
         };
-        return out;
     }
 
     /* §6 caso 2: REA con JSON inválido ⇒ ABORTA. Prohibido "arreglarlo" en silencio.
@@ -316,40 +332,34 @@
     }
 
     /* ── ENRICH ───────────────────────────────────────────────────────────── *
-     * Orden de claves FIJO (originales → rea → APE-AUDIT-ORIGINAL) para que la
-     * 2ª pasada emita bytes idénticos (§5.1: idempotencia = igualdad de bytes).
-     * El archivo existente se CONSERVA (punto fijo), no se re-archiva (§2.2/§5.1).
-     *
-     * DESVIACIÓN DECLARADA vs Python: §6 caso 1 dice que el Python NO crea REA
-     * si falta. Aquí SÍ se crea cuando falta, porque la misión ordena que
-     * enrich() aporte la intención `ape.rea-intent/1`. Ver ADAPTADOR.md. */
+     * Contrato de frontera (fase 2):
+     *   · `rea` (si existe) se copia VERBATIM: misma referencia, mismos bytes,
+     *     mismos campos desconocidos. No se archiva porque no se reescribe.
+     *   · La intención va en `APE-4K6K-INTENT` (sidecar versionado).
+     *   · Este adaptador NO escribe el archivo de líneas del Python
+     *     (`#EXT-X-APE-AUDIT-ORIGINAL:<base64url({"line":…,"eol":…})>`): ese
+     *     formato lo produce y lo verifica la herramienta Python, y no se le
+     *     atribuye compatibilidad desde aquí.
+     *   · Si el sidecar ya existe con el mismo schema, se conserva (punto fijo)
+     *     para que la 2ª pasada emita bytes idénticos.
+     */
     function enrichOne(ch, index) {
         if (!isObj(ch)) return ch;                    /* no-objetos pasan intactos */
         var label = 'canal#' + index;
         var profile = readProfile(ch, 'runtime');      /* patch ⇒ runtime */
         var norm = normaliseRea(has(ch, 'rea') ? ch.rea : undefined, label);
-        var out = {}, k;
+        var out = {}, k, prev;
 
         for (k in ch) {
             if (!has(ch, k)) continue;
-            if (k === 'rea' || k === ARCHIVE_FIELD) continue;
+            if (k === 'rea' || k === INTENT_FIELD) continue;
             out[k] = ch[k];                            /* previos y DESCONOCIDOS: verbatim */
         }
-        out.rea = extendRea(norm.obj, profile);
-
-        if (has(ch, ARCHIVE_FIELD)) {
-            out[ARCHIVE_FIELD] = ch[ARCHIVE_FIELD];
-        } else {
-            var value = norm.present ? cloneJson(norm.obj) : null;
-            out[ARCHIVE_FIELD] = {
-                schema: SCHEMA_ARCHIVE,
-                field: 'rea',
-                present: norm.present,
-                value: value,
-                value_state: !norm.present ? 'absent'
-                    : (value === null ? 'not_serializable' : 'json_roundtrip')
-            };
-        }
+        if (norm.present) out.rea = ch.rea;            /* VERBATIM, sin reconstruir */
+        prev = has(ch, INTENT_FIELD) ? ch[INTENT_FIELD] : undefined;
+        out[INTENT_FIELD] = (isObj(prev) && prev.schema === SCHEMA_INTENT)
+            ? prev
+            : buildIntent(profile);
         return out;
     }
 
@@ -832,6 +842,20 @@
         };
     }
 
+    /* ── EMISIÓN: una sola URI por canal, tag propio, EXTSHIMOTT intacto ───── *
+     * Devuelve la línea del sidecar SIN salto de línea. El llamador la inserta
+     * INMEDIATAMENTE ANTES de la URI del canal, de modo que el bloque conserva
+     * `metadata → una URI` y EXTSHIMOTT v1 (additionalProperties=false) no
+     * recibe ni un campo nuevo. Esta función es pura: NO consulta el flag; el
+     * punto de llamada es quien debe comprobarlo (ver el cableado del index).
+     */
+    function intentTag(ch) {
+        var profile = readProfile(isObj(ch) ? ch : {}, 'runtime');
+        var prev = (isObj(ch) && isObj(ch[INTENT_FIELD])) ? ch[INTENT_FIELD] : null;
+        var payload = (prev && prev.schema === SCHEMA_INTENT) ? prev : buildIntent(profile);
+        return INTENT_TAG + JSON.stringify(payload);
+    }
+
     return {
         version: '1.0.0',
         FLAG: FLAG,
@@ -842,7 +866,11 @@
         AUDIT_KEYS: AUDIT_KEYS.slice(),
         PROFILE_IDS: PROFILE_IDS.slice(),
         ARCHIVE_FIELD: ARCHIVE_FIELD,
-        TAGS: { out: OUT_TAG, premium: PREMIUM_TAG, archive: LEGACY_TAG, policy: POLICY_TAG, rea: REA_TAG },
+        INTENT_FIELD: INTENT_FIELD,
+        TAGS: {
+            out: OUT_TAG, premium: PREMIUM_TAG, archive: LEGACY_TAG,
+            intent: INTENT_TAG, policy: POLICY_TAG, rea: REA_TAG
+        },
         STANDARD_4K: { width: 3840, height: 2160 },
         PREMIUM_6K: { width: 5760, height: 3240 },
         VPS_FFMPEG_6K_NOT_DECLARED: 6144,            /* BASELINE §2.9 / C3 */
@@ -851,6 +879,7 @@
         auditText: auditText,
         overlay: overlay,
         enrich: enrich,
+        intentTag: intentTag,
         _sha256Hex: sha256Hex,
         _utf8Bytes: utf8Bytes
     };

@@ -29,6 +29,7 @@ VERIFIED_SOURCE_TAGS = ('#EXT-X-APE-RESOLUTION-VERIFIED:true',
 
 def inspect_format(path):
     entries = 0
+    attr_entries = 0
     hls_variants = 0
     has_media = False
     has_media_strong = False
@@ -53,14 +54,20 @@ def inspect_format(path):
                 value = line.split(':', 1)[1].split(',', 1)[0]
                 duration = re.match(r'\s*([-+]?\d+(?:\.\d+)?)', value)
                 channel_attrs = bool(core.ATTR_RE.findall(line))
+                if channel_attrs:
+                    attr_entries += 1
                 if duration and float(duration[1]) > 0 and not channel_attrs:
                     has_segment_duration = True
             elif line.startswith('http') and '/pulse/' in line:
                 has_pulse = True
-    # Firma de catalogo: muchos bloques con atributos y sin duracion de segmento.
-    catalog_signature = (entries >= CATALOG_MIN_ENTRIES
-                         and not has_segment_duration
-                         and (has_ape_channels or has_pulse))
+    # [2026-11-20 · FASE 2] La firma NO puede depender de un umbral de cantidad:
+    # un catalogo legitimo de 1, 62 o 99 canales es tan catalogo como uno de
+    # 11.222, y `entries >= 100` los rechazaba. La prueba estructural correcta es
+    # que TODAS las entradas `#EXTINF:` sean lineas de canal (atributos M3U Plus)
+    # y que ninguna sea una duracion de segmento positiva sin atributos.
+    catalog_signature = (entries > 0
+                         and attr_entries == entries
+                         and not has_segment_duration)
     if has_media_strong or has_segment_duration:
         kind = 'hls_media_or_segment_playlist'
         override = None
@@ -78,7 +85,7 @@ def inspect_format(path):
         override = 'catalog_signature' if has_media else None
     return {'kind': kind, 'has_verified_sources': has_verified_sources,
             'catalog_signature': catalog_signature, 'media_override': override,
-            'entries': entries}
+            'entries': entries, 'attr_entries': attr_entries}
 
 
 def check_paths(source, outputs):
