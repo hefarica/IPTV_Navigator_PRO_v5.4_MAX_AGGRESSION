@@ -874,3 +874,26 @@ comportamiento (pasaban a los L3: 105000/72000/58000/…). Con el acotado: `{"ok
 **Decisión pendiente y no tomada por mí**: si los perfiles base deberían emitir su `vlcopt`
 (19000/12000/10000/8000/10000/5000) en la directiva por canal en vez del respaldo 55000. Es una decisión de
 producto sobre qué campo es autoritativo, no una corrección técnica que yo pueda elegir.
+## 39 · La aserción `recuperacionExacta` era inválida; corregida y P3.5 vuelve a verde por la razón correcta
+
+El fallo `P3.5: recuperacion no exacta` del §38 **no era del producto**: mi aserción comparaba el archivo ON
+(sin sidecar) contra **otra generación** (OFF). El generador es polimórfico, así que dos generaciones
+distintas pueden diferir legítimamente en número de líneas.
+
+Aserción corregida a una invariante que **sí** depende solo del archivo:
+
+```
+sinSidecar(ON) conserva EXTINF y URIs de ON  ∧  líneas(sinSidecar(ON)) == líneas(ON) − 3
+```
+
+Es decir: quitar el sidecar es **quirúrgico**, no arrastra nada. La igualdad byte a byte entre ON y previo
+se prueba aparte, con el generador **sembrado** (ya documentado: `on − sidecar == previo`).
+
+Verificación tras el cambio:
+
+```
+{"ok":true,"perfiles":["P3.5","P0"],"fallos":[]}   EXIT=0
+```
+
+P3.5 y P0 en verde con la aserción correcta. El rojo anterior quedó identificado como defecto del arnés,
+no como defecto del generador.

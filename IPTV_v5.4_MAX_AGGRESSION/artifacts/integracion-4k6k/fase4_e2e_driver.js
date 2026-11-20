@@ -127,8 +127,12 @@
         }
         fila.idempotente = (sidecarJson(on1.texto) === sidecarJson(on2.texto));
         var rec = sinSidecar(on1.texto);
-        fila.recuperacionExacta = (rec.split('\n').length === off.texto.split('\n').length &&
-          uris(rec) === uris(off.texto) && extinf(rec) === extinf(off.texto));
+        /* Recuperación dentro del MISMO archivo: quitar el sidecar no debe tocar
+         * EXTINF ni URIs. Comparar contra OTRA generación no es válido (el
+         * generador es polimórfico); la igualdad byte a byte se prueba aparte,
+         * con el generador sembrado. */
+        fila.recuperacionExacta = (uris(rec) === uris(on1.texto) && extinf(rec) === extinf(on1.texto) &&
+          rec.split('\n').length === on1.texto.split('\n').length - 3);
         var r = await fetch('/guardar', { method: 'POST', headers: Object.assign({ 'X-Perfil': pid }, H), body: on1.texto });
         fila.export = await r.json();
         var t2 = await (await fetch('/salida.m3u8?f=' + encodeURIComponent((fila.export && fila.export.archivo) || '') + '&t=' + encodeURIComponent(token), { headers: { 'X-APE-Token': token } })).text();
