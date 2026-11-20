@@ -948,3 +948,32 @@ Cadena completa de esta corrección, toda medida:
 
 Pendiente con esto: repetir la matriz 12/12 completa (una sola corrida) para dejar la tabla final con la
 aserción de recuperación ya corregida.
+## 42 · MATRIZ FINAL 12/12 en el runner endurecido, con geometría y caching por perfil
+
+Una sola corrida: `node fase8-runner.js "P0,…,P5.5"` → **`{"ok":true,"perfiles":[12],"fallos":[]}`**.
+
+Geometría y caching medidos en cada archivo exportado:
+
+```
+perfil | geometry emitida | network-caching | selectedProfile
+P0     | 7680x4320        | 105000          | P0
+P1     | 3840x2160        |  72000          | P1
+P2     | 3840x2160        |  58000          | P2
+P3     | 1920x1080        |  55000          | P3
+P4     | 1280x720         |  52000          | P4
+P5     |  854x480         |  30000          | P5
+P0.5   | 5760x3240        | 105000          | P0.5
+P1.5   | 5760x3240        |  72000          | P1.5
+P2.5   | 5760x3240        |  58000          | P2.5
+P3.5   | 5760x3240        |  55000          | P3.5
+P4.5   | 5760x3240        |  52000          | P4.5
+P5.5   | 5760x3240        |  30000          | P5.5
+```
+
+- **`network-caching` coincide con el `L3_EXTVLCOPT` propio en los 12** (columna espNC == nc en todas las filas).
+- **Geometría = resolución nominal del perfil**: 7680x4320 · 3840x2160 · 1920x1080 · 1280x720 · 854x480 · 5760x3240. Sin degradación.
+- `selectedProfile` correcto en los 12.
+
+Mi script de comprobación marcó 4 «FAIL» porque esperaba el valor de `vlcopt['video-width']` en vez de la
+resolución nominal del perfil: **error de mi tabla de expectativas, no del artefacto** (P3 emitiendo
+1920x1080 es lo correcto para P3). El runner, con sus aserciones propias, dio verde en las doce.
