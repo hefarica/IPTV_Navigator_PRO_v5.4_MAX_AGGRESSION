@@ -3258,6 +3258,23 @@ class IPTVNavigatorPro {
         this._probeMonitorStarted = true;
         this._lastProbeCheck = 0; // timestamp of last check
 
+        /* [2026-11-19] MONITOR DESACTIVADO POR DEFECTO.
+         * El "Probe Server" apunta a 178.156.147.234:8765 y ese servicio NO existe
+         * en este despliegue: medido, no hay nada escuchando en 8765 y no hay
+         * implementacion de /probe-all ni del WebSocket /ws/progress en el VPS.
+         * Consecuencia: cada 60 s un ERR_CONNECTION_REFUSED que ademas disparaba la
+         * recuperacion del Cortex STEALTH, ensuciando la consola sin aportar nada
+         * (el resultado era siempre "no disponible", nunca un cambio de estado).
+         * El sondeo real del VPS es OTRO servicio: 127.0.0.1:8787 (/health y
+         * /probe?url=..., solo loopback, sin token).
+         * Queda opt-in: si algun dia se despliega uno, basta definir
+         * window.PROBE_SERVER_URL antes de init y este monitor vuelve a correr. */
+        if (!window.PROBE_SERVER_URL) {
+            console.info('[ProbeServer] monitor desactivado: no hay Probe Server en este despliegue '
+                + '(el sondeo real del VPS es 127.0.0.1:8787). Define window.PROBE_SERVER_URL para activarlo.');
+            return;
+        }
+
         // V4.24: First try to wake the server via watchdog
         this._wakeServerViaWatchdog();
 
