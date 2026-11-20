@@ -248,6 +248,20 @@
      * §6 caso 9: DOS defaults distintos y ambos medidos —
      *   patch (enrich) usa "runtime" (:135) · audit usa "unknown" (:203). */
     function readProfile(ch, fallback) {
+        /* [FASE 6 · 2026-11-20] Precedencia MEDIDA en la app: el canal que entrega
+         * el cargador trae profile:'P3' por defecto, así que mirar el canal
+         * primero dejaba el sidecar en P3 aunque se seleccionara otro ID con
+         * ProfileManagerV9.selectProfile(). La selección explícita del usuario
+         * MANDA sobre un campo derivado; el canal solo decide si no hay manager. */
+        var act0 = '';
+        try {
+            if (root && root.ProfileManagerV9 && root.ProfileManagerV9.activeProfileId) {
+                act0 = String(root.ProfileManagerV9.activeProfileId).toUpperCase();
+            } else if (root && root.APE_PROFILES_CONFIG && root.APE_PROFILES_CONFIG.activeProfileId) {
+                act0 = String(root.APE_PROFILES_CONFIG.activeProfileId).toUpperCase();
+            }
+        } catch (e) { act0 = ''; }
+        if (PROFILE_IDS.indexOf(act0) >= 0) return act0;
         var raw = String((ch && (ch.ape_profile || ch.apeProfile || ch.profile)) || '').toUpperCase();
         if (PROFILE_IDS.indexOf(raw) >= 0) return raw;
         /* [FASE 5 · 2026-11-20] Medido en la app: al seleccionar otro ID con

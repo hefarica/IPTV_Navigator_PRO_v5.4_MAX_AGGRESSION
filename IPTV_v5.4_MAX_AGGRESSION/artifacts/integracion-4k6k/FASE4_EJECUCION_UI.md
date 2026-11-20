@@ -208,3 +208,31 @@ que hacer que el cargador/selectProfile escriba el perfil en los canales cargado
 real al aplicar perfiles), o bien que el sidecar use el activo del manager **por encima** del campo del
 canal cuando este sea un default no elegido por el usuario. Esa decisión de precedencia exige el
 consentimiento del contrato del profile manager, no se toma a ciegas.
+## 13 · MATRIZ CERRADA: los 12 IDs llegan al sidecar (medido en la UI)
+
+Causa raíz corregida: el canal cargado trae `profile:'P3'` por defecto, y `readProfile` miraba el canal
+primero. Ahora **la selección explícita del usuario (ProfileManagerV9.activeProfileId) manda**; el campo
+del canal solo decide si no hay manager.
+
+Chrome 157 · `index-v4.html#ape-e2e` · `selectProfile(pid)` real + clic real a `#btnGenerateAudited`:
+
+| ID | sel | OFF sidecar | ON sidecar | intentProfile | target | premium |
+|---|---|---|---|---|---|---|
+| P0 | true | 0 | 3 | **P0** | **7680x4320** | **7680x4320** |
+| P1 | true | 0 | 3 | **P1** | 3840x2160 | 5760x3240 |
+| P2 | true | 0 | 3 | **P2** | 3840x2160 | 5760x3240 |
+| P3 | true | 0 | 3 | **P3** | 3840x2160 | 5760x3240 |
+| P4 | true | 0 | 3 | **P4** | 3840x2160 | 5760x3240 |
+| P5 | true | 0 | 3 | **P5** | 3840x2160 | 5760x3240 |
+| P0.5 | true | 0 | 3 | **P0.5** | 5760x3240 | 5760x3240 |
+| P1.5 | true | 0 | 3 | **P1.5** | 5760x3240 | 5760x3240 |
+| P2.5 | true | 0 | 3 | **P2.5** | 5760x3240 | 5760x3240 |
+| P3.5 | true | 0 | 3 | **P3.5** | 5760x3240 | 5760x3240 |
+| P4.5 | true | 0 | 3 | **P4.5** | 5760x3240 | 5760x3240 |
+| P5.5 | true | 0 | 3 | **P5.5** | 5760x3240 | 5760x3240 |
+
+`err: []` en las 12 filas. Bytes por pasada 258-293 KB (3 canales reales). **P0 conserva 7680x4320**
+en objetivo y premium: la ley anti-degradación se cumple también en la declaración.
+
+Pendiente declarado: reimportación del archivo generado en la UI, `determineProfile` automático
+(cobertura distinta de la manual) y medición de memoria con la lista de 754 MB.
