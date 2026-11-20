@@ -577,3 +577,26 @@ ficheros presentes, referencias en el index y sintaxis correcta en todos. La ide
 el estado previo **no** la afirmo a partir de aquella tabla.
 
 Rollback en una línea para el operador: `git -C <worktree> stash push -u` y `git -C <worktree> stash pop`.
+## 27 · Privacidad de las rutas HTTP: autotest ejecutado (8/8)
+
+`node fase8-runner.js --selftest` arranca el servidor real del arnés y lanza peticiones negativas y
+positivas **sin Chrome**:
+
+```
+lab sin token            → 401  ok
+lab con token            → 200 (body > 1000 B)  ok
+origin ajeno             → 403  ok
+traversal (/../../..)    → 404 (no se sirve)    ok
+ruta interna normalizada → 200  ok
+nombre de salida inválido→ 400  ok
+id inválido en guardar   → 400  ok
+entrada sin token        → 401  ok
+fallos=0   EXIT=0
+```
+
+Lectura honesta: el traversal no llegó a 403 sino a **404**, porque `new URL(...).pathname` normaliza la
+ruta antes de mi comprobación de confinamiento y el fichero resultante no existe. Lo que importa —que
+**no se sirve**— queda acreditado; la clasificación exacta del rechazo es 404, no 403.
+
+Con esto las rutas del arnés quedan: solo loopback, testigo por corrida, `Origin` validado, confinadas al
+frontend del staging, IDs y nombres de salida validados por patrón, y rechazo medido en cada caso.

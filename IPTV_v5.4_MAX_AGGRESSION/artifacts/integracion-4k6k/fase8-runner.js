@@ -128,11 +128,41 @@ const srv = http.createServer((req, res) => {
 function shaDisk(h) { return h; }
 
 const PERFILES = (process.argv[2] || 'P0,P3,P2.5').split(',').map(s => s.trim()).filter(Boolean);
-for (const p of PERFILES) if (!IDS.has(p)) { console.error('ID invalido: ' + p); process.exit(2); }
+if (process.argv.indexOf('--selftest') < 0) {
+    for (const p of PERFILES) if (!IDS.has(p)) { console.error('ID invalido: ' + p); process.exit(2); }
+}
 
 srv.listen(0, '127.0.0.1', () => {
     const port = srv.address().port;
     if (srv.address().address !== '127.0.0.1') { console.error('bind no local'); process.exit(3); }
+    /* ── AUTOTEST DE PRIVACIDAD Y CONFINAMIENTO (sin Chrome) ─────────────── */
+    if (process.argv.indexOf('--selftest') >= 0) {
+        const pedir = (opts, body) => new Promise((res) => {
+            const rq = http.request(Object.assign({ host: '127.0.0.1', port: port }, opts), (rs) => {
+                let d = ''; rs.on('data', c => d += c); rs.on('end', () => res({ code: rs.statusCode, body: d }));
+            });
+            rq.on('error', () => res({ code: 0, body: 'conn-error' }));
+            if (body) rq.write(body);
+            rq.end();
+        });
+        (async () => {
+            const casos = [];
+            let a;
+            a = await pedir({ path: '/lab.json', method: 'GET' }); casos.push(['lab sin token → 401', a.code === 401, a.code]);
+            a = await pedir({ path: '/lab.json', method: 'GET', headers: { 'X-APE-Token': TOKEN } }); casos.push(['lab con token → 200', a.code === 200 && a.body.length > 1000, a.code]);
+            a = await pedir({ path: '/lab.json', method: 'GET', headers: { 'X-APE-Token': TOKEN, Origin: 'http://evil.example' } }); casos.push(['origin ajeno → 403', a.code === 403, a.code]);
+            a = await pedir({ path: '/../../../../windows/win.ini', method: 'GET' }); casos.push(['traversal → 403/404', a.code === 403 || a.code === 404, a.code]);
+            a = await pedir({ path: '/js/../index-v4.html', method: 'GET' }); casos.push(['ruta interna normalizada → 200', a.code === 200, a.code]);
+            a = await pedir({ path: '/salida.m3u8?f=../../etc/passwd&t=' + TOKEN, method: 'GET' }); casos.push(['nombre de salida inválido → 400', a.code === 400, a.code]);
+            a = await pedir({ path: '/guardar', method: 'POST', headers: { 'X-APE-Token': TOKEN, 'X-Perfil': 'P99' } }, 'x'); casos.push(['id inválido en guardar → 400', a.code === 400, a.code]);
+            a = await pedir({ path: '/entrada.m3u8', method: 'GET' }); casos.push(['entrada sin token → 401', a.code === 401, a.code]);
+            const fallos = casos.filter(c => !c[1]);
+            console.log(JSON.stringify({ selftest: true, casos: casos.map(c => ({ prueba: c[0], ok: c[1], code: c[2] })), fallos: fallos.length }));
+            srv.close();
+            process.exit(fallos.length === 0 ? 0 : 1);
+        })();
+        return;
+    }
     const url = 'http://127.0.0.1:' + port + '/index-v4.html#ape-e2e&t=' + TOKEN + '&p=' + encodeURIComponent(PERFILES.join(','));
     let buf = '';
     const cp = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe',
