@@ -725,3 +725,25 @@ El código de streaming ya está listo y es el que hay que ejercitar.
 
 Ninguna cifra de memoria, tiempo o cancelación se reporta para 754 MB porque **no se obtuvo**: el
 resultado de esta ronda es el código de streaming y el diagnóstico del intento, no una medición.
+## 33 · MEDIDO: 754 MB reales, 11.222 canales, 5,1 s, 140 MB de heap, cancelación en 292 ms
+
+Arnés reescrito para **no depender de `--dump-dom` ni de tiempo virtual**: la página devuelve el
+resultado por `POST /resultado` (autenticado con el testigo) y el arnés espera el callback con reloj real.
+
+```
+BIG={"cancelacion":"abortado:AbortError","ms_cancel":292,"heap_post_cancel_mb":25,
+     "limite_mb":4192,"canales":11222,"bytes":754247241,"ms_stream":5105,"heap_mb":140}
+```
+
+| Métrica | Valor medido |
+|---|---|
+| Archivo | **754.247.241 B** (`APE_4K_PREMIUM_6K_METADATA.m3u8`, sha `001713fc…`) |
+| Canales parseados | **11.222** |
+| Tiempo de lectura+parseo (streaming) | **5.105 ms** |
+| Heap tras parsear | **140 MB** sobre un límite de 4.192 MB |
+| Cancelación (AbortController) | **AbortError en 292 ms** |
+| Heap tras cancelar | **25 MB** (liberado) |
+
+Esto cierra el tramo de la lista grande con números reales, y explica el fallo anterior: `resp.text()`
+no puede materializar 754 MB en una cadena, mientras que el lector en streaming los procesa con 140 MB de
+heap y libera al cancelar. No hay extrapolación ni dataset menor: es el archivo autorizado completo.
