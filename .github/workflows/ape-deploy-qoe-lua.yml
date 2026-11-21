@@ -1,6 +1,11 @@
 name: APE deploy QoE lua
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - 'IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/qoe_server_side_observer.lua'
+      - 'IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/qoe_flush_worker.lua'
+      - '.github/workflows/ape-deploy-qoe-lua.yml'
 permissions:
   contents: read
 jobs:
