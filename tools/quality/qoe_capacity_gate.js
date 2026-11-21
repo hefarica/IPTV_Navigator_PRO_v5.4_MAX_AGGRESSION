@@ -35,7 +35,9 @@ function ordenar(muestras) {
     return muestras.slice().sort(function (a, b) { return num(a.t, 0) - num(b.t, 0); });
 }
 
-function medir(muestras, umbral) {
+function medir(muestras, umbral, opciones) {
+    var opc = opciones || {};
+    var noComputado = [];
     var u = Object.assign({}, UMBRAL, umbral || {});
     var m = ordenar(muestras || []);
     var fallos = [];
@@ -66,9 +68,10 @@ function medir(muestras, umbral) {
     var headroom = (cap !== null && bit !== null && bit > 0) ? (cap / bit) : null;
     var ratio = playMs > 0 ? (stallMs / playMs) : null;
 
-    if (stalls > u.stalls) fallos.push('stalls=' + stalls + ' (max ' + u.stalls + ')');
-    if (ratio !== null && ratio > u.rebuffer_ratio) fallos.push('rebuffer_ratio=' + ratio.toFixed(5) + ' (max ' + u.rebuffer_ratio + ')');
-    if (!(minBuf >= u.buffer_floor_s)) fallos.push('buffer_floor=' + minBuf + 's (min ' + u.buffer_floor_s + 's)');
+    if (opc.soloCapacidad) { noComputado.push('stalls', 'rebuffer_ratio', 'buffer_floor_s'); }
+    else { if (stalls > u.stalls) fallos.push('stalls=' + stalls + ' (max ' + u.stalls + ')'); }
+    if (!opc.soloCapacidad && ratio !== null && ratio > u.rebuffer_ratio) fallos.push('rebuffer_ratio=' + ratio.toFixed(5) + ' (max ' + u.rebuffer_ratio + ')');
+    if (!opc.soloCapacidad && !(minBuf >= u.buffer_floor_s)) fallos.push('buffer_floor=' + minBuf + 's (min ' + u.buffer_floor_s + 's)');
     if (headroom === null) fallos.push('headroom NO COMPUTADO (faltan throughput o bitrate)');
     else if (headroom < u.headroom) fallos.push('headroom=' + headroom.toFixed(3) + 'x (min ' + u.headroom + 'x = 50% de capacidad)');
 
@@ -83,7 +86,7 @@ function medir(muestras, umbral) {
         bitrate_kbps: bit,
         headroom: headroom === null ? null : Number(headroom.toFixed(3))
     };
-    return { ok: fallos.length === 0, fallos: fallos, metricas: metricas, umbral: u };
+    return { ok: fallos.length === 0, fallos: fallos, metricas: metricas, umbral: u, no_computado: noComputado };
 }
 
 /* Plan idempotente: dado el caudal medido, cuál es el bitrate máximo declarable
@@ -172,9 +175,9 @@ function main(argv) {
     try { datos = JSON.parse(fs.readFileSync(a[s + 1], 'utf8')); }
     catch (e) { console.error('muestras ilegibles: ' + e.message); process.exit(2); }
     var muestras = Array.isArray(datos) ? datos : (datos.muestras || []);
-    var res = medir(muestras, datos.umbral || null);
+    var res = medir(muestras, datos.umbral || null, { soloCapacidad: a.indexOf('--allow-incomplete') >= 0 });
     var sha = crypto.createHash('sha256').update(JSON.stringify(ordenar(muestras))).digest('hex');
-    var salida = { ok: res.ok, fallos: res.fallos, metricas: res.metricas, controladores: controles(null), muestras_sha256: sha, umbral: res.umbral };
+    var salida = { ok: res.ok, fallos: res.fallos, metricas: res.metricas, no_computado: res.no_computado || [], controladores: controles(null), muestras_sha256: sha, umbral: res.umbral };
     console.log(JSON.stringify(salida, null, 2));
     process.exit(res.ok ? 0 : 1);
 }
