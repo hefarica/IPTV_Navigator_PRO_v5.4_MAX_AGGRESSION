@@ -1536,3 +1536,34 @@ Con esto el cluster HDR deja de tener como causa el emisor desconectado: la dire
 Pendiente del mismo cluster, no tocado: `audio-channels` (2→6), `clock-jitter` (1000/2000→0) y
 `saturation` (1.06→1.08) siguen saliendo de la sección 4K False. Mismo enfoque: leerlos del `vlcopt` del
 perfil efectivo.
+## 66 · Los valores que faltan no se pierden: están **literales** en el emisor
+
+Búsqueda en el generador:
+
+```
+10747: lines.push(`#EXTVLCOPT:audio-channels=6`);      ← 6 escrito a mano
+ 3163: '#EXTVLCOPT:saturation=1.08',                  ← 1.08 escrito a mano
+ 4341: `#EXTVLCOPT:saturation=1.0`,                   ← 1.0 en otro preset
+ 4247: vlcopts.push(`#EXTVLCOPT:clock-jitter=${Number(cfg.clock_jitter ?? cfg.clockJitter ?? 1500)}`);
+ 4107: vlcopts.push(`#EXTVLCOPT:clock-jitter=${vo['clock-jitter'] || 1500}`);   ← esta rama es del código muerto
+```
+
+Es decir: `audio-channels=6` y `saturation=1.08` **no vienen del LAB ni de una pérdida de datos** — están
+escritos como constante en la sección 4K False. El LAB de los perfiles declara `audio-channels=2` y
+`saturation=1.06`; el artefacto emite 6 y 1.08 porque esas líneas no consultan el perfil.
+
+Esto cierra la explicación del cluster completo, campo por campo:
+
+| Campo | LAB | Emitido | Origen real |
+|---|---|---|---|
+| `audio-channels` | 2 | **6** | literal en `:10747` |
+| `saturation` | 1.06 | **1.08** | literal en `:3163` |
+| `clock-jitter` | 1000/2000 | **0** | `cfg.clock_jitter` en `:4247` (LAB no llega) |
+| `video-hdr-mode` | HDR10PLUS | ~~SDR~~ → **HDR10_PLUS** | corregido en `:10589` (§65) |
+
+Arreglo definido (no aplicado): sustituir esos literales por el valor del `vlcopt` del perfil efectivo, con el
+literal como último respaldo, igual que se hizo con el HDR. Es un cambio de tres líneas, pero toca la sección
+4K False y exige la misma verificación con guarda que el §65.
+
+Nota de doctrina: un literal en el emisor contradice `iptv-no-hardcode-doctrine` del propio repo; estos tres
+casos son la evidencia concreta de esa deuda.
