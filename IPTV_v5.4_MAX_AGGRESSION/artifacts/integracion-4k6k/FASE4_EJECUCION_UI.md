@@ -1720,3 +1720,22 @@ HDR y `audio-channels` siguen verdes en las mismas filas — la corrección de �
 Queda por tanto un resto único y bien medido: cinco literales (`:3163` saturation; `:14932/14970/15006/15042`
 clock-jitter/clock-synchro) que hay que sustituir por el valor del `vlcopt` del perfil, con el literal como
 último respaldo — el mismo patrón que ya funcionó tres veces en esta serie.
+## 74 · Intento de reescritura de `saturation`/`clock-jitter` en el bloque: sin efecto, revertido
+
+Inserté, junto al parche de `audio-channels` (que sí funcionó), una reescritura de las líneas
+`#EXTVLCOPT:saturation=` / `clock-jitter=` / `clock-synchro=` sobre el propio array, tomando el valor de
+`vlcopt` del perfil. Corrida `P0,P3,P5.5` → `EXIT=0`, `"fallos":[]`, pero la guarda siguió:
+
+```
+P0 | sat=1.08 eSat=1.06 | cj=0 eCj=2000 | FAIL
+P3 | sat=1.08 eSat=1.03 | cj=0 eCj=1000 | FAIL
+```
+
+Conclusión medida: en ese punto del ensamblado el array **todavía no contiene** esas directivas — se añaden
+más tarde o en otro array. Por eso `audio-channels` (que sí se emite ahí) se corrigió y estas dos no.
+
+Parche **revertido**: `node --check` = 0, 0 ocurrencias de `[FASE 11]`. El árbol queda como en `dd43e972`,
+con la guarda en rojo midiendo el resto.
+
+Siguiente paso, ya acotado: localizar el punto de emisión real de `saturation`/`clock-jitter` (posterior a
+`:10747`) y aplicar allí la misma reescritura. La guarda dirá si `PASS=12`.
