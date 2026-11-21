@@ -31,6 +31,17 @@ jobs:
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i ~/.ssh/id_ed25519 "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" 'sudo -n tail -n 4000 /var/log/nginx/access.log' > evidencias-qoe/access.log || true
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i ~/.ssh/id_ed25519 "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" 'sudo -n grep -h -m1 "^#EXT-X-STREAM-INF" /var/www/html/lists/*.m3u8 | head -n 5' > evidencias-qoe/streaminf.txt || true
           wc -l evidencias-qoe/access.log evidencias-qoe/streaminf.txt
+      - name: Descubrir fuentes disponibles (solo lectura)
+        run: |
+          set -euo pipefail
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i ~/.ssh/id_ed25519 "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" '
+            echo "== log_format =="; sudo -n grep -h "log_format" /etc/nginx/nginx.conf 2>/dev/null | head -5
+            echo "== bases sqlite =="; sudo -n find /var/www /opt -maxdepth 4 -name "*.db" -newermt "-90 days" 2>/dev/null | head -10
+            echo "== tablas qoe =="; for d in $(sudo -n find /var/www /opt -maxdepth 4 -name "*.db" 2>/dev/null | head -5); do echo "-- $d"; sudo -n sqlite3 "$d" ".tables" 2>/dev/null | tr -s " " "\n" | grep -i -E "qoe|metric|hdpc" | head -5; done
+            echo "== listas =="; sudo -n ls -1 /var/www/html/lists/*.m3u8 2>/dev/null | head -5
+            echo "== primera muestra de log =="; sudo -n tail -n 2 /var/log/nginx/access.log 2>/dev/null
+          ' > evidencias-qoe/descubrimiento.txt 2>&1 || true
+          cat evidencias-qoe/descubrimiento.txt
       - name: Convertir a muestras
         run: node tools/quality/qoe_samples_from_log.js evidencias-qoe
       - name: Gate modo parcial honesto
