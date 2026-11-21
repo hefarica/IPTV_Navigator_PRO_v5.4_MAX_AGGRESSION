@@ -98,8 +98,17 @@ jobs:
 
       - name: Politica de composicion polimorfica (tope 1080p del firmware)
         run: node tools/quality/test_composition_policy.js
-       - name: Metrica de detalle HF (validada, monotona con bitrate)         run: node tools/quality/test_hf_detail_metric.js
-       - name: Detector de bloque sobre HEVC (queda refutado, HF no)         run: node tools/quality/test_hevc_block_detector.js
+      # [2026-11-21] Estas dos lineas estaban PEGADAS (name + run en el mismo renglon,
+      # con 7 espacios de sangria): el YAML era invalido y GitHub registraba este
+      # workflow como "Invalid workflow file" -> startup failure SIN jobs y SIN logs.
+      # Medido: el run 44941757590 (push c404d054) devolvio jobs:[] y el listado de
+      # workflows mostraba la RUTA como nombre. Es decir: el gate anti-degradacion,
+      # los tests de puente, el contrato Canary-JIT y el resto de este archivo NO se
+      # ejecutaban desde entonces. Un gate que no corre es decorativo; se repara.
+      - name: Metrica de detalle HF (validada, monotona con bitrate)
+        run: node tools/quality/test_hf_detail_metric.js
+      - name: Detector de bloque sobre HEVC (queda refutado, HF no)
+        run: node tools/quality/test_hevc_block_detector.js
 
       # CABLEADO: identidad + estructura + harness en un veredicto, sobre un FIXTURE.
       # Modo --sin-red para que el CI no dependa de la red ni del proveedor.
