@@ -146,6 +146,10 @@ jobs:
           echo "  sha servido: $(sha256sum /tmp/diag.js | cut -d' ' -f1)"
           echo "  etag servido: $(curl -sSI 'https://iptv-ape.duckdns.org/js/ape-v9/generation-output-panel.js' | grep -i etag || true)"
 
+      - name: Activo de medicion de caudal (idempotente)
+        run: |
+          set -euo pipefail
+          ssh "$TARGET" "if [ ! -f /var/www/html/probe-8mb.bin ]; then sudo -n dd if=/dev/urandom of=/var/www/html/probe-8mb.bin bs=1M count=8 status=none && sudo -n chmod 644 /var/www/html/probe-8mb.bin; fi; sudo -n ls -l /var/www/html/probe-8mb.bin"
       - name: Exigir la confirmacion literal
         if: inputs.mode == 'apply'
         env:
@@ -770,6 +774,10 @@ jobs:
           printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n  ControlMaster auto\n  ControlPath ~/.ssh/cm-%%r@%%h:%%p\n  ControlPersist 300s\n  ServerAliveInterval 15\n  ServerAliveCountMax 4\n  ConnectTimeout 20\n  TCPKeepAlive yes\n' > ~/.ssh/config
           echo "TARGET=${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" >> "$GITHUB_ENV"
 
+      - name: Activo de medicion de caudal (idempotente)
+        run: |
+          set -euo pipefail
+          ssh "$TARGET" "if [ ! -f /var/www/html/probe-8mb.bin ]; then sudo -n dd if=/dev/urandom of=/var/www/html/probe-8mb.bin bs=1M count=8 status=none && sudo -n chmod 644 /var/www/html/probe-8mb.bin; fi; sudo -n ls -l /var/www/html/probe-8mb.bin"
       - name: Exigir la confirmacion literal
         if: inputs.mode == 'apply'
         env:
