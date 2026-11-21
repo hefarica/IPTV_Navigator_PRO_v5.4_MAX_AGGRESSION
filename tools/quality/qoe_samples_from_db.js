@@ -10,7 +10,8 @@ try { db = JSON.parse(leer('qoe.json')); } catch (e) { console.error('qoe.json i
 if (!db.ok || !db.filas) { console.error('base no legible: ' + JSON.stringify(db.error || null)); process.exit(2); }
 var inf = leer('streaminf.txt');
 var bw = (inf.match(/BANDWIDTH=(\d+)/g) || []).map(function (s) { return Number(s.split('=')[1]); });
-var declarado = bw.length ? Math.max.apply(null, bw) : null;
+var declaradoBps = bw.length ? Math.max.apply(null, bw) : null;
+var declarado = declaradoBps === null ? null : Math.round(declaradoBps / 1000);  // HLS BANDWIDTH va en bits/s
 
 function buscar(cols, re) { for (var i = 0; i < cols.length; i++) if (re.test(cols[i])) return cols[i]; return null; }
 var elegido = null, cols = null, filas = [];

@@ -35,7 +35,7 @@ function ordenar(muestras) {
     return muestras.slice().sort(function (a, b) { return num(a.t, 0) - num(b.t, 0); });
 }
 
-function medir(muestras, umbral, opciones) {
+function medir(muestras, umbral, opciones, observado) {
     var opc = opciones || {};
     var noComputado = [];
     var u = Object.assign({}, UMBRAL, umbral || {});
@@ -75,6 +75,9 @@ function medir(muestras, umbral, opciones) {
     if (headroom === null) fallos.push('headroom NO COMPUTADO (faltan throughput o bitrate)');
     else if (headroom < u.headroom) fallos.push('headroom=' + headroom.toFixed(3) + 'x (min ' + u.headroom + 'x = 50% de capacidad)');
 
+    if (observado && isFinite(observado.rebuffer_ratio)) {
+        if (observado.rebuffer_ratio > u.rebuffer_ratio) fallos.push('rebuffer_ratio_observado=' + observado.rebuffer_ratio + ' (max ' + u.rebuffer_ratio + ')');
+    }
     var metricas = {
         muestras: m.length,
         reproduce_ms: playMs,
@@ -175,7 +178,7 @@ function main(argv) {
     try { datos = JSON.parse(fs.readFileSync(a[s + 1], 'utf8')); }
     catch (e) { console.error('muestras ilegibles: ' + e.message); process.exit(2); }
     var muestras = Array.isArray(datos) ? datos : (datos.muestras || []);
-    var res = medir(muestras, datos.umbral || null, { soloCapacidad: a.indexOf('--allow-incomplete') >= 0 });
+    var res = medir(muestras, datos.umbral || null, { soloCapacidad: a.indexOf('--allow-incomplete') >= 0 }, { rebuffer_ratio: datos.rebuffer_ratio_observado });
     var sha = crypto.createHash('sha256').update(JSON.stringify(ordenar(muestras))).digest('hex');
     var salida = { ok: res.ok, fallos: res.fallos, metricas: res.metricas, no_computado: res.no_computado || [], controladores: controles(null), muestras_sha256: sha, umbral: res.umbral };
     console.log(JSON.stringify(salida, null, 2));
