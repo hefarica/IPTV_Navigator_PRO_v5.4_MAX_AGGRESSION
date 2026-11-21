@@ -2068,3 +2068,41 @@ Verificación doble:
 
 Es decir: el callback llega **autenticado** y, sin testigo, la ruta responde 401 como el resto de rutas
 sensibles. No quedó una puerta abierta por comodidad.
+## 90 · Rollback re-verificado sobre el árbol final — y el paso que faltaba en el procedimiento
+
+Segundo ciclo completo, ahora con el diff definitivo:
+
+```
+antes            : 12 entradas (6 modificados + 6 sin seguimiento)
+git stash push -u: árbol limpio · los 3 módulos nuevos AUSENTES · index sin refs
+git stash pop    : CONFLICTO la primera vez → "stash entry is kept"
+```
+
+El conflicto lo provoqué yo: al probar la restauración copié el driver desde el artefacto commiteado **dentro
+del árbol ya limpio**, y esa copia sin seguimiento chocó con la del stash.
+
+Recuperación aplicada (y que ahora forma parte del procedimiento):
+
+```
+rm frontend/_fase4_e2e_driver.js      # quitar la copia que sobra
+git stash pop                          # aplica sin conflicto
+```
+
+Resultado verificado:
+
+```
+status = 12 entradas · 6 ficheros clave presentes · node --check = 0 en los 3 críticos ·
+stash list = 0
+```
+
+**Procedimiento de rollback correcto, definitivo:**
+
+```bat
+git -C <worktree> stash push -u -m "rollback"
+:: verificar que los modulos nuevos ya no existen
+git -C <worktree> stash pop
+:: si dio conflicto: borrar las copias sin seguimiento que sobren y repetir el pop
+```
+
+Rollback probado dos veces, con el diff completo y con el árbol final. La primera vez salió limpio; la segunda
+me enseño que una copia manual de más rompe el pop.
