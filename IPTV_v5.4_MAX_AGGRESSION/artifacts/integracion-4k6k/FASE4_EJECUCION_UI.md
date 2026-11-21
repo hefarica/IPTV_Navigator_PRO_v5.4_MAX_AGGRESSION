@@ -1422,3 +1422,31 @@ objeto correcto para los `.5`. Ambas cosas exigen ver qué es `vo` en esa ruta p
 
 El parche queda aplicado porque **no altera el resultado** (verificado: mismos valores que antes, arnés verde) y
 deja el terreno preparado para cuando el primero escriba.
+## 62 · El objeto del perfil CAMBIA entre la importación y la generación
+
+Lectura de `m3u8-typed-arrays-ultimate.js:4066-4143`:
+
+```
+function generateEXTVLCOPT(profile) {
+  const cfg = getProfileConfig(profile);
+  let pmProfile = null;
+  if (window.APE_PROFILES_CONFIG?.getProfile) pmProfile = window.APE_PROFILES_CONFIG.getProfile(profile);
+  if (pmProfile && pmProfile.vlcopt && Object.keys(pmProfile.vlcopt).length > 0) {
+    const vo = pmProfile.vlcopt;
+    …
+    if (vo['video-hdr']) vlcopts.push(`#EXTVLCOPT:video-hdr=${vo['video-hdr']}`);   // :4142
+```
+
+Esa línea es **incondicional** dentro de la rama: si `vo['video-hdr']` fuera `'true'`, emitiría `video-hdr=true`.
+No lo emite (el artefacto dice `false`), y la sonda del §53 midió `'true'` **justo después de importar**.
+
+Por eliminación, con dos medidas que no encajan: **el `vlcopt` del perfil `.5` cambia entre la importación y la
+generación**. Algo reescribe `this.profiles['P0.5']` en medio (candidato: `_merge12kProfiles()` ejecutándose de
+nuevo, o una recarga de persistencia que trae la versión del módulo 12K, que no tiene claves HDR — §50).
+
+Sonda que lo cierra, y es la única que falta: registrar `getProfile('P0.5').vlcopt['video-hdr']` **antes y
+después** de la primera generación, en la misma corrida. Si cambia de `'true'` a ausente, el culpable es quien
+reescribe; si no cambia, el fallo está en el propio `generateEXTVLCOPT` recibiendo otro `profile`.
+
+No aplico más parches hasta tener ese dato: tres intentos sobre este mismo punto (§57, §61) no han movido el
+valor, y el patrón indica que estoy mirando el sitio equivocado.
