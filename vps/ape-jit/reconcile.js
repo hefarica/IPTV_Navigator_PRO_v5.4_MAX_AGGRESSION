@@ -54,8 +54,9 @@ const MAP_FILE = path.join(CURRENT, 'channels.json');     // se lee vía el syml
 const JIT_LIST = path.join(CURRENT, 'APE_JIT_LIST.m3u8');
 const MISSES = path.join(OUT_DIR, 'misses.log');          // ruta fija: sobrevive a los flips
 const STAMP = path.join(OUT_DIR, '.reconciled');          // ruta fija
-const LIST_DIR = '/var/www/lists/pulse';
+const LIST_DIR = arg('dir', '/var/www/lists/pulse');   // --dir existe para poder probarlo
 const BASE = 'https://iptv-ape.duckdns.org';
+const SELF_HOST = (() => { try { return new URL(BASE).host; } catch (_) { return 'iptv-ape.duckdns.org'; } })();
 const DEFAULT_UA = 'VLC/3.0.19 LibVLC/3.0.19';
 const MIN_RATIO = 0.95;
 
@@ -133,7 +134,39 @@ function pickList() {
     .map(f => ({ f, p: path.join(LIST_DIR, f), m: fs.statSync(path.join(LIST_DIR, f)).mtimeMs }))
     .sort((a, b) => b.m - a.m);
   if (!files.length) throw new Error('no hay listas en ' + LIST_DIR);
-  return files[0].p;
+
+  /* [2026-11-21] FUENTE vs SALIDA. Medido en produccion: la lista mas reciente por
+   * mtime era APE_LISTA_1795151699916_DIRECTA_CABLEADA y sus `?u=` apuntaban a
+   * https://iptv-ape.duckdns.org/jit/live/<id>/master.m3u8 — es decir, a NOSOTROS.
+   * Es una SALIDA ya envuelta: alimentar el espejo con ella crea el bucle
+   * /jit/live/1 -> /cdn/iptv-ape.duckdns.org/jit/live/1 -> ... Las crudas del mismo
+   * lote (APE_LISTA_*_CDN) apuntaban a 0/3 propias. El criterio no puede ser solo
+   * "la mas nueva": se descarta la que ya esta envuelta y se dice cual y por que. */
+  const envuelta = (p) => {
+    try {
+      const fd = fs.openSync(p, 'r');
+      const len = Math.min(fs.fstatSync(fd).size, 512 * 1024);
+      const buf = Buffer.alloc(len);
+      fs.readSync(fd, buf, 0, len, 0);
+      fs.closeSync(fd);
+      const s = buf.toString('utf8');
+      const hits = s.match(/u=[^&\s]*/g) || [];
+      if (!hits.length) return false;
+      const propias = hits.filter((h) => {
+        try { return decodeURIComponent(h.slice(2)).indexOf(SELF_HOST) >= 0; } catch (_) { return false; }
+      }).length;
+      return propias > 0 && propias >= hits.length / 2;
+    } catch (_) { return false; }
+  };
+  const crudas = files.filter((x) => {
+    if (envuelta(x.p)) { log('CANDIDATA descartada (ya envuelta, apunta al propio JIT):', x.f); return false; }
+    return true;
+  });
+  if (!crudas.length) {
+    log('WARN', 'todas las listas de ' + LIST_DIR + ' parecen ya envueltas; uso la mas reciente y el guard decidira');
+    return files[0].p;
+  }
+  return crudas[0].p;
 }
 
 /** http://host/ruta/x.m3u8  ->  https://iptv-ape.duckdns.org/cdn/host/ruta/x.m3u8 */
@@ -159,7 +192,7 @@ async function parseList(file) {
   // tvg-id caia en el `else if (cur.id)` como falso y NO se contaba en ningun sitio:
   // desaparecia del mapa sin dejar traza. Medido: el log solo decia sin_url=0 cuando
   // en realidad el agujero podia ser de ids ausentes.
-  let cur = null, ua = '', n = 0, skipped = 0, noUrl = 0, sinId = 0;
+  let cur = null, ua = '', n = 0, noUrl = 0, sinId = 0, loop = 0;
 
   for await (const line of rl) {
     const t = line.trim();
@@ -174,7 +207,7 @@ async function parseList(file) {
       if (cur) {
         if (cur.id && cur.url) { map[cur.id] = { url: cur.url, ua: cur.ua }; rows.push(cur); }
         else if (!cur.id) sinId++;
-        else noUrl++;
+        else if (!cur.loop) noUrl++;   // si era bucle ya esta contado en loop
       }
       const te = t.match(/,(.*)$/);
       cur = {
@@ -207,15 +240,25 @@ async function parseList(file) {
     } else if (/^https?:\/\//i.test(t)) {
       resolved = t;                         // lista ajena: se usa su URL tal cual
     }
-    if (resolved && cur.id) { cur.url = resolved; cur.ua = ua || DEFAULT_UA; }
+    if (resolved && cur.id) {
+      /* [2026-11-21] BUCLE: si el `?u=` de la lista ya apunta a nuestro propio host
+       * (https://iptv-ape.duckdns.org/jit/live/<id>/…), toCdn() lo volveria a envolver
+       * y el espejo quedaria apuntandose a si mismo. Medido en produccion sobre
+       * APE_LISTA_1795151699916_DIRECTA_CABLEADA: 3/3 propias. Un canal asi NO entra
+       * en el mapa y se cuenta como loop. */
+      let propio = false;
+      try { propio = new URL(resolved).host === SELF_HOST; } catch (_) { propio = false; }
+      if (propio) { cur.loop = true; loop++; }
+      else { cur.url = resolved; cur.ua = ua || DEFAULT_UA; }
+    }
   }
   if (cur) {
     if (cur.id && cur.url) { map[cur.id] = { url: cur.url, ua: cur.ua }; rows.push(cur); }
     else if (!cur.id) sinId++;
-    else noUrl++;
+    else if (!cur.loop) noUrl++;
   }
 
-  return { map, rows, lines: n, noUrl, sinId };
+  return { map, rows, lines: n, noUrl, sinId, loop };
 }
 
 function buildJitList(rows) {
@@ -281,10 +324,20 @@ function atomicWrite(file, content) {
     || (prevMeta.source ? path.basename(String(prevMeta.source)).replace(/\.m3u8$/i, '') : '');
   const mismaLista = prevCount === 0 || prevKey === listKey;
 
-  const { map, rows, lines, noUrl, sinId } = await parseList(list);
+  const { map, rows, lines, noUrl, sinId, loop } = await parseList(list);
   const ids = Object.keys(map);
   log('PARSE', 'lineas=' + lines, 'canales=' + ids.length, 'sin_url=' + noUrl,
-    'sin_id=' + sinId, 'allowlist_previa=' + prevCount, 'lista=' + listKey);
+    'sin_id=' + sinId, 'bucle=' + loop, 'allowlist_previa=' + prevCount, 'lista=' + listKey);
+
+  /* [2026-11-21] Una lista YA ENVUELTA no es una fuente: si la mitad o mas de sus
+   * canales apuntan a nuestro propio host, publicarla deja el espejo apuntandose a
+   * si mismo (bucle /jit/live/1 -> /cdn/iptv-ape.../jit/live/1). Se aborta con nombre
+   * propio para no confundirlo con un truncado ni con un cambio de catalogo. */
+  if (loop > 0 && loop >= Math.max(1, Math.floor((ids.length + loop) * 0.5))) {
+    log('ABORT', 'LISTA_ENVUELTA: ' + loop + ' de ' + (ids.length + loop) +
+      ' canales apuntan al propio JIT (' + SELF_HOST + '). No publico: seria un bucle. Usa la lista CRUDA del lote.');
+    process.exit(2);
+  }
 
   // ceil, no floor: con floor una lista de 2 canales dejaba pasar 1 (floor(1.9)=1),
 // es decir un 50 % de caida. Con ceil el minimo es el 95 % real redondeado ARRIBA.

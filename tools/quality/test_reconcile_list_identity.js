@@ -144,6 +144,52 @@ console.log('\n=== 5 · sin allowlist previa: publica sin guard ===');
     check('no inventa LIST_CHANGED sin previa', !/LIST_CHANGED/.test(r.out));
 }
 
+console.log('\n=== 5b · lista YA ENVUELTA (apunta al propio JIT): aborta, no publica bucle ===');
+{
+    // Bloque con ?u= que apunta a nuestro propio /jit/live/... : toCdn lo re-envuelve
+    // y el host resultante es el nuestro -> bucle. Es el caso real medido el 2026-11-21
+    // en APE_LISTA_1795151699916_DIRECTA_CABLEADA (3/3 propias).
+    const dir = path.join(tmpRoot, 'c5b');
+    const out = path.join(dir, 'out');
+    fs.mkdirSync(dir, { recursive: true });
+    const lista = path.join(dir, 'APE_LISTA_WRAPPED.m3u8');
+    const own = 'https://iptv-ape.duckdns.org/jit/live/%d/master.m3u8';
+    const lineas = ['#EXTM3U'];
+    for (let i = 0; i < 120; i++) {
+        lineas.push(`#EXTINF:-1 tvg-id="w${i}" tvg-name="w${i}" group-title="TEST",w${i}`);
+        lineas.push('https://iptv-ape.duckdns.org/pulse/?u=' + encodeURIComponent(own.replace('%d', String(i))));
+    }
+    fs.writeFileSync(lista, lineas.join('\n') + '\n', 'utf8');
+    const r = correr(['--list', lista, '--out', out, '--dry-run']);
+    check('sale 2', r.code === 2, 'code=' + r.code);
+    check('dice LISTA_ENVUELTA', /LISTA_ENVUELTA/.test(r.out), (r.out.match(/ABORT[^\n]*/) || [''])[0].slice(0, 100));
+    check('cuenta el bucle', /bucle=120\b/.test(r.out), (r.out.match(/PARSE[^\n]*/) || [''])[0].slice(0, 110));
+}
+
+console.log('\n=== 5c · --dir: se descarta la envuelta y se elige la CRUDA aunque sea mas vieja ===');
+{
+    const dir = path.join(tmpRoot, 'c5c');
+    fs.mkdirSync(dir, { recursive: true });
+    // crate de dos listas: la envuelta es MAS NUEVA (ganaria por mtime), la cruda es la buena.
+    const wrapped = path.join(dir, 'APE_LISTA_900_WRAPPED.m3u8');
+    fs.writeFileSync(wrapped, [
+        '#EXTM3U',
+        '#EXTINF:-1 tvg-id="w1",w1',
+        'https://iptv-ape.duckdns.org/pulse/?u=' + encodeURIComponent('https://iptv-ape.duckdns.org/jit/live/1/master.m3u8'),
+    ].join('\n') + '\n', 'utf8');
+    const raw = path.join(dir, 'APE_LISTA_800_CDN.m3u8');
+    escribirLista(raw, ['r1', 'r2', 'r3']);
+    // la envuelta, mas reciente
+    const t = new Date(Date.now() + 60000);
+    fs.utimesSync(wrapped, t, t);
+    const out = path.join(dir, 'out');
+    const r = correr(['--dir', dir, '--out', out, '--dry-run']);
+    check('sale 0', r.code === 0, 'code=' + r.code);
+    check('nombra la candidata descartada', /CANDIDATA descartada/.test(r.out) && /900_WRAPPED/.test(r.out));
+    check('elige la cruda', /APE_LISTA_800_CDN/.test(r.out) && !/LISTA_ENVUELTA/.test(r.out),
+        (r.out.match(/LIST [^\n]*/) || [''])[0].slice(0, 110));
+}
+
 if (process.platform === 'win32') {
     console.log('\n=== 6 · publicación real: OMITIDA en Windows (fs.symlinkSync da EPERM) ===');
 } else {
