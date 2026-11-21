@@ -12,6 +12,13 @@ on:
         description: 'Also force /lists/*.m3u8 to no-store in nginx'
         type: boolean
         default: true
+      # [2026-11-21] El motor que corre en /opt/ape-jit pesa 15x mas que su fuente en el
+      # repo. Este input es la unica forma de autorizar un reemplazo que ENCOGE el motor.
+      confirm_shrink:
+        description: 'Solo para reemplazos que encogen el motor: escribe REEMPLAZO EL MOTOR JIT'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -48,9 +55,24 @@ jobs:
           chmod 600 ~/.ssh/config
 
       - name: Upload JIT server
+        env:
+          CONFIRM_SHRINK: ${{ inputs.confirm_shrink }}
         run: |
           set -euo pipefail
           TARGET="$VPS_USER@$VPS_HOST"
+          # [2026-11-21] GATE ANTI-DEGRADACION DEL MOTOR (identico a deploy-streaming.yml).
+          # Medido: fuente vps_jit/server.js 29624 B vs /opt/ape-jit/server.js 480253 B en
+          # ejecucion. Instalar la fuente encima seria reemplazar el motor real por un stub.
+          LOCAL_BYTES=$(stat -c %s vps_jit/server.js)
+          REMOTE_BYTES=$(ssh "$TARGET" "sudo -n stat -c %s /opt/ape-jit/server.js 2>/dev/null || echo 0")
+          echo "  fuente local: $LOCAL_BYTES B | motor desplegado: $REMOTE_BYTES B"
+          if [ "${REMOTE_BYTES:-0}" -gt 0 ] && [ "$LOCAL_BYTES" -lt $((REMOTE_BYTES / 2)) ]; then
+            if [ "$CONFIRM_SHRINK" != "REEMPLAZO EL MOTOR JIT" ]; then
+              echo "::error::la fuente ($LOCAL_BYTES B) es menos de la mitad del motor que corre ($REMOTE_BYTES B). No se instala."
+              exit 1
+            fi
+            echo "  AVISO: encogimiento confirmado por el operador (confirm_shrink)"
+          fi
           scp vps_jit/server.js "$TARGET:/tmp/ape-jit-server.js"
           ssh "$TARGET" 'set -euo pipefail; cp -a /opt/ape-jit/server.js /root/ape-jit-server.$(date -u +%Y%m%dT%H%M%SZ).bak; install -m 0644 /tmp/ape-jit-server.js /opt/ape-jit/server.js; systemctl restart ape-jit; sleep 2; curl -fsS http://127.0.0.1:3099/health'
 

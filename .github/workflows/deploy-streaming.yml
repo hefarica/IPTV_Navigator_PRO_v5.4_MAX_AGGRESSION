@@ -12,6 +12,13 @@ on:
         description: 'Also force /lists/*.m3u8 to no-store in nginx'
         type: boolean
         default: true
+      # [2026-11-21] El motor que corre en /opt/ape-jit pesa 15x mas que su fuente en el
+      # repo. Este input es la unica forma de autorizar un reemplazo que ENCOGE el motor.
+      confirm_shrink:
+        description: 'Solo para reemplazos que encogen el motor: escribe REEMPLAZO EL MOTOR JIT'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -46,9 +53,30 @@ jobs:
           chmod 600 ~/.ssh/config
 
       - name: Upload JIT server
+        env:
+          CONFIRM_SHRINK: ${{ inputs.confirm_shrink }}
         run: |
           set -euo pipefail
           TARGET="$VPS_USER@$VPS_HOST"
+          # [2026-11-21] GATE ANTI-DEGRADACION DEL MOTOR. Medido ese dia sobre el VPS:
+          #   vps_jit/server.js (este, la fuente)   662 lineas /   29624 B / e400fa19 (commit 2026-11-02)
+          #   /opt/ape-jit/server.js (EN EJECUCION) 9801 lineas / 480253 B / 44d8bf84
+          # El motor de produccion es 15x mas grande y NO existe en ninguna copia del repo:
+          # tiene 105 lineas que solo viven en el VPS (POST /image/streaming-health-llm,
+          # objetivo del 2026-11-16). Instalar este fichero encima seria reemplazar el motor
+          # real por un stub y reiniciar el servicio. Hasta que se decida que artefacto es
+          # canonico, este paso SE NIEGA a instalar algo que encoge el motor a menos de la
+          # mitad. Para forzarlo hay que aportar la confirmacion literal en el input.
+          LOCAL_BYTES=$(stat -c %s vps_jit/server.js)
+          REMOTE_BYTES=$(ssh "$TARGET" "sudo -n stat -c %s /opt/ape-jit/server.js 2>/dev/null || echo 0")
+          echo "  fuente local: $LOCAL_BYTES B | motor desplegado: $REMOTE_BYTES B"
+          if [ "${REMOTE_BYTES:-0}" -gt 0 ] && [ "$LOCAL_BYTES" -lt $((REMOTE_BYTES / 2)) ]; then
+            if [ "$CONFIRM_SHRINK" != "REEMPLAZO EL MOTOR JIT" ]; then
+              echo "::error::la fuente ($LOCAL_BYTES B) es menos de la mitad del motor que corre ($REMOTE_BYTES B). No se instala. Si es intencional, dispara el workflow con confirm_shrink='REEMPLAZO EL MOTOR JIT'."
+              exit 1
+            fi
+            echo "  AVISO: encogimiento confirmado por el operador (confirm_shrink)"
+          fi
           scp vps_jit/server.js "$TARGET:/tmp/ape-jit-server.js"
           ssh "$TARGET" 'set -euo pipefail; cp -a /opt/ape-jit/server.js /root/ape-jit-server.$(date -u +%Y%m%dT%H%M%SZ).bak; install -m 0644 /tmp/ape-jit-server.js /opt/ape-jit/server.js; systemctl restart ape-jit; sleep 2; curl -fsS http://127.0.0.1:3099/health'
 
