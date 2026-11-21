@@ -1964,3 +1964,22 @@ sigue pendiente**. No dejo el arnés en estado roto.
 Para la próxima, en este orden y sin encadenar: (1) driver carga `entrada_mixta`, (2) driver fija
 `window.APE_SIN_FORCE = true` en una rama **independiente** (no `else if`), (3) correr y leer los dos
 `video-width` esperados: **3840** (UHD→P1) y **1920** (FHD→P3).
+## 85 · SELECTOR AUTOMÁTICO EJERCITADO Y CORREGIDO: FHD→P3 y UHD→P1 en el flujo real
+
+Con `entrada_mixta.m3u8` (sha `73317b20…`, 1 canal UHD + 1 canal FHD reales) y `window.APE_SIN_FORCE = true`
+(ruta automática, sin perfil forzado):
+
+```
+ANTES:  widths = 1920,1920   sel=null   ← los dos a FHD: el UHD caía a P3
+FIX:    regla NAME:HD exigía !UHD y !4K (porque "UHD" contiene "HD")
+DESPUÉS: widths = 1920,3840  sel=null   ← FHD→P3 (1920) y UHD→P1 (3840)
+```
+
+**El selector automático decide por canal en el flujo real**: dos entradas reales distintas, dos decisiones
+distintas, sin `forceProfile`. Es la primera vez en toda la serie que la ruta automática se ejerce y se mide.
+
+El defecto corregido era real: `if (name.includes('HD') …)` puntuaba P3 para `UHD`, así que un canal UHD se
+clasificaba como FHD. Ahora ese canal llega a P1.
+
+`EXIT=1` en esa corrida es **esperado y correcto**: el arnés exige 3 canales/sidecars y el fixture tiene 2.
+La aserción no se relajó; se usó otra entrada.
