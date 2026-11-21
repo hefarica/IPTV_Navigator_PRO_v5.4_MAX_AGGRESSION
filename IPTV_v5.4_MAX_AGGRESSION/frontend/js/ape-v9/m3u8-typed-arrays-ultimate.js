@@ -3297,9 +3297,38 @@
         }
     }
 
+    /* RFC 8216 §4.3.3.1 — TARGETDURATION es la duración MÁXIMA de segmento,
+     * redondeada hacia arriba. Un valor fijo de 2 con segmentos de 4/6 s hace
+     * que el player calcule mal el live edge y recargue antes de que el
+     * segmento exista: se ve como rebuffering de red, pero es de manifiesto.
+     *
+     * Fuentes, en orden: opción explícita -> settings del perfil maestro ->
+     * campo plano del perfil -> fallback 2. Acepta string u number porque el
+     * LAB exporta "4" y el generador a veces recibe 4. */
+    function __apeResolveTargetDuration(options = {}) {
+        const _profiles = options.bulletproof_profiles || {};
+        const _masterId = options.masterProfile || 'P0';
+        const _profile = _profiles[_masterId] || {};
+        const _settings = _profile.settings || {};
+        const _candidates = [
+            options.segment_duration_s,
+            options.segment_duration,
+            _settings.segment_duration_s,
+            _settings.segment_duration,
+            _profile.segment_duration_s,
+            _profile.segment_duration
+        ];
+        for (const _raw of _candidates) {
+            if (_raw === null || _raw === undefined || _raw === '') continue;
+            const _n = Number(_raw);
+            if (Number.isFinite(_n) && _n > 0) return Math.max(1, Math.ceil(_n));
+        }
+        return 2;
+    }
     function generateGlobalHeader(channelsCount, options = {}) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 18) + 'Z';
         const totalChannels = typeof window !== 'undefined' && window.app && typeof window.app.getFilteredChannels === 'function' ? window.app.getFilteredChannels().length : channelsCount;
+        const _targetDuration = __apeResolveTargetDuration(options);
 
         if (options.bulletproof_loaded && options.bulletproof_profiles) {
             const coreHeader = [
@@ -3313,6 +3342,10 @@
             ];
             const _labMetaTag = generateLabMetadataTag();
             if (_labMetaTag) coreHeader.push(_labMetaTag);
+            /* Ruta LAB/bulletproof: el manifiesto tambien debe llevar el
+             * load_control estandar. Sin esto, un player que ignora los
+             * KODIPROP del perfil se queda con el default del sistema. */
+            coreHeader.push('#EXT-X-SESSION-DATA:DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":30000,\\"bufferForPlaybackMs\\":500,\\"bufferForPlaybackAfterRebufferMs\\":3000,\\"maxBufferMs\\":90000}"');
 
             // ── 🎬 DISNEY-GRADE LL-HLS / ABR DIRECTIVES (LAB SSOT) ──────────────
             // Source: LAB Excel sheet 30_DISNEY_GRADE_DIRECTIVES (via bulletproof JSON
@@ -3678,20 +3711,20 @@
 #EXT-X-INDEPENDENT-SEGMENTS
 ${__apeContinuityTags().join('\n')}
 #EXT-X-START:TIME-OFFSET=-3.0,PRECISE=YES
-#EXT-X-TARGETDURATION:2
+#EXT-X-TARGETDURATION:${_targetDuration}
 #EXT-X-PART-INF:PART-TARGET=0.5
 #EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=0.5,CAN-SKIP-UNTIL=6.0,HOLD-BACK=1.5
 #EXT-X-SESSION-DATA:DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":30000,\\"bufferForPlaybackMs\\":500,\\"bufferForPlaybackAfterRebufferMs\\":3000,\\"maxBufferMs\\":90000}"
 #EXT-X-SESSION-DATA:DATA-ID="exoplayer.track_selection",VALUE="{\\"maxDurationForQualityDecreaseMs\\":500,\\"minDurationForQualityIncreaseMs\\":3000,\\"bandwidthFraction\\":0.95}"
 #EXT-X-SESSION-DATA:DATA-ID="exoplayer.bandwidth_meter",VALUE="{\\"resetOnNetworkTypeChange\\":false,\\"slidingWindowMaxWeight\\":2000,\\"initialBitrateEstimate\\":120000000}"
-#EXT-X-SESSION-DATA:DATA-ID="hls.js.config",VALUE="{\\"maxBufferLength\\":130,\\"maxMaxBufferLength\\":600,\\"abrBandWidthFactor\\":0.95,\\"abrBandWidthUpFactor\\":0.95,\\"lowLatencyMode\\":true}"
+#EXT-X-SESSION-DATA:DATA-ID="hls.js.config",VALUE="{\\"maxBufferLength\\":24,\\"maxMaxBufferLength\\":48,\\"abrBandWidthFactor\\":0.95,\\"abrBandWidthUpFactor\\":0.95,\\"lowLatencyMode\\":true}"
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.player_pref",VALUE="${APE_CODEC_CSV}"
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.audio",VALUE="ac-3,mp4a.40.2,mp4a.40.5" // [FIX-AUDIO 2026-05-23] ec-3 removido — ac-3+mp4a.40.2 en todos los modos
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.hdr",VALUE="dv,hdr10plus,hdr10,hlg,sdr"
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.build",VALUE="v5.4-MAX-QUALITY-OVERRIDE"
 #EXT-X-APE-ANTI-FREEZE-NUCLEAR
 #EXT-X-APE-MULTI-SOURCE:ENABLED|FAILOVER=30ms|RECONNECT=200
-#EXT-X-APE-BUFFER-STRATEGY:NUCLEAR_NO_COMPROMISE|MIN=65s|TARGET=130s
+#EXT-X-APE-BUFFER-STRATEGY:NUCLEAR_NO_COMPROMISE|MIN=15s|TARGET=24s|MAX=48s
 #EXT-X-APE-QMAX-STRATEGY:GREEDY-BEST-AVAILABLE|FACTOR=0.95
 #EXT-X-APE-LCEVC:PHASE=4,ENABLED=true,ENHANCEMENT=ULTRA,SHARPNESS=1.0
 #EXT-X-APE-HDR-STRATEGY:DV_FIRST|HDR10PLUS|HDR10|HLG|SDR_FALLBACK
@@ -3788,7 +3821,8 @@ ${__apeContinuityTags().join('\n')}
 #EXT-X-APE-ISP-LEVEL-10:APOCALYPTIC-ALL_BANDWIDTH-TCP256MB-PAR256-BURST50x-BUF900
 #EXT-X-APE-LCEVC:MPEG-5-PART-2-FULL-3-PHASE-L1-L2-TRANSPORT-PARALLEL
 #EXT-X-APE-ANTI-FREEZE-NUCLEAR:v10.0-OBSCENE|net-cache=120000|live-cache=120000|clock-jitter=5000|prefetch=100-200-500-2000
-#EXT-X-APE-BUFFER-STRATEGY:NUCLEAR_NO_COMPROMISE|TARGET=180s|MIN=60s|MAX=600s|RAM=2048MB
+#EXT-X-APE-BUFFER-STRATEGY:NUCLEAR_NO_COMPROMISE|TARGET=24s|MIN=15s|MAX=48s|RAM=2048MB
+#EXT-X-SESSION-DATA:DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":30000,\\"bufferForPlaybackMs\\":500,\\"bufferForPlaybackAfterRebufferMs\\":3000,\\"maxBufferMs\\":90000}"
 #EXT-X-APE-RECONNECT-NUCLEAR:MAX=UNLIMITED|DELAY=0-50ms|PARALLEL=64|POOL=50|WARM=20
 #EXT-X-APE-MULTI-SOURCE:ENABLED|COUNT=5|ACTIVE=2|RACING=TRUE|FAILOVER=50ms
 #EXT-X-APE-FREEZE-PREDICTION:LSTM_ENSEMBLE|WINDOW=5000ms|CONFIDENCE=0.8|AUTO=TRUE
@@ -14270,6 +14304,7 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
             // verificar el JSON emitido sin generar una lista de 21.224 canales.
             hybridHeaderBlock: __apeHybridHeaderBlock,
             generateGlobalHeader: generateGlobalHeader,
+            resolveTargetDuration: __apeResolveTargetDuration,
 
             // 👻 Fusión Fantasma v22.1 API
             AtomicStealthEngine: window.APEAtomicStealthEngine,

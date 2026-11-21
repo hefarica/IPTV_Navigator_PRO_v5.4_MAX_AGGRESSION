@@ -1236,7 +1236,18 @@ function alignmentTargetsFull(obj, gestorProfile) {
   const minBwFor3x = Math.ceil(mbps * 3);
   const minBwTarget = Math.max(declaredMinBw, minBwFor3x);
 
-  const bufferSec = Math.min(60, Math.max(8, Math.round(8 + obj.cost.relative * 3 + (isEmu ? 4 : 0))));
+  /* Piso operativo de 24 s: con segmentos de 2 s son 12 segmentos, con 4 s son
+   * 6 y con 6 s son 4. El piso anterior (8 s) dejaba 4/2/1 segmentos: un
+   * segmento lento mas un retry vaciaba la cola. Techo 45 s para no convertir
+   * canales de coste alto en 90 s de RAM. */
+  const bufferSec = Math.min(45, Math.max(24, Math.round(8 + obj.cost.relative * 3 + (isEmu ? 4 : 0))));
+  const segDurRaw = Number(
+    (gestorProfile && gestorProfile.settings &&
+      (gestorProfile.settings.segment_duration_s || gestorProfile.settings.segment_duration)) ||
+    obj.segment_duration_s || obj.segment_duration ||
+    (obj.input && (obj.input.segment_duration_s || obj.input.segment_duration)) || 2
+  );
+  const segDur = Number.isFinite(segDurRaw) && segDurRaw > 0 ? Math.max(1, Math.ceil(segDurRaw)) : 2;
   const netCache = bufferSec * 1000;
   const jitter = Math.round(netCache * 0.1);
   const playerBuf = bufferSec * 1000;
@@ -1331,14 +1342,14 @@ function alignmentTargetsFull(obj, gestorProfile) {
       'X-File-Caching': String(netCache + 20000),
       'X-Buffer-Target': String(playerBuf),
       'X-Buffer-Max': String(playerBuf * 2),
-      'X-Buffer-Min': String(Math.round(playerBuf * 0.6)),
+      'X-Buffer-Min': String(Math.round(playerBuf * 0.625)),
       'X-Buffer-Size': String(playerBuf),
       'X-Min-Buffer-Time': String(bufferSec),
       'X-Max-Buffer-Time': String(bufferSec * 2),
       'X-ExoPlayer-Buffer-Min': String(playerBuf),
       'X-Manifest-Refresh': String(netCache),
-      'X-Segment-Duration': '2',
-      'X-Segment-Duration-S': '2',
+      'X-Segment-Duration': String(segDur),
+      'X-Segment-Duration-S': String(segDur),
       'X-APE-Prefetch-Segments': String(prefetchSeg),
       'X-Prefetch-Segments': String(prefetchSeg),
       'X-Parallel-Segments': String(parallel),
