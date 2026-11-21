@@ -1399,8 +1399,17 @@
                 const bwM = (typeof window !== 'undefined') ? window.APE_BW_METER : null;
                 if (np && np.fresh && basis.mbps > 0 && bwM && typeof bwM.riskFromRatio === 'function') {
                     /* [t16] risk/headroom sobre la CAPACIDAD (peak), no sobre el dip */
+                    /* [t30] capacidAD con precedencia declarada; si NO es
+                     * computable, no se fabrica un número pequeño. */
+                    const capSrc = this._capacitySource();
                     const capR = this._capacity();
-                    const capMbps = (capR && capR.mbps) ? capR.mbps : Number((np && np.downloadMbps) || 0);
+                    const capMbps = capSrc.noComputado ? null : Number(capSrc.mbps);
+                    if (capSrc.noComputado) {
+                        performance.evidence = false;
+                        performance.bw_no_computado = true;
+                        performance.bw_reason = capSrc.reason;
+                        throw new Error('CAPACIDAD_NO_COMPUTADA');
+                    }
                     const ratio = Math.round((capMbps / basis.mbps) * 100) / 100;
                     const risk = bwM.riskFromRatio(ratio);
                     performance.evidence = true;
@@ -1412,6 +1421,9 @@
                         : risk <= 60 ? 'ELEVATED' : risk <= 80 ? 'HIGH' : 'CRITICAL';
                     performance.risk_color = risk <= 30 ? '#10b981' : risk <= 60 ? '#eab308' : '#ef4444';
                     performance.bw_measured_mbps = capMbps;
+                    performance.bw_source = capSrc.source;
+                    /* bw_now_mbps = MUESTRA INSTANTÁNEA (downlink), NO la capacidad:
+                     * es la que alimenta la detección de oscilación del gobernador. */
                     performance.bw_now_mbps = Number((np && np.downloadMbps) || capMbps);
                     performance.bw_peak_mbps = capMbps;
                     performance.peak_hold = capR || null;
@@ -3165,11 +3177,66 @@
         }
 
         /* Capacidad de referencia (peak) + valor instantaneo + estado del dip. */
+        /* [t30] medición REAL del medidor desplegado (ape-speed-meter-v9.js).
+         * Devuelve la fuente y, si no sirve, el motivo — nunca un número pequeño. */
+        _speedmeterMeasure() {
+            const w = (typeof window !== 'undefined') ? window : {};
+            const last = w.APE_SPEEDMETER_LAST;
+            const med = last && last.medicion;
+            if (!med) return { ok: false, reason: 'sin medición del medidor' };
+            const p10 = Number(med.mbps_p10);
+            if (!isFinite(p10) || p10 <= 0) return { ok: false, reason: 'mbps_p10 no válido' };
+            const bytes = Number(med.bytesTransferred || med.bytes || 0);
+            const MIN = 2 * 1024 * 1024;   // 2 MiB: por debajo no hay régimen
+            if (!(bytes >= MIN)) {
+                return { ok: false, reason: 'muestra insuficiente (' + bytes + ' B < ' + MIN + ' B)', bytes: bytes };
+            }
+            return { ok: true, mbps: p10, source: 'ape-speed-meter (p10)', bytes: bytes };
+        }
+
+        /* [t30] ¿este perfil de red viene de una ESTIMACIÓN del navegador? */
+        _isBrowserEstimate(np) {
+            const src = String((np && np.source) || '').toLowerCase();
+            return src.indexOf('navigator') >= 0 || src.indexOf('downlink') >= 0;
+        }
+
+        /* [t30] CAPACIDAD con precedencia declarada:
+         *   1) medición real del medidor (p10)
+         *   2) peak-hold de mediciones reales
+         *   3) navigator.connection.downlink  ← ÚLTIMO RECURSO, declarado
+         * Sin ninguna fuente válida: NO COMPUTADO con motivo. */
+        _capacitySource() {
+            const np = this._networkProfile();
+            const real = this._speedmeterMeasure();
+            const capP = this._capacity();
+            if (real.ok) {
+                return { mbps: real.mbps, source: real.source, noComputado: false, reason: null };
+            }
+            if (capP && capP.mbps && !this._isBrowserEstimate(np)) {
+                return { mbps: capP.mbps, source: 'peak-hold', noComputado: false, reason: null };
+            }
+            if (np && np.fresh && !this._isBrowserEstimate(np)) {
+                return { mbps: np.downloadMbps, source: 'sonda de red (' + (np.source || 'probe') + ')', noComputado: false, reason: null };
+            }
+            if (np && np.fresh) {
+                return {
+                    mbps: np.downloadMbps, source: 'navigator.connection.downlink (estimación)',
+                    noComputado: false, reason: null, ultimoRecurso: true
+                };
+            }
+            return {
+                mbps: null, source: null, noComputado: true,
+                reason: real.reason || 'sin medición real ni peak-hold'
+            };
+        }
+
         _capacity() {
             const cfg = this._peakCfg();
             const arr = this._peakLoad();
             const np = this._networkProfile();
-            if (np && np.fresh) {
+            /* [t30] una ESTIMACIÓN del navegador (navigator.connection.downlink,
+             * ~0.39 Mbps en escritorio) NO se registra como muestra de capacidad. */
+            if (np && np.fresh && !this._isBrowserEstimate(np)) {
                 const last = arr.length ? arr[arr.length - 1] : null;
                 if (!last || (Number(np.timestamp) || 0) > last.at) {
                     this._peakRecord(np.downloadMbps, np.timestamp);
@@ -4363,7 +4430,10 @@
          * perfiles: buffer (settings.buffer y vlcopt network-caching) y el timeout
          * de red. Cada perfil usa SU propio ratio (medido / exigido por el perfil),
          * no el del perfil activo. Se persiste para que la lista lo herede. */
-        try { self._applyAutoTune(r); } catch (_at) { /* aditivo: nunca rompe el ciclo */ }
+        /* [t30] el auto-tune sólo corre sobre una medición VÁLIDA: si el ciclo no
+         * es ok (la red no sostiene ni el mínimo), escribir 12 perfiles rompía
+         * "CONSERVA el juego coherente anterior" y disparaba el antioscilación. */
+        if (r && r.ok) { try { self._applyAutoTune(r); } catch (_at) { /* aditivo: nunca rompe el ciclo */ } }
             /* [t17] pase lo que pase con el plan, la estrategia no se revierte */
             self._guardStrategy(profile);
 
