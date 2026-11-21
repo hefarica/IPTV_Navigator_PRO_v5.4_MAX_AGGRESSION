@@ -1762,3 +1762,20 @@ que sí lo tiene** (el mismo que ya usa `vo`/`profile` para geometría y caching
 
 Tres intentos sobre estos dos campos, tres descartes medidos: no están en el array de `:10747`, no reciben
 `profile` en `:13905`, y el literal vive en `__omegaComplianceTags()`.
+## 76 · `saturation` HEREDA por perfil: P0 → 1.06 y P3 → 1.03, medidos
+
+Arreglo en `:3155`/`:13905`: `__omegaComplianceTags(__pId)` usa `vlcopt['saturation']` del perfil, y la llamada
+le pasa `forceProfile || ProfileManagerV9.activeProfileId || 'P3'` — que es lo único disponible **antes** de que
+`:13921` calcule `profile` (la llamada a las omega tags ocurre en `:13905`, 16 líneas antes).
+
+Verificación (se regeneraron **solo** P0 y P3):
+
+```
+P0 | sat=1.06 | eSat=1.06 | PASS en saturation
+P3 | sat=1.03 | eSat=1.03 | PASS en saturation
+P1 | sat=1.08 | eSat=1.05 | archivo VIEJO (no regenerado en esta corrida)
+P2 | sat=1.08 | eSat=1.04 | archivo VIEJO
+```
+
+El literal 1.08 ya no es el valor emitido cuando el perfil lo declara: `saturation` pasa a heredar.
+`clock-jitter` sigue en 0 (no incluido en este parche).
