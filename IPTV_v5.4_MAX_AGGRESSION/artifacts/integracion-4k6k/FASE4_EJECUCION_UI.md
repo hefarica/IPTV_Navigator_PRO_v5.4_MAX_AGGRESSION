@@ -1619,3 +1619,33 @@ punto donde hay que mirar de ahora en adelante para este campo.
 
 Regla que me llevo, y que ya está escrita dos veces en este documento: **antes de parchear una directiva,
 confirmar que su línea pertenece a una función que se ejecuta**. El conteo de referencias va primero.
+## 70 · Localizado el último literal: `clock-jitter` está en CUATRO presets
+
+```
+14932: 'clock-jitter': '0', 'clock-synchro': '0',
+14970: 'clock-jitter': '0', 'clock-synchro': '0',
+15006: 'clock-jitter': '0', 'clock-synchro': '0',
+15042: 'clock-jitter': '0', 'clock-synchro': '0',
+```
+
+El `clock-jitter=0` del artefacto **no se pierde ni se calcula mal**: está escrito a mano en cuatro tablas de
+preset. Igual que `saturation=1.08` en `:3163`.
+
+Clase de defecto única, no dos bugs sueltos: **los presets estáticos pisan al LAB**. Los campos que heredan
+(geometría, `network-caching`, HDR, `audio-channels`) son los que se emiten con `lines.push` desde el perfil;
+los que no heredan (`saturation`, `clock-jitter`, `clock-synchro`) están congelados en tablas.
+
+Cierre de la investigación del cluster, con ubicación exacta de todo:
+
+| Campo | Origen real | Clase |
+|---|---|---|
+| geometría, `network-caching` | emisor del perfil | **hereda** (12/12) |
+| `video-hdr`, `video-hdr-mode` | 4K False + `vlcopt` tras §65 | **corrige** |
+| `audio-channels` | 4K False tras §67 | **corrige** |
+| `saturation` | preset `:3163` | **literal** |
+| `clock-jitter`, `clock-synchro` | presets `:14932/14970/15006/15042` | **literal** |
+| `generateEXTVLCOPT` entera | 1 ocurrencia, 0 llamadas | **código muerto** |
+
+Arreglo pendiente, uno solo y estructural: sustituir esos literales por el valor del `vlcopt` del perfil
+efectivo, con el literal como último respaldo. Es el mismo patrón de §65/§67, aplicado a tablas en vez de a
+líneas sueltas, y exige la misma verificación con guarda.
