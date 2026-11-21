@@ -1019,3 +1019,25 @@ Dónde mirar en la próxima ronda, sin adivinar: `pmProfile` se construye antes 
 identificar su origen (`profileManager.getProfile(<id derivado del canal>)` o similar) y decidir si debe
 respetar la selección activa. **No lo modifico sin ver ese origen**: cambiar la fuente de HDR/audio/filtros a
 ciegas puede romper la coherencia codec↔resolución que la ley cardinal protege.
+## 46 · El origen de `pmProfile` es `APE_PROFILES_CONFIG.getProfile(profile)` — el desajuste está en lo que devuelve
+
+Leído en `m3u8-typed-arrays-ultimate.js:4394-4396`:
+
+```
+const pmProfile = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG
+    && typeof window.APE_PROFILES_CONFIG.getProfile === 'function')
+    ? window.APE_PROFILES_CONFIG.getProfile(profile) : null;
+```
+
+No es una resolución «por canal» como supuse en el §45: recibe **`profile`**, el mismo identificador que ya
+gobierna la geometría (que sí es correcta: P0 → 7680x4320). El desajuste por tanto **no está en la selección**
+sino en **lo que `getProfile(profile)` devuelve**: su `.vlcopt` no trae `video-hdr` / `video-hdr-mode`, mientras
+que el `vlcopt` del LAB para ese mismo perfil sí los trae.
+
+Dos objetos del mismo perfil, con contenido distinto. Eso explica que geometría y `network-caching` hereden
+(dependen de `vo`, leído del LAB) y que HDR/audio/saturación no (dependen de `pmProfile.vlcopt`).
+
+Próxima sonda exacta, sin adivinar: en el navegador, comparar
+`APE_PROFILES_CONFIG.getProfile('P0.5').vlcopt` contra el `vlcopt` del LAB para P0.5 y listar las claves que
+faltan. Si faltan, el defecto está en el importador/normalizador que puebla `APE_PROFILES_CONFIG`, no en el
+generador. **No se corrige nada hasta ver esa diferencia.**
