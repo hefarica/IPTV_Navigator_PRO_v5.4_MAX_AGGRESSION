@@ -1942,3 +1942,25 @@ por la puerta de atrás.
 
 Nota: los dos fallos del arnés (`ON sin 3 sidecar`, `recuperacion no exacta`) son correctos: la entrada tiene
 2 canales y las aserciones esperan 3. El arnés no se equivocó; la prueba cambió de entrada.
+## 84 · `APE_SIN_FORCE` añadido al controlador; el driver quedó roto y se restauró
+
+Cambio aplicado en `generation-controller.js` (compatible, tres líneas):
+
+```
+if (window.APE_SIN_FORCE === true) { /* modo sonda: ruta automatica */ }
+else if (_sel) options = Object.assign({}, options, { forceProfile: String(_sel) });
+```
+
+Con eso el flujo automático es alcanzable **sin** tocar la selección por la puerta de atrás: basta
+`window.APE_SIN_FORCE = true`.
+
+Pero mi edición del **driver** produjo `SyntaxError: Unexpected token 'else'` (encadené un `else` sobre un
+`else if` ya existente). `node --check` = 1 → **driver restaurado** desde la copia commiteada
+(`node --check` = 0, sin `mix=1`).
+
+Estado: el controlador tiene el escape listo; el driver volvió a su versión buena y **la corrida automática
+sigue pendiente**. No dejo el arnés en estado roto.
+
+Para la próxima, en este orden y sin encadenar: (1) driver carga `entrada_mixta`, (2) driver fija
+`window.APE_SIN_FORCE = true` en una rama **independiente** (no `else if`), (3) correr y leer los dos
+`video-width` esperados: **3840** (UHD→P1) y **1920** (FHD→P3).
