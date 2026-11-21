@@ -1165,3 +1165,35 @@ Los hechos que siguen firmes: el `vlcopt` del LAB crudo y normalizado **sí** co
 
 Siguiente sonda exacta: instrumentar la importación de **un** ID `.5` y volcar `lpFixed.vlcopt` antes del
 `Object.assign`. Con eso se ve si la homologación lo omite o lo transforma. **No se toca nada antes de verlo.**
+## 52 · La homologación tampoco pierde `vlcopt`: la hipótesis siguiente es el objeto `vo` del emisor
+
+Leído `ape-profiles-config.js:5154`:
+
+```
+const lpFixed = Object.assign({}, lp);      // copia SUPERFICIAL del perfil del LAB
+```
+
+`lpFixed.vlcopt` es **la misma referencia** que `lp.vlcopt`, y el `Object.assign` del §51 lo escribe en
+`this.profiles[pid]`. Con lo medido en el §47 (el `vlcopt` del LAB **sí** trae `video-hdr=true`/`HDR10PLUS`),
+la cadena de importación **no explica** la pérdida. Tercera hipótesis descartada de la serie.
+
+Queda un solo candidato coherente con el código del emisor (`m3u8-typed-arrays-ultimate.js`):
+
+```
+4093:  const netCache = fromLab(vo['network-caching'], cfg.network_cache_ms);   ← usa `vo`
+4142:  if (vo['video-hdr']) vlcopts.push(`#EXTVLCOPT:video-hdr=${vo['video-hdr']}`);
+4205:  'video-hdr','sharpen-sigma','contrast','brightness','saturation','gamma',
+4414:  const _labVo = pmProfile?.vlcopt || {};
+```
+
+Hay **dos objetos distintos** en juego: `vo` (del que salen `network-caching`, `video-hdr`, `saturation`,
+etc. en el bucle de 4142) y `pmProfile.vlcopt` (del que sale `_isHDR`/`_hdrMode`). Para P0.5 la geometría y
+`network-caching` salieron correctas → `vo` es **el del perfil correcto**; pero emitió `video-hdr=false`, lo
+que solo ocurre si `vo['video-hdr']` es la **cadena** `'false'` (truthy para el `if`, y se imprime tal cual).
+
+Sonda exacta y única siguiente: volcar `vo['video-hdr']` y `pmProfile.vlcopt['video-hdr']` en el emisor para
+**un** ID `.5`. Si `vo` trae `'false'` y `pmProfile` trae `true`, el defecto es de qué objeto alimenta cada
+directiva, no de la importación — y el arreglo es elegir una sola fuente.
+
+Serie de hipótesis descartadas con medición: import genérico (§47) · `includeExtrasByProfile` (§48) ·
+precedencia 12K (§50, corregido en §51) · homologación (§52). Todas quedan escritas para no repetirlas.
