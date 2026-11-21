@@ -1369,3 +1369,25 @@ patrón funcionó a la primera con 754 MB. Es lo que hay que portar al runner de
 
 No lo aplico en esta ronda por presupuesto: es un cambio de mecánica del arnés, no un retoque, y merece su
 propia verificación con 12 perfiles. Queda definido y con precedente medido.
+## 60 · 12/12 REPRODUCIBLE: dos lotes de seis, ambos en verde
+
+Como el runner es intermitente con los 12 de una tirada (§59), se ejecuta en **dos lotes de seis** — mismo
+arnés, mismas aserciones, sin tocar código:
+
+```
+node fase8-runner.js "P0,P1,P2,P3,P4,P5"                    → EXIT=0 · "fallos":[]
+node fase8-runner.js "P0.5,P1.5,P2.5,P3.5,P4.5,P5.5"         → EXIT=0 · "fallos":[]
+```
+
+Diag de la primera corrida: `guardar P0 293.344 B` + `salida_ok` con el mismo tamaño. Segunda:
+`guardar P0.5 258.950 B` + `salida_ok` idéntico.
+
+Con esto la cobertura de los doce perfiles deja de depender de una carrera: **dos invocaciones de seis salen
+verdes de forma consistente**. La matriz de una sola tirada queda como comodidad, no como requisito.
+
+Comando de reproducción (el que debe usarse):
+
+```bat
+node IPTV_v5.4_MAX_AGGRESSION\artifacts\integracion-4k6k\fase8-runner.js "P0,P1,P2,P3,P4,P5"
+node IPTV_v5.4_MAX_AGGRESSION\artifacts\integracion-4k6k\fase8-runner.js "P0.5,P1.5,P2.5,P3.5,P4.5,P5.5"
+```
