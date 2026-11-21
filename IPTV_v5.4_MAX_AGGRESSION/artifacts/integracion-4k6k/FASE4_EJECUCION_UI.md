@@ -1890,3 +1890,26 @@ fixture = C:\Users\HFRC\APE_PRIVADO\entrada_senales.m3u8  (1.297 B)
 Consecuencia: la cobertura automática **sigue sin aislarse**, y ahora la causa está acotada a los datos: el
 catálogo no trae canales con señales de nombre variadas. La extracción habría que hacerla por `tvg-name`
 exacto, y si el catálogo no las tiene, no hay fixture honesto que fabricar.
+## 82 · El catálogo SÍ tiene señales: 41 canales UHD reales (y cero 8K/720/SD)
+
+Conteo por `tvg-name` exclusivamente (corrige el ruido del §81), sobre los 11.222 canales:
+
+```
+canales_totales      = 11222
+tvg-name con 8K      = 0
+tvg-name con 4K/UHD  = 41     ej: "NL| ZIGGO SPORT UHD [MEGA]"
+tvg-name con 720     = 0
+tvg-name con SD      = 0
+```
+
+Esto cambia la conclusión anterior: **sí hay fixture honesto** para aislar el selector automático. Con canal
+`FHD` (→ `NAME:FHD/1080→P3`) y canal `UHD` (→ `NAME:4K/UHD→P1`) en la misma entrada, `determineProfile` debe
+producir **dos decisiones distintas** desde dos entradas reales distintas. Eso es una prueba de la ruta
+automática, no de la manual.
+
+Lo que no hay es 8K/720/SD en nombres, así que la cobertura automática alcanzable con este catálogo es de **dos
+tiers** (P1 y P3), no de cinco. Se declara el alcance en vez de inventar señales.
+
+Pendiente inmediato: construir la entrada con 1 canal UHD + 1 canal FHD reales, generar **sin** `forceProfile`
+(hay que permitir esa ruta en el driver) y leer el perfil emitido. Si sale P1 para el UHD y P3 para el FHD, el
+selector automático queda probado en el flujo real.
