@@ -1850,3 +1850,22 @@ Por campo, los doce perfiles coinciden ahora con el LAB en `video-hdr`, `video-h
 
 `generateEXTVLCOPT` código muerto (§64) → literales en el emisor (§66) → precedencia invertida (§71) →
 emisión pisada por presets (§78) → **12/12**.
+## 80 · Selector automático: observado en el flujo real (antes del fix) y coherente con sus reglas
+
+Lo que sí quedó medido, sin inventar entradas:
+
+- Con **tres canales reales** cuyos nombres son `✦●✦| FHD - BEIN SPORTS FHD |✦●✦`, `AR| BEIN SPORTS NEWS FHD`,
+  `AR| BEIN SPORTS NBA FHD`, y **sin** `forceProfile`, el pipeline emitió **P3** para los tres.
+- Eso es exactamente lo que predicen las reglas de `determineProfile` (`:8010`): ningún nombre lleva `8K`,
+  `4K`, `UHD`, `720`, `SD` ni `480`; todos llevan `FHD` → **CAPA 3, `NAME:FHD/1080→P3` (peso 20)**. Sin
+  `resolution` ni `bitrate` en el canal, el resto de capas no suman.
+
+Es decir: **la decisión automática se observó en el flujo real** (3/3 → P3) y coincide con la regla declarada.
+Lo que **no** existe es una señal por canal en el artefacto que exponga esa decisión de forma aislada: el
+sidecar declara `selectedProfile` (la operación) y la geometría sale del perfil forzado.
+
+Por eso, desde el arreglo de `forceProfile`, la ruta automática queda **bypassada** en la app: se elige perfil
+explícitamente. Ejercitarla de nuevo exigiría generar sin selección y con canales que aporten señales distintas
+(4K, 8K, 720, SD), cosa que el catálogo real de 3 canales no permite.
+
+Estado: **observada y coherente**; **no aislable** con el catálogo actual — límite de datos, no del arnés.
