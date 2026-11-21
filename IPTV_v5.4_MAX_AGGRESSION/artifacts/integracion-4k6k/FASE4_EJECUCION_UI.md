@@ -1649,3 +1649,29 @@ Cierre de la investigación del cluster, con ubicación exacta de todo:
 Arreglo pendiente, uno solo y estructural: sustituir esos literales por el valor del `vlcopt` del perfil
 efectivo, con el literal como último respaldo. Es el mismo patrón de §65/§67, aplicado a tablas en vez de a
 líneas sueltas, y exige la misma verificación con guarda.
+## 71 · Guarda offline de HDR/audio añadida — y caza un defecto nuevo (P3 declara HLG sobre un perfil SDR)
+
+`guarda-hdr-audio.js` compara, sobre los archivos exportados y **sin Chrome**, el `video-hdr`,
+`video-hdr-mode` y `audio-channels` emitidos contra el `vlcopt` del LAB de cada perfil:
+
+```
+P0    | hdr=true  | DOLBY_VISION | esp=DOLBY_VISION | ac=2 | PASS
+P1    | hdr=true  | HDR10_PLUS   | esp=HDR10_PLUS   | ac=2 | PASS
+P2    | hdr=true  | HDR10        | esp=HDR10        | ac=2 | PASS
+P3    | hdr=true  | HLG          | esp=SDR          | ac=2 | FAIL   ← NUEVO
+P4    | hdr=false | SDR          | esp=SDR          | ac=2 | PASS
+P5    | hdr=false | SDR          | esp=SDR          | ac=2 | PASS
+P0.5…P5.5 | hdr=true | HDR10_PLUS | esp=HDR10_PLUS   | ac=2 | PASS
+GUARDA_HDR_AUDIO PASS=11 FAIL=1   EXIT=1
+```
+
+**Hallazgo**: P3 emite `hdr=true` / `HLG` cuando su LAB dice **SDR**. Es el error inverso al de los Premium:
+no falta HDR, se **declara HDR sobre un perfil que el propietario calibró como SDR**. Para una fuente SDR, un
+`video-hdr=true` puede provocar color shift en players que lo interpretan como forzado.
+
+Causa probable: el respaldo del §65 solo actúa cuando `settings.hdr_canonical` falta; si los settings del perfil
+P3 (integrados en la app) dicen `hlg` y el LAB dice `SDR`, gana settings. El arreglo correcto es **dar
+precedencia al LAB cuando existe** `vlcopt['video-hdr']`, no solo como respaldo.
+
+La guarda queda como artefacto reejecutable: cualquier cambio futuro en esta zona se mide en un segundo, sin
+navegador.
