@@ -22,11 +22,17 @@
  *      entra SIN reiniciar y sin cortar la reproducción.
  *   4. Las 5 releases anteriores se conservan: rollback = reapuntar `current`.
  *
- * FAIL-CLOSED
- *   Si el parseo da menos del 95 % de los canales que ya tenía la allowlist, NO
- *   publica: es la firma de una lista truncada o de un parseo roto. Deja el mapa
- *   anterior intacto y sale con código 2. Un espejo que se puede quedar vacío no
- *   es un espejo.
+ * FAIL-CLOSED, PERO POR IDENTIDAD DE LISTA (2026-11-21)
+ *   Antes: si el parseo daba menos del 95 % de los canales de la allowlist, NO publicaba.
+ *   Correcto para LA MISMA lista (firma de truncado o parseo roto), pero el catalogo
+ *   servido cambia de lista: medido en produccion, la allowlist de 21 224 salio de
+ *   APE_LISTA_1794783650337_CDN.m3u8 y el reconciliador parseaba
+ *   APE_LISTA_1795151699916_DIRECTA_CABLEADA.m3u8. Comparar dos catalogos distintos
+ *   abortaba cada 5 minutos para siempre y congelaba la allowlist.
+ *   Ahora: MISMA lista -> guard estricto del 95 % (sin cambios). OTRA lista -> publica
+ *   diciendo LIST_CHANGED con los dos counts, con FLOOR_DURO (100) para no publicar
+ *   un catalogo absurdo, y deja traza nominal (channels_dropped.txt / channels_added.txt)
+ *   para que ningun canal desaparezca sin nombre.
  *
  * USO
  *   node reconcile.js [--list <ruta>] [--out <dir>] [--dry-run] [--verbose]
@@ -149,7 +155,11 @@ async function parseList(file) {
   const rl = readline.createInterface({ input: fs.createReadStream(file), crlfDelay: Infinity });
   const map = Object.create(null);
   const rows = [];
-  let cur = null, ua = '', pulseUrl = '', n = 0, skipped = 0, noUrl = 0;
+  // [2026-11-21] sinId se cuenta APARTE de skipped. Antes, un bloque con URL pero sin
+  // tvg-id caia en el `else if (cur.id)` como falso y NO se contaba en ningun sitio:
+  // desaparecia del mapa sin dejar traza. Medido: el log solo decia sin_url=0 cuando
+  // en realidad el agujero podia ser de ids ausentes.
+  let cur = null, ua = '', n = 0, skipped = 0, noUrl = 0, sinId = 0;
 
   for await (const line of rl) {
     const t = line.trim();
@@ -157,8 +167,15 @@ async function parseList(file) {
     n++;
 
     if (t.startsWith('#EXTINF')) {
-      if (cur && cur.url) { map[cur.id] = { url: cur.url, ua: cur.ua }; rows.push(cur); }
-      else if (cur) noUrl++;
+      // [2026-11-21] La clasificación de cada bloque se hace AQUÍ, una sola vez: con id
+      // y url -> al mapa; sin id -> sinId; con id y sin url -> noUrl. Antes se contaba
+      // también en la línea de URL y un bloque sin id acababa sumando en sin_id Y en
+      // sin_url (medido por el test: sin_url=3 sin_id=3 para 3 bloques sin id).
+      if (cur) {
+        if (cur.id && cur.url) { map[cur.id] = { url: cur.url, ua: cur.ua }; rows.push(cur); }
+        else if (!cur.id) sinId++;
+        else noUrl++;
+      }
       const te = t.match(/,(.*)$/);
       cur = {
         id: attr(t, 'tvg-id') || attr(t, 'tvg-chno'),
@@ -191,12 +208,14 @@ async function parseList(file) {
       resolved = t;                         // lista ajena: se usa su URL tal cual
     }
     if (resolved && cur.id) { cur.url = resolved; cur.ua = ua || DEFAULT_UA; }
-    else if (cur.id) skipped++;
   }
-  if (cur && cur.url) { map[cur.id] = { url: cur.url, ua: cur.ua }; rows.push(cur); }
-  else if (cur) noUrl++;
+  if (cur) {
+    if (cur.id && cur.url) { map[cur.id] = { url: cur.url, ua: cur.ua }; rows.push(cur); }
+    else if (!cur.id) sinId++;
+    else noUrl++;
+  }
 
-  return { map, rows, lines: n, skipped, noUrl };
+  return { map, rows, lines: n, noUrl, sinId };
 }
 
 function buildJitList(rows) {
@@ -242,23 +261,62 @@ function atomicWrite(file, content) {
   const prevMap = (() => { try { return JSON.parse(fs.readFileSync(MAP_FILE, 'utf8')); } catch (_) { return {}; } })();
   const prevCount = Object.keys(prevMap).length;
 
-  const { map, rows, lines, skipped, noUrl } = await parseList(list);
+  /* [2026-11-21] IDENTIDAD DE LA LISTA — el defecto que dejaba el servicio en abort
+   * permanente. Medido en produccion: la allowlist publicada (21 224 canales) salio de
+   * APE_LISTA_1794783650337_CDN.m3u8 (1 380 561 704 B) y el reconciliador estaba
+   * parseando APE_LISTA_1795151699916_DIRECTA_CABLEADA.m3u8 (708 400 298 B): OTRO
+   * catalogo. Comparar 11 222 canales de una lista contra 21 224 de otra no mide una
+   * caida, mide dos catalogos distintos -> y el guard fail-closed abortaba cada 5 min
+   * para siempre, dejando la allowlist congelada.
+   *   - MISMA lista  -> se mantiene el guard estricto del 95 % (una caida ahi SI es
+   *     truncado o parseo roto).
+   *   - OTRA lista   -> se publica, pero se dice en voz alta (LIST_CHANGED) y se deja
+   *     traza nominal de quien entra y quien sale. Nunca en silencio.
+   * FLOOR_DURO impide publicar un catalogo vacio o absurdo en el camino de otra lista. */
+  const FLOOR_DURO = 100;
+  const listKey = path.basename(list).replace(/\.m3u8$/i, '');
+  let prevMeta = {};
+  try { prevMeta = JSON.parse(fs.readFileSync(path.join(CURRENT, 'meta.json'), 'utf8')); } catch (_) { prevMeta = {}; }
+  const prevKey = prevMeta.listKey
+    || (prevMeta.source ? path.basename(String(prevMeta.source)).replace(/\.m3u8$/i, '') : '');
+  const mismaLista = prevCount === 0 || prevKey === listKey;
+
+  const { map, rows, lines, noUrl, sinId } = await parseList(list);
   const ids = Object.keys(map);
-  log('PARSE', 'lineas=' + lines, 'canales=' + ids.length, 'sin_url=' + (skipped + noUrl), 'allowlist_previa=' + prevCount);
+  log('PARSE', 'lineas=' + lines, 'canales=' + ids.length, 'sin_url=' + noUrl,
+    'sin_id=' + sinId, 'allowlist_previa=' + prevCount, 'lista=' + listKey);
 
   // ceil, no floor: con floor una lista de 2 canales dejaba pasar 1 (floor(1.9)=1),
 // es decir un 50 % de caida. Con ceil el minimo es el 95 % real redondeado ARRIBA.
   const floor = Math.ceil(prevCount * MIN_RATIO);
-  if (prevCount > 0 && ids.length < floor) {
-    log('ABORT', `solo ${ids.length} canales (< ${floor} = 95 % de ${prevCount}). No publico: el mapa actual queda intacto.`);
+  if (prevCount > 0 && !mismaLista) {
+    log('LIST_CHANGED', 'allowlist de ' + (prevKey || '(identidad desconocida)') + ' (' + prevCount +
+      ') -> lista ' + listKey + ' (' + ids.length + '): catalogos distintos, el ratio 95 % no aplica');
+    if (ids.length < FLOOR_DURO) {
+      log('ABORT', `catalogo nuevo con solo ${ids.length} canales (< FLOOR_DURO ${FLOOR_DURO}). No publico.`);
+      process.exit(2);
+    }
+  } else if (prevCount > 0 && ids.length < floor) {
+    log('ABORT', `solo ${ids.length} canales (< ${floor} = 95 % de ${prevCount}, misma lista). No publico: el mapa actual queda intacto.`);
     process.exit(2);
   }
   const bad = ids.filter(id => !/^[A-Za-z0-9_.-]{1,80}$/.test(id));
   if (bad.length) { log('ABORT', 'ids invalidos: ' + bad.slice(0, 5).join(',')); process.exit(2); }
 
+  // Traza nominal: que id sale y cual entra. Sin esto un canal puede desaparecer sin
+  // nombre, que es justo lo que el guard nunca pudo explicar.
+  const prevIds = Object.keys(prevMap);
+  const nuevoSet = new Set(ids);
+  const dropped = prevIds.filter(id => !nuevoSet.has(id));
+  const prevSet = new Set(prevIds);
+  const added = ids.filter(id => !prevSet.has(id));
+  log('TRAZA', 'salen=' + dropped.length, 'entran=' + added.length,
+    dropped.length ? ('ej. salen: ' + dropped.slice(0, 5).join(',')) : '');
+
   const jitList = buildJitList(rows);
   if (flag('dry-run')) {
-    log('DRY-RUN', 'no escribo nada', 'channels=' + ids.length, 'jitlist_bytes=' + jitList.length);
+    log('DRY-RUN', 'no escribo nada', 'channels=' + ids.length, 'jitlist_bytes=' + jitList.length,
+      'salen=' + dropped.length, 'entran=' + added.length);
     const sample = rows.slice(0, 2);
     sample.forEach(r => log('  muestra', r.id, r.name, '->', r.url));
     return;
@@ -275,9 +333,14 @@ function atomicWrite(file, content) {
   fs.mkdirSync(vdir, { recursive: true });
   atomicWrite(path.join(vdir, 'channels.json'), JSON.stringify(map));
   atomicWrite(path.join(vdir, 'APE_JIT_LIST.m3u8'), jitList);
+  // Traza en la propia release: quien salio y quien entro, por id. Se conserva junto al
+  // mapa para que el rollback (reapuntar `current`) tambien conserve la explicacion.
+  atomicWrite(path.join(vdir, 'channels_dropped.txt'), dropped.join('\n') + (dropped.length ? '\n' : ''));
+  atomicWrite(path.join(vdir, 'channels_added.txt'), added.join('\n') + (added.length ? '\n' : ''));
   atomicWrite(path.join(vdir, 'meta.json'), JSON.stringify({
-    version, source: list, size: st.size, mtimeMs: st.mtimeMs,
-    channels: ids.length, at: Date.now(),
+    version, source: list, listKey, prevKey, size: st.size, mtimeMs: st.mtimeMs,
+    channels: ids.length, prev_channels: prevCount, dropped: dropped.length, added: added.length,
+    sin_id: sinId, misma_lista: mismaLista, at: Date.now(),
   }));
 
   // flip atómico: symlink temporal + rename()

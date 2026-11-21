@@ -279,9 +279,9 @@
     "rule": "Un artefacto no esta desplegado por existir en el repo: esta desplegado si tiene FILA en el manifiesto de deploy y su sha256 casa. Sin fila: NOT_DEPLOYED.",
     "manifest_file": "_vps_stage/deploy/manifest.tsv",
     "manifest_file_name_note": "SINGULAR. '_vps_stage/deploy/manifests.tsv' (plural) NO existe en el workspace; comprobado con Test-Path.",
-    "manifest_bytes": 17788,
-    "manifest_sha256": "6dd18e9dc84f8818d69e0eb400d7af013872c840e3c55151bcfb3a0f20e4e576",
-    "manifest_non_empty_rows": 111,
+    "manifest_bytes": 18292,
+    "manifest_sha256": "d45aa53d219d2b7dc011cb664602b931166fe24077eb6e0055cc821c0a90c07a",
+    "manifest_non_empty_rows": 112,
     "loop_artifact": {
       "path": "vps/bin/ape-visual-emulate.sh",
       "bytes": 6714,

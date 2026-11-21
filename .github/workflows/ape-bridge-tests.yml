@@ -148,6 +148,12 @@ jobs:
           fi
           exit "$rc"
 
+      # [2026-11-21] El guard del reconciliador JIT distingue "la misma lista se truncó"
+      # de "es otro catálogo". Sin esto el servicio abortaba cada 5 minutos comparando
+      # 11 222 canales de una lista contra 21 224 de otra y congelaba la allowlist.
+      - name: Guard del reconciliador JIT (identidad de lista, fail-closed)
+        run: node tools/quality/test_reconcile_list_identity.js
+
       # CABLEADO: identidad + estructura + harness en un veredicto, sobre un FIXTURE.
       # Modo --sin-red para que el CI no dependa de la red ni del proveedor.
       # Las listas REALES se verifican con el endpoint (ape-list-probe v3) y a mano,
@@ -168,14 +174,11 @@ jobs:
       - name: Reglas SR en caliente (validar y completar antes de emitir)
         run: node tools/quality/test_sr_rules_para_generacion.js
 
-      # ULTIMO a proposito (ver la nota de arriba). Reporta un DRIFT MEDIDO el
-      # 2026-11-21 entre cuatro identidades distintas del motor JIT:
-      #   recibo 2026-11-14  8c1a00852ba4df2a
-      #   repo tools/lab/ape-jit/server.js  38c92b56e4ab476b  (cambio 2026-11-15)
-      #   repo vps/ape-jit/server.js        a3c671a2c08801cb
-      #   VPS /opt/ape-jit/server.js        44d8bf841ca1f9e0  (480253 B, en ejecucion)
-      # No se re-pinea a mano: reemitir el recibo exige re-medir la huella del
-      # encoder, la cadena canonica y las filas del manifiesto. Mientras tanto el
-      # paso falla y dice la verdad; los demas gates ya se ejecutaron.
+      # ULTIMO a proposito: si este contrato falla, los demas gates ya se ejecutaron.
+      # [2026-11-21] La revision 1 del recibo pineaba un motor que ya no era ni el del repo
+      # ni el de produccion (cuatro identidades: recibo 8c1a0085, tools/lab 38c92b56,
+      # vps/ape-jit a3c671a2, /opt/ape-jit 44d8bf84). Se re-baselineo a revision 2 sobre el
+      # canonico medido (268bbd3a, 480976 B, union de las dos ramas) y el gate pasa 92/92.
+      # Ver docs/audits/INCIDENT_JIT_ENGINE_20261121.md.
       - name: Contrato Canary-JIT (motor desplegado == lo pinado)
         run: node tools/quality/test_canary_jit_contract.js
