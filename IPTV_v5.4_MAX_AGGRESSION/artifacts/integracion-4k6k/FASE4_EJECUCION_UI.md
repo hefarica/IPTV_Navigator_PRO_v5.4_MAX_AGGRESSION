@@ -1041,3 +1041,35 @@ Próxima sonda exacta, sin adivinar: en el navegador, comparar
 `APE_PROFILES_CONFIG.getProfile('P0.5').vlcopt` contra el `vlcopt` del LAB para P0.5 y listar las claves que
 faltan. Si faltan, el defecto está en el importador/normalizador que puebla `APE_PROFILES_CONFIG`, no en el
 generador. **No se corrige nada hasta ver esa diferencia.**
+## 47 · CAUSA DEL CLUSTER: la homologación del importador (`includeLabExtras`), no el generador
+
+Cadena medida, eslabón por eslabón:
+
+```
+LAB crudo        P0.5 vlcopt.video-hdr=true  mode=HDR10PLUS  51 claves
+normalizado      P0.5 vlcopt.video-hdr=true  mode=HDR10PLUS  51 claves
+profilesOf()     P0.5 vlcopt.video-hdr=true  mode=HDR10PLUS  51 claves   ← intacto
+export final     P0.5 video-hdr=false        video-hdr-mode=SDR          ← perdido
+export final     P0   video-hdr=true         video-hdr-mode=DOLBY_VISION ← OK
+```
+
+El dato sobrevive al crudo, al normalizador y a `profilesOf`. Se pierde **dentro de `importFromLABData`**
+(`ape-profiles-config.js:5046`), que no copia el LAB tal cual: **homologa** claves a su propio esquema y deja
+las no homologables detrás de una compuerta declarada en su propio código:
+
+```
+options.includeExtrasByProfile: { P0: true|false, ... }
+  "gate que el generator usa para decidir si emite vlcopt/kodiprop/headers
+   no homologables a PM9. Persistido en this.profiles[pid].includeLabExtras."
+options.collisionResolutions / headerOverrides (settings/vlcopt/hlsjs/optimized_knobs)
+```
+
+Es decir: `video-hdr` / `video-hdr-mode` de los `.5` **no están homologados** y quedan fuera salvo que
+`includeLabExtras` esté activo para ese ID. Encaja con el patrón completo: P0 homologa (`DOLBY_VISION_P8` →
+`DOLBY_VISION`), P0.5 no (`HDR10PLUS` → cae a `SDR`). Y explica también `audio-channels`, `clock-jitter` y
+`saturation`, que son de la misma familia de extras.
+
+**No lo corrijo en esta ronda**: activar `includeExtrasByProfile` para los doce cambia la emisión de los base
+(que hoy homologa bien) y eso exige medir el efecto antes/después, no un interruptor a ciegas. La próxima
+ronda es: importar con `includeExtrasByProfile` a `true` **solo para los `.5`**, reexportar y comprobar los
+seis campos; si los base no se mueven, se generaliza.
