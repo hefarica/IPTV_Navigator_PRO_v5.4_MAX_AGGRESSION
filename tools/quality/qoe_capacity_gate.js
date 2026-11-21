@@ -24,7 +24,7 @@ var crypto = require('crypto');
 
 var UMBRAL = {
     stalls: 0,               // ninguno
-    rebuffer_ratio: 0.003,   // 0.3% del tiempo de reproducción (objetivo del operador, 2026-11-21)
+    rebuffer_ratio: 0.004,   // 0.4% del tiempo de reproducción (objetivo del operador, 2026-11-21)
     buffer_floor_s: 0.001,   // > 0: el buffer nunca se agota
     headroom: 2.0            // el gasto no supera el 50% de la capacidad medida
 };
