@@ -1869,3 +1869,24 @@ explícitamente. Ejercitarla de nuevo exigiría generar sin selección y con can
 (4K, 8K, 720, SD), cosa que el catálogo real de 3 canales no permite.
 
 Estado: **observada y coherente**; **no aislable** con el catálogo actual — límite de datos, no del arnés.
+## 81 · Intento de fixture con señales variadas: el catálogo no las ofrece (y mi extracción era ruidosa)
+
+Extraje de la lista autorizada de 754 MB, en streaming, `#EXTINF` + URL buscando señales `8K`, `4K`, `720`, `SD`:
+
+```
+senales_encontradas = 720, SD      canales = 2
+720 -> UK| Sky MAX FHD [MEGA]
+SD  -> FR| LFM TV FHD [MEGA]
+fixture = C:\Users\HFRC\APE_PRIVADO\entrada_senales.m3u8  (1.297 B)
+```
+
+**Dos problemas, y los digo antes de que nadie los use como prueba:**
+
+1. Mi detección miraba toda la línea `#EXTINF`, no solo `tvg-name`; los dos aciertos son **falsos positivos**
+   (los nombres dicen `FHD`; el `720`/`SD` vino de otro atributo). El fixture **no** aporta señales distintas.
+2. El catálogo autorizado parece dominado por nombres `FHD`, así que **no hay** `8K`/`4K` en el nombre con la
+   muestra recogida.
+
+Consecuencia: la cobertura automática **sigue sin aislarse**, y ahora la causa está acotada a los datos: el
+catálogo no trae canales con señales de nombre variadas. La extracción habría que hacerla por `tvg-name`
+exacto, y si el catálogo no las tiene, no hay fixture honesto que fabricar.
