@@ -70,3 +70,31 @@ Probado (§26): tras `stash push -u` el árbol queda limpio y los tres módulos 
 **NO se declara cierre integral.** El flujo principal (importar LAB → seleccionar 12 IDs → generar →
 exportar → reimportar → verificar intención) está medido y verde; el tuning HDR/audio de los `.5` sigue
 sin heredar y el selector automático sigue sin ser observable.
+
+---
+
+## 5 · Actualización 2026-11-21 — estado tras la serie de correcciones
+
+**Verificado hoy en el worktree de staging:**
+
+- Sintaxis de los 8 ficheros tocados: **8 OK / 0 FAIL**.
+- Suite del adaptador: **PASS 204 · FAIL 0**.
+- Cobertura de los 12 perfiles: **dos lotes de seis, ambos `EXIT=0` con `"fallos":[]`** — reproducible. Comando:
+  `node fase8-runner.js "P0,P1,P2,P3,P4,P5"` y `node fase8-runner.js "P0.5,P1.5,P2.5,P3.5,P4.5,P5.5"`.
+
+**Corregido durante la serie (con medición):**
+
+- La selección del profile manager no llegaba al generador (`forceProfile`): ahora la geometría y el
+  `network-caching` de cada perfil salen del propio perfil — **P0 emite 7680x4320 y 105000**, verificado.
+- Los seis Premium `.5` heredan su `L3_EXTVLCOPT` (105000/72000/58000/55000/52000/30000), **6/6**.
+
+**Abierto, con causa localizada:**
+
+- **Doble escritor HDR**: `:4142` (LAB) y `:10704` (otra sección) emiten las mismas directivas; gana el
+  segundo (P0.5 emite `SDR` frente a `HDR10PLUS` del LAB). Guarda de regresión presente pero inerte; el
+  parche que probé **rompió la página y fue revertido**.
+- **Selector automático** (`determineProfile`, `:8010`): interno, sin punto de entrada; su decisión no es
+  observable en el artefacto.
+- **Intermitencia del runner** con 12 perfiles de una tirada (carrera `--dump-dom` vs driver): mitigada con
+  los dos lotes de seis. El patrón callback (usado con éxito en la prueba de 754 MB) queda como arreglo
+  definitivo pendiente.
