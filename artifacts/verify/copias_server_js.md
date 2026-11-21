@@ -361,3 +361,105 @@ Consecuencia, en cuanto R11 commitee:
   (`290b1103…`, ya obsoleto) y su re-emisión la decide el operador.
 
 Firmado: `map-endpoint` · t39 attempt 2 · `2faa2f53-4332-4b9d-9d35-dcd53564ec08`
+
+---
+
+## 9. Gate C4 — ningún `SHA_PIN` puede divergir del sha del motor canónico (t43, `map-vps`)
+
+**Hueco que cierra.** §8.3 lo dejó predicho y no resuelto: C1 mira la **ruta**, C3 mira **qué fichero** se
+instala, C2 está NO COMPUTADO por antigüedad del recibo. El **valor** del `SHA_PIN` no lo veía nadie, y el
+que se enteraba era el paso de deploy abortando. Gate decorativo al lado de un fallo real.
+
+### 9.1 Qué hace C4 (en `tools/quality/check_jit_deploy_parity.js`)
+
+- Barre **todos** los workflows que instalan el motor (`scp|install|cp|rsync` + `ape-jit…server.js`), no
+  solo `deploy-vps.yml`: si mañana aparece otro camino, el gate lo caza sin esperar a un deploy roto.
+- Extrae cada `SHA_PIN=<hex64>` **no comentado** y lo compara con el sha del **BLOB commiteado**
+  (`git cat-file -p HEAD:<path>`). Ese es el valor que ve CI al hacer `sha256sum` sobre un checkout limpio.
+- Si el worktree está sucio, lo declara **INFO** (no decide con él): comparar contra el disco haría verde
+  un pin que apunta a bytes que todavía no existen en ningún commit.
+- Divergencia → **FALLA** con `archivo:línea  pin=X  real=Y` y `exit 1`.
+- Instalador **sin** `SHA_PIN` → **INFO** nombrado (verifica por otra vía); si **ningún** instalador declara
+  pin → **NO COMPUTADO** con razón. Nunca PASS por ausencia.
+
+### 9.2 Verificación obligatoria (salidas literales)
+
+**(1) VERDE con pines correctos.** Sobre una **copia temporal** con los pines puestos al sha del blob
+(`268bbd3a…`, el estado que describía el encargo; el workflow real no se toca):
+
+```
+[PASS] C4 — 2 SHA_PIN casan con el sha real del canonico (268bbd3a05f8d8645d8641821f98dfc76e72060c44681ecfe31701f210ba4eb0):
+       <tmp>/deploy-vps.yml:772, <tmp>/deploy-vps.yml:796
+-- RESULTADO: 0 FALLA · 1 NO COMPUTADO · exit 2
+```
+
+**(2) PRUEBA NEGATIVA REAL.** Misma copia temporal con un pin mutado a `1111…1111`:
+
+```
+[FALLA] C4 — <tmp>/deploy-vps.yml:772  pin=1111111111111111111111111111111111111111111111111111111111111111  real=268bbd3a…ba4eb0
+[FALLA] C4 — <tmp>/deploy-vps.yml:796  pin=1111111111111111111111111111111111111111111111111111111111111111  real=268bbd3a…ba4eb0
+-- RESULTADO: 2 FALLA · 1 NO COMPUTADO · exit 1
+```
+
+Los dos `SHA_PIN` reales se releyeron después: siguen en `ad37d894…` — **no se mutó el workflow real**.
+
+**(3) NO COMPUTADO por ausencia de pin.** Copia temporal con solo `deploy-streaming.yml`
+(instala el motor comparando bytes, sin `SHA_PIN`):
+
+```
+[NO COMPUTADO] C4 — los instaladores del motor no declaran ningun SHA_PIN (<tmp>/deploy-streaming.yml): no hay pin que verificar
+-- RESULTADO: 0 FALLA · 2 NO COMPUTADO · exit 2
+```
+
+**(4) `node --check tools/quality/check_jit_deploy_parity.js` → exit 0.**
+
+### 9.3 Estado REAL del árbol al cerrar C4 (y por qué sale ROJO ahora)
+
+```
+[INFO] C4 — worktree SUCIO en IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js:
+       disco=ad37d894…df2479  blob@HEAD=268bbd3a…ba4eb0
+[FALLA] C4 — .github/workflows/deploy-vps.yml:772  pin=ad37d894…df2479  real=268bbd3a…ba4eb0
+[FALLA] C4 — .github/workflows/deploy-vps.yml:796  pin=ad37d894…df2479  real=268bbd3a…ba4eb0
+-- RESULTADO: 2 FALLA · 1 NO COMPUTADO · exit 1
+```
+
+No es un fallo del gate: es el gate viendo la realidad. **R11/t41 ya subió los pines a `ad37d894…` en el
+worktree, pero el motor sigue editado y SIN COMMITEAR** (`blob@HEAD` = `268bbd3a…`, 480 976 B, 9 812 l).
+
+**Consecuencia escrita, como pediste:** quien suba el motor está **obligado a actualizar los pines en el
+mismo cambio**, y C4 es la puerta que lo exige. Si motor y pines se commitean juntos → C4 verde. Si se
+commitea el pin sin el motor (o se descarta el motor dejando el pin nuevo) → **rojo antes del deploy**, no
+después. El re-pin deja de ser una nota en la cabeza del operador.
+
+### 9.4 Qué NO se hizo (deliberadamente)
+
+- **No se cambió ningún pin.** El workflow real queda con `ad37d894…` en las dos posiciones, que es lo que
+  dejó R11. Arreglarlo para "dejar verde" habría tapado exactamente lo que hay que ver.
+- **No se tocó el motor** ni el VPS (cero SSH en t43).
+- **No se convirtió C2 en verde**: sigue NO COMPUTADO por antigüedad del recibo del 2026-11-12; su
+  reemisión no es de este gate.
+- El paso de CI **ya existente** (`ci-validate.yml:88-91`, «Gate de paridad de despliegue del motor JIT»)
+  ejecuta el gate sin cambios: `exit 1` rompe el job, `exit 2` anota `::warning::`. C4 hereda esa política.
+
+Firmado: `map-vps` · t43
+
+### 9.5 Transición observada EN VIVO (mismo día, minutos después): C4 pasó a VERDE solo
+
+§9.3 se midió con el motor editado y sin commitear. Poco después, **R11 commiteó `6ddd7b00`
+("W-01 cerrado — /resolve y /go dejan de escribir por GET; motor pineado en ad37d894")**: motor y pines
+entraron **juntos**, que es exactamente la doctrina que C4 exige. Estado remedido con el mismo comando:
+
+```
+HEAD=6ddd7b00
+blob@HEAD sha256=ad37d894…df2479  bytes=490421   (== worktree, == los 2 SHA_PIN)
+[PASS] C4 — 2 SHA_PIN casan con el sha real del canonico (ad37d894…df2479):
+       .github/workflows/deploy-vps.yml:772, .github/workflows/deploy-vps.yml:796
+       · declarado: 2 instalador(es) sin SHA_PIN (verifican por bytes, no por pin):
+         deploy-streaming-main.yml, deploy-streaming.yml
+-- RESULTADO: 0 FALLA · 1 NO COMPUTADO · exit 2   (el NO COMPUTADO es C2, el recibo del 2026-11-12)
+```
+
+C4 se vio **rojo** con el cambio en vuelo y **verde** en cuanto motor y pines se commitearon juntos, sin
+tocar una línea del gate entre las dos mediciones. No es una prueba de laboratorio: es la puerta
+funcionando en las dos direcciones sobre el cambio real. El `[FALLA]` de §9.3 queda como foto fechada de
+la ventana en que el pin apuntaba a bytes que aún no existían en ningún commit.

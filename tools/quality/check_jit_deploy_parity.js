@@ -304,10 +304,18 @@ function engineInstallerFiles(dir) {
 
 function checkPins(pinsDir) {
   const dir = pinsDir || WORKFLOW_DIR;
+  // Referencia = bytes commiteados (lo que instala CI), no el worktree.
   const realSha = blobSha256(CANON);
   if (!realSha) {
-    record('C4', 'NO_COMPUTADO', `no se pudo leer el canonico ${CANON}: sin sha real no hay contra que comparar`);
+    record('C4', 'NO_COMPUTADO', `no se pudo leer el blob HEAD de ${CANON} (git no disponible o fichero no versionado): sin sha real no hay contra que comparar`);
     return;
+  }
+  const wtSha = worktreeSha256(CANON);
+  if (wtSha && wtSha !== realSha) {
+    record('C4', 'INFO',
+      `worktree SUCIO en ${CANON}: disco=${wtSha} blob@HEAD=${realSha}. La comparacion de pines se hace contra el BLOB ` +
+      `(es lo que ve CI); el cambio en vuelo debe commitear motor y pines EN EL MISMO cambio o este gate se quedara rojo`,
+      { worktree: wtSha, blob: realSha });
   }
   const installers = engineInstallerFiles(dir);
   if (installers.length === 0) {
