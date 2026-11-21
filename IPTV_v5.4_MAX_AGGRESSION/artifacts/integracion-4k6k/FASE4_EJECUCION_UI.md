@@ -1094,3 +1094,29 @@ objeto (medido en el §47) sí contiene `true`/`HDR10PLUS`. Hay otro origen por 
 
 No presento esto como causa cerrada: es una hipótesis descartada con su medición. La siguiente sonda debe
 leer `cfg` y de dónde se puebla `hdr_support`/`peak_luminance_nits` para los `.5`, no `pmProfile`.
+## 49 · El importador no nombra las claves HDR: `getProfile().vlcopt` no puede ser el `vlcopt` del LAB
+
+Búsqueda medida sobre `ape-profiles-config.js` completo:
+
+```
+Select-String -Pattern "'video-hdr'|video-hdr-mode"  →  0 coincidencias
+```
+
+Es decir: el importador/homologador **no nombra ni una vez** `video-hdr` ni `video-hdr-mode`. Combinado con la
+contradicción del generador:
+
+```
+_isHDR = (_labVo['video-hdr'] === 'true') || cfg.hdr_support.some(h => h !== 'sdr')
+_labVo = pmProfile?.vlcopt        (pmProfile = APE_PROFILES_CONFIG.getProfile(profile))
+```
+
+si `getProfile(profile).vlcopt` conservara `video-hdr='true'`, `_isHDR` sería **true** y el artefacto habría
+emitido HDR. Emitió `false`/`SDR`. Conclusión: **el `vlcopt` que devuelve `getProfile()` no es el `vlcopt`
+del LAB** — la homologación lo reconstruye y las claves HDR no están entre las que copia.
+
+Esto cierra la cadena del §46-§49 con evidencia buscable (0 coincidencias) y sitúa el defecto **en el
+importador**, no en el generador ni en la selección.
+
+Corrección pendiente (una sola, acotada): añadir `video-hdr`, `video-hdr-mode`, `audio-channels`,
+`clock-jitter`, `saturation` a la tabla de homologación de `vlcopt`, o pasar `vlcopt` entero sin filtrar.
+No se aplica aquí: cambiar la tabla afecta a los doce perfiles y exige medir el antes/después (§29-§42).
