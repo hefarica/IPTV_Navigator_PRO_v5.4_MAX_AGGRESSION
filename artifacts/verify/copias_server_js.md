@@ -297,6 +297,24 @@ obliga a una acción antes de desplegar.
 R9 lo ejecutó `map-vps`; esta sección **no rehace** nada: comprueba lo que está en el árbol y corrige lo
 que ya no era cierto. HEAD al validar: `9b4bd3aa`. Cero SSH.
 
+> ### ⚠️ NOTA DE VIGENCIA (añadida al cerrar; leer antes que §8.1–§8.4 y §1–§7)
+>
+> §8 se escribió con HEAD en `9b4bd3aa`, cuando el canónico de HEAD era `268bbd3a…` y el árbol llevaba
+> la edición de R11 sin commitear. **Eso ya no es el estado actual.** Minutos después entraron dos
+> commits: **`6ddd7b00`** (17:58:57, R11/W-01: motor + `SHA_PIN` movidos juntos a `ad37d894…`) y
+> **`a77da827`** (18:00:29, C4: ningún `SHA_PIN` puede divergir del canónico; ver §9, de `map-vps`).
+> Por tanto, **toda cifra `268bbd3a…` de §1–§8 describe el estado ANTERIOR a esos commits**; el estado
+> vigente es canónico `ad37d894…`, 490 421 B, 9 998 líneas == blob de HEAD == los dos `SHA_PIN`.
+> Gate vigente: **C1 PASS · C2 NO COMPUTADO · C3 PASS · C4 PASS · exit 2**.
+>
+> **Hallazgo propio que sigue abierto y no estaba escrito:** el recibo canary
+> (`docs/canary/deliverables/12_CANARY_DEPLOYMENT_RECEIPT.json`) está **ignorado por git**
+> (`.gitignore:173` → `deliverables/`). Por eso "re-emitir el recibo y commitearlo en la misma tanda"
+> **no basta**: el fichero no entra en el repo y en CI no existirá, así que C2 caerá en
+> `NO COMPUTADO · no existe RECEIPT` — no por antigüedad, sino por ausencia. Cerrar C2 exige una de
+> dos decisiones del operador: (a) versionar el recibo (excepción en `.gitignore` o ruta no ignorada),
+> o (b) que el gate acepte otra fuente de atestiguación. Mientras no se decida, C2 **no es cerrable**.
+
 ### 8.1 Lo que se validó y salió como dice el informe
 
 | # | comprobación | comando | resultado |
