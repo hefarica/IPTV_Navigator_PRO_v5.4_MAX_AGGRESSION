@@ -1515,3 +1515,24 @@ Arreglo, dos caminos (ninguno aplicado aún):
 
 Ambos exigen una corrida de verificación con la guarda HDR y los 12 perfiles. Es la corrección de fondo que
 queda identificada con prueba estática, no con sospechas.
+## 65 · CORREGIDO Y VERIFICADO: `video-hdr` de los `.5` ya hereda del LAB
+
+Parche en el emisor vivo (`:10589`), no en el código muerto: `_pmHdrCanonical` toma
+`settings.hdr_canonical` y, si falta, **traduce `vlcopt['video-hdr-mode']`** del perfil efectivo
+(HDR10PLUS → hdr10+, DOLBY_VISION → dolby-vision, HLG, HDR10, SDR). Envuelto en `try/catch`; sin él, el
+`_isAnyHdr` quedaba en `false` para los Premium.
+
+Corrida de verificación: `EXIT=0`, `"fallos":[]`, `guardar P0.5 260.130 B` + `salida_ok`.
+
+```
+antes   P0.5: hdr=false mode=SDR
+ahora   P0.5: hdr=true  mode=HDR10_PLUS
+        P0  : hdr=true  mode=DOLBY_VISION   (sin cambio, no regresión)
+```
+
+Con esto el cluster HDR deja de tener como causa el emisor desconectado: la directiva que sobrevive
+(`:10704`) ya recibe el modo real del perfil. Los `.5` declaran su HDR; P0 sigue en Dolby Vision.
+
+Pendiente del mismo cluster, no tocado: `audio-channels` (2→6), `clock-jitter` (1000/2000→0) y
+`saturation` (1.06→1.08) siguen saliendo de la sección 4K False. Mismo enfoque: leerlos del `vlcopt` del
+perfil efectivo.
