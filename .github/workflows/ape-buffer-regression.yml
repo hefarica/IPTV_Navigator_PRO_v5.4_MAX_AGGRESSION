@@ -29,6 +29,8 @@ jobs:
           node --check IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js
           node --check IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js
           echo "sintaxis OK"
+      - name: Medidor de caudal y puente
+        run: node tools/quality/test_speedmeter.js
       - name: Gates de ley
         run: |
           set -euo pipefail
