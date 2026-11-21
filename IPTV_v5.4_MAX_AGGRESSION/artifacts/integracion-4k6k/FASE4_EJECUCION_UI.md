@@ -1228,3 +1228,35 @@ generar. Ese dato cierra el caso: `true` → el defecto está después (emisión
 está en la importación, y habrá que ver qué `data` recibe realmente `importFromLABData`.
 
 Nota de la serie: cuatro hipótesis descartadas por lectura directa, ninguna aceptada sin ver el valor real.
+## 54 · CAUSA RAÍZ DEL CLUSTER: hay DOS escritores de `video-hdr`, y gana el segundo
+
+Sonda del §53 ejecutada en el navegador tras importar (capturada a fichero para no truncar):
+
+```
+"probe":{"tiene_vlcopt":true,"hdr":"true","mode":"HDR10PLUS","claves":51}
+```
+
+**El perfil importado tiene los valores correctos.** La importación no era el problema: queda descartada.
+
+Entonces, el artefacto emitiendo `false`/`SDR` solo se explica encontrando **otro escritor**. Búsqueda sobre el
+generador:
+
+```
+4142:  if (vo['video-hdr']) vlcopts.push(`#EXTVLCOPT:video-hdr=${vo['video-hdr']}`);     ← primer escritor (LAB)
+10704: lines.push(`#EXTVLCOPT:video-hdr=${_isAnyHdr ? 'true' : 'false'}`);               ← SEGUNDO escritor
+10705: lines.push(`#EXTVLCOPT:video-hdr-nits=${_pmNitsTarget}`);
+10706: lines.push(`#EXTVLCOPT:video-hdr-mode=${_hdrModeM3U}`);
+```
+
+El bloque de ~10695-10706 emite **las mismas tres directivas** desde `_isAnyHdr` / `_pmNitsTarget` /
+`_hdrModeM3U` —variables de OTRA sección (4K False Supremo), no del `vlcopt` del LAB—. Al ir después, **sus
+valores son los que sobreviven**. Eso explica `video-hdr=false`, `video-hdr-nits=4000` y `video-hdr-mode=SDR`
+en P0.5, y también el `HLG` que apareció en P0.
+
+Con esto se cierra la cadena completa: selección (arreglada) → import (intacto) → **duplicidad de emisión**
+(defecto real). Y encaja con `audio-channels=6`, `clock-jitter=0` y `saturation=1.08`: los emite esa misma
+sección con sus propios valores.
+
+Fix definido (no aplicado): unificar en un solo escritor — que el bloque de 10704-10706 tome sus valores del
+`vlcopt` del perfil efectivo (como hace 4142) o que no emita si el primero ya lo hizo. Requiere medir los 12
+antes/después; es exactamente el tipo de cambio que no se aplica sin esa medición.
