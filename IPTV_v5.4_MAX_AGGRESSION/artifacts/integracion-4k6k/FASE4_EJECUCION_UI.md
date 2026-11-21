@@ -1391,3 +1391,34 @@ Comando de reproducción (el que debe usarse):
 node IPTV_v5.4_MAX_AGGRESSION\artifacts\integracion-4k6k\fase8-runner.js "P0,P1,P2,P3,P4,P5"
 node IPTV_v5.4_MAX_AGGRESSION\artifacts\integracion-4k6k\fase8-runner.js "P0.5,P1.5,P2.5,P3.5,P4.5,P5.5"
 ```
+## 61 · Dedupe del escritor HDR aplicado sin romper nada — pero NO cambia el resultado, y ya sé por qué
+
+Parche (sin declaraciones nuevas, para no repetir el fallo del §57):
+
+```
+if (!lines.some(l => typeof l === 'string' && l.indexOf('#EXTVLCOPT:video-hdr=') === 0)) lines.push(...)
+if (!lines.some(... 'video-hdr-nits=' ...)) lines.push(...)
+if (!lines.some(... 'video-hdr-mode=' ...)) lines.push(...)
+```
+
+Corrida de verificación **en verde**: `EXIT=0`, `"fallos":[]`, `guardar P0.5 260.401 B` + `salida_ok`.
+La página **no** se rompe esta vez.
+
+Pero el resultado no cambia:
+
+```
+P0.5: hdr=false  mode=SDR           width=5760
+P0  : hdr=true   mode=DOLBY_VISION  width=7680
+P3.5: hdr=false  mode=SDR           width=5760
+```
+
+**Deducción medida**: si la guarda hubiera encontrado una directiva previa, no habría escrito nada; escribió,
+luego **el primer escritor (`:4142`) no emite para los `.5`**. Es decir, `vo['video-hdr']` es falso/ausente en
+esa ruta para los Premium, y `video-hdr-mode` del LAB tampoco llega ahí.
+
+Conclusión: la deduplicación era la hipótesis equivocada. El arreglo real es que **`:10704-10706` lean el
+`vlcopt` del perfil efectivo** (no `_isAnyHdr`/`_hdrModeM3U` de la sección 4K False), o que `:4142` reciba el
+objeto correcto para los `.5`. Ambas cosas exigen ver qué es `vo` en esa ruta para un `.5`.
+
+El parche queda aplicado porque **no altera el resultado** (verificado: mismos valores que antes, arnés verde) y
+deja el terreno preparado para cuando el primero escriba.
