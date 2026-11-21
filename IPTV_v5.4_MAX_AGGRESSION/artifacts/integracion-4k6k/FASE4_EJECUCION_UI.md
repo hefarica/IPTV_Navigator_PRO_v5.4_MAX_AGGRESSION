@@ -1691,3 +1691,32 @@ Los doce perfiles coinciden ahora con su LAB en `video-hdr`, `video-hdr-mode` y 
 
 Cadena completa de esta zona, toda medida: causa raíz = `generateEXTVLCOPT` código muerto (§64) → emisor vivo
 con literales (§66) → precedencia invertida (§71) → **12/12**.
+## 73 · La guarda amplía a `saturation` y `clock-jitter`: 12/12 en ROJO, con los números exactos
+
+```
+perfil | emitido sat | LAB sat | emitido cj | LAB cj | resultado
+P0     | 1.08        | 1.06    | 0          | 2000   | FAIL
+P1     | 1.08        | 1.05    | 0          | 1000   | FAIL
+P2     | 1.08        | 1.04    | 0          | 1000   | FAIL
+P3     | 1.08        | 1.03    | 0          | 1000   | FAIL
+P4     | 1.08        | 1.02    | 0          | 1000   | FAIL
+P5     | 1.08        | 1.00    | 0          | 1000   | FAIL
+P0.5   | 1.08        | 1.06    | 0          | 1000   | FAIL
+P1.5   | 1.08        | 1.05    | 0          | 1000   | FAIL
+P2.5   | 1.08        | 1.04    | 0          | 1000   | FAIL
+P3.5   | 1.08        | 1.03    | 0          | 1000   | FAIL
+P4.5   | 1.08        | 1.02    | 0          | 1000   | FAIL
+P5.5   | 1.08        | 1.00    | 0          | 1200   | FAIL
+GUARDA_HDR_AUDIO PASS=0 FAIL=12   EXIT=1
+```
+
+Lo importante no es el rojo: es **lo que revela**. El LAB tiene un valor **distinto por perfil** para
+`saturation` (1.06→1.00 descendente) y para `clock-jitter` (2000/1000, con 1200 en P5.5). El artefacto emite
+`1.08` y `0` planos para los doce: **el tuning per-perfil de esos dos campos no llega a la lista en ningún
+caso**.
+
+HDR y `audio-channels` siguen verdes en las mismas filas — la corrección de §65-§72 no se ha tocado.
+
+Queda por tanto un resto único y bien medido: cinco literales (`:3163` saturation; `:14932/14970/15006/15042`
+clock-jitter/clock-synchro) que hay que sustituir por el valor del `vlcopt` del perfil, con el literal como
+último respaldo — el mismo patrón que ya funcionó tres veces en esta serie.

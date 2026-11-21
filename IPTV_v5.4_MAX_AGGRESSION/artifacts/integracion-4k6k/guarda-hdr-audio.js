@@ -14,9 +14,11 @@ for (const pid of ['P0','P1','P2','P3','P4','P5','P0.5','P1.5','P2.5','P3.5','P4
   const espHdr=M[String(vo['video-hdr-mode']||'SDR').toUpperCase()]||'SDR';
   const espAc=String(vo['audio-channels']||'2');
   const hdrOk=g('video-hdr-mode')===espHdr, acOk=g('audio-channels')===espAc;
+  const espSat=String(vo['saturation']||'(sin)'), espCj=String(vo['clock-jitter']||'(sin)');
+  const satOk=(espSat==='(sin)')||(g('saturation')===espSat), cjOk=(espCj==='(sin)')||(g('clock-jitter')===espCj);
   const hdrFlag=g('video-hdr')===(espHdr==='SDR'?'false':'true');
-  const m=hdrOk&&acOk&&hdrFlag; if(m)ok++; else ko++;
-  console.log([pid.padEnd(5),'hdr='+g('video-hdr').padEnd(5),'mode='+g('video-hdr-mode').padEnd(12),'esp='+espHdr.padEnd(12),'ac='+g('audio-channels').padEnd(2),'espAc='+espAc.padEnd(2),m?'PASS':'FAIL'].join(' | '));
+  const m=hdrOk&&acOk&&hdrFlag&&satOk&&cjOk; if(m)ok++; else ko++;
+  console.log([pid.padEnd(5),'hdr='+g('video-hdr').padEnd(5),'mode='+g('video-hdr-mode').padEnd(12),'esp='+espHdr.padEnd(12),'ac='+g('audio-channels').padEnd(2),'espAc='+espAc.padEnd(2),'sat='+g('saturation').padEnd(5),'eSat='+espSat.padEnd(5),'cj='+g('clock-jitter').padEnd(5),'eCj='+espCj.padEnd(5),m?'PASS':'FAIL'].join(' | '));
 }
 console.log('\nGUARDA_HDR_AUDIO PASS='+ok+' FAIL='+ko);
 process.exit(ko===0&&ok===12?0:1);
