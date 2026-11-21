@@ -34,6 +34,22 @@
  *   un catalogo absurdo, y deja traza nominal (channels_dropped.txt / channels_added.txt)
  *   para que ningun canal desaparezca sin nombre.
  *
+ * GUARDA DE ORIGEN — NO SE PUEDE REESCRIBIR EL ORIGEN DE CASI TODO (2026-11-21)
+ *   El riesgo que cierra: `pickList()` elige por mtime cuando el timer corre sin `--list`,
+ *   y `ape-cablear-auto` re-envuelve listas cada ~15 min, asi que la "lista mas reciente"
+ *   puede ser OTRO catalogo con los MISMOS ids servidos por OTRO host. Medido en el censo
+ *   del lote (ver artifacts/verify/listas_lote_20261121.md): APE_LISTA_1794100720046_P3_
+ *   PLACEHOLDER comparte 11 168 ids con la fuente vigente y cambia el host de origen de
+ *   11 160 (99,93 %): nfqdeuxu.x1megaott.store -> evestv.wuitf.com (evestv midio 7/7
+ *   caidos con 406). Publicar eso no es actualizar el mapa: es reescribir el origen de
+ *   casi todo el catalogo y dejar el JIT sirviendo un proveedor muerto.
+ *   Por eso, ademas de LIST_CHANGED / FLOOR_DURO / guard de bucle, se compara el mapa
+ *   previo con el nuevo por id -> HOST DEL PAYLOAD:
+ *     comunes, mismo_host, host_distinto  (se registran SIEMPRE en 'ORIGEN')
+ *     si host_distinto / comunes > MAX_RATIO_ORIGEN  ->  ABORT REESCRITURA_DE_ORIGEN (2)
+ *   Un cambio de ruta del mismo host NO cuenta (solo cambia el host). Los umbrales estan
+ *   justificados con el censo en el propio codigo (ver MAX_RATIO_ORIGEN).
+ *
  * USO
  *   node reconcile.js [--list <ruta>] [--out <dir>] [--dry-run] [--verbose]
  */
@@ -59,6 +75,31 @@ const BASE = 'https://iptv-ape.duckdns.org';
 const SELF_HOST = (() => { try { return new URL(BASE).host; } catch (_) { return 'iptv-ape.duckdns.org'; } })();
 const DEFAULT_UA = 'VLC/3.0.19 LibVLC/3.0.19';
 const MIN_RATIO = 0.95;
+
+/* ── GUARDA DE ORIGEN ────────────────────────────────────────────────────────
+ * MAX_RATIO_ORIGEN = 0.20  (20 % de los canales comunes pueden cambiar de host)
+ *
+ * POR QUE 0.20 Y NO UN NUMERO A OJO — datos del censo del lote (R5, 2026-11-21):
+ *   · Actualizacion legitima del MISMO catalogo (APE_LISTA_1795153321616 vs
+ *     APE_LISTA_1795150582572): ids comunes 11 222, host_distinto 0  -> ratio 0,0000.
+ *     El generador no cambia de host al regenerar: cambia ruta/credenciales, y la
+ *     guarda compara HOST, no ruta. Una regeneracion normal debe dar ~0.
+ *   · Desastre medido (P3_PLACEHOLDER sobre la vigente): comunes 11 168,
+ *     host_distinto 11 160 -> ratio 0,9993.
+ *   Cualquier umbral entre 0,01 y 0,99 separa esos dos mundos. Se elige 0,20 porque
+ *   deja margen a una migracion PARCIAL legitima (drenar un pool de CDN, mover un
+ *   lote de canales a otro host: hasta 1 de cada 5) y sigue bloqueando el cambio
+ *   masivo. Con 0,05 se abortaria una migracion parcial razonable; con 0,50 se
+ *   dejaria pasar media cartelera reescrita, que ya es un cambio de catalogo.
+ *
+ * MIN_COMUNES_ORIGEN = 50  (por debajo no hay veredicto: se registra y se sigue)
+ *   Con 11 canales comunes, 6 cambios son "55 %" y abortar no protege nada: el
+ *   numero absoluto de canales reescritos es irrelevante y FLOOR_DURO ya impide
+ *   sustituir un catalogo real por uno diminuto. El guard no finge: escribe
+ *   "muestra=N<50: sin veredicto" en la linea ORIGEN.
+ */
+const MAX_RATIO_ORIGEN = 0.20;
+const MIN_COMUNES_ORIGEN = 50;
 
 const log = (...a) => console.log(new Date().toISOString(), ...a);
 
@@ -196,6 +237,46 @@ function toCdn(providerUrl) {
 function attr(extinf, name) {
   const m = extinf.match(new RegExp(name + '="([^"]*)"', 'i'));
   return m ? m[1] : '';
+}
+
+/* ── HOST DEL PAYLOAD (origen real del canal) ────────────────────────────────
+ * El mapa guarda la URL ya envuelta — BASE/cdn/<host-proveedor>/<ruta> — o la URL
+ * directa cuando la lista es ajena. En los dos casos el ORIGEN es:
+ *   · envuelta -> el primer segmento tras /cdn/
+ *   · directa  -> el host de la URL
+ * Se compara SOLO el host: un cambio de ruta o de credenciales del mismo host no
+ * es reescritura de origen (es lo normal al regenerar la lista y no debe abortar).
+ * Si no hay host reconocible se devuelve '' y esa pareja NO se cuenta: el guard no
+ * inventa una comparacion que no puede hacer. */
+function payloadHost(url) {
+  if (!url) return '';
+  const s = String(url);
+  const m = s.match(/\/cdn\/([^/?#]+)/);
+  if (m) return m[1].toLowerCase();
+  try { return new URL(s).host.toLowerCase(); } catch (_) { return ''; }
+}
+
+/** Compara mapa previo vs nuevo por id -> host del payload. Puro: no escribe nada. */
+function compararOrigen(prevMap, map) {
+  const prev = prevMap || {};
+  let comunes = 0, mismoHost = 0, hostDistinto = 0;
+  const ejemplos = [];
+  for (const id of Object.keys(map)) {
+    if (!Object.prototype.hasOwnProperty.call(prev, id)) continue;
+    const hPrev = payloadHost(prev[id] && prev[id].url);
+    const hNuevo = payloadHost(map[id] && map[id].url);
+    if (!hPrev || !hNuevo) continue;
+    comunes++;
+    if (hPrev === hNuevo) mismoHost++;
+    else {
+      hostDistinto++;
+      if (ejemplos.length < 3) ejemplos.push(id + ': ' + hPrev + ' -> ' + hNuevo);
+    }
+  }
+  const ratio = comunes ? hostDistinto / comunes : 0;
+  const muestraInsuficiente = comunes < MIN_COMUNES_ORIGEN;
+  const abortar = !muestraInsuficiente && ratio > MAX_RATIO_ORIGEN;
+  return { comunes, mismoHost, hostDistinto, ratio, muestraInsuficiente, abortar, ejemplos };
 }
 
 async function parseList(file) {
@@ -377,6 +458,28 @@ function atomicWrite(file, content) {
   }
   const bad = ids.filter(id => !/^[A-Za-z0-9_.-]{1,80}$/.test(id));
   if (bad.length) { log('ABORT', 'ids invalidos: ' + bad.slice(0, 5).join(',')); process.exit(2); }
+
+  /* [2026-11-21] GUARDA DE ORIGEN — antes de publicar nada.
+   * Escenario que cierra: el timer elige sin `--list` por mtime y `ape-cablear-auto`
+   * re-envuelve listas cada ~15 min, asi que la "mas reciente" puede ser otro catalogo
+   * con los MISMOS ids en OTRO host (medido: P3_PLACEHOLDER reescribia el origen del
+   * 99,93 % y su host evestv.wuitf.com estaba 7/7 caido con 406). Publicarlo dejaria el
+   * mapa entero apuntando a un proveedor muerto, y con dropped=0/added=0 el journal
+   * diria que no cambio nada. El ORIGEN se registra SIEMPRE (tambien con --dry-run)
+   * para que cada ciclo del timer deje los tres numeros en el journal. */
+  const origen = compararOrigen(prevMap, map);
+  log('ORIGEN', 'comunes=' + origen.comunes, 'mismo_host=' + origen.mismoHost,
+    'host_distinto=' + origen.hostDistinto, 'ratio=' + origen.ratio.toFixed(4),
+    origen.muestraInsuficiente
+      ? ('muestra=' + origen.comunes + '<' + MIN_COMUNES_ORIGEN + ': sin veredicto')
+      : ('umbral=' + MAX_RATIO_ORIGEN));
+  if (origen.abortar) {
+    log('ABORT', 'REESCRITURA_DE_ORIGEN: ' + origen.hostDistinto + ' de ' + origen.comunes +
+      ' canales comunes cambian de host (' + (origen.ratio * 100).toFixed(2) + ' % > ' +
+      (MAX_RATIO_ORIGEN * 100) + ' %). No publico: es un cambio de catalogo encubierto, no una ' +
+      'actualizacion. El mapa actual queda intacto. Ejemplos: ' + origen.ejemplos.join(' | '));
+    process.exit(2);
+  }
 
   // Traza nominal: que id sale y cual entra. Sin esto un canal puede desaparecer sin
   // nombre, que es justo lo que el guard nunca pudo explicar.

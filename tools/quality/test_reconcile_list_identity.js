@@ -20,6 +20,9 @@
  *   4. sin tvg-id se cuenta APARTE de sin_url   -> 'sin_id=N' visible
  *   5. siembra vacía (sin allowlist previa)     -> publica sin guard
  *   6. (solo Linux/macOS) la publicación deja channels_dropped.txt y channels_added.txt
+ *   7. ORIGEN: 95 % de los comunes con el MISMO host -> publica (ratio 0,05)
+ *   8. ORIGEN: 99 % de los comunes con host DISTINTO  -> exit 2 ABORT REESCRITURA_DE_ORIGEN
+ *      (es el caso medido en R5: P3_PLACEHOLDER reescribía el origen del 99,93 %)
  *
  * No usa mocks: escribe listas reales en un directorio temporal y ejecuta el script
  * real con node. Las decisiones se prueban con --dry-run para que corran igual en
@@ -71,6 +74,34 @@ function sembrarPrev(outDir, listKey, ids) {
     fs.writeFileSync(path.join(cur, 'meta.json'), JSON.stringify({
         version: 'test', source: '/tmp/' + listKey + '.m3u8', listKey, channels: ids.length,
     }), 'utf8');
+}
+
+/** Siembra la allowlist previa con un HOST de origen por id (forma envuelta /cdn/<host>/…). */
+function sembrarPrevHosts(outDir, listKey, pares) {
+    const cur = path.join(outDir, 'current');
+    fs.mkdirSync(cur, { recursive: true });
+    const map = {};
+    for (const p of pares) {
+        map[p.id] = {
+            url: 'https://iptv-ape.duckdns.org/cdn/' + p.host + '/live/' + p.id + '/index.m3u8',
+            ua: 'test',
+        };
+    }
+    fs.writeFileSync(path.join(cur, 'channels.json'), JSON.stringify(map), 'utf8');
+    fs.writeFileSync(path.join(cur, 'meta.json'), JSON.stringify({
+        version: 'test', source: '/tmp/' + listKey + '.m3u8', listKey, channels: pares.length,
+    }), 'utf8');
+}
+
+/** Lista con un host de origen por id, como URL directa del proveedor (payload = la URL). */
+function escribirListaHosts(file, pares) {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const out = ['#EXTM3U'];
+    for (const p of pares) {
+        out.push(`#EXTINF:-1 tvg-id="${p.id}" tvg-name="canal ${p.id}" group-title="TEST",canal ${p.id}`);
+        out.push('https://' + p.host + '/live/' + p.id + '/index.m3u8');
+    }
+    fs.writeFileSync(file, out.join('\n') + '\n', 'utf8');
 }
 
 function correr(args) {
@@ -214,6 +245,56 @@ if (process.platform === 'win32') {
         check('meta lleva listKey', meta.listKey === 'APE_LISTA_F', 'listKey=' + meta.listKey);
         check('meta lleva added=120', meta.added === 120, 'added=' + meta.added);
     }
+}
+
+/* ── GUARDA DE ORIGEN (R15) ──────────────────────────────────────────────────
+ * Lo que se protege: que elegir "otra lista con los mismos ids en otro host" no
+ * reescriba el origen del catálogo vivo. Datos reales del censo R5 que fijan los
+ * números: regeneración legítima del mismo catálogo -> host_distinto = 0/11 222
+ * (ratio 0,0000); P3_PLACEHOLDER sobre la vigente -> 11 160/11 168 (ratio 0,9993). */
+
+console.log('\n=== 7 · ORIGEN: 95 % de los comunes con el MISMO host -> publica ===');
+{
+    const dir = path.join(tmpRoot, 'c7');
+    const out = path.join(dir, 'out');
+    const prev = cnt(100).map((id) => ({ id, host: 'viejo.test' }));
+    sembrarPrevHosts(out, 'APE_LISTA_ORIGEN_A', prev);
+    // 95 conservan host, 5 cambian -> ratio 0,05 < 0,20
+    const nueva = cnt(100).map((id, i) => ({ id, host: i < 95 ? 'viejo.test' : 'nuevo.test' }));
+    const lista = path.join(dir, 'APE_LISTA_ORIGEN_B.m3u8');
+    escribirListaHosts(lista, nueva);
+    const r = correr(['--list', lista, '--out', out, '--dry-run']);
+    check('sale 0 (publica)', r.code === 0, 'code=' + r.code);
+    check('registra ORIGEN con los tres numeros',
+        /ORIGEN comunes=100\b/.test(r.out) &&
+        /mismo_host=95\b/.test(r.out) && /host_distinto=5\b/.test(r.out),
+        (r.out.match(/ORIGEN comunes=[^\n]*/) || [''])[0].slice(0, 130));
+    check('ratio 0.0500 y umbral 0.2 visibles', /ratio=0\.0500/.test(r.out) && /umbral=0\.2\b/.test(r.out));
+    check('NO aborta por origen', !/REESCRITURA_DE_ORIGEN/.test(r.out));
+    check('LIST_CHANGED y FLOOR_DURO siguen funcionando (no se rompio nada)',
+        /LIST_CHANGED/.test(r.out) && /DRY-RUN/.test(r.out));
+}
+
+console.log('\n=== 8 · ORIGEN: 99 % de host DISTINTO -> exit 2 ABORT REESCRITURA_DE_ORIGEN ===');
+{
+    const dir = path.join(tmpRoot, 'c8');
+    const out = path.join(dir, 'out');
+    const prev = cnt(100).map((id) => ({ id, host: 'viejo.test' }));
+    sembrarPrevHosts(out, 'APE_LISTA_ORIGEN_C', prev);
+    // 1 conserva, 99 cambian -> ratio 0,99 > 0,20  (el caso P3_PLACEHOLDER del censo)
+    const nueva = cnt(100).map((id, i) => ({ id, host: i === 0 ? 'viejo.test' : 'evestv.wuitf.com' }));
+    const lista = path.join(dir, 'APE_LISTA_ORIGEN_D.m3u8');
+    escribirListaHosts(lista, nueva);
+    const r = correr(['--list', lista, '--out', out, '--dry-run']);
+    check('sale 2', r.code === 2, 'code=' + r.code);
+    check('dice ABORT REESCRITURA_DE_ORIGEN', /ABORT/.test(r.out) && /REESCRITURA_DE_ORIGEN/.test(r.out),
+        (r.out.match(/ABORT[^\n]*/) || [''])[0].slice(0, 130));
+    check('cuenta 99 de 100', /99 de 100/.test(r.out) && /99\.00 %/.test(r.out));
+    check('ORIGEN deja host_distinto=99 antes del abort', /host_distinto=99\b/.test(r.out));
+    check('da 3 ejemplos viejo -> nuevo', /viejo\.test -> evestv\.wuitf\.com/.test(r.out) &&
+        (r.out.match(/viejo\.test -> /g) || []).length >= 3,
+        (r.out.match(/Ejemplos:[^\n]*/) || [''])[0].slice(0, 150));
+    check('no publica ni escribe DRY-RUN despues del abort', !/PUBLISH/.test(r.out));
 }
 
 try { fs.rmSync(tmpRoot, { recursive: true, force: true }); } catch (_) { /* noop */ }

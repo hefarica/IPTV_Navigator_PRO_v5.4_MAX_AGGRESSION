@@ -1,0 +1,666 @@
+{
+  "schema": "ape.canary.deployment_receipt.v1",
+  "receipt_id": "canary-jit-20261111/deployment",
+  "generated_by": "contract-architect (t23)",
+  "generated_at_utc": "2026-11-11T08:12:31Z",
+  "base_git": {
+    "short": "472f7cc3",
+    "full": "472f7cc330e52dc2f7e3d16f6a451fd0b461949e"
+  },
+  "status": "DEPLOYED_VERIFIED",
+  "claims_absence": [
+    "No se declara despliegue, ni instalacion, ni servicio en marcha, ni verificacion en dispositivo.",
+    "No se contacto el VPS: ni ssh, ni curl, ni el pipeline con --apply.",
+    "No se creo commit, branch ni se toco el indice de git."
+  ],
+  "blockers": [
+    {
+      "id": "B1",
+      "class": "deployability",
+      "severity": "blocker",
+      "claim": "El manifiesto mapea la copia SIN bucle Canary<->JIT, no la que lo implementa (H-1).",
+      "evidence": "_vps_stage/deploy/manifest.tsv:39",
+      "detail": "La fila 39 mapea _vps_stage/canary/ape-visual-emulate.sh (4068 B, sha256 653b56e1ef964bc6a3d0cb32a48724ca2b04969faaa0612804e923c41f7243f8) a /usr/local/bin/ape-visual-emulate.sh. El artefacto que implementa el bucle es vps/bin/ape-visual-emulate.sh (6714 B, sha256 f1d2ecff6e6468eb58e04658703a34df8b0e2df1c7d61540abbb84ebf768fec1) y tiene 0 filas en el manifiesto.",
+      "effect": "Un deploy con el manifiesto actual llevaria al VPS la copia que no llama al JIT.",
+      "resolve_by": "Decision del operador: anadir la fila al manifiesto. NO se modifica en esta tarea.",
+      "estado_2026_11_12": "ABIERTO",
+      "nota": "Sigue sin fila: el manifiesto desplegado aun mapea _vps_stage/canary/ape-visual-emulate.sh (0 hits de jit). No se aplico el parche 0001."
+    },
+    {
+      "id": "B2",
+      "class": "authorization",
+      "severity": "blocker",
+      "claim": "El pipeline exige autorizacion explicita y no existe.",
+      "evidence": "_vps_stage/deploy/deploy.sh:13",
+      "detail": "deploy.sh:13 = [ \"$YES\" -eq 1 ] || { c_bad \"   Falta --yes (confirmacion explicita del propietario). Abortado.\"; exit 2; }",
+      "effect": "Con --apply y sin --yes el pipeline aborta con exit 2 antes de cualquier mutacion (medido en tools/canary/deploy_contract_check.js D2: exit=2, 0 llamadas ssh).",
+      "resolve_by": "Autorizacion escrita del operador con --yes. No la hay en esta sesion.",
+      "estado_2026_11_12": "RESUELTO",
+      "nota": "El operador autorizo y el deploy corrio con --apply --yes: corrida 43170688357, job 4 deploy success."
+    },
+    {
+      "id": "B3",
+      "class": "validation_dependency",
+      "severity": "blocker",
+      "claim": "La validacion previa depende del VPS: sin VPS el deploy aborta.",
+      "evidence": "_vps_stage/deploy/validate.sh:15,18 + _vps_stage/deploy/deploy.sh:16",
+      "detail": "validate.sh:15 ejecuta rsh luac -p /dev/stdin y validate.sh:18 rsh php -l /dev/stdin. Sin VPS accesible el rsh falla, cada .lua/.php se marca FALLA y validate.sh sale !=0; deploy.sh:16 lo convierte en exit 3.",
+      "effect": "No se puede validar en local y desplegar despues: la validacion exige el mismo host que se va a mutar.",
+      "resolve_by": "Contactar el VPS (prohibido en esta tarea) o cambiar validate.sh a validacion local (fuera de alcance).",
+      "estado_2026_11_12": "SORTEADO_NO_ELIMINADO",
+      "nota": "La validacion sigue siendo remota (validate.sh corre en el host que muta), pero dejo de bloquear al ejecutarse desde CI con acceso al VPS. La limitacion de diseno permanece."
+    },
+    {
+      "id": "B4",
+      "class": "service_state",
+      "severity": "high",
+      "claim": "El pipeline no habilita servicios: 0 ocurrencias de systemctl enable.",
+      "evidence": "_vps_stage/deploy/*.sh (11 scripts .sh, 27 ficheros rastreados en el directorio)",
+      "detail": "Busqueda literal de systemctl enable en los .sh de _vps_stage/deploy: 0 coincidencias. deploy.sh:170 hace daemon-reload y deploy.sh:144-165 reinicia solo si el servicio ya estaba en marcha.",
+      "effect": "Este tooling no puede llevar un servicio a estado habilitado; si el VPS lo tiene deshabilitado, el deploy no lo corrige y el arranque tras reboot no esta garantizado.",
+      "resolve_by": "Un paso de systemctl enable explicito, decidido por el operador.",
+      "estado_2026_11_12": "ABIERTO_NO_MATERIALIZADO",
+      "nota": "Sigue sin paso systemctl enable, asi que el tooling no puede habilitar servicios. No muerde a ape-jit porque el inventario lo muestra ya enabled."
+    }
+  ],
+  "files_that_would_deploy": {
+    "source": "_vps_stage/deploy/manifest.tsv (60 lineas no vacias: 27 de comentario + 33 filas de datos con 5 campos TAB)",
+    "count": 33,
+    "sources_missing_local": [],
+    "sources_missing_count": 0,
+    "rows": [
+      {
+        "source": "_vps_stage/lua/ape_header.lua",
+        "destination": "/etc/nginx/lua/ape_header.lua",
+        "mode": "644",
+        "owner": "www-data:www-data",
+        "note": "header_filter_by_lua_file /meta/ (8088)",
+        "source_exists": true,
+        "source_bytes": 8088,
+        "source_sha256": "23b25b031964ca573a89eeab933a5d07bc91fb29aa5c038df22c02bff182117f"
+      },
+      {
+        "source": "_vps_stage/lua/ape_uri_rebase.lua",
+        "destination": "/etc/nginx/lua/ape_uri_rebase.lua",
+        "mode": "644",
+        "owner": "www-data:www-data",
+        "note": "body_filter_by_lua_file /meta/ (8088)",
+        "source_exists": true,
+        "source_bytes": 9930,
+        "source_sha256": "393635c2b2250fde9cf5678f4e9b85fe5e9359c2a65cfd00fa1adfbc85242fa8"
+      },
+      {
+        "source": "_vps_stage/lua/ape_wake_on_manifest.lua",
+        "destination": "/etc/nginx/lua/ape_wake_on_manifest.lua",
+        "mode": "644",
+        "owner": "www-data:www-data",
+        "note": "log_by_lua_file /meta/ (8088)",
+        "source_exists": true,
+        "source_bytes": 2284,
+        "source_sha256": "d9c6b65d7626cd3630e76e185bca1ec932b4db324bbbd8337ae445630796db19"
+      },
+      {
+        "source": "_vps_stage/lua/ape_gateway.lua",
+        "destination": "/etc/nginx/lua/ape_gateway.lua",
+        "mode": "644",
+        "owner": "www-data:www-data",
+        "note": "content_by_lua_file /cdn/ (443) — gateway de streams",
+        "source_exists": true,
+        "source_bytes": 23797,
+        "source_sha256": "11b45f8f5293821b44baeb8f7c650000187b15949c8872316501fa5b74ea0954"
+      },
+      {
+        "source": "_vps_stage/lua/ape_rebase_lib.lua",
+        "destination": "/etc/nginx/lua/ape_rebase_lib.lua",
+        "mode": "644",
+        "owner": "www-data:www-data",
+        "note": "require() desde el gateway — [t113] fix del :80 (antes NUNCA se desplegaba)",
+        "source_exists": true,
+        "source_bytes": 8674,
+        "source_sha256": "f813b1cc9a7da6126f97536a4c4b3fc662395e3d344619371150ee3387ddcfcb"
+      },
+      {
+        "source": "_vps_stage/lua/ape_uhd.lua",
+        "destination": "/etc/nginx/lua/ape_uhd.lua",
+        "mode": "644",
+        "owner": "www-data:www-data",
+        "note": "require() desde ape_gateway.lua (declare_auto) y /_ape/luatest — [t29 B-02] antes NO estaba y por eso nunca se desplegaba",
+        "source_exists": true,
+        "source_bytes": 9894,
+        "source_sha256": "b02fbe28ad2bafe16314d34f9c05fe43086b4ef73915ab9f17dcfb0d1b952e56"
+      },
+      {
+        "source": "_vps_stage/lua/ape_obs.lua",
+        "destination": "/etc/nginx/lua/ape_obs.lua",
+        "mode": "644",
+        "owner": "www-data:www-data",
+        "note": "/_ape/health, /_ape/qoe y /_ape/uhd (8088)",
+        "source_exists": true,
+        "source_bytes": 5038,
+        "source_sha256": "afa003ad6e929ad36fdedf269f748b4885ec62d13fe4f38dbae331be0f4442c7"
+      },
+      {
+        "source": "_vps_stage/lua/ape_lab_api.lua",
+        "destination": "/etc/nginx/lua/ape_lab_api.lua",
+        "mode": "644",
+        "owner": "www-data:www-data",
+        "note": "/_ape/lab (8088)",
+        "source_exists": true,
+        "source_bytes": 1878,
+        "source_sha256": "8558940d45336a253b5e4f6051353b6f8661ceda79ec69d875e78b5f14ecb8a5"
+      },
+      {
+        "source": "_vps_stage/lua/ape_luatest.lua",
+        "destination": "/etc/nginx/lua/ape_luatest.lua",
+        "mode": "644",
+        "owner": "www-data:www-data",
+        "note": "/_ape/luatest (8088, diagnóstico)",
+        "source_exists": true,
+        "source_bytes": 14064,
+        "source_sha256": "7f5be26574584d59ca5a59e461bd56575d5d71200b7d744482ebe50c6bb0dfa8"
+      },
+      {
+        "source": "_vps_stage/nginx/meta-plane.conf",
+        "destination": "/etc/nginx/conf.d/50-ape-meta-plane.conf",
+        "mode": "644",
+        "owner": "root:root",
+        "note": "server 8088 completo (plano meta)",
+        "source_exists": true,
+        "source_bytes": 12389,
+        "source_sha256": "fd591f4258a42308672aa688e803565bcf08f8696d9e248e0dc77d553f1bcba4"
+      },
+      {
+        "source": "ara-x/vps/php/ara-sync.php",
+        "destination": "/var/www/html/prisma/api/ara-sync.php",
+        "mode": "644",
+        "owner": "www-data:www-data",
+        "note": "POST /sync (PHP staged, D3 v2)",
+        "source_exists": true,
+        "source_bytes": 54912,
+        "source_sha256": "419fe6f23c15717da06e63c5a33ef9994f1caa6fae85e4cd9970d072eaa740d1"
+      },
+      {
+        "source": "ara-x/vps/nginx/ara-sync.conf",
+        "destination": "/etc/nginx/snippets/prisma-ara-sync.conf",
+        "mode": "644",
+        "owner": "root:root",
+        "note": "location = /sync (snippet server 443)",
+        "source_exists": true,
+        "source_bytes": 1988,
+        "source_sha256": "a59869f9e055be36651e822ef6b238fb428d2578768aa3cbdf7b93e192ea3ad6"
+      },
+      {
+        "source": "ara-x/vps/nginx/ara-sync-zone.conf",
+        "destination": "/etc/nginx/conf.d/00-ara-sync-zone.conf",
+        "mode": "644",
+        "owner": "root:root",
+        "note": "limit_req_zone ara_sync/ara_sync_lua (solo /sync)",
+        "source_exists": true,
+        "source_bytes": 1332,
+        "source_sha256": "12c207c70d9a3f91296dc249fcdfe4bf644c29e8fd1f77e798e5bf854741cf99"
+      },
+      {
+        "source": "ara-x/vps/lua/ara_x_sync.lua",
+        "destination": "/etc/nginx/lua/ara_x_sync.lua",
+        "mode": "644",
+        "owner": "www-data:www-data",
+        "note": "variante Lua /sync (staged, NO production)",
+        "source_exists": true,
+        "source_bytes": 23051,
+        "source_sha256": "e7aec1152bd73cb2a72aff8ebc3ea85175a9a738d4442529fc1568579477401f"
+      },
+      {
+        "source": "ara-x/vps/nginx/ara-sync-lua.conf",
+        "destination": "/etc/nginx/snippets/ara-sync-lua.conf",
+        "mode": "644",
+        "owner": "root:root",
+        "note": "location Lua /sync (staged, no incluida por defecto)",
+        "source_exists": true,
+        "source_bytes": 1047,
+        "source_sha256": "3a424dc065bab8ff932dd40d95392dba9787d7fab65bc0bc916f318d1d03443d"
+      },
+      {
+        "source": "_vps_stage/sql/ara_sync.sql",
+        "destination": "/var/lib/ara-x/schema.sql",
+        "mode": "600",
+        "owner": "www-data:www-data",
+        "note": "migración SQLite ara_sync_state/nonce/replay/keys",
+        "source_exists": true,
+        "source_bytes": 1679,
+        "source_sha256": "20e99a1f2cdb285dc4d9da34c9510a01cbaae3d07400cd67c3b39c9f587448dd"
+      },
+      {
+        "source": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-canon-producer.js",
+        "destination": "/var/www/html/prisma/api/ape-canon-producer.js",
+        "mode": "644",
+        "owner": "www-data:www-data",
+        "note": "LAB metadata library producer (por lista)",
+        "source_exists": true,
+        "source_bytes": 7688,
+        "source_sha256": "fc6a689510655b2cc592a9af1f03db559f55dc1b91fbef6aec0b4b516a429ca8"
+      },
+      {
+        "source": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-session-resolve.php",
+        "destination": "/var/www/html/prisma/api/ape-session-resolve.php",
+        "mode": "644",
+        "owner": "www-data:www-data",
+        "note": "LAB metadata consumer (por record M.ref)",
+        "source_exists": true,
+        "source_bytes": 12716,
+        "source_sha256": "c92913494f830e1ef8a6a0ea0ad66038855616a61517ff495aaf78c652fda26a"
+      },
+      {
+        "source": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-lab-library.php",
+        "destination": "/var/www/html/prisma/api/ape-lab-library.php",
+        "mode": "644",
+        "owner": "www-data:www-data",
+        "note": "GET biblioteca por list_id",
+        "source_exists": true,
+        "source_bytes": 3841,
+        "source_sha256": "794eab262d5ecea04ef1eceb99695092c3136584f13938c684fa1606c3b022c6"
+      },
+      {
+        "source": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-field-homologator.js",
+        "destination": "/var/www/html/prisma/api/ape-field-homologator.js",
+        "mode": "644",
+        "owner": "www-data:www-data",
+        "note": "Dependencia del producer",
+        "source_exists": true,
+        "source_bytes": 17562,
+        "source_sha256": "d587ee14a271020a5093fc572836cf540c971e852b10004abe45a4935b38aaa9"
+      },
+      {
+        "source": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/list-activate.php",
+        "destination": "/var/www/html/prisma/api/list-activate.php",
+        "mode": "644",
+        "owner": "www-data:www-data",
+        "note": "Auto-inyecta metadata LAB al activar lista",
+        "source_exists": true,
+        "source_bytes": 2324,
+        "source_sha256": "515e3d5d4830d517e94204b3d645822f5cb247625af5811b3c7b5c0895308d7e"
+      },
+      {
+        "source": "_vps_stage/skills/SKILLS.md",
+        "destination": "/etc/ara/skills/SKILLS.md",
+        "mode": "644",
+        "owner": "root:root",
+        "note": "FASE0 compendio A-I",
+        "source_exists": true,
+        "source_bytes": 1400,
+        "source_sha256": "5798f775cd79afa6bf59734c91d6835d8d83fb3c9cdcddea149f4cb0470f054d"
+      },
+      {
+        "source": "_vps_stage/skills/skills.json",
+        "destination": "/etc/ara/skills/skills.json",
+        "mode": "644",
+        "owner": "root:root",
+        "note": "FASE0 S1-S9 + hardware.npu=false",
+        "source_exists": true,
+        "source_bytes": 1697,
+        "source_sha256": "7b6ddb80ce77a83249d4322cc14b9c3db9983d881a87c60a88a029ff2da79580"
+      },
+      {
+        "source": "_vps_stage/skills/corpus/vps-visual-emulate.md",
+        "destination": "/etc/ara/skills/corpus/vps-visual-emulate.md",
+        "mode": "644",
+        "owner": "root:root",
+        "note": "FASE0 corpus",
+        "source_exists": true,
+        "source_bytes": 1118,
+        "source_sha256": "94099c0325c945f8f381db75c9aa78281fc5ae688cb6275fe19a4cf9dd3292ca"
+      },
+      {
+        "source": "_vps_stage/skills/corpus/canary-isolation.md",
+        "destination": "/etc/ara/skills/corpus/canary-isolation.md",
+        "mode": "644",
+        "owner": "root:root",
+        "note": "FASE0 corpus",
+        "source_exists": true,
+        "source_bytes": 1486,
+        "source_sha256": "48db2b279f4d5f0a39f59e7136d0e84b8c27b5f666d7ce0aab213a4613b7cf5f"
+      },
+      {
+        "source": "_vps_stage/skills/corpus/s905x4-limits.md",
+        "destination": "/etc/ara/skills/corpus/s905x4-limits.md",
+        "mode": "644",
+        "owner": "root:root",
+        "note": "FASE0 corpus",
+        "source_exists": true,
+        "source_bytes": 777,
+        "source_sha256": "5152bedb1fc66d970404105632437faabe26ca3bfac880ca154c526f805a32a2"
+      },
+      {
+        "source": "_vps_stage/skills/corpus/sources.txt",
+        "destination": "/etc/ara/skills/corpus/sources.txt",
+        "mode": "644",
+        "owner": "root:root",
+        "note": "FASE0 fuentes trazables",
+        "source_exists": true,
+        "source_bytes": 2874,
+        "source_sha256": "f328376c9dfd60630ca616309bfc4454ceac45b2a9aa120d60a1751acce82c7e"
+      },
+      {
+        "source": "_vps_stage/canary/ara-skill",
+        "destination": "/usr/local/bin/ara-skill",
+        "mode": "755",
+        "owner": "root:root",
+        "note": "gate check/list/show/corpus",
+        "source_exists": true,
+        "source_bytes": 4978,
+        "source_sha256": "758d7ef05bb6fe434fe5d6eb1aef2ea21b44c4189277aadcd446c0aada3f9a96"
+      },
+      {
+        "source": "_vps_stage/canary/ape-visual-emulate.sh",
+        "destination": "/usr/local/bin/ape-visual-emulate.sh",
+        "mode": "755",
+        "owner": "root:root",
+        "note": "canary 4K (25M/32M/64M keyint 48)",
+        "source_exists": true,
+        "source_bytes": 4068,
+        "source_sha256": "653b56e1ef964bc6a3d0cb32a48724ca2b04969faaa0612804e923c41f7243f8"
+      },
+      {
+        "source": "_vps_stage/canary/ape-canary@.service",
+        "destination": "/etc/systemd/system/ape-canary@.service",
+        "mode": "644",
+        "owner": "root:root",
+        "note": "CPU 40% MEM 1G IO 10 NICE 10",
+        "source_exists": true,
+        "source_bytes": 783,
+        "source_sha256": "d1dc2a135be8d7b1230bcfc3b89fef419f5175e2deef96a19fc6f80195b50e43"
+      },
+      {
+        "source": "tools/lab/ape-jit/server.js",
+        "destination": "/opt/ape-jit/server.js",
+        "mode": "644",
+        "owner": "root:root",
+        "note": "motor JIT: resolver, playlist, guard de capacidad [OJO: necesita systemctl restart ape-jit, deploy.sh NO lo hace]",
+        "source_exists": true,
+        "source_bytes": 447943,
+        "source_sha256": "28352c508285b1eedfc889e5df40855e6e2c71207d7c806288ac8457de36ff67"
+      },
+      {
+        "source": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/pulse.php",
+        "destination": "/var/www/html/prisma/api/pulse.php",
+        "mode": "644",
+        "owner": "www-data:www-data",
+        "note": "pulse polimorfico (php-fpm recarga solo, sin reinicio)",
+        "source_exists": true,
+        "source_bytes": 27721,
+        "source_sha256": "0d4051fc7aea2bdd8821cb36b0cfdde08dc9afd003cf35907ab53b4b5da4bab3"
+      },
+      {
+        "source": "vps/bin/ape-pulse-canary-worker.sh",
+        "destination": "/opt/ape-pulse/ape-pulse-canary-worker.sh",
+        "mode": "755",
+        "owner": "root:root",
+        "note": "worker del canary con guarda jit_busy [OJO: lo invoca el timer, toma el fichero nuevo en el proximo ciclo]",
+        "source_exists": true,
+        "source_bytes": 4043,
+        "source_sha256": "a17281d6cf865b37f869924124af04c9296827565709c64ceaedd84db5ac282e"
+      }
+    ]
+  },
+  "artifacts_of_this_delivery": {
+    "patch": {
+      "path": "docs/canary/deliverables/03_CANARY_JIT_INTEGRATION.patch",
+      "bytes": 865408,
+      "sha256": "a2ebec163172362a5be912f901e183e68f131de534e0461ab6c2aefc28163f89",
+      "files": 31,
+      "insertions": 12819,
+      "note": "Patch de ficheros nuevos: NO representa un commit. sha256 del fichero patch. Instantanea atomica (bytes leidos = bytes del patch); excluye los 3 ficheros de esta entrega."
+    },
+    "patch_stat": " 31 files changed, 12824 insertions(+)",
+    "content_bytes": 845761,
+    "snapshot": {
+      "at_utc": "2026-11-11T08:17:44Z",
+      "file_count": 31,
+      "inputs_digest_sha256": "52255195a3f3b00ef72a54b428c5a8f5d46ea408092723049fefe78f6547bdb3",
+      "digest_rule": "sha256 de las lineas \"<path>:<sha256-del-fichero>\" en orden lexicografico, cada una con LF, incluido el LF final",
+      "fresh_at_generation": true,
+      "digest_recheck_immediate": "52255195a3f3b00ef72a54b428c5a8f5d46ea408092723049fefe78f6547bdb3"
+    },
+    "patch_files": [
+      {
+        "path": "contracts/canary_jit_contract_v1.json",
+        "bytes": 35791,
+        "sha256": "488b87609a02c69d0ecffba17ea532fc8142964f3fdeb98e4cd8cc70e1395514"
+      },
+      {
+        "path": "contracts/canary_policy_schema.json",
+        "bytes": 8672,
+        "sha256": "bc9ed9fc94fa793f02061831161f0f3126c44a4179e1a2a3c7a671d4de727f8f"
+      },
+      {
+        "path": "contracts/canary_vps_reconciler_contract.json",
+        "bytes": 15558,
+        "sha256": "761d621558e7742b631de861a3ec7e64665fb74d2ec325e033b7903328ded8b0"
+      },
+      {
+        "path": "contracts/device_capability_schema.json",
+        "bytes": 18840,
+        "sha256": "8ea89f8564a8b8b8da2b77808ef0113f68b37d9ae36ccbae4d130e84a24d3605"
+      },
+      {
+        "path": "docs/audits/14_CANARY_FINAL_REPORT.md",
+        "bytes": 32324,
+        "sha256": "79c3f8513964463c5c58dd2386a0cea6d667ace335548c76ad05a622156c8916"
+      },
+      {
+        "path": "docs/audits/ACCEPTANCE_MATRIX_20261111.json",
+        "bytes": 32284,
+        "sha256": "5e201693a2aa2b7574d221626b2f5010c67b968a57f8e0c7b8d6e9bc0be73f77"
+      },
+      {
+        "path": "docs/audits/ADVERSARIAL_CANARY_JIT_20261111.md",
+        "bytes": 31615,
+        "sha256": "8a62e7203a558c86e43996475db4ff117ba84eb6a38d4b64ae6d1020a287faae"
+      },
+      {
+        "path": "docs/audits/APK_FEASIBILITY_20261111.md",
+        "bytes": 20028,
+        "sha256": "84ee21a5b758d874c56d7bf2b9652a2bfc8e7f5e8b099d7a11d7424778746407"
+      },
+      {
+        "path": "docs/audits/APK_SECRET_SCAN_20261111.md",
+        "bytes": 20987,
+        "sha256": "f1ebcee7392cccf468388c9cd8cf951904a4652b15d4ae1c119540b56333c527"
+      },
+      {
+        "path": "docs/audits/CANARY_TRUTH_20261111.md",
+        "bytes": 47639,
+        "sha256": "33c214ef2360039f6da675344f1aac4b96e96b645eba46a79510e5f5abd98da6"
+      },
+      {
+        "path": "docs/audits/CONTRACT_REVIEW_20261111.md",
+        "bytes": 26393,
+        "sha256": "8e3a214130c77cc2f81e993432ac0a8c683e885acfb2dfdc6f075dec6909772c"
+      },
+      {
+        "path": "docs/audits/CONTRACT_REVIEW_ROUND2_20261111.md",
+        "bytes": 19552,
+        "sha256": "9d3c9256d859949e3880b42b302c1626eb318601f4465d34f6caec7841bc8eaf"
+      },
+      {
+        "path": "docs/audits/CONTRACT_REVIEW_ROUND3_20261111.md",
+        "bytes": 13898,
+        "sha256": "1affc1728b67ecb2fb22522485107307e1398a33209b65f08bab357cf0dcfe59"
+      },
+      {
+        "path": "docs/audits/DEPLOY_RECONCILER_20261111.md",
+        "bytes": 15139,
+        "sha256": "ae8633437a63362f86e35cf1fafaa3d4edf110554898a29ac37bc894da6cbe88"
+      },
+      {
+        "path": "docs/audits/JIT_HTTP_PROBES_20261111.md",
+        "bytes": 26540,
+        "sha256": "f1c2510582a9f1547ba785da3fdfecf475c39a061ce069524ee1ca85e7210c13"
+      },
+      {
+        "path": "docs/audits/JIT_TRUTH_20261111.md",
+        "bytes": 52730,
+        "sha256": "e9e864b211f4d8e6fb19ecb3841f653b61c6257458003f12c7834aa0fbf8b1f4"
+      },
+      {
+        "path": "docs/audits/PLAYLIST_ADAPTER_20261111.md",
+        "bytes": 19628,
+        "sha256": "b643a4ab0c3d10802706f43a3520fcee152d9b7ac049cc2569b0557320a97964"
+      },
+      {
+        "path": "docs/audits/S16_DELIVERABLES_INVENTORY_20261111.json",
+        "bytes": 25393,
+        "sha256": "f95f78e0c4e2b12265cf498a972992599b01ac25b7edb8c718f8deb329fbcb82"
+      },
+      {
+        "path": "docs/audits/S16_DELIVERABLES_INVENTORY_20261111.md",
+        "bytes": 17533,
+        "sha256": "2e451d71fd275552720959cefc807bf2e7080511c3a02350a650406c0233b5f0"
+      },
+      {
+        "path": "docs/audits/SCHEMAS_20261111.md",
+        "bytes": 29057,
+        "sha256": "36ce40700f73479471d40c470ee12b2f285bf050c0e095a7b1bda936d22a49c9"
+      },
+      {
+        "path": "docs/audits/VEREDICTO_CANARY_JIT_20261111.md",
+        "bytes": 44013,
+        "sha256": "3b9f155041a5c03558dc078421e5c0d0285e62173f883c488275d207b520c0b0"
+      },
+      {
+        "path": "docs/manifestos/CANARY_JIT_CONTRACT_20261111.md",
+        "bytes": 32264,
+        "sha256": "96dd7f5714b315d00bc59c1914451e11dee445d14bfd38cfec76ee6689f443eb"
+      },
+      {
+        "path": "docs/ops/RUNTIME_PROVISIONING_PROPOSAL.md",
+        "bytes": 14574,
+        "sha256": "8e89eddcf48d661631907d4deac8e39bc86e1e1fdc7b95ba04c090057de63f4c"
+      },
+      {
+        "path": "docs/ops/SECRET_ROTATION_PROCEDURE.md",
+        "bytes": 18209,
+        "sha256": "ac72d4633e544063164e9e8fe3e317bd9054db0ba6154813110dc477d8259fc1"
+      },
+      {
+        "path": "docs/policies/SECRETS_IN_BINARIES.md",
+        "bytes": 11502,
+        "sha256": "92cfe25cb8ba26b83882b43fd2c80d7f0e274a3a65cf15fd1c8b297ab1f8b0ac"
+      },
+      {
+        "path": "tools/canary/deploy_contract_check.js",
+        "bytes": 17325,
+        "sha256": "7b873ea169be4e6bba630edcbc17164c78665a159aeec989baa32362358a727c"
+      },
+      {
+        "path": "tools/canary/md_to_pdf.js",
+        "bytes": 22390,
+        "sha256": "d9e3242ff22848e36b09a9fad2b40321d792e61f28fb3ed4479ab2d5cb914001"
+      },
+      {
+        "path": "tools/canary/playlist_adapter.js",
+        "bytes": 41462,
+        "sha256": "31020f0c1f9994bb59fb4f02da4558db42d5a04b52378f38eece4b2f3552eace"
+      },
+      {
+        "path": "tools/quality/test_canary_jit_contract.js",
+        "bytes": 71957,
+        "sha256": "0869149200cc0e7290e7de112fd0aa81914726435fd67989b34f29628169680b"
+      },
+      {
+        "path": "tools/quality/test_playlist_adapter.js",
+        "bytes": 30784,
+        "sha256": "8b5b313c335a08a01e6d08330620720c80d67caeaf67fc0336d77d553ab9efa4"
+      },
+      {
+        "path": "tools/quality/test_schemas.js",
+        "bytes": 31680,
+        "sha256": "80005638565356163b57dd573ff7a2c2edac011ead9ab7f76ee0c69fa76d31a1"
+      }
+    ]
+  },
+  "not_verified": [
+    {
+      "id": "N1",
+      "what": "Dispositivo (APK + daemon en hardware)",
+      "status": "NO_COMPUTADO",
+      "reason": "No hay ningun dispositivo medido en esta sesion: 0 pruebas en hardware, 0 adb. El APK no se ha instalado en ningun equipo."
+    },
+    {
+      "id": "N2",
+      "what": "206 (partial content) del motor JIT en Linux",
+      "status": "NO_COMPUTADO",
+      "reason": "La bateria HTTP se ejecuto en Windows (docs/audits/JIT_HTTP_PROBES_20261111.md:5) y el arranque del motor en Linux se infiere, no se midio (JIT_HTTP_PROBES:131). El 206 de un chunk concreto se reprodujo en este host (:173), no en Linux."
+    },
+    {
+      "id": "N3",
+      "what": "Secreto de enrolamiento en claro en el APK",
+      "status": "RIESGO_CONOCIDO_NO_MITIGADO",
+      "reason": "docs/audits/APK_SECRET_SCAN_20261111.md:12: el valor actual de ape.enroll.secret aparece en claro 1 vez en el pool de cadenas de un .dex de 29 de los 36 APK del workspace. La rotacion esta documentada en docs/ops/SECRET_ROTATION_PROCEDURE.md pero no ejecutada: no se ha girado ninguna clave."
+    }
+  ],
+  "integrity": {
+    "head": "472f7cc330e52dc2f7e3d16f6a451fd0b461949e",
+    "index_touched": false,
+    "commit_created": false,
+    "vps_contacted": false,
+    "deploy_invoked": false,
+    "note": "El unico cambio en el arbol son los tres ficheros de esta entrega, sin seguimiento."
+  },
+  "next_action_requires": "Autorizacion escrita del operador + fila en manifest.tsv para el script de 6714 B + acceso al VPS para validate.sh.",
+  "status_history": [
+    {
+      "status": "NOT_DEPLOYED",
+      "vigente_hasta": "2026-11-12",
+      "motivo_del_cambio": "el despliegue se ejecuto y verifico; mantener NOT_DEPLOYED seria negar un hecho medido"
+    }
+  ],
+  "deployment_2026_11_12": {
+    "run": 43170688357,
+    "ref": "deploy/engine-restart-20261112",
+    "commit": "34b78e84",
+    "mode": "deploy",
+    "backup_stamp": "20261112T065023Z",
+    "jobs": {
+      "inventory": "success",
+      "preflight_dry_run": "success",
+      "validate": "success",
+      "deploy": "success",
+      "verify": "success",
+      "motor": "success",
+      "rollback": "skipped"
+    },
+    "paridad": "33/33 ficheros repo == remoto",
+    "sync_smoke": "11/11 OK · 0 FAIL",
+    "motor": {
+      "path": "/opt/ape-jit/server.js",
+      "bytes": 449392,
+      "sha256": "290b11030f3b6bf944c14298f3fe8401c0f9bd773789e26afeca8bb9f8aeb492",
+      "sha_en_origen_y_destino": true,
+      "servicio": "active",
+      "listener_3099": 1,
+      "health_interno": 200,
+      "timer_canary": "inactive (detenido a proposito: guardia del incidente 2026-11-09)"
+    },
+    "control_externo": {
+      "/jit/health": 200,
+      "/jit/meta/1.json": 200,
+      "/lists/APE_LISTA_1794100720046.m3u8": 200
+    },
+    "recibo": "docs/audits/DEPLOY_GREEN_20261112.md"
+  },
+  "not_verified_2026_11_12": {
+    "sigue_sin_verificar": [
+      "Calidad de imagen: sin dispositivo (adb devices vacio), sin VMAF/SSIM, sin A/B visual",
+      "Reproductores OTT / TiviMate / ExoPlayer: no ejercitados",
+      "El bucle Canary<->JIT: sigue sin desplegar (B1)",
+      "Comprobacion HMAC 200 y /ara/events del sync-smoke: siguen en SKIP",
+      "GPU / termica del dispositivo"
+    ],
+    "ya_verificado": [
+      "El motor desplegado es el pineado, comprobado en origen y destino",
+      "El servicio arranca y sirve /health 200 dentro y fuera",
+      "/jit/meta/1.json responde 200 desde internet (era la peticion que mataba el proceso)",
+      "Paridad completa 33/33 y sync-smoke 11/11"
+    ]
+  }
+}
