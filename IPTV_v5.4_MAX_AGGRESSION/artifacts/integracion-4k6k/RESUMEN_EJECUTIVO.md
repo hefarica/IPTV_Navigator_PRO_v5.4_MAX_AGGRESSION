@@ -1,0 +1,72 @@
+# RESUMEN EJECUTIVO — Integración APE 4K/6K (staging)
+
+**Alcance:** worktree `C:\Users\HFRC\Desktop\IPTV_FASE2_STAGING` (detached en `5376eef6`), diff de 12
+ficheros sobre `84f3231f`. **Sin push, sin despliegue, producción y VPS intactos.**
+
+Este documento consolida el estado real con la ruta de evidencia de cada afirmación. Todo lo que no está
+marcado como medido, está marcado como abierto con su causa.
+
+---
+
+## 1 · Cerrado y medido
+
+| # | Capacidad | Evidencia |
+|---|---|---|
+| 1 | Selección de los 12 IDs por el **control visible** del profile manager | §16 · `clickVisible=ok` en las 12 filas |
+| 2 | OFF emite 0 sidecar · ON emite 3 (uno por canal) | §42 · runner 12/12 |
+| 3 | Geometría nominal por perfil, sin degradación (P0 = **7680x4320**) | §41 · §42 |
+| 4 | `network-caching` = `L3_EXTVLCOPT` propio del perfil, en los 12 | §42 |
+| 5 | Export a archivo privado con sha256 completo verificado por relectura | §22 · `APE_PRIVADO/fase8` |
+| 6 | Reimportación efectiva por el control de la app | §22-§23 |
+| 7 | Idempotencia del sidecar entre dos pasadas ON | §22 |
+| 8 | Recuperación quirúrgica (quitar sidecar no toca EXTINF/URIs) | §39 |
+| 9 | Recuperación byte a byte ON−sidecar == previo | generador sembrado (previo, con ambos LAB) |
+| 10 | Consumidor del sidecar con validación de versión/capacidades y niveles separados | §25 · 17/17 PASS |
+| 11 | Rollback completo ejecutado y restaurado | §26 |
+| 12 | Rutas HTTP del arnés: loopback, testigo, origen, confinamiento | §27 · 8/8 |
+| 13 | Lista real de 754 MB: 11.222 canales, 5,1 s, 140 MB de heap, cancelación 292 ms | §33 |
+| 14 | `forceProfile`: la selección manda en geometría y caching | §35-§41 · commit `346b0fdd` |
+
+## 2 · Abierto, con causa acreditada
+
+| # | Cuestión | Estado | Causa / siguiente sonda |
+|---|---|---|---|
+| A | **Cluster HDR/audio/saturación** (`video-hdr` true→false, `HDR10PLUS`→`SDR`, `audio-channels` 2→6, `clock-jitter`→0, `saturation` 1.06→1.08) | **causa localizada, no corregida** | El importador no nombra esas claves (0 coincidencias de `video-hdr` en `ape-profiles-config.js`): `getProfile().vlcopt` no es el `vlcopt` del LAB (§49). Fix: añadir las claves a la homologación o pasar `vlcopt` sin filtrar, midiendo antes/después |
+| B | **Selector automático** (`determineProfile`) | **NOT_RUN** | Función interna (`m3u8-typed-arrays-ultimate.js:8010`, uso en `:13921`), sin punto de entrada público; su decisión no aparece en el artefacto. Requiere instrumentar el generador |
+| C | `includeExtrasByProfile` | **descartado con medición** | Activarlo para los seis `.5` no cambia nada (§48) |
+| D | Herencia de buffers/prefetch/headers/límites fuera de `network-caching` | **parcial** | §40 mide 44 claves `#EXTVLCOPT`; 28 PASS / 10 FAIL en P0.5, resto sin veredicto por campo |
+
+## 3 · Comandos de reproducción
+
+```bat
+:: suite del adaptador (204 aserciones)
+node IPTV_v5.4_MAX_AGGRESSION\frontend\tests\ape-4k6k-audit-adapter.test.js
+
+:: autotest de privacidad y confinamiento de rutas (8 casos)
+node IPTV_v5.4_MAX_AGGRESSION\artifacts\integracion-4k6k\fase8-runner.js --selftest
+
+:: matriz 12 perfiles contra la app real en Chrome
+node IPTV_v5.4_MAX_AGGRESSION\artifacts\integracion-4k6k\fase8-runner.js "P0,P1,P2,P3,P4,P5,P0.5,P1.5,P2.5,P3.5,P4.5,P5.5"
+
+:: verificación de geometría y caching por perfil
+node IPTV_v5.4_MAX_AGGRESSION\artifacts\integracion-4k6k\matriz-final-check.js
+
+:: herencia campo a campo
+node IPTV_v5.4_MAX_AGGRESSION\artifacts\integracion-4k6k\herencia-multi-check.js
+```
+
+## 4 · Rollback
+
+```bat
+git -C C:\Users\HFRC\Desktop\IPTV_FASE2_STAGING stash push -u
+git -C C:\Users\HFRC\Desktop\IPTV_FASE2_STAGING stash pop
+```
+
+Probado (§26): tras `stash push -u` el árbol queda limpio y los tres módulos nuevos desaparecen; tras
+`stash pop` vuelven los 12 ficheros, las 4 referencias `<script>` del index y `node --check` = 0.
+
+---
+
+**NO se declara cierre integral.** El flujo principal (importar LAB → seleccionar 12 IDs → generar →
+exportar → reimportar → verificar intención) está medido y verde; el tuning HDR/audio de los `.5` sigue
+sin heredar y el selector automático sigue sin ser observable.
