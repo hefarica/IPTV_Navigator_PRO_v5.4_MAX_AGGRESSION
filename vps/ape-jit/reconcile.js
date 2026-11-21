@@ -143,19 +143,33 @@ function pickList() {
    * lote (APE_LISTA_*_CDN) apuntaban a 0/3 propias. El criterio no puede ser solo
    * "la mas nueva": se descarta la que ya esta envuelta y se dice cual y por que. */
   const envuelta = (p) => {
+    /* Muestreo por TRAMOS: un bloque de canal de estas listas ocupa ~1 MB, asi que leer
+     * solo los primeros 512 KB puede no encontrar ni un `?u=` y responder "no envuelta"
+     * (falso negativo medido). Se acumulan aciertos hasta 5 o hasta 16 MB. */
     try {
       const fd = fs.openSync(p, 'r');
-      const len = Math.min(fs.fstatSync(fd).size, 512 * 1024);
-      const buf = Buffer.alloc(len);
-      fs.readSync(fd, buf, 0, len, 0);
+      const size = fs.fstatSync(fd).size;
+      let offset = 0, acc = '', hits = 0, propias = 0, vueltas = 0;
+      while (offset < size && hits < 5 && vueltas < 16) {
+        const len = Math.min(1024 * 1024, size - offset);
+        const buf = Buffer.alloc(len);
+        fs.readSync(fd, buf, 0, len, offset);
+        offset += len; vueltas++;
+        acc += buf.toString('utf8');
+        const found = acc.match(/u=[^&\s]*/g) || [];
+        if (found.length) {
+          for (const h of found) {
+            hits++;
+            try { if (decodeURIComponent(h.slice(2)).indexOf(SELF_HOST) >= 0) propias++; } catch (_) { /* noop */ }
+          }
+          acc = '';
+        } else {
+          acc = acc.slice(-4096);      // conserva un solape por si el token cruza el tramo
+        }
+      }
       fs.closeSync(fd);
-      const s = buf.toString('utf8');
-      const hits = s.match(/u=[^&\s]*/g) || [];
-      if (!hits.length) return false;
-      const propias = hits.filter((h) => {
-        try { return decodeURIComponent(h.slice(2)).indexOf(SELF_HOST) >= 0; } catch (_) { return false; }
-      }).length;
-      return propias > 0 && propias >= hits.length / 2;
+      if (!hits) return false;
+      return propias > 0 && propias >= hits / 2;
     } catch (_) { return false; }
   };
   const crudas = files.filter((x) => {
@@ -234,20 +248,28 @@ async function parseList(file) {
     // y también una URL directa, que es como vienen las listas ajenas. Sin esto el
     // espejo solo sabría leer las listas de este generador.
     let resolved = '';
+    let payload = '';        // URL DE ORIGEN, antes de envolverla: es la que dice si hay bucle
     if (t.includes('/pulse/')) {
       const u = t.match(/[?&]u=([^&\s]+)/);
-      if (u) { try { resolved = toCdn(decodeURIComponent(u[1])); } catch (_) { resolved = ''; } }
+      if (u) {
+        try {
+          payload = decodeURIComponent(u[1]);
+          resolved = toCdn(payload);
+        } catch (_) { resolved = ''; }
+      }
     } else if (/^https?:\/\//i.test(t)) {
-      resolved = t;                         // lista ajena: se usa su URL tal cual
+      payload = t;                          // lista ajena: se usa su URL tal cual
+      resolved = t;
     }
     if (resolved && cur.id) {
-      /* [2026-11-21] BUCLE: si el `?u=` de la lista ya apunta a nuestro propio host
-       * (https://iptv-ape.duckdns.org/jit/live/<id>/…), toCdn() lo volveria a envolver
-       * y el espejo quedaria apuntandose a si mismo. Medido en produccion sobre
-       * APE_LISTA_1795151699916_DIRECTA_CABLEADA: 3/3 propias. Un canal asi NO entra
-       * en el mapa y se cuenta como loop. */
+      /* [2026-11-21] BUCLE. El host que hay que mirar es el del PAYLOAD, no el de la URL
+       * ya envuelta: toCdn() SIEMPRE devuelve https://iptv-ape.duckdns.org/cdn/…, asi que
+       * comparar el host del resultado marcaba TODO como bucle (bug medido: 11222 de 11222
+       * tambien en listas crudas, y ese guard habria bloqueado para siempre). Se compara
+       * el origen real: si el `u=` ya es nuestro /jit/live/…, el canal NO entra al mapa
+       * y se cuenta como loop; si el `u=` es del proveedor, se envuelve como siempre. */
       let propio = false;
-      try { propio = new URL(resolved).host === SELF_HOST; } catch (_) { propio = false; }
+      try { propio = !!payload && new URL(payload).host === SELF_HOST; } catch (_) { propio = false; }
       if (propio) { cur.loop = true; loop++; }
       else { cur.url = resolved; cur.ua = ua || DEFAULT_UA; }
     }
