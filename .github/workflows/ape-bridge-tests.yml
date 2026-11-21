@@ -154,6 +154,19 @@ jobs:
       - name: Guard del reconciliador JIT (identidad de lista, fail-closed)
         run: node tools/quality/test_reconcile_list_identity.js
 
+      # [2026-11-21] El inventario de R1 era un INFORME: se podia borrar una ruta del motor,
+      # cambiarle el metodo o añadir superficie nueva y ningun gate lo veia. Ahora es CONTRATO:
+      # test_jit_routes_contract.js compara el server.js CANONICO
+      # (IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js) contra
+      # artifacts/verify/jit_routes_61.json y falla NOMBRANDO la ruta cuando
+      #   - desaparece una ruta declarada,
+      #   - aparece una ruta que el inventario no declara, o
+      #   - un metodo declarado se queda sin evidencia (incluye POST -> cualquier metodo).
+      # Sin inventario falla con "falta el inventario" (no se salta): sin contrato no hay gate.
+      # Ver artifacts/verify/rutas_contrato_ci.md (corrida verde + pruebas negativas reales).
+      - name: Contrato de las 61 rutas del motor JIT
+        run: node tools/quality/test_jit_routes_contract.js
+
       # CABLEADO: identidad + estructura + harness en un veredicto, sobre un FIXTURE.
       # Modo --sin-red para que el CI no dependa de la red ni del proveedor.
       # Las listas REALES se verifican con el endpoint (ape-list-probe v3) y a mano,
