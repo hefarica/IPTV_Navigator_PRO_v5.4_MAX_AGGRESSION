@@ -48,7 +48,7 @@ jobs:
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i ~/.ssh/id_ed25519 "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" 'php' < tools/qoe/dump_qoe.php > evidencias-qoe/qoe.json 2> evidencias-qoe/qoe.err || true
           head -c 400 evidencias-qoe/qoe.json; echo; head -3 evidencias-qoe/qoe.err || true
       - name: Convertir a muestras
-        run: node tools/quality/qoe_samples_from_log.js evidencias-qoe
+        run: node tools/quality/qoe_samples_from_db.js evidencias-qoe
       - name: Gate modo parcial honesto
         run: node tools/quality/qoe_capacity_gate.js --samples evidencias-qoe/samples.json --allow-incomplete
       - name: Evidencia
