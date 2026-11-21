@@ -1120,3 +1120,27 @@ importador**, no en el generador ni en la selección.
 Corrección pendiente (una sola, acotada): añadir `video-hdr`, `video-hdr-mode`, `audio-channels`,
 `clock-jitter`, `saturation` a la tabla de homologación de `vlcopt`, o pasar `vlcopt` entero sin filtrar.
 No se aplica aquí: cambiar la tabla afecta a los doce perfiles y exige medir el antes/después (§29-§42).
+## 50 · MECANISMO EXACTO del cluster: los `.5` los crea el módulo 12K al inicio y el LAB no los pisa
+
+Tres hechos medidos en fichero:
+
+1. `getProfile(id) { return this.profiles[id] || null; }` — devuelve el objeto guardado tal cual. Luego lo que
+   haya en `this.profiles['P0.5'].vlcopt` es lo que se emite.
+2. `ape-profiles-12k.js` (16.642 B) define los seis `.5` y contiene **0 ocurrencias de `video-hdr`**.
+3. `_merge12kProfiles()` **no pisa** un perfil existente:
+
+```
+if (this.profiles[id]) return;      // no pisar un perfil ya persistido
+```
+
+Cadena: al iniciar, `_merge12kProfiles()` crea P0.5..P5.5 desde el módulo 12K (sin claves HDR). Después, la
+importación del LAB encuentra esos IDs ya presentes y **no los reemplaza** → `vlcopt` del LAB (que sí trae
+`video-hdr=true`, `HDR10PLUS`) nunca llega a los `.5`. Los base P0..P5 no fueron creados por el 12K, así que
+sí reciben el LAB y por eso su HDR funciona.
+
+Esto explica el patrón completo sin excepciones, y descarta el importador genérico como culpable: el problema
+es la **precedencia entre el módulo 12K y el LAB para los `.5`**.
+
+Fix definido (no aplicado, por presupuesto): al importar el LAB, para los IDs que ya existen **fusionar
+`vlcopt`** (LAB rellena las claves ausentes; el 12K conserva lo suyo) en vez de omitir el perfil. Requiere
+medir antes/después en los doce, como se hizo con `forceProfile`.
