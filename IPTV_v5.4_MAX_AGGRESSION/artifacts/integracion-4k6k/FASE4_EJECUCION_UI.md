@@ -1347,3 +1347,25 @@ demuestra nada hasta que el driver vuelva a medir HDR — con cuidado esta vez, 
 corta antes de la matriz completa.
 
 Lección aplicada: cada cambio en el driver se valida con 3 perfiles antes de lanzar los 12.
+## 59 · El fallo intermitente del runner es de DISEÑO: `--dump-dom` compite con el driver
+
+Con el mismo driver que acaba de dar 3 perfiles en verde:
+
+```
+3 perfiles (P0,P0.5,P3.5) → EXIT=0, "fallos":[]
+12 perfiles              → EXIT=1, "marcador ausente", chrome_close a 43 s, DOM 479.554 B
+```
+
+Y el DOM tiene **exactamente los mismos 479.554 B** que en los fallos anteriores. Es la firma de siempre:
+`chrome --dump-dom` imprime el documento cuando termina la carga, y mi marcador se añade **después**, cuando el
+driver acaba. Con 12 perfiles (36 generaciones) la página a veces no llega; con 3 casi siempre llega.
+
+Es decir: **el runner depende de una carrera** entre el volcado del DOM y el final del trabajo asíncrono. Los
+verdes anteriores fueron reales, pero el mecanismo es frágil, y por eso el 12/12 no es reproducible a voluntad.
+
+**Arreglo ya probado en este mismo repo**: el patrón del arnés de 754 MB (`fase9-big-harness.js`) — la página
+hace `POST /resultado` con el JSON y el runner **espera el callback** con reloj real, sin `--dump-dom`. Ese
+patrón funcionó a la primera con 754 MB. Es lo que hay que portar al runner de la matriz.
+
+No lo aplico en esta ronda por presupuesto: es un cambio de mecánica del arnés, no un retoque, y merece su
+propia verificación con 12 perfiles. Queda definido y con precedente medido.
