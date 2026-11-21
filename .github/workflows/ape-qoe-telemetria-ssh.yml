@@ -40,7 +40,8 @@ jobs:
             echo "== tablas qoe =="; for d in $(sudo -n find /var/www /opt -maxdepth 4 -name "*.db" 2>/dev/null | head -5); do echo "-- $d"; sudo -n sqlite3 "$d" ".tables" 2>/dev/null | tr -s " " "\n" | grep -i -E "qoe|metric|hdpc" | head -5; done
             echo "== listas =="; sudo -n ls -1 /var/www/html/lists/*.m3u8 2>/dev/null | head -5
             echo "== primera muestra de log =="; sudo -n tail -n 2 /var/log/nginx/access.log 2>/dev/null
-          ' > evidencias-qoe/descubrimiento.txt 2>&1 || true
+            echo "== access_log con formato iptv =="; sudo -n grep -rn "access_log" /etc/nginx/ 2>/dev/null | grep -i "iptv" | head -5
+            echo "== candidatos y su ultima linea =="; for f in $(sudo -n grep -rh "access_log" /etc/nginx/ 2>/dev/null | grep -i iptv | awk "{print \$2}" | sed "s/;.*//" | sort -u | head -3); do echo "-- $f"; sudo -n tail -n 1 "$f" 2>/dev/null; done          ' > evidencias-qoe/descubrimiento.txt 2>&1 || true
           cat evidencias-qoe/descubrimiento.txt
       - name: Leer base de QoE (php por stdin, sin escribir en el VPS)
         run: |
