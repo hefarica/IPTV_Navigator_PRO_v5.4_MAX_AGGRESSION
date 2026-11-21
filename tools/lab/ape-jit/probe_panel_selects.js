@@ -59,5 +59,5 @@ function evalJs(ws, expr) {
   console.log('  === SECCIONES ===');
   console.log('   tiene "Alinear": ' + d.tieneAlinear + ' | "Iterar": ' + d.tieneLoop + ' | "Motor LLM": ' + d.tieneLLM);
   d.secciones.forEach(s => console.log('   · ' + s.trim().slice(0, 74)));
-  ws.close(); process.exit(0);
+  ws.close(); process.exit(0); // exit-ok: sonda de observacion — imprime el estado real del panel y termina; no emite veredicto, y todo fallo va por el catch de abajo que sale 1
 })().catch(e => { console.log('  FATAL: ' + e.message); process.exit(1); });

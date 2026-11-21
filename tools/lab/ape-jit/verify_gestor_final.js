@@ -95,5 +95,5 @@ function ev(ws, expr) {
     console.log('   hqdn3d.ls ' + r2.hq + ' · unsharp ' + r2.us + '/msize ' + r2.usms +
                 ' · atadenoise.s ' + r2.at + ' · seg ' + r2.seg);
   }
-  ws.close(); process.exit(0);
+  ws.close(); process.exit(0); // exit-ok: diagnostico de solo lectura — imprime lo que el modulo tiene cargado; no emite veredicto y cualquier fallo lo convierte en exit 1 el catch de abajo
 })().catch(e => { console.log('  FATAL: ' + e.message); process.exit(1); });

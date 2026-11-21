@@ -473,4 +473,4 @@ if (failed > 0) {
 }
 
 process.stdout.write('\nRESULTADO: PASS (todos los casos)\n');
-process.exit(0);
+process.exit(0); // exit-ok: el bloque `if (failed > 0) { ... process.exit(1) }` de arriba ya corto el caso FAIL; llegar aqui significa failed === 0

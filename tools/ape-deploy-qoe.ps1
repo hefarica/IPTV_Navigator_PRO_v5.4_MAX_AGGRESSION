@@ -22,6 +22,10 @@ $front = Join-Path $repo "IPTV_v5.4_MAX_AGGRESSION/frontend"
 if (-not (Test-Path $front)) { throw "no encuentro el frontend en $front" }
 
 # Ficheros del subsistema QoE / panel. El generador queda FUERA a proposito.
+# [2026-11-21] Faltaban el medidor de caudal y su puente: el push local desplegaba el
+# panel y NO el medidor, asi que produccion podia quedar con el panel nuevo y un
+# medidor viejo (medido: el VPS servia 87bfa4f7 mientras HEAD era e982dab2). El
+# inventario ahora cubre el panel, el motor de auto-ajuste y la sonda de caudal.
 $FICHEROS = @(
     "index-v4.html",
     "app.js",
@@ -29,6 +33,8 @@ $FICHEROS = @(
     "js/ape-v9/generation-controller.js",
     "js/ape-v9/prefetch-presets.js",
     "js/ape-v9/ape-profiles-config.js",
+    "js/ape-v9/ape-speed-meter-v9.js",
+    "js/ape-v9/ape-speedmeter-bridge.js",
     "js/ape-v9/streaming/sufficiency-law-v1.js",
     "js/ape-v9/streaming/bandwidth-meter-v1.js",
     "js/ape-v9/streaming/auto-tune-v1.js",

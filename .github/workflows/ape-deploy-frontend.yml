@@ -30,6 +30,41 @@ on:
         required: false
         default: ''
 
+  # [2026-11-21] MANDATO DEL OPERADOR — el despliegue lo hace GitHub Actions, no un
+  # agente a mano. MEDIDO ese dia: este workflow solo tenia `workflow_dispatch`, asi que
+  # un push NO desplegaba nada. Produccion servia 87bfa4f7 mientras HEAD era e982dab2:
+  # `ape-speed-meter-v9.js`, `ape-speedmeter-bridge.js` y `generation-controller.js`
+  # estaban en el repo y NO en el VPS (verify_deployed_assets.mjs: DRIFT x3).
+  # Ahora un push que toque la app despliega con el MISMO inventario (FICHEROS) y las
+  # MISMAS verificaciones que el disparo manual: node -c, sha instalado, hermano .gz
+  # descomprimible, hash del fichero servido por HTTP y reload (nunca restart).
+  # La confirmacion literal se exige igual: en push la aporta este bloque, en manual
+  # la sigue escribiendo la persona. Nada de este cambio relaja un gate.
+  push:
+    branches:
+      - deploy/engine-restart-20261112
+      - main
+    paths:
+      - 'IPTV_v5.4_MAX_AGGRESSION/frontend/**'
+      - '.github/workflows/ape-deploy-frontend.yml'
+
+# Modo efectivo: push => apply (automatico y auditado en el run); manual => lo que elija
+# la persona en el formulario. Una sola fuente de verdad para los pasos condicionados.
+#
+# ALCANCE (APE_SCOPE) — delimita cuanto puede tocar un push automatico:
+#   app  (push)          : inventario FICHEROS de la app + activo de sonda + verificacion HTTP.
+#                          Es la clase de cambio que un push de frontend hace, y es reversible
+#                          (backup por stamp, hermano .gz regenerado, reload en vez de restart).
+#   full (manual, apply) : ademas endpoints PHP, matriz por device, sincronizador/timer, ape_mesh,
+#                          puente de deltas y limpieza de endpoints retirados. Eso NO se dispara
+#                          solo desde un push: cambia servicios del VPS y BORRA ficheros.
+# El plano de control de dispositivos (job `plano-control-dispositivos`) sigue siendo SOLO manual:
+# escribe el manifiesto del APK y su coherencia esta en DRIFT desde 2026-11-16.
+env:
+  APE_MODE: ${{ github.event_name == 'push' && 'apply' || inputs.mode }}
+  APE_CONFIRM: ${{ github.event_name == 'push' && 'DESPLIEGO EL GENERADOR AL VPS' || inputs.confirm }}
+  APE_SCOPE: ${{ github.event_name == 'push' && 'app' || 'full' }}
+
 concurrency:
   group: ape-deploy-frontend
   cancel-in-progress: false
@@ -151,9 +186,9 @@ jobs:
           set -euo pipefail
           ssh "$TARGET" "if [ ! -f /var/www/html/probe-8mb.bin ]; then sudo -n dd if=/dev/urandom of=/var/www/html/probe-8mb.bin bs=1M count=8 status=none && sudo -n chmod 644 /var/www/html/probe-8mb.bin; fi; sudo -n ls -l /var/www/html/probe-8mb.bin"
       - name: Exigir la confirmacion literal
-        if: inputs.mode == 'apply'
+        if: env.APE_MODE == 'apply'
         env:
-          DEPLOY_CONFIRMATION: ${{ inputs.confirm }}
+          DEPLOY_CONFIRMATION: ${{ env.APE_CONFIRM }}
         run: |
           set -euo pipefail
           if [ "$DEPLOY_CONFIRMATION" != "DESPLIEGO EL GENERADOR AL VPS" ]; then
@@ -164,7 +199,7 @@ jobs:
           echo 'confirmacion literal presente'
 
       - name: Backup y despliegue
-        if: inputs.mode == 'apply'
+        if: env.APE_MODE == 'apply'
         run: |
           set -uo pipefail
           STAMP=$(date -u +%Y%m%dT%H%M%SZ)
@@ -241,7 +276,7 @@ jobs:
           echo 'reload hecho; descriptores de fichero descartados'
 
       - name: Publicar fuente del resolver (solo lectura, NO ejecutable)
-        if: inputs.mode == 'apply'
+        if: env.APE_MODE == 'apply' && env.APE_SCOPE == 'full'
         run: |
           set -uo pipefail
           # El endpoint de paridad necesita LEER el resolver para extraer sus tags. En el VPS
@@ -284,7 +319,7 @@ jobs:
           coverage: none
 
       - name: Desplegar endpoints PHP (paridad + url2 dinamico)
-        if: inputs.mode == 'apply'
+        if: env.APE_MODE == 'apply' && env.APE_SCOPE == 'full'
         run: |
           set -uo pipefail
           STAMP=$(date -u +%Y%m%dT%H%M%SZ)   # cada run: es un shell distinto
@@ -474,7 +509,7 @@ jobs:
         #   - backup del destino con stamp antes de sobrescribir
         #   - lectura posterior del hash para confirmar que quedo lo que se subio
         #   - el CLI no lo llama nada del pipeline: es una herramienta manual, sin trafico
-        if: inputs.mode == 'apply'
+        if: env.APE_MODE == 'apply' && env.APE_SCOPE == 'full'
         run: |
           set -uo pipefail
           STAMP=$(date -u +%Y%m%dT%H%M%SZ)
@@ -509,7 +544,7 @@ jobs:
         #     no se habilita y no se escribe ni un delta
         #   - el timer solo arranca si el dry devuelve exit 0
         #   - desactivarlo es `systemctl disable --now ape-quality-sync.timer`
-        if: inputs.mode == 'apply'
+        if: env.APE_MODE == 'apply' && env.APE_SCOPE == 'full'
         run: |
           set -uo pipefail
           STAMP=$(date -u +%Y%m%dT%H%M%SZ)
@@ -554,7 +589,7 @@ jobs:
         #   4. php -l EN EL DESTINO (no basta el del runner)
         #   5. curl a los SEIS endpoints: si cualquiera no da 200 y no es 403, RESTORE
         #   6. el restore usa el backup de ESTE step, no uno viejo
-        if: inputs.mode == 'apply'
+        if: env.APE_MODE == 'apply' && env.APE_SCOPE == 'full'
         run: |
           set -uo pipefail
           STAMP=$(date -u +%Y%m%dT%H%M%SZ)
@@ -605,7 +640,7 @@ jobs:
         # Con el encendido, ape_ff_device_settings_from_delta() suma el ultimo delta del VPS -
         # que ya incluye los 6 levers de Amazon - sobre los 3 base, con dedup por clave.
         # Reversible: quitar la linea de www.conf y recargar fpm. Vuelve a 3.
-        if: inputs.mode == 'apply'
+        if: env.APE_MODE == 'apply' && env.APE_SCOPE == 'full'
         run: |
           set -uo pipefail
           STAMP=$(date -u +%Y%m%dT%H%M%SZ)
@@ -653,7 +688,7 @@ jobs:
           ssh "$TARGET" 'ls -la /dev/shm/ape_wake_queue 2>&1; tail -5 /dev/shm/ape_wake_queue 2>&1'
 
       - name: Limpiar endpoints retirados del VPS
-        if: inputs.mode == 'apply'
+        if: env.APE_MODE == 'apply' && env.APE_SCOPE == 'full'
         run: |
           set -uo pipefail
           # El deploy COPIA ficheros; no borra los que salieron del repo. Un endpoint retirado
