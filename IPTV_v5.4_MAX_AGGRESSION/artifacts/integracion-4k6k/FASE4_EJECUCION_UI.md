@@ -2023,3 +2023,23 @@ Falta solo el último paso, y es el que cambia la mecánica:
 3. Correr 3 perfiles, y después los 12 en **una** tirada.
 
 Con eso desaparece la carrera por la que el 12/12 tenía que ir en dos lotes.
+## 88 · 12 PERFILES EN UNA SOLA TIRADA: la carrera `--dump-dom` queda eliminada
+
+`fin()` prefiere ahora el cuerpo del callback y solo cae al DOM si no llegó:
+
+```
+const FUENTE = RESULTADO_CB ? ('E2E:' + RESULTADO_CB + '</pre>') : buf;
+```
+
+Corrida única de los doce:
+
+```
+EXIT=0 · "fallos":[] · resultado_cb presente (cb=True) · guardar P0 292.961 B
+```
+
+El arnés ya no depende de cuándo Chrome vuelca el DOM: el resultado llega por la ruta autenticada
+`POST /resultado`, con el testigo de la sesión. Los dos lotes de seis dejan de ser necesarios, y el 12/12 deja de
+ser intermitente.
+
+Cierre de la serie de mecánica del arnés, hecha en dos entregas verificadas (publicar → comprobar, recibir →
+comprobar, consumir → comprobar) en lugar de un solo gesto, que es lo que me había costado tres reversiones.

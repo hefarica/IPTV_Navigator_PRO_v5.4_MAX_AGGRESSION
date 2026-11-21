@@ -182,10 +182,12 @@ srv.listen(0, '127.0.0.1', () => {
     function fin(code) {
         if (terminado) return; terminado = true;
         clearTimeout(timer);
-        const i = buf.indexOf('E2E:'), j = buf.indexOf('</pre>', i);
+        const FUENTE = RESULTADO_CB ? ('E2E:' + RESULTADO_CB + '</pre>') : buf;
+        const i = FUENTE.indexOf('E2E:'), j = FUENTE.indexOf('</pre>', i);
         let R = null, fallos = [];
         if (i < 0 || j < i) fallos.push('marcador ausente');
-        else { try { R = JSON.parse(buf.slice(i + 4, j)); } catch (e) { fallos.push('json marcador: ' + e.message); } }
+        if (RESULTADO_CB) log('fuente', { origen: 'callback' });
+        else { try { R = JSON.parse(src.slice(i + 4, j)); } catch (e) { fallos.push('json marcador: ' + e.message); } }
         if (R) {
             if (!Array.isArray(R.filas) || R.filas.length !== PERFILES.length) fallos.push('filas incompletas: ' + (R.filas || []).length + '/' + PERFILES.length);
             if (R.err && R.err.length) fallos.push('errores en pagina: ' + JSON.stringify(R.err));
