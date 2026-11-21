@@ -88,8 +88,10 @@ jobs:
       - name: Test de cadencia del display (Display4K no debe pisar el modo)
         run: node tools/quality/test_display_cadence.js
 
-      - name: Contrato Canary-JIT (motor desplegado == lo pinado)
-        run: node tools/quality/test_canary_jit_contract.js
+      # El contrato Canary-JIT se dejo al FINAL a proposito. Medido el 2026-11-21: su
+      # pin esta obsoleto y el paso falla, y al estar en medio del archivo GitHub
+      # SALTABA los 7 gates siguientes. Un recibo viejo no puede apagar gates que no
+      # tienen nada que ver con el: se ejecutan todos y el que falle se vera al final.
 
       - name: 6K emulado sobre fuente MEDIDA (no asumida)
         env:
@@ -129,3 +131,15 @@ jobs:
       # entre publicar mal o no publicar.
       - name: Reglas SR en caliente (validar y completar antes de emitir)
         run: node tools/quality/test_sr_rules_para_generacion.js
+
+      # ULTIMO a proposito (ver la nota de arriba). Reporta un DRIFT MEDIDO el
+      # 2026-11-21 entre cuatro identidades distintas del motor JIT:
+      #   recibo 2026-11-14  8c1a00852ba4df2a
+      #   repo tools/lab/ape-jit/server.js  38c92b56e4ab476b  (cambio 2026-11-15)
+      #   repo vps/ape-jit/server.js        a3c671a2c08801cb
+      #   VPS /opt/ape-jit/server.js        44d8bf841ca1f9e0  (480253 B, en ejecucion)
+      # No se re-pinea a mano: reemitir el recibo exige re-medir la huella del
+      # encoder, la cadena canonica y las filas del manifiesto. Mientras tanto el
+      # paso falla y dice la verdad; los demas gates ya se ejecutaron.
+      - name: Contrato Canary-JIT (motor desplegado == lo pinado)
+        run: node tools/quality/test_canary_jit_contract.js
