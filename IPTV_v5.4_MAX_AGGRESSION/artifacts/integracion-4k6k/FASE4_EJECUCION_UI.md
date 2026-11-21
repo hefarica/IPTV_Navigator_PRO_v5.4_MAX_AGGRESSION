@@ -1278,3 +1278,21 @@ hizo lo correcto (fallar en voz alta), pero el valor de la comparación sigue pe
 complete.
 
 Ambos ficheros pasan `node --check` (RUNNER=0, DRIVER=0).
+## 56 · La guarda HDR funciona y demuestra el defecto automáticamente
+
+Corrida de P0.5 con la guarda del §55 activa:
+
+```
+"fallos": ["P0.5: HDR emitido SDR != LAB HDR10PLUS"]
+"hdr":    {"emitido":"SDR","esperado":"HDR10PLUS"}
+diag:     guardar 261.751 B · salida_ok 261.751 B
+idempotente=true · recuperacionExacta=true · export.ok=true
+EXIT=1
+```
+
+El defecto del §54 deja de ser una observación en prosa: **el arnés lo detecta, lo nombra y falla con código
+distinto de cero**. Cuando se arregle el doble escritor (`:4142` vs `:10704`), esta misma aserción será la que
+lo demuestre — y si alguien lo reintroduce, vuelve a rojo.
+
+En la misma pasada, todo lo demás sigue verde: export verificado con sha y relectura, idempotencia del sidecar
+y recuperación quirúrgica.
