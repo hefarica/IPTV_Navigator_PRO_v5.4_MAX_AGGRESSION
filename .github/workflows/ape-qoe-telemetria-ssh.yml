@@ -1,81 +1,44 @@
-name: APE · QoE telemetria por SSH (rutina) + gate
-
-# Alimentacion automatica por SSH, sin escrituras en el VPS: solo lectura de logs
-# y del manifest servido. El gate decide; si no cumple, el run falla.
-
+name: APE QoE telemetria SSH
 on:
   workflow_dispatch:
   schedule:
-    - cron: '17 */6 * * *'
-
+    - cron: "17 */6 * * *"
 permissions:
   contents: read
-
 jobs:
-  alimentar-y-validar:
+  alimentar:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    env:
-      OUT_DIR: evidencias-qoe
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-
-      - name: Preparar SSH (solo lectura)
+          node-version: "20"
+      - name: Preparar SSH solo lectura
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-          printf 'Host vps\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_ed25519\n  IdentitiesOnly yes\n' "${{ secrets.VPS_HOST }}" "${{ secrets.VPS_USER }}" > ~/.ssh/config
-          chmod 600 ~/.ssh/config
-
-      - name: Recolectar (READ-ONLY: access log + manifest)
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Recolectar access log y manifest
         run: |
           set -euo pipefail
-          mkdir -p "$OUT_DIR"
-          ssh -o BatchMode=yes vps 'sudo -n tail -n 4000 /var/log/nginx/access.log 2>/dev/null || tail -n 4000 /var/log/nginx/access.log' > "$OUT_DIR/access.log" || true
-          ssh -o BatchMode=yes vps 'sudo -n grep -h -m1 "^#EXT-X-STREAM-INF" /var/www/html/lists/*.m3u8 2>/dev/null | head -n 5' > "$OUT_DIR/streaminf.txt" || true
-          wc -l "$OUT_DIR/access.log" "$OUT_DIR/streaminf.txt"
-
-      - name: Convertir a muestras (caudal medido + bitrate declarado)
-        run: |
-          set -euo pipefail
-          node - "$OUT_DIR" <<'NODE'
-          const fs = require('fs'), path = require('path');
-          const dir = process.argv[2];
-          const log = fs.existsSync(path.join(dir,'access.log')) ? fs.readFileSync(path.join(dir,'access.log'),'utf8').split('\n') : [];
-          const inf = fs.existsSync(path.join(dir,'streaminf.txt')) ? fs.readFileSync(path.join(dir,'streaminf.txt'),'utf8') : '';
-          const bw = [...inf.matchAll(/BANDWIDTH=(\d+)/g)].map(m=>Number(m[1]));
-          const declared = bw.length ? Math.max(...bw) : null;
-          // caudal: tamano / tiempo por peticion (si el log trae $body_bytes_sent y $request_time)
-          const samples = [];
-          let t = 0;
-          for (const line of log) {
-            const m = line.match(/body_bytes_sent=(\d+).*request_time=([\d.]+)/) || line.match(/(\d{2,})\s+([\d.]+)$/);
-            if (!m) continue;
-            const bytes = Number(m[1]), secs = Math.max(0.001, Number(m[2]));
-            t += 1000;
-            samples.push({ t, playing: true, throughput_kbps: (bytes*8/1000)/secs, bitrate_kbps: declared || null });
-          }
-          const out = { muestras: samples, _declared_kbps: declared, _muestras_validas: samples.length };
-          fs.writeFileSync(path.join(dir,'samples.json'), JSON.stringify(out));
-          console.log('muestras=' + samples.length + ' bitrate_declarado_kbps=' + declared);
-          NODE
-
-      - name: Gate (modo parcial honesto: sin stalls no computables)
-        run: |
-          set -euo pipefail
-          node tools/quality/qoe_capacity_gate.js --samples "$OUT_DIR/samples.json" --allow-incomplete
-
+          mkdir -p evidencias-qoe
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i ~/.ssh/id_ed25519 "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" 'sudo -n tail -n 4000 /var/log/nginx/access.log' > evidencias-qoe/access.log || true
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i ~/.ssh/id_ed25519 "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" 'sudo -n grep -h -m1 "^#EXT-X-STREAM-INF" /var/www/html/lists/*.m3u8 | head -n 5' > evidencias-qoe/streaminf.txt || true
+          wc -l evidencias-qoe/access.log evidencias-qoe/streaminf.txt
+      - name: Convertir a muestras
+        run: node tools/quality/qoe_samples_from_log.js evidencias-qoe
+      - name: Gate modo parcial honesto
+        run: node tools/quality/qoe_capacity_gate.js --samples evidencias-qoe/samples.json --allow-incomplete
       - name: Evidencia
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: qoe-telemetria-ssh
-          path: ${{ env.OUT_DIR }}/
+          path: evidencias-qoe/
           if-no-files-found: warn
