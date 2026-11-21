@@ -23,15 +23,41 @@
 
     function meter() { return root.APE_SPEEDMETER || null; }
 
+    /* Base del PROPIO script. El mismo relativo '../../probe-8mb.bin' resuelve a
+     * la raiz del sitio en el VPS (https://<host>/probe-8mb.bin) y a frontend/ en
+     * local (.../frontend/probe-8mb.bin). Resolver contra location.origin daba
+     * 404 en los dos layouts (medido: GET /probe-8mb.bin 404). */
+    function baseDelScript() {
+        try {
+            if (typeof document === 'undefined') return '';
+            var s = document.currentScript;
+            if (!s || !s.src) {
+                var ls = document.getElementsByTagName('script');
+                for (var i = ls.length - 1; i >= 0; i--) {
+                    if (ls[i].src && /ape-speedmeter-bridge\.js(\?|$)/.test(ls[i].src)) { s = ls[i]; break; }
+                }
+            }
+            return (s && s.src) ? s.src : '';
+        } catch (e) { return ''; }
+    }
+
     function urlsPorDefecto() {
         // Preferencia: activos de tamano conocido servidos por el propio sitio.
-        var base = (typeof location !== 'undefined' && location.origin) ? location.origin : '';
-        var cands = [];
         if (root.APE_SPEEDTEST_URLS && root.APE_SPEEDTEST_URLS.length) return root.APE_SPEEDTEST_URLS.slice();
-        if (base) {
-            cands.push(base + '/probe-8mb.bin');
-            cands.push(base + '/js/ape-v9/m3u8-typed-arrays-ultimate.js');
+        var baseScript = baseDelScript();
+        function resolver(rel) {
+            try {
+                if (baseScript) return new URL(rel, baseScript).toString();
+                if (typeof location !== 'undefined' && location.href) return new URL(rel, location.href).toString();
+            } catch (e) { }
+            return '';
         }
+        var cands = [];
+        var sonda = resolver('../../probe-8mb.bin');
+        if (sonda) cands.push(sonda);
+        // Respaldo: un asset JS grande del propio paquete (siempre same-origin).
+        var respaldo = resolver('m3u8-typed-arrays-ultimate.js');
+        if (respaldo) cands.push(respaldo);
         return cands;
     }
 

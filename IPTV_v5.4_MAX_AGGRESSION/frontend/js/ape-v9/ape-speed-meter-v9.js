@@ -46,13 +46,24 @@ function construirUrl(u) {
     } catch (e) { return u; }
 }
 
-/* Descarga un url hasta que se cumpla el plazo; devuelve las muestras por ventana. */
-async function tirarDeUrl(url, opts, muestras, deadline) {
+/* Descarga un url hasta que se cumpla el plazo; devuelve las muestras por ventana.
+ * Si la respuesta no entrega bytes se anota en `fallos` con el HTTP real: un 404
+ * no es "sin muestras", es una sonda inexistente. Fail-honest: se nombra la causa. */
+async function tirarDeUrl(url, opts, muestras, fallos, deadline) {
     var ac = new AbortController();
     var stop = setTimeout(function () { try { ac.abort(); } catch (e) { } }, Math.max(100, deadline - now()));
     try {
         var res = await fetch(construirUrl(url), { signal: ac.signal, cache: 'no-store', credentials: 'same-origin' });
-        if (!res.ok || !res.body) return;
+        if (!res.ok || !res.body) {
+            if (fallos) {
+                fallos.push({
+                    url: String(url),
+                    state: 'HTTP_' + (res ? res.status : 'x'),
+                    motivo: res ? ('HTTP ' + res.status + ' en ' + url) : ('sin respuesta de ' + url)
+                });
+            }
+            return;
+        }
         var reader = res.body.getReader();
         var t0 = now(), acumulado = 0, marca = t0, bytesVentana = 0;
         for (; ;) {
@@ -68,7 +79,11 @@ async function tirarDeUrl(url, opts, muestras, deadline) {
             if (t >= deadline) { try { reader.cancel(); } catch (e) { } break; }
         }
         if (bytesVentana > 0) muestras.push({ t: now() - t0, bytes: bytesVentana, ms: Math.max(1, now() - marca) });
-    } catch (e) { /* abort esperado al vencer el plazo */ }
+    } catch (e) {
+        if (fallos && !(e && e.name === 'AbortError')) {
+            fallos.push({ url: String(url), state: 'FETCH_FAILED', motivo: (e && e.message) || ('fetch falló en ' + url) });
+        }
+    }
     finally { clearTimeout(stop); }
 }
 
@@ -78,17 +93,30 @@ async function measure(opciones) {
     if (!urls.length) return { ok: false, motivo: 'sin urls de medida' };
 
     var t0 = now(), deadline = t0 + Math.max(1000, opts.durationMs);
-    var muestras = [];
+    var muestras = [], fallos = [];
     var lanzadas = [];
     for (var i = 0; i < Math.max(1, opts.concurrency); i++) {
-        lanzadas.push(tirarDeUrl(urls[i % urls.length], opts, muestras, deadline));
+        lanzadas.push(tirarDeUrl(urls[i % urls.length], opts, muestras, fallos, deadline));
     }
     await Promise.all(lanzadas);
 
     // descartar el arranque
     var utiles = muestras.filter(function (m) { return m.t >= opts.warmupMs && m.ms > 0; });
     if (!utiles.length) utiles = muestras.filter(function (m) { return m.ms > 0; });
-    if (!utiles.length) return { ok: false, motivo: 'sin muestras utiles' };
+    if (!utiles.length) {
+        // Un fallo de sonda NO es un caudal bajo. Se nombra el HTTP real.
+        var detalle = fallos.map(function (f) { return f.motivo; }).filter(Boolean);
+        var unicos = detalle.filter(function (d, k) { return detalle.indexOf(d) === k; });
+        return {
+            ok: false,
+            state: unicos.length ? 'PROBE_FAILED' : 'NO_MEASUREMENT',
+            motivo: unicos.length
+                ? (unicos.join(' | '))
+                : 'ventana sin bytes: ninguna URL entregó datos (no es 0 Mbps)',
+            urls: urls.slice(),
+            fallos: fallos
+        };
+    }
 
     var ventanasMbps = utiles.map(function (m) { return (m.bytes * 8 / 1e6) / (m.ms / 1000); });
     var totalBytes = 0, totalMs = 0;

@@ -2063,7 +2063,19 @@ try {
                 try {
                     Promise.resolve(window.apeAutoAdjustWithSpeedtest({ alcance: 'todos' })).then(function (r) {
                         window.APE_SPEEDMETER_LAST = r;
-                        try { if (window.console && console.info) console.info('[APE-SPEED]', r && r.medicion && r.medicion.mbps, 'Mbps'); } catch (_i) { }
+                        /* Fail-honest: sin medición no se imprime un número. Se nombra la causa
+                         * (p. ej. "HTTP 404 en <url>") en vez de "undefined Mbps". */
+                        try {
+                            if (window.console && console.info) {
+                                var m = r && r.medicion;
+                                var mb = m && (m.mbps_p10 > 0 ? m.mbps_p10 : m.mbps);
+                                if (m && m.ok === true && isFinite(mb) && mb > 0) {
+                                    console.info('[APE-SPEED]', mb, 'Mbps ·', (m.muestras || 0), 'muestras · p10 sostenido');
+                                } else {
+                                    console.info('[APE-SPEED] NO_MEASUREMENT ::', (m && (m.motivo || m.state)) || 'sin medición del caudal');
+                                }
+                            }
+                        } catch (_i) { }
                     }).catch(function () { /* nunca bloquea el menu */ });
                 } catch (_s) { /* nunca bloquea el menu */ }
             }
