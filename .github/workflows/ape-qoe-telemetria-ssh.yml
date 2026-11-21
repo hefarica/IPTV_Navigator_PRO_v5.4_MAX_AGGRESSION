@@ -42,6 +42,11 @@ jobs:
             echo "== primera muestra de log =="; sudo -n tail -n 2 /var/log/nginx/access.log 2>/dev/null
           ' > evidencias-qoe/descubrimiento.txt 2>&1 || true
           cat evidencias-qoe/descubrimiento.txt
+      - name: Leer base de QoE (php por stdin, sin escribir en el VPS)
+        run: |
+          set -euo pipefail
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i ~/.ssh/id_ed25519 "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" 'php' < tools/qoe/dump_qoe.php > evidencias-qoe/qoe.json 2> evidencias-qoe/qoe.err || true
+          head -c 400 evidencias-qoe/qoe.json; echo; head -3 evidencias-qoe/qoe.err || true
       - name: Convertir a muestras
         run: node tools/quality/qoe_samples_from_log.js evidencias-qoe
       - name: Gate modo parcial honesto
