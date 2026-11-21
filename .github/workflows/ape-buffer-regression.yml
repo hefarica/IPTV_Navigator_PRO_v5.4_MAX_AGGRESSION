@@ -5,6 +5,8 @@ on:
     paths:
       - 'IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js'
       - 'IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js'
+      - 'tools/quality/**'
+      - 'IPTV_v5.4_MAX_AGGRESSION/vps/**'
       - '.github/workflows/ape-buffer-regression.yml'
 permissions:
   contents: read

@@ -1,0 +1,988 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * APE PROFILE SOLVER v1.0 — grafo de dependencias + función objetivo
+ * ═══════════════════════════════════════════════════════════════════════════
+ * QUÉ RESUELVE
+ *   El panel de P1 tiene campos que NO son independientes: T1/T2 salen del
+ *   bitrate, el buffer total sale de buffer×2+playerBuffer, la memoria sale de
+ *   prefetch×segmento×(1+paralelo×0.1), y el riesgo depende de todo eso junto.
+ *   Editar uno a mano dejaba los demás mintiendo. Este módulo:
+ *
+ *     1) declara el GRAFO (precedentes ← nodo → dependientes) con sus fórmulas
+ *     2) propaga en cadena cualquier cambio (aguas abajo por fórmula,
+ *        aguas arriba por las reglas de consistencia R1/R3b/R5)
+ *     3) evalúa una FUNCIÓN OBJETIVO única y busca el óptimo
+ *     4) expone un BOTÓN "AUTO-AJUSTAR" y engancha los inputs para que, al
+ *        escribir un número, se recalculen dependientes y precedentes
+ *
+ * FUNCIÓN OBJETIVO (la que se minimiza)
+ *     J =  risk/100
+ *        − W_HEAD · (−colchonPct/100)      ← colchón más negativo = mejor
+ *        + W_MEM  · (memoriaMB / MEM_CAP)
+ *        + W_FILL · (fillTimeSec / FILL_REF)
+ *        + penalizaciones (violación de piso LAB, memoria, buffer)
+ *
+ *   · colchonPct = (bitrate/bwSafe − 1)×100  (negativo = margen) — regla del
+ *     propietario: siempre negativo, cuanto más negativo mejor.
+ *   · risk ∈ [0,100], 0 = perfecto.
+ *
+ * DOCTRINA RESPETADA: bitrate/resolución/códec son del LAB (readonly en el
+ * panel). El solver NO los toca: sólo mueve prefetch_segments,
+ * parallel_downloads, buffer_target_seconds y min_bandwidth_mbps, y avisa si
+ * la matemática exigiría violar un piso.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+(function (global) {
+    'use strict';
+
+    var CFG = {
+        MEM_CAP_MB: 512,
+        BUFFER_MIN_S: 10, BUFFER_MAX_S: 90,
+        PREFETCH_MIN: 4, PREFETCH_MAX: 50,
+        PARALLEL_MIN: 1, PARALLEL_MAX: 32,
+        SEG_DUR_S: 6,
+        W_HEAD: 0.30, W_EXC: 0.60, W_MEM: 0.20, W_FILL: 0.15, W_FUSE: 0.05,
+        FILL_REF_S: 20,
+        // ids reales del panel (verificados en profile-manager-v9.js)
+        IDS: {
+            prefetch: 'pm9_prefetch_segments',
+            parallel: 'pm9_prefetch_parallel',
+            buffer: 'pm9_prefetch_buffer',
+            minbw: 'pm9_prefetch_bw',
+            strategy: 'pm9_prefetch_strategy',
+            bitrate: 'pm9_bitrate',
+            t1: 'pm9_t1',
+            t2: 'pm9_t2',
+            bufferTotal: 'pm9_buffer',
+            playerBuffer: 'pm9_playerBuffer',
+            bufferC1: 'pm9_bufferC1',
+            bufferC2: 'pm9_bufferC2'
+        }
+    };
+
+    // ── 1) GRAFO: fórmulas y vecinos ─────────────────────────────────────
+    // state = { bitrate, playerBuffer, segmentSec, prefetch, parallel, buffer,
+    //           minbw, t1, t2, bufferTotal, segMB, memoryMB }
+    var GRAPH = {
+        // bitrate viene del LAB (no editable): alimenta T1/T2/segmento/piso
+        bitrate: { editable: false, feeds: ['t1', 't2', 'segMB', 'consumidRed', 'consumidSafety'] },
+        t1: { editable: false, formula: function (s) { return s.bitrate * 1.3; }, feeds: ['consumidRed'] },
+        t2: { editable: false, formula: function (s) { return s.bitrate * 1.6; }, feeds: ['consumidSafety'] },
+        consumidRed: { editable: false, formula: function (s) { return s.t1; } },
+        consumidSafety: { editable: false, formula: function (s) { return s.t2; } },
+        segMB: { editable: false, formula: function (s) { return (s.bitrate * s.segmentSec) / 8; }, feeds: ['memoryMB'] },
+
+        // buffer total (sólo lectura en el panel) = settings.buffer×2 + playerBuffer
+        // OJO: settings.buffer (LAB, ms) NO es buffer_target_seconds (prefetch).
+        bufferTotal: {
+            editable: false,
+            formula: function (s) { return s.bufferMs * 2 + s.playerBuffer; }
+        },
+        bufferC1: { editable: false, formula: function (s) { return s.bufferMs; } },
+        bufferC2: { editable: false, formula: function (s) { return s.bufferMs; } },
+        jitterMax: { editable: false, formula: function (s) { return s.playerBuffer * 0.8; } },
+
+        // ── palancas REALES (editables) ────────────────────────────────
+        prefetch: {
+            editable: true, min: CFG.PREFETCH_MIN, max: CFG.PREFETCH_MAX, step: 1,
+            feeds: ['memoryMB', 'risk', 'fillTime']
+        },
+        parallel: {
+            editable: true, min: CFG.PARALLEL_MIN, max: CFG.PARALLEL_MAX, step: 1,
+            feeds: ['memoryMB', 'risk', 'fillTime']
+        },
+        bufferSeg: {
+            editable: true, min: CFG.BUFFER_MIN_S, max: CFG.BUFFER_MAX_S, step: 1,
+            feeds: ['bufferTotal', 'risk']
+        },
+        minbw: {
+            editable: true, min: 1, max: 200, step: 1, feeds: ['_piso']
+        },
+        // 🔥 SUELO FUSIBLE: fracción del suelo de DISEÑO a la que puede caer
+        // el suelo de emergencia (recarga de buffer). 0.71 = P1/P2 4K (14→10).
+        fuseDesignMbps: { editable: false },
+        fuseRatio: {
+            editable: true, min: 0.50, max: 0.95, step: 0.01, feeds: ['_fuse']
+        },
+
+        memoryMB: {
+            editable: false,
+            formula: function (s) { return s.prefetch * s.segMB * (1 + s.parallel * 0.10); }
+        }
+    };
+
+    /** Reglas de consistencia: devuelven ajustes (aguas arriba) obligatorios.
+     *  `changedKey` decide la DIRECCIÓN del ajuste encadenado:
+     *   · si el usuario editó el BUFFER  → se recorta el prefetch (dependiente)
+     *   · si editó el PREFETCH           → se sube el buffer (precedente)
+     *  Así nunca se contradice el número que el usuario acaba de teclear. */
+    function consistency(s, changedKey) {
+        var fixes = [];
+        var typedBuffer = (changedKey === 'bufferSeg');
+
+        // R3 (precedente): el prefetch pedido no cabe en el buffer → subir buffer
+        if (!typedBuffer) {
+            var neededBuffer = Math.ceil((s.prefetch * s.segmentSec) / 2);
+            if (neededBuffer > s.bufferSeg) {
+                var target = Math.min(CFG.BUFFER_MAX_S, neededBuffer);
+                if (target > s.bufferSeg) {
+                    fixes.push({ key: 'bufferSeg', to: target, reason: 'R3: buffer insuficiente para el prefetch pedido' });
+                    s.bufferSeg = target;
+                }
+            }
+        }
+
+        // R3b: si el prefetch no cabe en el buffer, se recorta el prefetch
+        var prefetchCeil = Math.floor((2 * s.bufferSeg * 1000) / (s.segmentSec * 1000));
+        if (s.prefetch > prefetchCeil) {
+            fixes.push({ key: 'prefetch', to: Math.max(CFG.PREFETCH_MIN, prefetchCeil),
+                reason: 'R3b: prefetch > 2×buffer/' + s.segmentSec + 's' });
+            s.prefetch = Math.max(CFG.PREFETCH_MIN, prefetchCeil);
+        }
+
+        // R1: paralelo ≤ prefetch
+        if (s.parallel > s.prefetch) {
+            fixes.push({ key: 'parallel', to: s.prefetch, reason: 'R1: paralelo > prefetch' });
+            s.parallel = s.prefetch;
+        }
+        // R2: paralelo ≤ deviceParallel
+        var devPar = Math.min(CFG.PARALLEL_MAX, s.deviceParallel || CFG.PARALLEL_MAX);
+        if (s.parallel > devPar) {
+            fixes.push({ key: 'parallel', to: devPar, reason: 'R2: paralelo > cupo del dispositivo' });
+            s.parallel = devPar;
+        }
+        // R3 (piso): buffer ≥ prefetch×segDur/2
+        var bufferFloor = Math.ceil((s.prefetch * s.segmentSec) / 2);
+        if (s.bufferSeg < bufferFloor) {
+            fixes.push({ key: 'bufferSeg', to: Math.min(CFG.BUFFER_MAX_S, bufferFloor),
+                reason: 'R3: buffer < prefetch×segDur/2' });
+            s.bufferSeg = Math.min(CFG.BUFFER_MAX_S, bufferFloor);
+        }
+
+        // R5/R6: memoria ≤ cap (baja paralelo primero, luego prefetch)
+        var guard = 0;
+        while (s.prefetch * s.segMB * (1 + s.parallel * 0.10) > CFG.MEM_CAP_MB && guard++ < 200) {
+            if (s.parallel > CFG.PARALLEL_MIN) s.parallel--;
+            else if (s.prefetch > CFG.PREFETCH_MIN) s.prefetch--;
+            else break;
+        }
+        var memFinal = s.prefetch * s.segMB * (1 + s.parallel * 0.10);
+        if (memFinal > CFG.MEM_CAP_MB || guard > 0) {
+            fixes.push({ key: 'parallel/prefetch', to: s.parallel + '/' + s.prefetch,
+                reason: 'R5/R6: memoria ' + Math.round(memFinal) + 'MB ≤ ' + CFG.MEM_CAP_MB + 'MB' });
+        }
+        return collapse(fixes);
+    }
+
+    /** Une correcciones repetidas del mismo campo (evita 23 líneas de ruido). */
+    function collapse(fixes) {
+        var byKey = {}, order = [];
+        fixes.forEach(function (f) {
+            if (!byKey[f.key]) { byKey[f.key] = { key: f.key, to: f.to, reasons: [] }; order.push(f.key); }
+            byKey[f.key].to = f.to;
+            if (byKey[f.key].reasons.indexOf(f.reason) === -1) byKey[f.key].reasons.push(f.reason);
+        });
+        return order.map(function (k) { return { key: k, to: byKey[k].to, reason: byKey[k].reasons.join(' | ') }; });
+    }
+
+    /** Recalcula TODO el grafo en orden topológico (precedentes → dependientes). */
+    function recompute(s) {
+        var changed = [];
+        var order = ['t1', 't2', 'consumidRed', 'consumidSafety', 'segMB', 'memoryMB',
+                     'bufferTotal', 'bufferC1', 'bufferC2', 'jitterMax'];
+        order.forEach(function (k) {
+            var node = GRAPH[k];
+            if (!node || !node.formula) return;
+            var v = node.formula(s);
+            v = Math.round(v * 100) / 100;
+            if (s[k] !== v) { s[k] = v; changed.push(k); }
+        });
+        return changed;
+    }
+
+    function clampAll(s) {
+        Object.keys(GRAPH).forEach(function (k) {
+            var n = GRAPH[k];
+            if (!n.editable) return;
+            var v = Number(s[k]);
+            if (!isFinite(v)) v = n.min;
+            s[k] = Math.max(n.min, Math.min(n.max, Math.round(v / n.step) * n.step));
+        });
+        return s;
+    }
+
+    /** Cambia UN campo y propaga en cadena (dependientes + precedentes). */
+    function setField(state, key, value) {
+        var s = deepCopy(state);
+        s[key] = Number(value);
+        clampAll(s);
+        var fixes = consistency(s, key);       // aguas arriba (dirección según el campo)
+        var changed = recompute(s);            // aguas abajo
+        return { state: s, fixes: fixes, recomputed: changed };
+    }
+
+    // ── 2) FUNCIÓN OBJETIVO ──────────────────────────────────────────────
+    function objective(score) {
+        var risk = Number(score.risk) || 0;
+        var spare = (typeof score.sparePct === 'number') ? score.sparePct : 0;
+        var mem = Number(score.memoryMB) || 0;
+        var fill = Number(score.fillTimeSec) || 0;
+        // Penalizar SOLO el déficit de headroom (spare < 0), nunca premiarlo.
+        // Antes `-W_HEAD * (-spare/100)` premiaba el déficit y anulaba la
+        // condición de colchón del objetivo.
+        var headPenalty = Math.max(0, -spare) / 100;
+        // bonus por alcanzar el gate excepcional: se resta (mejora) o no
+        var excMissing = 0;
+        if (typeof score.sparePct === 'number') {
+            var needSpare = (1 / 3.00 - 1) * 100;           // -66.67
+            // cuanto le FALTA para llegar a -66.67 (0 si ya esta)
+            excMissing = Math.max(0, Number(score.sparePct) - needSpare) / 100;
+        }
+        var riskMissing = Math.max(0, risk - 10) / 100;
+        var j = (risk / 100)
+            + CFG.W_HEAD * headPenalty
+            // llegar al gate excepcional (headroom 3x + risk 10) pesa
+            + (CFG.W_EXC || 0.60) * (excMissing + riskMissing)
+            + CFG.W_MEM * (mem / CFG.MEM_CAP_MB)
+            + CFG.W_FILL * (fill / CFG.FILL_REF_S)
+            // fusible cerca del diseño = sin margen de rescate
+            + CFG.W_FUSE * ((typeof score.fuseRatio === 'number') ? score.fuseRatio : 1);
+        return Math.round(j * 10000) / 10000;
+    }
+
+    // ── 3) SOLVER ────────────────────────────────────────────────────────
+    function evaluate(s, engineInputs) {
+        var snap = (global.APE_BW && typeof global.APE_BW.snapshot === 'function') ? global.APE_BW.snapshot() : null;
+        var inputs = {
+            profileId: engineInputs.profileId,
+            resolution: engineInputs.resolution, codec: engineInputs.codec, fps: engineInputs.fps,
+            segmentDurationSec: s.segmentSec,
+            prefetchSegments: s.prefetch,
+            parallelDownloads: s.parallel,
+            minBandwidthMbps: s.minbw,
+            bufferBaseMs: 6000,
+            // Buffer REAL del player del perfil (settings.playerBuffer). Sin esto
+            // el engine usaba bufferBase/4 y el jitter del Risk quedaba en 0
+            // (+10 puntos artificiales en TODOS los perfiles).
+            playerBufferMs: s.playerBuffer,
+            segmentDurationSec: s.segmentSec,
+            bufferTargetSec: s.bufferSeg
+        };
+        var signals = {
+            bitrateMbps: s.bitrate,
+            bandwidthObservedMbps: snap ? snap.mbps : 0,
+            bandwidthConfidence: snap ? snap.confidence : 'none',
+            bandwidthSource: snap ? snap.source : 'none'
+        };
+        var r = global.StreamingEngine.computeForUI(inputs, signals);
+        var out = {
+            risk: r.metrics.riskScore,
+            sparePct: (typeof r.metrics.headroomSparePct === 'number') ? r.metrics.headroomSparePct : r.metrics.headroomPercent,
+            fillTimeSec: Math.round((r.metrics.fillTimeSec || 0) * 100) / 100,
+            memoryMB: Math.round(s.prefetch * s.segMB * (1 + s.parallel * 0.10)),
+            evidence: r.ui ? r.ui.evidence === true : null,
+            stallPct: (typeof r.metrics.stallRatePct === 'number') ? r.metrics.stallRatePct : null,
+            class: r.metrics.stallClass
+        };
+        out.fuseRatio = (s.fuseRatio !== undefined) ? s.fuseRatio : 1;
+        out.J = objective(out);
+        return out;
+    }
+
+    function solve(state, engineInputs) {
+        var cur = deepCopy(state);
+        clampAll(cur); consistency(cur); recompute(cur);
+        var best = evaluate(cur, engineInputs);
+        var bestState = deepCopy(cur);
+        var sweeps = [
+            { key: 'bufferSeg', values: [10, 15, 20, 30, 40, 48, 60, 75, 90] },
+            { key: 'prefetch', values: [4, 6, 8, 10, 12, 16, 20, 25, 30] },
+            { key: 'parallel', values: [1, 2, 3, 4, 6, 8, 10, 12, 16] },
+            { key: 'fuseRatio', values: [0.55, 0.60, 0.65, 0.71, 0.75, 0.80, 0.85] }
+        ];
+        for (var round = 0; round < 3; round++) {
+            var improved = false;
+            for (var i = 0; i < sweeps.length; i++) {
+                for (var v = 0; v < sweeps[i].values.length; v++) {
+                    var cand = setField(bestState, sweeps[i].key, sweeps[i].values[v]).state;
+                    var sc = evaluate(cand, engineInputs);
+                    if (sc.J < best.J - 1e-9) { best = sc; bestState = cand; improved = true; }
+                }
+            }
+            if (!improved) break;
+        }
+        return { state: bestState, score: best };
+    }
+
+    // ── 4) PUENTE CON EL PERFIL REAL ─────────────────────────────────────
+    function stateFromProfile(profileId) {
+        var api = global.APE_PROFILES_CONFIG;
+        var p = api.profiles[profileId];
+        var pf = api.getPrefetchConfig(profileId) || {};
+        var st = p.settings || {};
+        var s = {
+            bitrate: Number(st.bitrate) || 5,
+            playerBuffer: Number(st.playerBuffer) || 12000,
+            bufferMs: Number(st.buffer) || 12000,
+            segmentSec: Number(st.segment_duration_s) > 0 ? Number(st.segment_duration_s) : CFG.SEG_DUR_S,
+            prefetch: Number(pf.prefetch_segments) || 8,
+            parallel: Number(pf.parallel_downloads) || 4,
+            bufferSeg: Number(pf.buffer_target_seconds) || 40,
+            minbw: Number(pf.min_bandwidth_mbps) || 40,
+            fuseDesignMbps: (function () {
+                try {
+                    if (api && typeof api.getFloorFuseForProfile === 'function') {
+                        var fz = api.getFloorFuseForProfile(profileId);
+                        if (fz && fz.design_bps > 0) return Math.round(fz.design_bps / 100000) / 10;
+                    }
+                } catch (e) { /* no bloqueante */ }
+                return 0;
+            })(),
+            fuseRatio: (function () {
+                try {
+                    if (api && typeof api.getFloorFuseForProfile === 'function') {
+                        var fz = api.getFloorFuseForProfile(profileId);
+                        if (fz && fz.design_bps > 0 && fz.fuse_bps > 0) {
+                            return Math.round((fz.fuse_bps / fz.design_bps) * 100) / 100;
+                        }
+                    }
+                } catch (e) { /* no bloqueante */ }
+                return 0.71;
+            })(),
+            deviceParallel: 32
+        };
+        clampAll(s); consistency(s); recompute(s);
+        return s;
+    }
+
+    function engineInputsFor(profileId) {
+        var p = global.APE_PROFILES_CONFIG.profiles[profileId];
+        var st = p.settings || {};
+        return {
+            profileId: profileId,
+            resolution: st.resolution || '1920x1080',
+            codec: st.codec || 'H265',
+            fps: st.fps || 60
+        };
+    }
+
+    /**
+     * Suelo de bitrate por resolución (calidad mínima defendible, HEVC):
+     * 8K 40 · 4K 12 · 1080p 4 · 720p 2 · 480p 1 Mbps.
+     * Evita que el ajuste por enlace destruya la calidad del perfil.
+     */
+    function bitrateFloorFor(resolution) {
+        var m = String(resolution || '').match(/(\d+)x(\d+)/);
+        if (!m) return 1;
+        var w = parseInt(m[1], 10), h = parseInt(m[2], 10);
+        if (h >= 4320) return 40;
+        if (h >= 2160) return 12;
+        if (h >= 1080) return 4;
+        if (h >= 720) return 2;
+        return 1;
+    }
+
+    /**
+     * Ajuste de BITRATE por perfil para cumplir la Ley del enlace:
+     * ratio = bwSafe / bitrate ≥ unstableMargin (1.3 conservador).
+     * Sólo actúa cuando el perfil está en UNSTABLE por enlace; devuelve
+     * null si no hay margen físico (p. ej. 8K sobre 25 Mbps) o si no hace falta.
+     */
+    function fitBitrateForLink(profileId, state) {
+        var api = global.APE_PROFILES_CONFIG;
+        var snap = (global.APE_BW && typeof global.APE_BW.snapshot === 'function')
+            ? global.APE_BW.snapshot() : null;
+        if (!snap || !(snap.mbps > 0)) return null;
+        var profile = api.profiles[profileId];
+        if (!profile || !profile.settings) return null;
+        var bwSafe = snap.mbps * 0.95;
+        var margin = 1.3;                       // base 1.15 + penalizaciones
+        var maxBr = bwSafe / margin;
+        var floor = bitrateFloorFor(profile.settings.resolution);
+        // Bitrate "de diseño" (LAB) guardado la primera vez que se baja.
+        // Permite RESTAURARLO cuando el enlace vuelve a dar margen.
+        var original = Number(profile.settings.bitrate_original) ||
+            Number(profile.settings.bitrate) || 0;
+        var cur = Number(state.bitrate) || 0;
+        if (!(cur > 0) || !(original > 0)) return null;
+        // Si ni el suelo de calidad cabe en el enlace, no se baja a ciegas:
+        // se informa (8K/4K sobre un enlace demasiado estrecho).
+        if (floor > maxBr * 1.02) {
+            return {
+                fit: false, reason: 'enlace insuficiente para el suelo de calidad',
+                from: cur, floor: floor, maxBr: Math.round(maxBr * 10) / 10
+            };
+        }
+        var target = Math.min(original, Math.floor(maxBr * 10) / 10);
+        target = Math.max(floor, target);
+        if (target > original) target = original;
+        var hysteresis = 0.10;                   // evita oscilar con ruido de medición
+        if (target > cur * (1 + hysteresis)) {
+            return {
+                fit: true, restore: true, from: cur, to: target,
+                maxBr: Math.round(maxBr * 10) / 10,
+                floor: floor, bandwidthMbps: snap.mbps
+            };
+        }
+        if (target < cur * (1 - hysteresis)) {
+            return {
+                fit: true, restore: false, from: cur, to: target,
+                maxBr: Math.round(maxBr * 10) / 10,
+                floor: floor, bandwidthMbps: snap.mbps
+            };
+        }
+        return null;
+    }
+
+    function applyState(profileId, s) {
+        var api = global.APE_PROFILES_CONFIG;
+        api.updatePrefetchSetting(profileId, 'prefetch_segments', s.prefetch);
+        api.updatePrefetchSetting(profileId, 'parallel_downloads', s.parallel);
+        api.updatePrefetchSetting(profileId, 'buffer_target_seconds', s.bufferSeg);
+        if (s.minbw !== undefined) api.updatePrefetchSetting(profileId, 'min_bandwidth_mbps', s.minbw);
+        // Bitrate REAL del perfil: si el solver lo bajó para cumplir el enlace,
+        // se persiste aquí (mismo perfil, no cambia de tier). max/avg escalan
+        // para conservar la coherencia BANDWIDTH/AVERAGE-BANDWIDTH.
+        var prof = api.profiles && api.profiles[profileId];
+        if (prof && prof.settings && Number(s.bitrate) > 0) {
+            var curBr = Number(prof.settings.bitrate) || 0;
+            if (Math.abs(curBr - Number(s.bitrate)) > 0.05) {
+                // Guardar el bitrate de diseño antes de la primera bajada.
+                if (Number(s.bitrate) < curBr && !(Number(prof.settings.bitrate_original) > 0)) {
+                    prof.settings.bitrate_original = curBr;
+                }
+                var mx = Number(prof.settings.maxBitrateKbps) || 0;
+                var av = Number(prof.settings.avgBitrateKbps) || 0;
+                var rMax = curBr > 0 && mx > 0 ? mx / (curBr * 1000) : 0;
+                var rAvg = curBr > 0 && av > 0 ? av / (curBr * 1000) : 0;
+                prof.settings.bitrate = Number(s.bitrate);
+                if (rMax > 0) prof.settings.maxBitrateKbps = Math.round(Number(s.bitrate) * 1000 * rMax);
+                if (rAvg > 0) prof.settings.avgBitrateKbps = Math.round(Number(s.bitrate) * 1000 * rAvg);
+                if (typeof api.save === 'function') api.save();
+            }
+        }
+        // 🔥 Persistir el suelo fusible (solo el de emergencia; el diseño no se toca)
+        if (s.fuseRatio !== undefined && s.fuseDesignMbps > 0
+            && typeof api.setFloorFuseBpsForProfile === 'function') {
+            api.setFloorFuseBpsForProfile(profileId,
+                Math.round(s.fuseDesignMbps * s.fuseRatio * 1000000));
+        }
+        // Persistencia INMEDIATA: AUTO-AJUSTAR debe dejar el estado en disco
+        // al terminar el clic, no depender del debounce de 300 ms.
+        if (typeof api.flushSave === 'function') api.flushSave();
+        return true;
+    }
+
+    /** Corre el solver sobre un perfil y (opcionalmente) aplica. */
+    function adjustProfile(profileId, opts) {
+        opts = opts || {};
+        var sid = profileId || (global.APE_PROFILES_CONFIG.activeProfileId || 'P3');
+        var before = stateFromProfile(sid);
+        var ei = engineInputsFor(sid);
+        var b4 = evaluate(before, ei);
+        var res = solve(before, ei);
+        var out = {
+            profileId: sid,
+            before: b4, after: res.score,
+            state: res.state,
+            delta: { risk: res.score.risk - b4.risk, J: Math.round((res.score.J - b4.J) * 10000) / 10000 },
+            changed: {
+                prefetch: res.state.prefetch !== before.prefetch,
+                parallel: res.state.parallel !== before.parallel,
+                bufferSeg: res.state.bufferSeg !== before.bufferSeg
+            }
+        };
+        if (opts.apply === true) out.applied = applyState(sid, res.state);
+        return out;
+    }
+
+    /**
+     * Objetivo unificado: primero resuelve Risk/Headroom/Stall/Overhead y
+     * después aplica el fit de bitrate al enlace. Es la función que deben usar
+     * los menús AUTO-AJUSTAR (perfil actual y P0–P5).
+     */
+    function adjustProfileObjective(profileId) {
+        var sid = profileId || (global.APE_PROFILES_CONFIG.activeProfileId || 'P3');
+        var r = adjustProfile(sid, { apply: true });
+        // PRESERVE OUTPUT: la salida del proveedor no se recorta. El margen
+        // adicional del delta se reserva en entrada/prefetch/buffer, nunca
+        // bajando el bitrate del perfil.
+        var allowFit = global.APE_SOLVER_PRESERVE_OUTPUT !== true
+            && global.APE_SOLVER_FIT_BITRATE === true;
+        if (allowFit) {
+            var fit = fitBitrateForLink(sid, r.state);
+            if (fit && fit.fit) {
+                var fittedState = Object.assign({}, r.state, { bitrate: fit.to });
+                var fittedSolve = solve(fittedState, engineInputsFor(sid));
+                applyState(sid, fittedSolve.state);
+                r = adjustProfile(sid, { apply: true });
+                r.fitBitrate = fit;
+            } else if (fit) {
+                r.fitBitrate = fit;
+            }
+        }
+        r.diagnostic = diagnose(sid);
+        r.score = r.after;
+        var _bufferSeg = Number(r.state && r.state.bufferSeg) || 0;
+        r.overheadOk = _bufferSeg > 0
+            ? Number(r.after.fillTimeSec) <= _bufferSeg * 0.8
+            : true;
+        // `feasible` = el minimo operativo que ya existia (risk<=30, spare>=-15%,
+        // stall<=1.67, overhead). NO se toca: es el piso que el solver ya usaba.
+        r.feasible = (r.after.risk <= 30) &&
+            (Number(r.after.sparePct) >= 15) &&
+            (r.after.stallPct === null || r.after.stallPct === undefined || r.after.stallPct <= 1.67) &&
+            r.overheadOk;
+
+        // `exceptional` = GATE DE SUFICIENCIA EXCEPCIONAL (sufficiency-law-v1.js).
+        //
+        // El operador (2026-11-08) pidio risk lo mas bajo posible y headroom por
+        // encima de un valor de referencia. El valor que se exige aqui:
+        //   headroom = bwSafe/bitrate >= 3.00x  (200 %)
+        //   risk <= 10
+        //
+        // En la escala `sparePct` (bitrate/bwSafe - 1)*100, un ratio de 3.00x
+        // equivale a sparePct = -66.67 (el colchon es negativo cuanto MEJOR).
+        // Por eso el gate se expresa como sparePct <= -66.67 y NO como >=.
+        var SPARE_AT_3X = (1 / 3.00 - 1) * 100;   // = -66.666...
+        r.exceptional = (r.after.risk <= 10) &&
+            (Number(r.after.sparePct) <= SPARE_AT_3X + 0.01) &&
+            (r.after.stallPct === null || r.after.stallPct === undefined || r.after.stallPct <= 1.67) &&
+            r.overheadOk;
+        r.exceptionalGate = {
+            riskMax: 10,
+            headroomRatioMin: 3.00,
+            sparePctMax: Math.round(SPARE_AT_3X * 100) / 100
+        };
+        return r;
+    }
+
+    function deepCopy(o) { return JSON.parse(JSON.stringify(o)); }
+
+    // ── 5) UI: botón + propagación al editar ─────────────────────────────
+    var applying = false;
+
+    function syncInputs(s) {
+        if (typeof document === 'undefined') return;   // sin DOM: no hay inputs
+        applying = true;
+        try {
+            var set = function (id, v) { var el = document.getElementById(id); if (el) el.value = v; };
+            var p = CFG.IDS;   // OJO: los ids viven en CFG, no en GRAPH (bug corregido)
+            if (!p) return;
+            set(p.prefetch, s.prefetch);
+            set(p.parallel, s.parallel);
+            set(p.buffer, s.bufferSeg);
+            set(p.minbw, s.minbw);
+            set(p.t1, Math.round(s.t1));
+            set(p.t2, Math.round(s.t2));
+            set(p.bufferTotal, Math.round(s.bufferTotal));
+            var j = document.getElementById('pm9_jitter_max');
+            if (j) j.textContent = Math.floor(s.playerBuffer * 0.8) + ' ms';
+            var bt = document.getElementById('pm9_buffer_total');
+            if (bt) bt.textContent = Math.round(s.bufferTotal) + ' ms';
+        } finally { applying = false; }
+    }
+
+    /** Repinta el bloque de salud SÍ o SÍ (no confía en la ruta interna del PM). */
+    function repaint(score) {
+        try {
+            if (global.ProfileManagerV9 && typeof global.ProfileManagerV9._updateStreamingHealth === 'function') {
+                global.ProfileManagerV9._updateStreamingHealth.call(global.ProfileManagerV9);
+            }
+        } catch (e) { /* no bloqueante */ }
+        if (!score) return;
+        if (typeof document === 'undefined') return;   // sin DOM: sólo la API
+        // Escritura directa de los 4 indicadores: garantiza que el panel se mueva
+        try {
+            var lbl = document.getElementById('pm9_stability_label');
+            if (lbl) {
+                lbl.textContent = score.saturated ? 'SATURADO' : score.class;
+                lbl.style.color = score.saturated ? '#ef4444' : (score.risk <= 30 ? '#10b981' : '#f97316');
+            }
+            var st = document.getElementById('pm9_stall_preview');
+            if (st) st.textContent = (Math.round(score.stallPct * 100) / 100) + '%';
+            var rk = document.getElementById('pm9_risk_preview');
+            if (rk) { rk.textContent = score.risk; rk.style.color = score.risk <= 30 ? '#10b981' : (score.risk <= 60 ? '#eab308' : '#ef4444'); }
+            var hr = document.getElementById('pm9_headroom_preview');
+            if (hr) hr.textContent = score.sparePct;
+
+            // PANEL INFERIOR (Rendimiento Estimado): escribir el resultado del
+            // solver también aquí. El estimador interno puede dar otro número
+            // y dejaba el Risk/Stall de abajo clavados en el valor viejo.
+            var riskColor = score.risk <= 30 ? '#10b981' : (score.risk <= 60 ? '#eab308' : '#ef4444');
+            var riskLevel = score.risk <= 20 ? 'LOW' : score.risk <= 40 ? 'MODERATE'
+                : score.risk <= 60 ? 'ELEVATED' : score.risk <= 80 ? 'HIGH' : 'CRITICAL';
+            var rb = document.getElementById('pm9_risk_score');
+            if (rb) { rb.textContent = score.risk + '/100'; rb.style.color = riskColor; }
+            var rl = document.getElementById('pm9_risk_level');
+            if (rl) rl.textContent = '(' + riskLevel + ')';
+            var bs = document.getElementById('pm9_rt_stall');
+            if (bs) {
+                bs.textContent = (Math.round(score.stallPct * 100) / 100) + '%';
+                bs.style.color = score.stallPct <= 1.67 ? '#10b981' : (score.stallPct <= 3 ? '#eab308' : '#ef4444');
+            }
+            var banner = document.querySelector('.pm9-stability-banner');
+            if (banner) {
+                var bstrong = banner.querySelector('strong');
+                if (bstrong) bstrong.textContent = score.saturated ? 'SATURADO' : score.class;
+                banner.style.background = riskColor + '22';
+                banner.style.borderLeftColor = riskColor;
+            }
+            var hb = document.getElementById('pm9_health_badge');
+            if (hb) { hb.style.background = riskColor; hb.style.boxShadow = '0 0 8px ' + riskColor + '55'; }
+        } catch (e) { /* DOM parcial: no romper */ }
+    }
+
+    function autoAdjust() {
+        var api = global.APE_PROFILES_CONFIG;
+        var startId = api.activeProfileId;
+        var snap = (global.APE_BW && typeof global.APE_BW.snapshot === 'function')
+            ? global.APE_BW.snapshot() : null;
+        var hasBw = !!(snap && snap.mbps > 0);
+        var selection = null;
+        var targetId = startId;
+        var oldScore = null;
+
+        // ── 1) POR DEFECTO: ajustar SOLO el perfil activo (el botón pertenece
+        //         a ese perfil). El barrido global de tiers queda OPT-IN con
+        //         window.APE_SOLVER_AUTO_PROFILE = true; si no, era la causa de
+        //         que al pulsar en P0 se optimizara P3 y P0 no cambiara.
+        if (hasBw && global.APE_SOLVER_AUTO_PROFILE === true) {
+            selection = findBestProfile();
+            var currentCand = (selection.candidates || []).filter(function (c) {
+                return c.profileId === startId;
+            })[0] || null;
+            oldScore = currentCand ? currentCand.score : null;
+            var best = selection.best;
+            if (best && best.profileId && best.profileId !== startId) {
+                var better = false;
+                if (best.feasible && (!currentCand || !currentCand.feasible)) better = true;
+                else if (best.feasible && currentCand && currentCand.feasible) {
+                    better = best.bitrateMbps > currentCand.bitrateMbps;
+                } else if (!selection.hasFeasible) {
+                    better = !oldScore || best.score.risk < oldScore.risk - 0.5;
+                }
+                if (better && global.ProfileManagerV9
+                    && typeof global.ProfileManagerV9.selectProfile === 'function') {
+                    try {
+                        global.ProfileManagerV9.selectProfile(best.profileId);
+                        targetId = best.profileId;
+                    } catch (e) { targetId = startId; }
+                }
+            }
+        }
+
+        // ── 2) Optimizar el estado DENTRO del perfil elegido y aplicarlo.
+        var r = adjustProfile(targetId, { apply: true });
+        var r0 = r;                       // referencia antes de tocar el bitrate
+        var fit = null;
+        // Si el perfil está UNSTABLE por enlace (o el Risk sigue alto), la
+        // única palanca física que queda dentro del MISMO perfil es su bitrate.
+        // Se baja sólo hasta el máximo que cumple ratio ≥ 1.3 y nunca por
+        // debajo del suelo de calidad de su resolución.
+        var allowFit = global.APE_SOLVER_PRESERVE_OUTPUT !== true
+            && global.APE_SOLVER_FIT_BITRATE === true;
+        if (allowFit) {
+            fit = fitBitrateForLink(targetId, r.state);
+            if (fit && fit.fit) {
+                var fittedState = Object.assign({}, r.state, { bitrate: fit.to });
+                var fittedSolve = solve(fittedState, engineInputsFor(targetId));
+                applyState(targetId, fittedSolve.state);
+                r = adjustProfile(targetId, { apply: true });
+                r.fitBitrate = fit;
+            } else if (fit && fit.fit === false) {
+                r.fitBitrate = fit;       // se informa; no se degrada a ciegas
+            }
+        }
+        var diag = diagnose(targetId);
+        r.diagnostic = diag;
+        r.score = r.after;
+        r.selection = selection;
+        r.profileChanged = (targetId !== startId);
+        r.fromProfile = startId;
+
+        syncInputs(r.state);
+        repaint({ risk: r.after.risk, sparePct: r.after.sparePct, stallPct: r.after.stallPct,
+            class: r.after.class, saturated: diag.saturated });
+
+        // Persistir YA y repintar los dos paneles (superior e inferior).
+        var cfgNow = global.APE_PROFILES_CONFIG;
+        if (cfgNow && typeof cfgNow.flushSave === 'function') cfgNow.flushSave();
+        // NO volver a llamar a _updateStreamingHealth aquí: recalcularía el
+        // Risk con el estimador y pisaría el Risk/Stall ya aplicados por el
+        // solver (era la causa de que el número no se moviera tras el ajuste).
+
+        // ── 3) Mensaje con la decisión completa (perfil + métricas).
+        var beforeRisk = (r.profileChanged && oldScore) ? oldScore.risk
+            : (r.profileChanged ? r.before.risk : r.before.risk);
+        var msg;
+        if (r.fitBitrate && r.fitBitrate.fit) {
+            msg = 'Risk ' + Math.round(r0.before.risk) + ' → ' + r.after.risk +
+                ' · bitrate ' + r.fitBitrate.from + ' → ' + r.fitBitrate.to + ' Mbps' +
+                (r.fitBitrate.restore ? ' (restaurado al diseño)' : '') +
+                ' · colchón ' + r.after.sparePct + '% · stall ' + r.after.stallPct + '%';
+        } else if (r.fitBitrate && r.fitBitrate.fit === false) {
+            msg = 'Enlace insuficiente para el suelo de calidad de ' + targetId +
+                ' (' + r.fitBitrate.floor + ' Mbps mín. vs ' + r.fitBitrate.maxBr +
+                ' Mbps que aguanta) · Risk ' + r.after.risk;
+        } else if (r.profileChanged) {
+            msg = 'Objetivo: ' + startId + ' → ' + targetId +
+                ' (' + Math.round((selection && selection.best ? selection.best.bitrateMbps : 0)) + ' Mbps) · Risk ' +
+                Math.round(beforeRisk) + ' → ' + r.after.risk +
+                ' · colchón ' + r.after.sparePct + '%';
+        } else if (diag.bottleneck === 'ENLACE') {
+            msg = 'Risk ' + r.after.risk + ' (enlace ' + diag.bandwidthMbps + ' Mbps vs ' +
+                diag.requiredBwMbps + ' necesarios) · ya estás en el mejor tier: ' + targetId;
+        } else {
+            msg = 'Risk ' + r.before.risk + ' → ' + r.after.risk + ' · colchón ' + r.after.sparePct +
+                '% · J ' + r.before.J + ' → ' + r.after.J +
+                ' · fusible ' + Math.round((r.state.fuseRatio || 0) * 100) + '% del suelo';
+        }
+
+        var span = (typeof document !== 'undefined')
+            ? document.getElementById('pm9_auto_result') : null;
+        if (span) {
+            span.textContent = msg;
+            span.style.color = (r.after.risk <= 30) ? '#22c55e' : '#f97316';
+        }
+        if (global.app && global.app.showToast) {
+            global.app.showToast(r.profileChanged
+                ? ('Perfil ajustado al objetivo: ' + targetId + ' · Risk ' + r.after.risk)
+                : ('Auto-ajuste ' + targetId + ': Risk ' + r.before.risk + ' → ' + r.after.risk),
+                r.after.risk <= 30 ? 'success' : 'warning');
+        }
+        console.log('%c[APE-SOLVER] auto-ajuste objetivo', 'color:#22c55e;font-weight:bold;', {
+            from: startId, to: targetId, beforeRisk: beforeRisk, afterRisk: r.after.risk,
+            feasibleTier: selection && selection.hasFeasible, selection: selection
+        });
+        return r;
+    }
+
+    // ── 4) SELECCIÓN DE PERFIL POR FUNCIÓN OBJETIVO ──────────────────────
+    // El solver no se limita al perfil abierto: puntúa los 6 perfiles con el
+    // enlace medido y elige el de MAYOR calidad que cumpla el objetivo
+    // (Risk ≤ 30 y stall ≤ 1.67%). Si ninguno cumple, elige el de menor Risk.
+    function scoreProfile(profileId) {
+        var st = stateFromProfile(profileId);
+        var solved = solve(st, engineInputsFor(profileId));
+        var sc = solved.score;
+        var p = global.APE_PROFILES_CONFIG.profiles[profileId];
+        var br = Number(p && p.settings && p.settings.bitrate) || 0;
+        return {
+            profileId: profileId,
+            state: solved.state,
+            score: sc,
+            bitrateMbps: br,
+            feasible: (sc.risk <= 30) &&
+                (sc.sparePct >= 15) &&
+                (sc.stallPct === null || sc.stallPct === undefined || sc.stallPct <= 1.67)
+        };
+    }
+
+    function findBestProfile() {
+        var api = global.APE_PROFILES_CONFIG;
+        var ids = Object.keys(api.profiles || {}).filter(function (id) { return /^P[0-5]$/.test(id); });
+        var cands = ids.map(scoreProfile);
+        var feasible = cands.filter(function (c) { return c.feasible; });
+        feasible.sort(function (a, b) {
+            if (b.bitrateMbps !== a.bitrateMbps) return b.bitrateMbps - a.bitrateMbps;
+            return a.score.risk - b.score.risk;
+        });
+        var byRisk = cands.slice().sort(function (a, b) {
+            if (a.score.risk !== b.score.risk) return a.score.risk - b.score.risk;
+            return b.bitrateMbps - a.bitrateMbps;
+        });
+        return {
+            candidates: cands,
+            feasible: feasible,
+            hasFeasible: feasible.length > 0,
+            best: feasible.length ? feasible[0] : byRisk[0]
+        };
+    }
+
+    /** bw mínima para alcanzar un colchón objetivo (negativo) */
+    function requiredBwFor(bitrate, spareTargetPct) {
+        var t = (typeof spareTargetPct === 'number') ? spareTargetPct : -15;
+        var ratioNeeded = 1 / (1 + t / 100);        // spare = (1/ratio -1)×100
+        return (ratioNeeded * bitrate) / 0.95;      // bwSafe = bw × 0.95
+    }
+
+    /** Diagnóstico: ¿por qué Risk no baja de 100? (saturación por enlace) */
+    function diagnose(profileId) {
+        var sid = profileId || (global.APE_PROFILES_CONFIG.activeProfileId || 'P3');
+        var s = stateFromProfile(sid);
+        var snap = (global.APE_BW && global.APE_BW.snapshot) ? global.APE_BW.snapshot() : null;
+        var bw = snap ? snap.mbps : 0;
+        var sc = evaluate(s, engineInputsFor(sid));
+        var required = requiredBwFor(s.bitrate, -15);
+        return {
+            profileId: sid,
+            bitrate: s.bitrate,
+            bandwidthMbps: bw,
+            confidence: snap ? snap.confidence : 'none',
+            sparePct: sc.sparePct,
+            risk: sc.risk,
+            requiredBwMbps: Math.round(required * 100) / 100,
+            deficitMbps: Math.round(Math.max(0, required - bw) * 100) / 100,
+            saturated: sc.risk >= 99,
+            // El Risk está saturado si el déficit domina: ningún buffer lo arregla
+            bottleneck: (sc.risk >= 99 && sc.sparePct > -15) ? 'ENLACE' : 'NINGUNO',
+            bestTier: bestTier(profileId)
+        };
+    }
+
+    /**
+     * Perfil sostenible REAL: usa Risk/Headroom/Stall del solver, no solo el
+     * bitrate de diseño. Si el actual no cumple, devuelve otro perfil.
+     */
+    function bestTier(profileId) {
+        var api = global.APE_PROFILES_CONFIG;
+        var sid = profileId || api.activeProfileId;
+        var snap = (global.APE_BW && global.APE_BW.snapshot) ? global.APE_BW.snapshot() : null;
+        var bw = snap ? snap.mbps : 0;
+        if (!(bw > 0)) return null;
+        var sel = findBestProfile();
+        var best = sel.best;
+        if (!best) return { profileId: null, note: 'sin perfiles evaluables' };
+        return {
+            profileId: best.profileId,
+            bitrateMbps: best.bitrateMbps,
+            isCurrent: best.profileId === sid,
+            feasible: !!best.feasible,
+            risk: best.score.risk,
+            sparePct: best.score.sparePct,
+            maxBitrateMbps: Math.round(bw * 0.95 * 0.85 * 100) / 100,
+            currentFeasible: (sel.candidates || []).some(function (c) {
+                return c.profileId === sid && c.feasible;
+            }),
+            note: best.feasible ? '' : 'ningún perfil cumple; se aplica el de menor riesgo'
+        };
+    }
+
+    /** Explicación en consola de por qué el número no mejora. */
+    function why(profileId) {
+        var d = diagnose(profileId);
+        console.log('%c[APE-SOLVER] diagnóstico', 'color:#22d3ee;font-weight:bold;', d);
+        return d;
+    }
+    function onManualEdit(key) {
+        if (applying) return;
+        var api = global.APE_PROFILES_CONFIG;
+        var sid = api.activeProfileId;
+        var base = stateFromProfile(sid);
+        var el = document.getElementById(CFG.IDS[key]);
+        if (!el) return;
+        var typed = Number(el.value);
+        if (!isFinite(typed)) return;
+
+        var step = setField(base, key, typed);
+        // persistir lo que el usuario escribió + lo que la cadena corrigió
+        applyState(sid, step.state);
+
+        // re-optimizar el resto manteniendo lo tecleado como semilla
+        var ei = engineInputsFor(sid);
+        var solved = solve(step.state, ei);
+        applyState(sid, solved.state);
+
+        syncInputs(solved.state);
+        repaint();
+        console.log('%c[APE-SOLVER] edición manual propagada', 'color:#22d3ee;font-weight:bold;', {
+            campo: key, tecleado: typed, cadena: step.fixes, optimizado: {
+                prefetch: solved.state.prefetch, parallel: solved.state.parallel,
+                bufferSeg: solved.state.bufferSeg, J: solved.score.J
+            }
+        });
+    }
+
+    // (autoAdjust obsoleto eliminado: vivía aquí y PISABA al de arriba por hoisting,
+    //  que es la causa exacta de que el botón no pintara el diagnóstico ni el aviso.)
+
+    function attachUI() {
+        var anchor = document.getElementById('pm9_prefetch_content');
+        if (!anchor || document.getElementById('pm9_auto_adjust_btn')) return false;
+
+        var bar = document.createElement('div');
+        bar.style.cssText = 'display:flex;gap:8px;align-items:center;margin:8px 0 12px;flex-wrap:wrap';
+        bar.innerHTML =
+            '<button id="pm9_auto_adjust_btn" style="background:linear-gradient(135deg,#16a34a,#22c55e);' +
+            'color:#06240f;border:0;border-radius:6px;padding:8px 14px;font-weight:800;cursor:pointer;' +
+            'font-size:0.62rem" onclick="if(window.apeOpenAutoAdjustMenu){window.apeOpenAutoAdjustMenu(event)}">⚡ AUTO-AJUSTAR (función objetivo)</button>' +
+            '<button id="pm9_best_tier_btn" style="background:linear-gradient(135deg,#7c3aed,#a855f7);' +
+            'color:#fff;border:0;border-radius:6px;padding:8px 12px;font-weight:800;cursor:pointer;' +
+            'font-size:0.62rem">🎯 TIER SOSTENIBLE</button>' +
+            '<span id="pm9_auto_result" style="font-size:0.55rem;color:#94a3b8">' +
+            'Minimiza Risk · maximiza colchón · respeta reglas en cadena</span>';
+
+        anchor.parentNode.insertBefore(bar, anchor);
+        // El botón usa onclick inline -> window.apeOpenAutoAdjustMenu.
+        // NO añadir otro listener: abriría y cerraría el menú en el mismo clic.
+
+        // El headroom SOLO lo mueve el tier (enlace vs bitrate). Este botón es la
+        // palanca que sí puede bajar el número; no toca el LAB: cambia de perfil.
+        document.getElementById('pm9_best_tier_btn').addEventListener('click', function () {
+            var t = bestTier();
+            var span = (typeof document !== 'undefined')
+            ? document.getElementById('pm9_auto_result') : null;
+            if (!t || !t.profileId) {
+                if (span) { span.textContent = (t && t.note) || 'sin medición suficiente todavía'; span.style.color = '#f97316'; }
+                return;
+            }
+            // Aplicar SIEMPRE la función objetivo al perfil elegido, incluso si
+            // bestTier devuelve el actual. Antes solo mostraba texto y no tocaba
+            // el perfil seleccionado.
+            if (global.ProfileManagerV9 && typeof global.ProfileManagerV9.selectProfile === 'function') {
+                if (t.profileId !== (global.APE_PROFILES_CONFIG.activeProfileId || '')) {
+                    global.ProfileManagerV9.selectProfile(t.profileId);
+                }
+                if (typeof global.ProfileManagerV9.recomputeActiveProfile === 'function') {
+                    global.ProfileManagerV9.recomputeActiveProfile();
+                }
+            }
+            if (span) {
+                span.textContent = (t.isCurrent ? 'aplicado al actual ' : 'cambiado a ') +
+                    t.profileId + ' · Risk ' + t.risk + ' · colchón ' + t.sparePct +
+                    '% · ' + t.bitrateMbps + ' Mbps';
+                span.style.color = t.feasible ? '#22c55e' : '#f97316';
+            }
+            console.log('%c[APE-SOLVER] tier sostenible aplicado', 'color:#a855f7;font-weight:bold;', t);
+        });
+
+        [['prefetch', CFG.IDS.prefetch], ['parallel', CFG.IDS.parallel],
+         ['bufferSeg', CFG.IDS.buffer], ['minbw', CFG.IDS.minbw]].forEach(function (pair) {
+            var el = document.getElementById(pair[1]);
+            if (el) el.addEventListener('change', function () { onManualEdit(pair[0]); });
+        });
+        return true;
+    }
+
+    var API = {
+        GRAPH: GRAPH, CFG: CFG,
+        stateFromProfile: stateFromProfile, engineInputsFor: engineInputsFor,
+        setField: setField, recompute: recompute, consistency: consistency,
+        objective: objective, evaluate: evaluate, solve: solve,
+        adjustProfile: adjustProfile, adjustProfileObjective: adjustProfileObjective,
+        applyState: applyState, scoreProfile: scoreProfile, findBestProfile: findBestProfile,
+        syncInputs: syncInputs, autoAdjust: autoAdjust, attachUI: attachUI,
+        diagnose: diagnose, bestTier: bestTier, why: why, requiredBwFor: requiredBwFor,
+        _setState: function (s) { return setField(s, 'prefetch', s.prefetch); }
+    };
+    if (typeof module !== 'undefined' && module.exports) module.exports = API;
+    if (typeof window !== 'undefined') {
+        window.APE_SOLVER = API;
+        // El panel se renderiza al abrir la pestaña del perfil: se intenta al
+        // arrancar y en cada clic (idempotente: si el botón ya existe, no hace nada).
+        // GUARDA: sin `document` (Node, workers) el módulo debe cargar igual.
+        if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+            var tries = 0;
+            var t = setInterval(function () {
+                tries++;
+                if (attachUI() || tries > 60) clearInterval(t);
+            }, 500);
+            document.addEventListener('click', function () { attachUI(); }, true);
+            console.log('%c[APE-SOLVER] listo — botón AUTO-AJUSTAR + propagación al editar',
+                'color:#94a3b8;');
+        } else {
+            console.log('%c[APE-SOLVER] cargado sin DOM (API disponible, sin UI)', 'color:#94a3b8;');
+        }
+    }
+})(typeof window !== 'undefined' ? window : globalThis);

@@ -1,0 +1,1273 @@
+<?php
+declare(strict_types=1);
+// ── Memory: channels_map.json is 136MB+ → json_decode needs ~1.5GB ────────────
+ini_set('memory_limit', '1536M');
+// ── CMAF Integration Shim (APE CMAF Engine v2.0) ─────────────────────────────
+if (file_exists(__DIR__ . '/cmaf_engine/cmaf_integration_shim.php')) {
+    require_once __DIR__ . '/cmaf_engine/cmaf_integration_shim.php';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🧠 INTEGRATED NEURO BUFFER & PASSIVE TELEMETRY v18.2
+// Monolithic architecture for zero-latency I/O.
+// Merges NeuroBufferController and Resilience Shim directly into the resolver.
+// ═══════════════════════════════════════════════════════════════════════════
+class IntegratedNeuroBuffer {
+    public const LEVEL_NORMAL   = 'NORMAL';
+    public const LEVEL_ESCALATE = 'ESCALATING';
+    public const LEVEL_BURST    = 'BURST';
+    public const LEVEL_NUCLEAR  = 'NUCLEAR';
+
+    private const TELEMETRY_FILE = '/tmp/neuro_telemetry_state.json';
+    private const STATE_FILE       = '/tmp/neuro_buffer_state.json';
+
+    public static function deriveBufferFromTelemetry(string $channelId): float {
+        $now = time();
+        $telemetry = self::loadJson(self::TELEMETRY_FILE);
+
+        if (!isset($telemetry['channels'][$channelId])) {
+            $telemetry['channels'][$channelId] = ['timestamps' => [], 'first_seen' => $now, 'total_hits' => 0];
+        }
+        $ch = &$telemetry['channels'][$channelId];
+        $ch['timestamps'][] = $now;
+        $ch['total_hits']++;
+
+        $ch['timestamps'] = array_values(array_filter($ch['timestamps'], fn(int $ts) => ($now - $ts) <= 60));
+        $requestsInWindow = count($ch['timestamps']);
+
+        $avgGap = 0.0;
+        if ($requestsInWindow >= 2) {
+            $gaps = [];
+            for ($i = 1; $i < $requestsInWindow; $i++) {
+                $gaps[] = $ch['timestamps'][$i] - $ch['timestamps'][$i - 1];
+            }
+            $avgGap = array_sum($gaps) / count($gaps);
+        }
+
+        if ($requestsInWindow <= 1) { $gapSignal = 5.0; }
+        elseif ($avgGap < 2.0) { $gapSignal = 5.0; }
+        elseif ($avgGap < 5.0) { $gapSignal = 15.0; }
+        elseif ($avgGap < 15.0) { $gapSignal = 30.0; }
+        elseif ($avgGap < 30.0) { $gapSignal = 55.0; }
+        else { $gapSignal = 85.0; }
+
+        $retryCeiling = match (true) {
+            $requestsInWindow >= 5 => 5.0,
+            $requestsInWindow >= 4 => 15.0,
+            $requestsInWindow >= 3 => 20.0,
+            $requestsInWindow >= 2 => 50.0,
+            default                => 95.0,
+        };
+
+        $bufferPct = min($gapSignal, $retryCeiling);
+        self::saveJson(self::TELEMETRY_FILE, $telemetry);
+        return round(max(5.0, $bufferPct), 1);
+    }
+
+    public static function calculateAggression(string $channelId, float $bufferPct): array {
+        $level = self::LEVEL_NORMAL;
+        if ($bufferPct < 10) $level = self::LEVEL_NUCLEAR;
+        elseif ($bufferPct < 30) $level = self::LEVEL_BURST;
+        elseif ($bufferPct < 70) $level = self::LEVEL_ESCALATE;
+
+        $profiles = [
+            self::LEVEL_NORMAL => ['multiplier' => 1, 'connections' => 1, 'dscp' => 26, 'strategy' => 'STANDARD_FLOW', 'prefetch_depth' => 3, 'chunk_split' => false, 'buffer_target_ms' => 45000, 'live_caching_ms' => 30000, 'disc_caching_ms' => 60000],
+            self::LEVEL_ESCALATE => ['multiplier' => 2, 'connections' => 1, 'dscp' => 34, 'strategy' => 'DEEP_LINEAR_BUFFERING', 'prefetch_depth' => 6, 'chunk_split' => false, 'buffer_target_ms' => 90000, 'live_caching_ms' => 60000, 'disc_caching_ms' => 120000],
+            self::LEVEL_BURST => ['multiplier' => 4, 'connections' => 1, 'dscp' => 46, 'strategy' => 'MONOLITHIC_FILE_CACHE', 'prefetch_depth' => 10, 'chunk_split' => false, 'buffer_target_ms' => 120000, 'live_caching_ms' => 90000, 'disc_caching_ms' => 180000],
+            self::LEVEL_NUCLEAR => ['multiplier' => 8, 'connections' => 1, 'dscp' => 56, 'strategy' => 'RAM_OVERDRIVE_SINGLE_TCP', 'prefetch_depth' => 20, 'chunk_split' => false, 'buffer_target_ms' => 180000, 'live_caching_ms' => 120000, 'disc_caching_ms' => 300000],
+        ];
+
+        return array_merge($profiles[$level] ?? $profiles[self::LEVEL_NORMAL], ['level' => $level, 'buffer_pct' => $bufferPct]);
+    }
+
+    public static function buildAggressionHeaders(array $profile): array {
+        return [
+            'X-Buffer-Escalation-Level'  => $profile['level'],
+            'X-Aggression-Multiplier'    => (string)$profile['multiplier'],
+            'X-Parallel-Connections'     => (string)$profile['connections'],
+            'X-DSCP-Override'            => (string)$profile['dscp'],
+            'X-Prefetch-Depth'           => (string)$profile['prefetch_depth'],
+            'X-Buffer-Target-Override'   => (string)($profile['buffer_target_ms']),
+            'X-Buffer-Strategy'          => $profile['strategy'],
+            'X-Quality-Lock'             => 'NATIVA_MAXIMA',
+            // ☢️ STANDARD STRICT FOOTPRINT (Anti-403 WAF Evader)
+            // Sending completely standard browser/player headers prevents Xtream UI WAFs
+            // from classifying the hit as a proxy/bot (which triggers 403/407).
+            'Connection'                 => 'keep-alive',
+            'Accept'                     => '*/*',
+            'Accept-Encoding'            => 'gzip, deflate',
+            'Accept-Language'            => 'en-US,en;q=0.9',
+        ];
+    }
+
+    public static function buildVlcOpts(array $profile, string $streamType, string $networkType, string $fallbackUrl): array {
+        $opts = [];
+        $level = $profile['level'] ?? self::LEVEL_NORMAL;
+        $bufMs = $profile['buffer_target_ms'] ?? 45000;
+        $liveMs = $profile['live_caching_ms'] ?? 30000;
+        $discMs = $profile['disc_caching_ms'] ?? 60000;
+
+        if ($networkType === 'mobile') {
+            $bufMs = min($bufMs, 15000);
+            $liveMs = min($liveMs, 10000);
+        }
+
+        $opts[] = "#EXTVLCOPT:network-caching={$bufMs}";
+        if ($streamType === 'live') {
+            $opts[] = "#EXTVLCOPT:live-caching={$liveMs}";
+            $opts[] = "#EXTHTTP:{\"X-Live-Edge-Policy\":\"JUMP_ON_UNDERRUN\"}";
+        } else {
+            $opts[] = "#EXTVLCOPT:file-caching=" . ($bufMs * 3);
+        }
+        $opts[] = "#EXTVLCOPT:disc-caching={$discMs}";
+        
+        $opts[] = "#EXTVLCOPT:http-reconnect=1";
+        $opts[] = "#EXTVLCOPT:http-continuous=1";
+        $opts[] = "#EXTVLCOPT:sout-keep=1"; // RESTORED: Critical for connection persistence across micro-drops
+        $opts[] = "#EXTVLCOPT:clock-jitter=0";
+        $opts[] = "#EXTVLCOPT:clock-synchro=0";
+
+        if (!empty($fallbackUrl)) {
+            $opts[] = "#EXTHTTP:{\"X-Backup-Stream-Url\":\"" . addslashes($fallbackUrl) . "\"}";
+            $opts[] = "#EXTHTTP:{\"X-Failover-Policy\":\"SEAMLESS_30MS\"}";
+        }
+
+        // Vuelve a usar el User-Agent estándar que enviaba TiviMate en lugar de manipular proxies
+        $opts[] = "#EXTVLCOPT:http-user-agent=ExoPlayer/2.18.1 (Linux;Android 11) ExoPlayerLib/2.18.1";
+
+        return $opts;
+    }
+
+    private static function loadJson(string $file): array {
+        if (!file_exists($file)) return [];
+        return json_decode(file_get_contents($file), true) ?? [];
+    }
+
+    private static function saveJson(string $file, array $data): void {
+        @file_put_contents($file, json_encode($data, JSON_UNESCAPED_UNICODE), LOCK_EX);
+    }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BULLETPROOF EMERGENCY FALLBACK — resolve_quality.php NEVER returns an error
+// If ANY error occurs, returns a minimal valid M3U8 with the direct origin URL.
+// Failover back to resolve is automatic: each channel open = new HTTP request.
+// ═══════════════════════════════════════════════════════════════════════════
+function emergencyFallback(string $reason = 'unknown'): void {
+    $srvToken = isset($_GET['srv']) ? trim((string)$_GET['srv']) : '';
+    $ch = isset($_GET['ch']) ? trim((string)$_GET['ch']) : '0';
+    $sid = isset($_GET['sid']) ? trim((string)$_GET['sid']) : $ch;
+
+    // Try to decode srv token for direct URL
+    $url = '';
+    if ($srvToken !== '') {
+        $decoded = base64_decode($srvToken, true);
+        if ($decoded !== false) {
+            $parts = explode('|', $decoded, 3);
+            if (count($parts) === 3 && $parts[0] !== '' && $parts[1] !== '' && $parts[2] !== '') {
+                $url = 'http://' . trim($parts[0]) . '/live/' . rawurlencode(trim($parts[1])) . '/' . rawurlencode(trim($parts[2])) . '/' . rawurlencode($sid) . '.m3u8';
+            }
+        }
+    }
+
+    if ($url === '') {
+        $url = 'http://fallback-unavailable/ch/' . rawurlencode($ch) . '.m3u8';
+    }
+
+    // Log the fallback
+    @file_put_contents('/var/log/iptv-ape/fallback.log',
+        sprintf("[%s] FALLBACK ch=%s reason=%s url=%s\n", date('c'), $ch, $reason, substr($url, 0, 120)),
+        FILE_APPEND | LOCK_EX);
+
+    header('Content-Type: application/x-mpegURL; charset=utf-8');
+    header('Cache-Control: no-store, max-age=0');
+    header('X-APE-Fallback: true');
+    header('X-APE-Fallback-Reason: ' . substr($reason, 0, 80));
+
+    echo "#EXTM3U\n";
+    echo "#EXTINF:-1,Fallback (" . htmlspecialchars($ch) . ")\n";
+    echo "#EXTVLCOPT:network-caching=5000\n";
+    echo "#EXTVLCOPT:live-caching=3000\n";
+    echo "#EXTVLCOPT:http-reconnect=true\n";
+    echo "#EXTVLCOPT:http-continuous=true\n";
+    echo $url . "\n";
+    exit;
+}
+
+// Global error handler — catches fatal errors that try-catch can't
+set_error_handler(function(int $errno, string $errstr, string $errfile, int $errline) {
+    if ($errno === E_ERROR || $errno === E_PARSE || $errno === E_CORE_ERROR || $errno === E_COMPILE_ERROR) {
+        emergencyFallback("php_error:{$errno}:{$errstr}");
+    }
+    return false; // Non-fatal errors: let PHP handle them
+});
+
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        if (!headers_sent()) {
+            emergencyFallback('fatal:' . ($error['message'] ?? 'unknown'));
+        }
+    }
+});
+
+/**
+ * Gold Standard Dual Runtime Resolver (v16.1.0) — VIP QUALITY OVERLAY
+ * Domain: iptv-ape.duckdns.org
+ * Feature: HEVC-FIRST, BWDIF Enforced, HW Decode Only
+ *
+ * Input:  /resolve_quality.php?ch=14&p=auto&mode=auto&list=16.1.0
+ * Output: M3U fragment:
+ *   #EXTM3U
+ *   #EXTINF (video-track / bl-video-track / codec)
+ *   #EXTHTTP (minimal headers)
+ *   final Xtream URL + ?token=...
+ *
+ * #EXTATTRFROMURL is resolved at playback time by OTT Navigator.
+ */
+
+$start = microtime(true);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CREDENTIAL PASSTHROUGH v1.0 — No hardcoded credentials
+// Credentials arrive from the frontend as &srv=base64(host|user|pass)
+// Mirrors the Xtream Codes API flow: frontend logs in → knows creds → passes them
+// ═══════════════════════════════════════════════════════════════════════════
+function decodeSrvToken(string $token): ?array {
+    if ($token === '') return null;
+    $decoded = base64_decode($token, true);
+    if ($decoded === false) return null;
+    $parts = explode('|', $decoded, 4); // Soporta hasta 4 partes (host|user|pass|backup_id)
+    if (count($parts) < 3) return null;
+    // Validate: host must be non-empty, user/pass must be non-empty
+    $host = trim($parts[0]);
+    $user = trim($parts[1]);
+    $pass = trim($parts[2]);
+    $backupStreamId = isset($parts[3]) ? trim($parts[3]) : null;
+    if ($host === '' || $user === '' || $pass === '') return null;
+    // Security: host must look like a valid hostname:port
+    if (!preg_match('/^[A-Za-z0-9._:-]{3,128}$/', $host)) return null;
+    return ['host' => $host, 'user' => $user, 'pass' => $pass, 'backup_stream_id' => $backupStreamId];
+}
+
+const TOKEN_TTL = 120;
+
+// OJO: Usa 'hmac' solo si TU infraestructura valida ese token (o si sabes que tu origin lo acepta).
+// Si el origin NO lo usa y rechaza query params desconocidos, pon 'none'.
+const TOKEN_MODE = 'none'; // none | hmac | passthrough
+const TOKEN_SECRET = 'CAMBIA_ESTE_SECRETO_LARGO_Y_UNICO';
+
+const CHANNEL_MAP_PATH = __DIR__ . '/channels_map.json';
+const CHANNEL_MAP_TTL_SECONDS = 30;
+
+const REQUIRE_SIG = false;
+const EXPECTED_SIG = 'HFRC-20260222-REV-A';
+
+const ACCEPT_HEADER =
+    'application/vnd.apple.mpegurl;q=1.0, audio/mpegurl;q=0.99, application/x-mpegurl;q=0.97, application/x-m3u8;q=0.95, text/plain;q=0.8, */*;q=0.1';
+const ACCEPT_ENCODING = 'gzip, deflate';
+
+function q(string $k, string $default = ''): string {
+    return isset($_GET[$k]) ? trim((string)$_GET[$k]) : $default;
+}
+
+function base64url(string $bin): string {
+    return rtrim(strtr(base64_encode($bin), '+/', '-_'), '=');
+}
+
+function token_hmac(string $ch, string $profile, int $exp, string $deviceClass): string {
+    $payload = json_encode(['ch'=>$ch,'p'=>$profile,'exp'=>$exp,'dc'=>$deviceClass], JSON_UNESCAPED_SLASHES);
+    $sig = hash_hmac('sha256', $payload, TOKEN_SECRET, true);
+    return base64url($payload) . '.' . base64url($sig);
+}
+
+function token_passthrough(string $ch, string $profile): string {
+    // Implementa aquí si tienes un broker/token real del proveedor.
+    return '';
+}
+
+function normalizeProfile(string $pReq): string {
+    return match ($pReq) {
+        'p0' => 'P0',
+        'p1' => 'P1',
+        'p2' => 'P2',
+        'p3' => 'P3',
+        'p4' => 'P4',
+        'p5' => 'P5',
+        default => 'AUTO',
+    };
+}
+
+function autoProfile(string $ch): string {
+    $c = strtoupper($ch);
+    
+    if (str_contains($c, '8K') || str_contains($c, '4320')) return 'P1';
+    if (str_contains($c, 'UHD') || str_contains($c, '4K') || str_contains($c, '2160')) return 'P2';
+    if (str_contains($c, 'FHD') || str_contains($c, '1080')) return 'P3';
+    if (str_contains($c, 'HD') || str_contains($c, '720')) return 'P4';
+    if (str_contains($c, 'SD') || str_contains($c, '480')) return 'P5';
+    
+    // Default fallback to FHD to avoid unnecessary downgrades if unknown
+    return 'P3';
+}
+
+function loadChannelMap(?string $listId = null): array {
+    static $cache = [];
+    static $cacheTs = [];
+
+    $now = time();
+    $cacheKey = $listId ?? 'global';
+
+    if (isset($cache[$cacheKey]) && ($now - ($cacheTs[$cacheKey] ?? 0)) < CHANNEL_MAP_TTL_SECONDS) {
+        return $cache[$cacheKey];
+    }
+
+    $mapPath = CHANNEL_MAP_PATH;
+    if ($listId !== null && preg_match('/^[A-Za-z0-9._-]{1,128}$/', $listId)) {
+        $testPath = __DIR__ . '/' . $listId . '.channels_map.json';
+        if (is_file($testPath)) {
+            $mapPath = $testPath;
+        }
+    }
+
+    if (!is_file($mapPath)) {
+        $cache[$cacheKey] = [];
+        $cacheTs[$cacheKey] = $now;
+        return [];
+    }
+
+    $raw = file_get_contents($mapPath);
+    if ($raw === false) {
+        $cache[$cacheKey] = [];
+        $cacheTs[$cacheKey] = $now;
+        return [];
+    }
+
+    $json = json_decode($raw, true);
+    if (!is_array($json)) {
+        $cache[$cacheKey] = [];
+        $cacheTs[$cacheKey] = $now;
+        return [];
+    }
+
+    $cache[$cacheKey] = $json;
+    $cacheTs[$cacheKey] = $now;
+    return $json;
+}
+
+function mapDecision(string $ch, array $map): ?array {
+    return (isset($map[$ch]) && is_array($map[$ch])) ? $map[$ch] : null;
+}
+
+// -------------------------------
+// 1) INPUT
+// -------------------------------
+$ch     = q('ch', '');
+$pReq   = strtolower(q('p', 'auto'));
+$mode   = q('mode', 'auto');
+$sig    = q('sig', '');
+$origin = q('origin', '');  // host:port from generator (multi-origin support)
+
+if ($ch === '') {
+    http_response_code(400);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "ERR: missing ch\n";
+    exit;
+}
+if (REQUIRE_SIG && $sig !== EXPECTED_SIG) {
+    http_response_code(403);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "ERR: invalid sig\n";
+    exit;
+}
+if (!preg_match('/^[A-Za-z0-9._-]{1,64}$/', $ch)) {
+    http_response_code(400);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "ERR: invalid ch format\n";
+    exit;
+}
+
+// CORS (opcional)
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Headers: *');
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
+// -------------------------------
+// 2) DEVICE CLASS → UA estable (contrato)
+// -------------------------------
+$uaIn = $_SERVER['HTTP_USER_AGENT'] ?? '';
+$deviceClass = 'generic_tv';
+if (stripos($uaIn, 'AFT') !== false) $deviceClass = 'firetv_4k';
+elseif (stripos($uaIn, 'Android TV') !== false || stripos($uaIn, 'Leanback') !== false) $deviceClass = 'onn_4k';
+
+$UA_FIRETV_4K_MAX = 'Mozilla/5.0 (Linux; Android 11; AFTKM) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+$UA_ONN_4K        = 'Mozilla/5.0 (Linux; Android 12; Android TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+$UA_GENERIC_TV    = 'Mozilla/5.0 (Linux; Android 11; TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+$uaOut = match ($deviceClass) {
+    'firetv_4k' => $UA_FIRETV_4K_MAX,
+    'onn_4k'    => $UA_ONN_4K,
+    default     => $UA_GENERIC_TV,
+};
+
+// -------------------------------
+// 3) PROFILE CFG
+// -------------------------------
+// ═══════════════════════════════════════════════════════════════════════
+// APE v9.0 DUAL-SOURCE PARITY — Mirrors m3u8-typed-arrays-ultimate.js
+// ═══════════════════════════════════════════════════════════════════════
+
+function generateUuid(): string {
+    return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+        mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+        mt_rand(0, 0xffff),
+        mt_rand(0, 0x0fff) | 0x4000,
+        mt_rand(0, 0x3fff) | 0x8000,
+        mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+    );
+}
+
+function generateRandomString(int $len = 16): string {
+    return bin2hex(random_bytes((int)ceil($len / 2)));
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PROFILES P0-P5 — EXACT COPY from m3u8-typed-arrays-ultimate.js PROFILES
+// Every field mirrors the JS generator for dual-source parity.
+// ═══════════════════════════════════════════════════════════════════════
+$profileCfg = [
+    'P0' => [
+        'name'=>'ULTRA_EXTREME', 'label'=>'4K ULTRA',
+        'res'=>'3840x2160', 'w'=>3840, 'h'=>2160, 'fps'=>60,
+        'bitrate'=>13400, 'buffer_ms'=>50000,
+        'net_cache'=>60000, 'live_cache'=>60000, 'file_cache'=>15000,
+        'max_bw'=>100000000, 'min_bw'=>50000000,
+        'prefetch_seg'=>500, 'prefetch_par'=>250, 'prefetch_buf'=>600000,
+        'seg_dur'=>2, 'bw_guarantee'=>500,
+        'codec_primary'=>'HEVC', 'codec_fallback'=>'HEVC', 'codec_priority'=>'hevc,h265,H265,h.265,av1,vp9',
+        'hdr'=>['hdr10','dolby_vision','hlg'], 'color_depth'=>12, 'audio_ch'=>8,
+        'recon_timeout'=>5, 'recon_max'=>200, 'recon_delay'=>0,
+        'hevc_tier'=>'HIGH', 'hevc_level'=>'6.1,5.1,5.0,4.1,4.0,3.1', 'hevc_profile'=>'MAIN-10-HDR',
+        'color_space'=>'BT2020', 'chroma'=>'4:2:0', 'transfer'=>'SMPTE2084',
+        'matrix'=>'BT2020NC', 'compress'=>1, 'sharpen'=>0.02,
+        'rate_ctrl'=>'VBR', 'entropy'=>'CABAC', 'vid_profile'=>'main10', 'pix_fmt'=>'yuv420p10le',
+        'codec'=>'hard,system,soft_vlc',
+    ],
+    'P1' => [
+        'name'=>'8K_SUPREME', 'label'=>'8K SUPREME',
+        'res'=>'7680x4320', 'w'=>7680, 'h'=>4320, 'fps'=>60,
+        'bitrate'=>42900, 'buffer_ms'=>40000,
+        'net_cache'=>50000, 'live_cache'=>50000, 'file_cache'=>12000,
+        'max_bw'=>80000000, 'min_bw'=>40000000,
+        'prefetch_seg'=>400, 'prefetch_par'=>200, 'prefetch_buf'=>500000,
+        'seg_dur'=>2, 'bw_guarantee'=>400,
+        'codec_primary'=>'HEVC', 'codec_fallback'=>'HEVC', 'codec_priority'=>'hevc,h265,H265,h.265,av1,vp9',
+        'hdr'=>['hdr10','hdr10+','dolby_vision','hlg'], 'color_depth'=>10, 'audio_ch'=>8,
+        'recon_timeout'=>5, 'recon_max'=>200, 'recon_delay'=>0,
+        'hevc_tier'=>'HIGH', 'hevc_level'=>'6.1,5.1,5.0,4.1,4.0,3.1', 'hevc_profile'=>'MAIN-10-HDR',
+        'color_space'=>'BT2020', 'chroma'=>'4:2:0', 'transfer'=>'SMPTE2084',
+        'matrix'=>'BT2020NC', 'compress'=>1, 'sharpen'=>0.02,
+        'rate_ctrl'=>'VBR', 'entropy'=>'CABAC', 'vid_profile'=>'main10', 'pix_fmt'=>'yuv420p10le',
+        'codec'=>'hard,system,soft_vlc',
+    ],
+    'P2' => [
+        'name'=>'4K_EXTREME', 'label'=>'4K EXTREME',
+        'res'=>'3840x2160', 'w'=>3840, 'h'=>2160, 'fps'=>60,
+        'bitrate'=>13400, 'buffer_ms'=>35000,
+        'net_cache'=>45000, 'live_cache'=>45000, 'file_cache'=>10000,
+        'max_bw'=>60000000, 'min_bw'=>20000000,
+        'prefetch_seg'=>350, 'prefetch_par'=>180, 'prefetch_buf'=>450000,
+        'seg_dur'=>2, 'bw_guarantee'=>350,
+        'codec_primary'=>'HEVC', 'codec_fallback'=>'HEVC', 'codec_priority'=>'hevc,h265,H265,h.265,av1,vp9',
+        'hdr'=>['hdr10','hdr10+','dolby_vision','hlg'], 'color_depth'=>10, 'audio_ch'=>6,
+        'recon_timeout'=>5, 'recon_max'=>200, 'recon_delay'=>0,
+        'hevc_tier'=>'HIGH', 'hevc_level'=>'6.1,5.1,5.0,4.1,4.0,3.1', 'hevc_profile'=>'MAIN-10-HDR',
+        'color_space'=>'BT2020', 'chroma'=>'4:2:0', 'transfer'=>'SMPTE2084',
+        'matrix'=>'BT2020NC', 'compress'=>1, 'sharpen'=>0.03,
+        'rate_ctrl'=>'VBR', 'entropy'=>'CABAC', 'vid_profile'=>'main10', 'pix_fmt'=>'yuv420p10le',
+        'codec'=>'hard,system,soft_vlc',
+    ],
+    'P3' => [
+        'name'=>'FHD_ADVANCED', 'label'=>'FHD ADVANCED',
+        'res'=>'1920x1080', 'w'=>1920, 'h'=>1080, 'fps'=>50,
+        'bitrate'=>3700, 'buffer_ms'=>30000,
+        'net_cache'=>40000, 'live_cache'=>40000, 'file_cache'=>8000,
+        'max_bw'=>20000000, 'min_bw'=>5000000,
+        'prefetch_seg'=>300, 'prefetch_par'=>150, 'prefetch_buf'=>400000,
+        'seg_dur'=>2, 'bw_guarantee'=>300,
+        'codec_primary'=>'HEVC', 'codec_fallback'=>'H264', 'codec_priority'=>'hevc,h265,H265,h.265,h264',
+        'hdr'=>[], 'color_depth'=>10, 'audio_ch'=>6,
+        'recon_timeout'=>5, 'recon_max'=>200, 'recon_delay'=>0,
+        'hevc_tier'=>'HIGH', 'hevc_level'=>'6.1,5.1,5.0,4.1,4.0,3.1', 'hevc_profile'=>'MAIN-10',
+        'color_space'=>'BT709', 'chroma'=>'4:2:0', 'transfer'=>'BT1886',
+        'matrix'=>'BT709', 'compress'=>1, 'sharpen'=>0.03,
+        'rate_ctrl'=>'VBR', 'entropy'=>'CABAC', 'vid_profile'=>'main10', 'pix_fmt'=>'yuv420p10le',
+        'codec'=>'hard,system,soft_vlc',
+    ],
+    'P4' => [
+        'name'=>'HD_STABLE', 'label'=>'HD STABLE',
+        'res'=>'1280x720', 'w'=>1280, 'h'=>720, 'fps'=>60,
+        'bitrate'=>2800, 'buffer_ms'=>25000,
+        'net_cache'=>35000, 'live_cache'=>35000, 'file_cache'=>7000,
+        'max_bw'=>10000000, 'min_bw'=>2000000,
+        'prefetch_seg'=>250, 'prefetch_par'=>120, 'prefetch_buf'=>350000,
+        'seg_dur'=>2, 'bw_guarantee'=>250,
+        'codec_primary'=>'HEVC', 'codec_fallback'=>'H264', 'codec_priority'=>'hevc,h265,H265,h.265,h264',
+        'hdr'=>[], 'color_depth'=>8, 'audio_ch'=>2,
+        'recon_timeout'=>5, 'recon_max'=>200, 'recon_delay'=>0,
+        'hevc_tier'=>'MAIN', 'hevc_level'=>'6.1,5.1,5.0,4.1,4.0,3.1', 'hevc_profile'=>'MAIN',
+        'color_space'=>'BT709', 'chroma'=>'4:2:0', 'transfer'=>'BT1886',
+        'matrix'=>'BT709', 'compress'=>1, 'sharpen'=>0.05,
+        'rate_ctrl'=>'VBR', 'entropy'=>'CABAC', 'vid_profile'=>'main', 'pix_fmt'=>'yuv420p',
+        'codec'=>'hard,system,soft_vlc',
+    ],
+    'P5' => [
+        'name'=>'SD_FAILSAFE', 'label'=>'SD FAILSAFE',
+        'res'=>'854x480', 'w'=>854, 'h'=>480, 'fps'=>25,
+        'bitrate'=>1500, 'buffer_ms'=>20000,
+        'net_cache'=>30000, 'live_cache'=>30000, 'file_cache'=>5000,
+        'max_bw'=>5000000, 'min_bw'=>500000,
+        'prefetch_seg'=>200, 'prefetch_par'=>100, 'prefetch_buf'=>300000,
+        'seg_dur'=>2, 'bw_guarantee'=>200,
+        'codec_primary'=>'HEVC', 'codec_fallback'=>'H264', 'codec_priority'=>'hevc,h265,H265,h.265,h264',
+        'hdr'=>[], 'color_depth'=>8, 'audio_ch'=>2,
+        'recon_timeout'=>5, 'recon_max'=>200, 'recon_delay'=>0,
+        'hevc_tier'=>'MAIN', 'hevc_level'=>'6.1,5.1,5.0,4.1,4.0,3.1', 'hevc_profile'=>'MAIN',
+        'color_space'=>'BT709', 'chroma'=>'4:2:0', 'transfer'=>'BT1886',
+        'matrix'=>'BT709', 'compress'=>1, 'sharpen'=>0.05,
+        'rate_ctrl'=>'VBR', 'entropy'=>'CABAC', 'vid_profile'=>'main', 'pix_fmt'=>'yuv420p',
+        'codec'=>'hard,system,soft_vlc',
+    ],
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SHARED SUBSYSTEMS — Identical for ALL profiles (P0-P5).
+// These were previously sent in &ctx= B64 payload from the frontend.
+// Now baked into the backend for dual-source parity + compact ctx URLs.
+// ═══════════════════════════════════════════════════════════════════════════
+$sharedSubsystems = [
+    // ── Cortex Quality Engine ──
+    'cortex' => [
+        'version' => '1.0.0',
+        'codecs' => 'hevc=100,av1=95,vp9=85,avc=70',
+        'transport' => 'cmaf>fmp4>ts>dash',
+        'hdr_policy' => 'passthrough>hable>reinhard',
+        'deint' => 'bwdif=95,w3fdif=85',
+        'fallback_chain' => 'hevc>av1>avc',
+        'fallback_res' => '4K>2K>FHD>HD>SD',
+    ],
+    // ── Transport Decision Module ──
+    'transport' => [
+        'version' => '2.0.0',
+        'modes' => ['direct_ts','direct_cmaf','worker_ts','worker_cmaf','hybrid'],
+        'cmaf' => ['target_dur' => 4, 'part' => 0.2, 'll' => true],
+        'ts_fallback' => true,
+        'weights' => ['player' => 0.30, 'device' => 0.25, 'hdr' => 0.15, 'telemetry' => 0.15, 'network' => 0.15],
+    ],
+    // ── Deinterlace ──
+    'deinterlace' => [
+        'mode' => 'bwdif',
+        'fallback' => 'yadif2x',
+        'detect' => 'auto',
+        'gpu' => 'force',
+    ],
+    // ── LCEVC / VNOVA ──
+    'lcevc' => [
+        'enabled' => true,
+        'sdk' => 'v16.4.1',
+        'l1' => 'MAX_DIFFERENCE_ATTENUATION',
+        'l2' => 'UPCONVERT_SHARPENING_EXTREME',
+    ],
+    // ── Resilience ──
+    'resilience' => [
+        'buffer_strategy' => 'NUCLEAR_NO_COMPROMISE',
+        'reconnect_max' => 'UNLIMITED',
+        'error_recovery' => 'NUCLEAR',
+        'freeze_prediction' => true,
+        'quality_floor' => '480p',
+    ],
+    // ── Throughput Thresholds ──
+    'throughput_t1' => 17.4,
+    'throughput_t2' => 21.4,
+    // ── HDR Mastering ──
+    'hdr_maxcll' => 4000,
+    'hdr_maxfall' => 400,
+];
+
+// Merge shared subsystems into each profile
+foreach ($profileCfg as $pKey => &$pVal) {
+    $pVal = array_merge($pVal, $sharedSubsystems);
+}
+unset($pVal); // break reference
+$pNorm = normalizeProfile($pReq);
+
+// --- PRECEDENCIA FINAL ---
+// 🏗️ CONCURRENCY v1.0: Skip the 136MB channels_map.json when &srv= is present.
+// The frontend already sends profile, buffer, bandwidth, etc. via URL params.
+// This drops memory from ~1.5GB to ~5MB per request, enabling 20+ concurrent lists.
+$listId = q('list', '');
+$srvTokenPresent = (q('srv', '') !== '');
+$map = [];
+$decision = null;
+
+if (!$srvTokenPresent) {
+    // Legacy mode: no srv token, load channel map for overrides
+    $map = loadChannelMap($listId !== '' ? $listId : null);
+    $decision = mapDecision($ch, $map);
+}
+// When &srv= is present: $map=[], $decision=null → autoProfile() + URL params = everything needed
+
+// ── CMAF Interception Point (APE CMAF Engine v2.0) ───────────────────────────
+if (class_exists('CmafIntegrationShim')) {
+    $cmafResult = CmafIntegrationShim::intercept($ch, $decision ?? []);
+    if ($cmafResult !== null) { echo $cmafResult; exit; }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+$labelOverride = null;
+
+// 1. Explicit profile request (e.g., &p=P1) wins.
+if ($pNorm !== 'AUTO') {
+    $profile = $pNorm;
+} else {
+    // 2. Profile is AUTO. 
+    // Is the channel name screaming High Quality (UHD/4K/8K)?
+    $autoStr = autoProfile($ch);
+    // 3. What does the mapping say?
+    $mapProfile = ($decision !== null && isset($decision['profile'])) ? strtoupper((string)$decision['profile']) : null;
+    
+    // 4. Combat the Map Downgrade: if autoProfile detects 4K/8K, it overrides a P3/P4 map.
+    if (in_array($autoStr, ['P0', 'P1']) && $mapProfile && in_array($mapProfile, ['P3','P4','P5'])) {
+        $profile = $autoStr; // Rescue the 4K!
+    } elseif ($mapProfile) {
+        $profile = $mapProfile; // Map is respected if not actively sabotaging a 4K name
+    } else {
+        $profile = $autoStr; // No map, rely totally on autoProfile
+    }
+    
+    if ($decision !== null && isset($decision['label'])) {
+        $labelOverride = $decision['label'];
+    }
+}
+
+if (!isset($profileCfg[$profile])) $profile = 'P4';
+
+
+$cfg = $profileCfg[$profile];
+
+// 👑 VIP QUALITY OVERLAY ENFORCEMENT: HW HEVC-FIRST
+$cfg['codec_primary'] = 'HEVC';
+$cfg['codec_fallback'] = 'HEVC'; // Anti-downgrade (Forzar HW Decoder)
+$cfg['codec_priority'] = 'hevc,h265,H265,av1';
+$cfg['codec'] = 'hard,system'; // Remover soft_vlc
+
+// 🌐 PROTOCOLO SSOT pm9_resolution: Override Absoluto de Resolución
+// Si el frontend envía la resolución matemáticamente por URL, esta es la LEY,
+// e impide que los perfiles usen sus defaults posiblemente inferiores.
+$teleRes = q('res', '');
+if ($teleRes !== '') {
+    $cfg['res'] = $teleRes;
+}
+
+// 🌐 Sincronización Universal: Catch Mathematical Arrays from Frontend
+// If teleported vars exist on URL, they take supreme priority
+$teleBw    = q('bw', '');
+$teleBuf   = q('buf', '');
+$teleTh1   = q('th1', '');
+$teleTh2   = q('th2', '');
+$telePfseg = q('pfseg', '');
+$telePfpar = q('pfpar', '');
+$teleTbw   = q('tbw', '');
+
+if ($teleBw !== '')    $cfg['max_bw']       = (int)$teleBw;
+if ($teleBuf !== '')   $cfg['buffer_ms']    = (int)$teleBuf;
+if ($teleTh1 !== '')   $cfg['throughput_t1']= (float)$teleTh1;
+if ($teleTh2 !== '')   $cfg['throughput_t2']= (float)$teleTh2;
+if ($telePfseg !== '') $cfg['prefetch_seg'] = (int)$telePfseg;
+if ($telePfpar !== '') $cfg['prefetch_par'] = (int)$telePfpar;
+if ($teleTbw !== '')   $cfg['bitrate']      = (int)($teleTbw / 1000);
+
+// 🗺️ Telemetry Map Fallback: If URL parameters are missing, but mapping has math telemetry, use it
+if ($teleBw === '' && $decision !== null && isset($decision['math_telemetry'])) {
+    $mathMap = $decision['math_telemetry'];
+    if (isset($mathMap['bw']))    $cfg['max_bw']       = (int)$mathMap['bw'];
+    if (isset($mathMap['buf']))   $cfg['buffer_ms']    = (int)$mathMap['buf'];
+    if (isset($mathMap['th1']))   $cfg['throughput_t1']= (float)$mathMap['th1'];
+    if (isset($mathMap['th2']))   $cfg['throughput_t2']= (float)$mathMap['th2'];
+    if (isset($mathMap['pfseg'])) $cfg['prefetch_seg'] = (int)$mathMap['pfseg'];
+    if (isset($mathMap['pfpar'])) $cfg['prefetch_par'] = (int)$mathMap['pfpar'];
+    if (isset($mathMap['tbw']))   $cfg['bitrate']      = (int)($mathMap['tbw'] / 1000);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🧬 POLYMORPHIC CONTEXT INHERITANCE — Full M3U8 Anatomy Decoder
+//    Decodes &ctx=base64(JSON) sent by the Typed Arrays generator.
+//    The origin directives are LAW: the VPS reads, interprets, maintains,
+//    and enhances them. The 5 resilience motors can only ADD to this
+//    baseline — they can NEVER degrade resolution, bitrate, codec, or HDR.
+//    Idempotent: same ctx → same output. Polymorphic: adapts to any profile.
+// ═══════════════════════════════════════════════════════════════════════════
+$ctxRaw = q('ctx', '');
+$ctxInherited = null;
+
+if ($ctxRaw !== '') {
+    // URL-safe Base64 → standard Base64
+    $ctxB64 = str_replace(['-', '_'], ['+', '/'], $ctxRaw);
+    $ctxJson = base64_decode($ctxB64, true);
+    if ($ctxJson !== false) {
+        $ctxInherited = json_decode($ctxJson, true);
+    }
+}
+
+if (is_array($ctxInherited) && !empty($ctxInherited)) {
+    // ── RULE: Origin values are the FLOOR, never the ceiling ──
+    // For numeric "more is better" fields: use MAX(origin, local)
+    // For string fields: origin wins (it knows what it declared)
+
+    // Resolution & Frame Rate — origin wins absolutely
+    if (isset($ctxInherited['res']))     $cfg['res']     = (string)$ctxInherited['res'];
+    if (isset($ctxInherited['w']))       $cfg['w']       = max((int)$ctxInherited['w'], $cfg['w']);
+    if (isset($ctxInherited['h']))       $cfg['h']       = max((int)$ctxInherited['h'], $cfg['h']);
+    if (isset($ctxInherited['fps']))     $cfg['fps']     = max((int)$ctxInherited['fps'], $cfg['fps']);
+    if (isset($ctxInherited['name']))    $cfg['name']    = (string)$ctxInherited['name'];
+
+    // Bitrate & Bandwidth — always use the HIGHER value (never downgrade)
+    if (isset($ctxInherited['bitrate']))   $cfg['bitrate']   = max((int)$ctxInherited['bitrate'], $cfg['bitrate']);
+    if (isset($ctxInherited['max_bw']))    $cfg['max_bw']    = max((int)$ctxInherited['max_bw'], $cfg['max_bw']);
+    if (isset($ctxInherited['min_bw']))    $cfg['min_bw']    = max((int)$ctxInherited['min_bw'], $cfg['min_bw']);
+
+    // Buffer Architecture — always use the HIGHER value (more buffer = more stability)
+    if (isset($ctxInherited['buffer_ms']))   $cfg['buffer_ms']   = max((int)$ctxInherited['buffer_ms'], $cfg['buffer_ms']);
+    if (isset($ctxInherited['net_cache']))   $cfg['net_cache']   = max((int)$ctxInherited['net_cache'], $cfg['net_cache']);
+    if (isset($ctxInherited['live_cache']))  $cfg['live_cache']  = max((int)$ctxInherited['live_cache'], $cfg['live_cache']);
+    if (isset($ctxInherited['file_cache']))  $cfg['file_cache']  = max((int)$ctxInherited['file_cache'], $cfg['file_cache']);
+
+    // Prefetch Engine — always use the HIGHER value
+    if (isset($ctxInherited['prefetch_seg']))  $cfg['prefetch_seg']  = max((int)$ctxInherited['prefetch_seg'], $cfg['prefetch_seg']);
+    if (isset($ctxInherited['prefetch_par']))  $cfg['prefetch_par']  = max((int)$ctxInherited['prefetch_par'], $cfg['prefetch_par']);
+    if (isset($ctxInherited['prefetch_buf']))  $cfg['prefetch_buf']  = max((int)$ctxInherited['prefetch_buf'], $cfg['prefetch_buf']);
+    if (isset($ctxInherited['bw_guarantee']))  $cfg['bw_guarantee']  = max((int)$ctxInherited['bw_guarantee'], $cfg['bw_guarantee']);
+
+    // Codec Architecture — origin declares what it supports, VPS respects it
+    if (isset($ctxInherited['codec_primary']))   $cfg['codec_primary']   = (string)$ctxInherited['codec_primary'];
+    if (isset($ctxInherited['codec_fallback']))  $cfg['codec_fallback']  = (string)$ctxInherited['codec_fallback'];
+    if (isset($ctxInherited['codec_priority']))  $cfg['codec_priority']  = (string)$ctxInherited['codec_priority'];
+    if (isset($ctxInherited['codec']))           $cfg['codec']           = (string)$ctxInherited['codec'];
+
+    // Color Science — origin's color pipeline is absolute law
+    if (isset($ctxInherited['color_space']))  $cfg['color_space']  = (string)$ctxInherited['color_space'];
+    if (isset($ctxInherited['color_depth']))  $cfg['color_depth']  = max((int)$ctxInherited['color_depth'], $cfg['color_depth']);
+    if (isset($ctxInherited['chroma']))       $cfg['chroma']       = (string)$ctxInherited['chroma'];
+    if (isset($ctxInherited['transfer']))     $cfg['transfer']     = (string)$ctxInherited['transfer'];
+    if (isset($ctxInherited['matrix']))       $cfg['matrix']       = (string)$ctxInherited['matrix'];
+    if (isset($ctxInherited['pix_fmt']))      $cfg['pix_fmt']      = (string)$ctxInherited['pix_fmt'];
+
+    // HEVC Tier/Level/Profile — origin knows its player capabilities
+    if (isset($ctxInherited['hevc_tier']))    $cfg['hevc_tier']    = (string)$ctxInherited['hevc_tier'];
+    if (isset($ctxInherited['hevc_level']))   $cfg['hevc_level']   = (string)$ctxInherited['hevc_level'];
+    if (isset($ctxInherited['hevc_profile'])) $cfg['hevc_profile'] = (string)$ctxInherited['hevc_profile'];
+    if (isset($ctxInherited['vid_profile']))  $cfg['vid_profile']  = (string)$ctxInherited['vid_profile'];
+
+    // HDR — if origin declares HDR, VPS must preserve it
+    if (isset($ctxInherited['hdr']) && is_array($ctxInherited['hdr']) && !empty($ctxInherited['hdr'])) {
+        $cfg['hdr'] = $ctxInherited['hdr'];
+    }
+
+    // Processing — origin wins
+    if (isset($ctxInherited['sharpen']))    $cfg['sharpen']    = (float)$ctxInherited['sharpen'];
+    if (isset($ctxInherited['compress']))   $cfg['compress']   = (int)$ctxInherited['compress'];
+    if (isset($ctxInherited['rate_ctrl']))  $cfg['rate_ctrl']  = (string)$ctxInherited['rate_ctrl'];
+    if (isset($ctxInherited['entropy']))    $cfg['entropy']    = (string)$ctxInherited['entropy'];
+
+    // Reconnect — always use higher values
+    if (isset($ctxInherited['recon_max']))     $cfg['recon_max']     = max((int)$ctxInherited['recon_max'], $cfg['recon_max']);
+    if (isset($ctxInherited['recon_timeout'])) $cfg['recon_timeout'] = max((int)$ctxInherited['recon_timeout'], $cfg['recon_timeout']);
+
+    // Audio — use higher channel count
+    if (isset($ctxInherited['audio_ch'])) $cfg['audio_ch'] = max((int)$ctxInherited['audio_ch'], $cfg['audio_ch']);
+
+    // Throughput thresholds
+    if (isset($ctxInherited['throughput_t1'])) $cfg['throughput_t1'] = (float)$ctxInherited['throughput_t1'];
+    if (isset($ctxInherited['throughput_t2'])) $cfg['throughput_t2'] = (float)$ctxInherited['throughput_t2'];
+
+    // ── Store sub-objects for resilience motors to consume ──
+    // These are passed through $decision to ResilienceIntegrationShim::enhance()
+    $cfg['_ctx_cortex']      = $ctxInherited['cortex'] ?? null;
+    $cfg['_ctx_transport']   = $ctxInherited['transport'] ?? null;
+    $cfg['_ctx_deinterlace'] = $ctxInherited['deinterlace'] ?? null;
+    $cfg['_ctx_lcevc']       = $ctxInherited['lcevc'] ?? null;
+    $cfg['_ctx_resilience']  = $ctxInherited['resilience'] ?? null;
+    $cfg['_ctx_generator']   = $ctxInherited['_gen'] ?? 'unknown';
+    $cfg['_ctx_version']     = $ctxInherited['_ver'] ?? '0';
+    $cfg['_ctx_timestamp']   = $ctxInherited['_ts'] ?? 0;
+
+    // Log inheritance event (non-blocking)
+    @file_put_contents('/var/log/iptv-ape/ctx_inherit.log',
+        sprintf("[%s] ch=%s profile=%s ctx_profile=%s ctx_gen=%s ctx_res=%s\n",
+            date('c'), $ch, $profile,
+            $ctxInherited['profile'] ?? '?',
+            $ctxInherited['_gen'] ?? '?',
+            $ctxInherited['res'] ?? '?'),
+        FILE_APPEND | LOCK_EX);
+}
+
+$hdrEnabled = !empty($cfg['hdr']);
+// 4) TOKEN
+// -------------------------------
+$exp = time() + TOKEN_TTL;
+$token = '';
+if (TOKEN_MODE === 'hmac') $token = token_hmac($ch, $profile, $exp, $deviceClass);
+elseif (TOKEN_MODE === 'passthrough') $token = token_passthrough($ch, $profile);
+
+// -------------------------------
+// 5) URL final
+// -------------------------------
+// 🛡️ QUANTUM SHIELD: PREDICTIVE GUARDIAN HEALTH CHECK
+function checkStreamHealth(string $url): bool {
+    // 🛑 ACTIVE PROBE DISABLED FOR STRICT 1-CONNECTION LINES 🛑
+    // Executing a cURL here consumes the 1 allowed connection on strict IPTV panels
+    // causing the actual player to receive a 509 Bandwidth Ban.
+    // Resolution operates in 100% BLIND ULTRA-FAST mode.
+    return true; 
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 5) URL CONSTRUCTION — Credential Passthrough from Frontend
+//    Decodes &srv=base64(host|user|pass) token sent by the JS generator.
+//    NO hardcoded credentials — mirrors the Xtream Codes API login flow.
+// ═══════════════════════════════════════════════════════════════════════════
+$srvToken = q('srv', '');
+$srvCreds = decodeSrvToken($srvToken);
+
+if ($srvCreds === null) {
+    // No valid srv token → emergency fallback to direct URL
+    emergencyFallback('invalid_srv_token');
+}
+
+$effectiveHost = $srvCreds['host'];
+$effectiveUser = $srvCreds['user'];
+$effectivePass = $srvCreds['pass'];
+
+$streamId = $ch;
+if ($decision !== null && isset($decision['stream_id']) && $decision['stream_id'] !== '') {
+    $streamId = (string)$decision['stream_id'];
+}
+
+// 🌐 PROTOCOLO SID-MISMATCH PREVENTION (Gold Standard)
+// Si el generador JS envió un stream_id numérico explícito, este es el Rey absoluto.
+$sidParam = q('sid', '');
+if ($sidParam !== '' && preg_match('/^\d+$/', $sidParam)) {
+    $streamId = $sidParam;
+}
+
+// 🛡️ QUANTUM SHIELD & GOD-MODE ZERO-DROP HLS EVASION
+// Empleamos HLS nativo (.m3u8) para asegurar compatibilidad universal y persistencia.
+// La evasión 509 se controla ahora desde los headers 'God-Mode' forzando 1 conexión
+// continua y agresiva en los reproductores en lugar del obsoleto y problemático .ts direct.
+$baseUrl = "http://" . $effectiveHost . "/live/" . rawurlencode((string)$effectiveUser) . "/" . rawurlencode((string)$effectivePass) . "/" . rawurlencode((string)$streamId) . ".m3u8";
+
+// ═══════════════════════════════════════════════════════════════════════════
+// REDUNDANCY HYDRA / HOT-SWAP (Cross-Provider Compatible)
+// ═══════════════════════════════════════════════════════════════════════════
+$bsrvToken = q('bsrv', '');
+$fallbackUrl = '';
+$isUsingBackup = false;
+
+if ($bsrvToken !== '') {
+    $bsrvCreds = decodeSrvToken($bsrvToken);
+    if ($bsrvCreds !== null) {
+        $backupStreamId = ($bsrvCreds['backup_stream_id'] !== null && $bsrvCreds['backup_stream_id'] !== '') ? $bsrvCreds['backup_stream_id'] : $streamId;
+        $fallbackUrl = "http://" . $bsrvCreds['host'] . "/live/" . rawurlencode((string)$bsrvCreds['user']) . "/" . rawurlencode((string)$bsrvCreds['pass']) . "/" . rawurlencode((string)$backupStreamId) . ".m3u8";
+        if ($token !== '') $fallbackUrl .= '?token=' . rawurlencode($token);
+    }
+}
+
+$finalUrl = ($token !== '') ? ($baseUrl . '?token=' . rawurlencode($token)) : $baseUrl;
+
+// Hot-Swap: if primary is unhealthy, seamlessly switch to backup BEFORE outputting
+if (!checkStreamHealth($finalUrl)) {
+    @file_put_contents('/var/log/iptv-ape/unhealthy.log',
+        sprintf("[%s] UNHEALTHY PRIMARY ch=%s host=%s\n", date('c'), $ch, $effectiveHost), FILE_APPEND | LOCK_EX);
+    
+    if ($fallbackUrl !== '') {
+        $finalUrl = $fallbackUrl;      // Promote backup to primary
+        $fallbackUrl = '';             // No secondary fallback left
+        $effectiveHost = $bsrvCreds['host'];
+        $isUsingBackup = true;
+    }
+}
+
+$referer = "http://" . $effectiveHost . "/";
+$originUrl = "http://" . $effectiveHost;
+
+// ═══════════════════════════════════════════════════════════════════════
+// 6) BUILD #EXTHTTP — 80+ headers (PARITY with JS exthttpHEVC object)
+// ═══════════════════════════════════════════════════════════════════════
+$sessionId = 'SES_' . generateRandomString(16);
+$deviceId = 'DEV_' . generateRandomString(12);
+$requestId = 'REQ_' . generateRandomString(16);
+$timestamp = (string)time();
+
+$exthttp = [
+    // ── HEVC Optimization ──
+    "X-HEVC-Tier"              => $cfg['hevc_tier'],
+    "X-HEVC-Level"             => $cfg['hevc_level'],
+    "X-HEVC-Profile"           => $cfg['hevc_profile'],
+    "X-Video-Profile"          => $cfg['vid_profile'],
+    "X-Color-Space"            => $cfg['color_space'],
+    "X-Chroma-Subsampling"     => $cfg['chroma'],
+    "X-HDR-Transfer-Function"  => $cfg['transfer'],
+    "X-Matrix-Coefficients"    => $cfg['matrix'],
+    "X-Compression-Level"      => (string)$cfg['compress'],
+    "X-Sharpen-Sigma"          => (string)$cfg['sharpen'],
+    "X-Rate-Control"           => $cfg['rate_ctrl'],
+    "X-Entropy-Coding"         => $cfg['entropy'],
+    "X-Pixel-Format"           => $cfg['pix_fmt'],
+    "X-Color-Depth"            => (string)$cfg['color_depth'],
+    // ── Buffer & Caching ──
+    "X-Network-Caching"        => (string)$cfg['net_cache'],
+    "X-Live-Caching"           => (string)$cfg['live_cache'],
+    "X-File-Caching"           => (string)$cfg['file_cache'],
+    "X-Buffer-Strategy"        => $mode,
+    "X-Buffer-Ms"              => (string)$cfg['buffer_ms'],
+    "X-Buffer-Target"          => (string)$cfg['buffer_ms'],
+    "X-Buffer-Min"             => "500", // HYBRID DOUBLE-ENDED BUFFER (Latencia Rayo punta Inicial)
+    "X-Buffer-Max"             => (string)round($cfg['buffer_ms'] * 4), // 4x headroom
+    // ── Prefetch ──
+    "X-Prefetch-Segments"      => (string)$cfg['prefetch_seg'],
+    "X-Prefetch-Parallel"      => (string)$cfg['prefetch_par'],
+    "X-Prefetch-Buffer-Target" => (string)$cfg['prefetch_buf'],
+    "X-Prefetch-Strategy"      => "ULTRA_AGRESIVO_ILIMITADO",
+    "X-Prefetch-Enabled"       => "true,adaptive,auto",
+    // ── Reconnect ──
+    "X-Reconnect-Timeout-Ms"   => (string)$cfg['recon_timeout'],
+    "X-Reconnect-Max-Attempts" => (string)$cfg['recon_max'],
+    "X-Reconnect-Delay-Ms"     => (string)$cfg['recon_delay'],
+    "X-Reconnect-On-Error"     => "true,immediate,adaptive",
+    // ── Segment ──
+    "X-Segment-Duration"       => (string)$cfg['seg_dur'],
+    "X-Bandwidth-Guarantee"    => (string)$cfg['bw_guarantee'],
+    // ── APE Engine Core ──
+    "X-App-Version"            => "APE_16.1.0-CLEAN-URL-ARCHITECTURE",
+    "X-Playback-Session-Id"    => $sessionId,
+    "X-Device-Id"              => $deviceId,
+    "X-Stream-Type"            => "hls",
+    "X-Quality-Preference"     => "codec-hevc,profile-main10,tier-high", // VIP FORCED HW DESC
+    // ── Playback Avanzado ──
+    "X-Playback-Rate"          => "1.0,1.25,1.5",
+    "X-Min-Buffer-Time"        => "0.5,1,2", // HYBRID NOBEL: Startup at 500ms
+    "X-Max-Buffer-Time"        => "8,12,30", // HYBRID NOBEL: Build asymptotic safety net of 30 seconds
+    "X-Request-Priority"       => "ultra-high-critical",
+    // ── Codecs & DRM ──
+    "X-Video-Codecs"           => $cfg['codec_priority'],
+    "X-Codec-Support"          => $cfg['codec_priority'],
+    "X-Audio-Codecs"           => "opus,aac,eac3,ac3,dolby,mp3",
+    "X-DRM-Support"            => "widevine,playready,fairplay",
+    // ── CDN & Failover ──
+    "X-CDN-Provider"           => "auto",
+    "X-Failover-Enabled"       => "true",
+    "X-Buffer-Size"            => (string)intval($cfg['max_bw'] / 550),
+    // ── Metadata & Tracking ──
+    "X-Client-Timestamp"       => $timestamp,
+    "X-Request-Id"             => $requestId,
+    "X-Device-Type"            => "smart-tv",
+    "X-Screen-Resolution"      => $cfg['res'],
+    "X-Network-Type"           => "wifi",
+    // ── Critical Headers (Sync with Origin) ──
+    "User-Agent"               => $uaOut,
+    "Origin"                   => "http://" . $effectiveHost,
+    "Referer"                  => "http://" . $effectiveHost . "/",
+    "Accept"                   => ACCEPT_HEADER,
+    "Accept-Encoding"          => ACCEPT_ENCODING,
+    // ── OTT Navigator Compat ──
+    "X-OTT-Navigator-Version"  => "1.7.0.0-aggressive-extreme",
+    "X-Player-Type"            => "exoplayer-ultra-extreme,vlc-pro",
+    "X-Hardware-Decode"        => "true",
+    "X-Audio-Track-Selection"  => "highest-quality-extreme,dolby-atmos-first",
+    "X-Subtitle-Track-Selection"=> "off",
+    "X-EPG-Sync"               => "enabled",
+    "X-Catchup-Support"        => "flussonic-ultra",
+    // ── Streaming Control ──
+    "X-Bandwidth-Estimation"   => "adaptive,balanced,conservative",
+    "X-Initial-Bitrate"        => "50000000,60000000,80000000",
+    "X-Retry-Count"            => "10,12,15",
+    "X-Retry-Delay-Ms"         => "120,200,350",
+    "X-Connection-Timeout-Ms"  => "2500,3500,6000",
+    "X-Read-Timeout-Ms"        => "6000,9000,12000",
+    // ── Security ──
+    "X-Country-Code"           => "US",
+    // ── HDR & Color ──
+    "X-HDR-Support"            => $hdrEnabled ? implode(',', $cfg['hdr']) : 'none',
+    "X-Dynamic-Range"          => $hdrEnabled ? "hdr" : "sdr",
+    "X-Color-Primaries"        => $cfg['color_space'] === 'BT2020' ? "bt2020" : "bt709",
+    // ── Resolution Advanced ──
+    "X-Max-Resolution"         => $cfg['res'],
+    "X-Max-Bitrate"            => (string)$cfg['max_bw'],
+    "X-Frame-Rates"            => "24,25,30,50,60,120",
+    "X-Aspect-Ratio"           => "16:9,21:9",
+    "X-Pixel-Aspect-Ratio"     => "1:1",
+    // ── Audio Premium ──
+    "X-Dolby-Atmos"            => $cfg['audio_ch'] >= 6 ? "true" : "false",
+    "X-Audio-Channels"         => $cfg['audio_ch'] >= 6 ? "7.1,5.1,2.0" : "2.0",
+    "X-Audio-Sample-Rate"      => "48000,96000",
+    "X-Audio-Bit-Depth"        => "24bit",
+    "X-Spatial-Audio"          => $cfg['audio_ch'] >= 6 ? "true" : "false",
+    "X-Audio-Passthrough"      => "true",
+    // ── Parallel Downloads ──
+    "X-Parallel-Segments"      => "2,3,4",
+    "X-Segment-Preload"        => "true",
+    "X-Concurrent-Downloads"   => "2,3,4",
+    // ── Anti-Corte / Failover ──
+    "X-Buffer-Underrun-Strategy"=> "adaptive-prefetch",
+    "X-Seamless-Failover"      => "true-ultra",
+    // ── ABR Control Avanzado ──
+    "X-Bandwidth-Preference"   => "unlimited",
+    "X-BW-Estimation-Window"   => "10",
+    "X-BW-Confidence-Threshold"=> "0.95",
+    "X-BW-Smooth-Factor"       => "0.05",
+    "X-Packet-Loss-Monitor"    => "enabled,aggressive",
+    "X-RTT-Monitoring"         => "enabled,aggressive",
+    "X-Congestion-Detect"      => "enabled",
+];
+
+// ═══════════════════════════════════════════════════════════════════
+// 6B) LCEVC ENHANCEMENT LAYER HEADERS (APE v1.0.0)
+// Condicional: solo se añaden si el canal tiene lcevc_enabled=true
+// en channels_map.json y el player no es Safari/AVPlayer.
+// ═══════════════════════════════════════════════════════════════════
+$lcevcHeaders = [];
+$chMapEntry   = $map[$ch] ?? [];
+if (!empty($chMapEntry['lcevc_enabled'])) {
+    $lcevcEngineFile   = __DIR__ . '/cmaf_engine/modules/lcevc_state_engine.php';
+    $lcevcDetectorFile = __DIR__ . '/cmaf_engine/modules/lcevc_player_detector.php';
+    if (file_exists($lcevcEngineFile) && file_exists($lcevcDetectorFile)) {
+        require_once $lcevcEngineFile;
+        require_once $lcevcDetectorFile;
+        $playerInfo  = LcevcPlayerDetector::detect();
+        $lcevcState  = LcevcStateEngine::resolveState($chMapEntry, $playerInfo['player_name']);
+        $lcevcHeaders = LcevcStateEngine::buildResponseHeaders($lcevcState, $chMapEntry);
+    } else {
+        $lcevcHeaders = [
+            'X-LCEVC-State'      => 'SIGNAL_ONLY',
+            'X-LCEVC-Enabled'    => '1',
+            'X-LCEVC-Mode'       => strtoupper($chMapEntry['lcevc_mode'] ?? 'SEI_METADATA'),
+            'X-LCEVC-Base-Codec' => strtoupper($chMapEntry['lcevc_base_codec'] ?? 'H264'),
+            'X-LCEVC-Fallback'   => strtoupper($chMapEntry['lcevc_fallback'] ?? 'BASE_ONLY'),
+        ];
+    }
+    $exthttp = array_merge($exthttp, $lcevcHeaders);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 7) BUILD #EXTVLCOPT — 63 lines (PARITY with JS generateEXTVLCOPT)
+// ═══════════════════════════════════════════════════════════════════
+$codec_lc = strtolower($cfg['codec_primary']);
+$file_cache_div6 = intval($cfg['file_cache'] / 6);
+$mtu = min(65535, intval($cfg['max_bw'] / 100));
+
+$vlcopt = [];
+
+// SECCIÓN 1: USER-AGENT Y HEADERS (9 líneas)
+$vlcopt[] = "#EXTVLCOPT:http-user-agent=" . $uaOut;
+$vlcopt[] = "#EXTVLCOPT:http-referrer=" . $referer;
+$vlcopt[] = "#EXTVLCOPT:http-accept=*/*";
+$vlcopt[] = "#EXTVLCOPT:http-accept-language=en-US,en;q=0.9,es;q=0.8";
+$vlcopt[] = "#EXTVLCOPT:http-accept-encoding=gzip, deflate";
+$vlcopt[] = "#EXTVLCOPT:http-connection=keep-alive";
+$vlcopt[] = "#EXTVLCOPT:http-cache-control=no-cache";
+$vlcopt[] = "#EXTVLCOPT:http-pragma=no-cache";
+
+// SECCIÓN 1B: HEADERS HTTP COMPLETOS (7 líneas)
+$vlcopt[] = "#EXTVLCOPT:http-header:Connection=keep-alive";
+$vlcopt[] = "#EXTVLCOPT:http-header:Keep-Alive=timeout=300, max=1000";
+$vlcopt[] = "#EXTVLCOPT:http-header:Range=bytes=0-";
+$vlcopt[] = "#EXTVLCOPT:http-header:If-None-Match=*";
+$vlcopt[] = "#EXTVLCOPT:http-header:Origin=" . $originUrl;
+$vlcopt[] = "#EXTVLCOPT:http-header:Referer=" . $referer;
+$vlcopt[] = "#EXTVLCOPT:http-header:Priority=u=1, i";
+$vlcopt[] = "#EXTVLCOPT:network-caching-dscp=46"; // 🚀 Latencia Rayo QoS: Instar al ISP a considerar estos paquetes como Expedited Forwarding
+
+// SECCIÓN 2: CACHÉ Y SINCRONIZACIÓN (9 líneas)
+$vlcopt[] = "#EXTVLCOPT:network-caching=" . $cfg['net_cache'];
+$vlcopt[] = "#EXTVLCOPT:live-caching=" . $cfg['live_cache'];
+$vlcopt[] = "#EXTVLCOPT:file-caching=" . $cfg['file_cache'];
+$vlcopt[] = "#EXTVLCOPT:clock-jitter=0";
+$vlcopt[] = "#EXTVLCOPT:clock-synchro=0";
+$vlcopt[] = "#EXTVLCOPT:sout-mux-caching=" . $file_cache_div6;
+$vlcopt[] = "#EXTVLCOPT:sout-audio-sync=1";
+$vlcopt[] = "#EXTVLCOPT:sout-video-sync=1";
+$vlcopt[] = "#EXTVLCOPT:disc-caching=" . $file_cache_div6;
+
+// SECCIÓN 2B: OPTIMIZACIÓN TLS (8 líneas)
+$vlcopt[] = "#EXTVLCOPT:http-tls-version=1.0";
+$vlcopt[] = "#EXTVLCOPT:gnutls-priorities=PERFORMANCE:%SERVER_PRECEDENCE";
+$vlcopt[] = "#EXTVLCOPT:http-tls-session-resumption=true";
+$vlcopt[] = "#EXTVLCOPT:http-ssl-verify-peer=false";
+$vlcopt[] = "#EXTVLCOPT:http-ssl-verify-host=false";
+$vlcopt[] = "#EXTVLCOPT:http-tls-handshake-timeout=5000";
+$vlcopt[] = "#EXTVLCOPT:http-persistent=true";
+$vlcopt[] = "#EXTVLCOPT:http-max-connections=3";
+
+// SECCIÓN 3: DECODIFICACIÓN Y HARDWARE (13 líneas)
+$vlcopt[] = "#EXTVLCOPT:avcodec-hw=any";
+$vlcopt[] = "#EXTVLCOPT:avcodec-threads=0";
+$vlcopt[] = "#EXTVLCOPT:avcodec-fast=1";
+$vlcopt[] = "#EXTVLCOPT:avcodec-skiploopfilter=4";
+$vlcopt[] = "#EXTVLCOPT:avcodec-hurry-up=1";
+$vlcopt[] = "#EXTVLCOPT:avcodec-skip-frame=0";
+$vlcopt[] = "#EXTVLCOPT:avcodec-skip-idct=0";
+$vlcopt[] = "#EXTVLCOPT:sout-avcodec-strict=-2";
+$vlcopt[] = "#EXTVLCOPT:ffmpeg-threads=0";
+$vlcopt[] = "#EXTVLCOPT:avcodec-codec=hevc"; // VIP ENFORCED
+$vlcopt[] = "#EXTVLCOPT:sout-video-codec=hevc"; // VIP ENFORCED
+$vlcopt[] = "#EXTVLCOPT:audio-channels=" . $cfg['audio_ch'];
+$vlcopt[] = "#EXTVLCOPT:audiotrack-passthrough=" . ($cfg['audio_ch'] >= 6 ? 'true' : 'false');
+$vlcopt[] = "#EXTVLCOPT:adaptive-maxbw=" . $cfg['max_bw'];
+$vlcopt[] = "#EXTVLCOPT:http-max-retries=" . $cfg['recon_max'];
+$vlcopt[] = "#EXTVLCOPT:http-timeout=6000";
+
+// SECCIÓN 4: CALIDAD DE VIDEO (9 líneas)
+// JERARQUÍA RESOLUCIÓN INFINITA (Fallback 5-Tier)
+$vlcopt[] = "#EXTVLCOPT:preferred-resolution=480";
+$vlcopt[] = "#EXTVLCOPT:adaptive-maxwidth=854";
+$vlcopt[] = "#EXTVLCOPT:adaptive-maxheight=480";
+$vlcopt[] = "#EXTVLCOPT:preferred-resolution=720";
+$vlcopt[] = "#EXTVLCOPT:adaptive-maxwidth=1280";
+$vlcopt[] = "#EXTVLCOPT:adaptive-maxheight=720";
+$vlcopt[] = "#EXTVLCOPT:preferred-resolution=1080";
+$vlcopt[] = "#EXTVLCOPT:adaptive-maxwidth=1920";
+$vlcopt[] = "#EXTVLCOPT:adaptive-maxheight=1080";
+$vlcopt[] = "#EXTVLCOPT:preferred-resolution=2160";
+$vlcopt[] = "#EXTVLCOPT:adaptive-maxwidth=3840";
+$vlcopt[] = "#EXTVLCOPT:adaptive-maxheight=2160";
+$vlcopt[] = "#EXTVLCOPT:preferred-resolution=4320";
+$vlcopt[] = "#EXTVLCOPT:adaptive-maxwidth=7680";
+$vlcopt[] = "#EXTVLCOPT:adaptive-maxheight=4320";
+$vlcopt[] = "#EXTVLCOPT:adaptive-logic=highest";
+$vlcopt[] = "#EXTVLCOPT:video-filter=deinterlace";
+$vlcopt[] = "#EXTVLCOPT:deinterlace-mode=bwdif"; // 🥇 VIP ENFORCED: Target Post-Producción Max Calidad
+$vlcopt[] = "#EXTVLCOPT:postproc-q=6";
+$vlcopt[] = "#EXTVLCOPT:aspect-ratio=16:9";
+$vlcopt[] = "#EXTVLCOPT:video-on-top=0";
+$vlcopt[] = "#EXTVLCOPT:video-deco=1";
+
+// SECCIÓN 4B: HDR COLORIMETRÍA
+if ($hdrEnabled) {
+    $vlcopt[] = "#EXTVLCOPT:video-color-space=" . $cfg['color_space'];
+    $vlcopt[] = "#EXTVLCOPT:video-transfer-function=" . $cfg['transfer'];
+    $vlcopt[] = "#EXTVLCOPT:video-color-primaries=" . ($cfg['color_space'] === 'BT2020' ? 'BT2020' : 'BT709');
+    $vlcopt[] = "#EXTVLCOPT:video-color-range=limited";
+    $vlcopt[] = "#EXTVLCOPT:tone-mapping=auto";
+    $vlcopt[] = "#EXTVLCOPT:hdr-output-mode=auto";
+    $vlcopt[] = "#EXTVLCOPT:video-chroma-subsampling=" . $cfg['chroma'];
+    $vlcopt[] = "#EXTVLCOPT:avcodec-options={color_depth=" . $cfg['color_depth'] . "}";
+} else {
+    $vlcopt[] = "#EXTVLCOPT:tone-mapping=disabled";
+    $vlcopt[] = "#EXTVLCOPT:hdr-output-mode=sdr";
+}
+
+// SECCIÓN 5: POST-PROCESAMIENTO (6 líneas)
+$vlcopt[] = "#EXTVLCOPT:video-filter=adjust:sharpen";
+$vlcopt[] = "#EXTVLCOPT:sharpen-sigma=" . $cfg['sharpen'];
+$vlcopt[] = "#EXTVLCOPT:contrast=1.0";
+$vlcopt[] = "#EXTVLCOPT:brightness=1.0";
+$vlcopt[] = "#EXTVLCOPT:saturation=1.0";
+$vlcopt[] = "#EXTVLCOPT:gamma=1.0";
+
+// SECCIÓN 6: CONEXIÓN ESTABLE (6 líneas)
+$vlcopt[] = "#EXTVLCOPT:http-reconnect=true";
+$vlcopt[] = "#EXTVLCOPT:http-continuous=true";
+$vlcopt[] = "#EXTVLCOPT:http-forward-cookies=true";
+$vlcopt[] = "#EXTVLCOPT:no-http-reconnect=0";
+$vlcopt[] = "#EXTVLCOPT:ipv4-timeout=1000";
+$vlcopt[] = "#EXTVLCOPT:tcp-caching=3000";
+
+// SECCIÓN 7: RESILIENCIA 24/7/365 (15 líneas)
+$vlcopt[] = "#EXTVLCOPT:repeat=" . $cfg['recon_max'];
+$vlcopt[] = "#EXTVLCOPT:input-repeat=65535";
+$vlcopt[] = "#EXTVLCOPT:loop=1";
+$vlcopt[] = "#EXTVLCOPT:no-drop-late-frames=1";
+$vlcopt[] = "#EXTVLCOPT:no-skip-frames=1";
+$vlcopt[] = "#EXTVLCOPT:network-synchronisation=1";
+$vlcopt[] = "#EXTVLCOPT:mtu=" . $mtu;
+$vlcopt[] = "#EXTVLCOPT:live-pause=0";
+$vlcopt[] = "#EXTVLCOPT:high-priority=1";
+$vlcopt[] = "#EXTVLCOPT:auto-adjust-pts-delay=1";
+$vlcopt[] = "#EXTVLCOPT:sout-keep=1";
+$vlcopt[] = "#EXTVLCOPT:play-and-exit=0";
+$vlcopt[] = "#EXTVLCOPT:playlist-autostart=1";
+$vlcopt[] = "#EXTVLCOPT:one-instance-when-started-from-file=0";
+$vlcopt[] = "#EXTVLCOPT:no-crashdump=1";
+
+// SECCIÓN 8: ADAPTIVE CACHING + HEVC (6 líneas)
+$vlcopt[] = "#EXTVLCOPT:adaptive-caching=true";
+$vlcopt[] = "#EXTVLCOPT:adaptive-cache-size=5000";
+$vlcopt[] = "#EXTVLCOPT:adaptive-logic=highest";
+$vlcopt[] = "#EXTVLCOPT:codec=hevc"; // 👑 VIP Strict
+$vlcopt[] = "#EXTVLCOPT:sout-video-profile=" . $cfg['vid_profile'];
+$vlcopt[] = "#EXTVLCOPT:force-dolby-surround=0";
+
+// ═══════════════════════════════════════════════════════════════════════
+// 7B) MONOLITHIC INTEGRATED NEURO BUFFER & HYDRA FAILOVER
+// ═══════════════════════════════════════════════════════════════════════
+// Replaces the old array_merge shim logic with embedded classes.
+$bufferPct = IntegratedNeuroBuffer::deriveBufferFromTelemetry($ch);
+$networkType = q('net_type', 'ethernet');
+$streamType = (stripos($ch, 'VOD') !== false || stripos($ch, 'SERIES') !== false) ? 'vod' : 'live';
+
+$neuroProfile = IntegratedNeuroBuffer::calculateAggression($ch, $bufferPct);
+$neuroHeaders = IntegratedNeuroBuffer::buildAggressionHeaders($neuroProfile);
+$neuroVlcopts = IntegratedNeuroBuffer::buildVlcOpts($neuroProfile, $streamType, $networkType, $fallbackUrl);
+
+if ($isUsingBackup) {
+    $neuroHeaders['X-Hydra-Hot-Swap'] = 'TRIGGERED';
+}
+
+$exthttp = array_merge($exthttp, $neuroHeaders);
+$vlcopt = array_merge($vlcopt, $neuroVlcopts);
+
+// ═══════════════════════════════════════════════════════════════════════
+// 8) OUTPUT M3U FRAGMENT — FULL (63+ EXTVLCOPT + 80+ EXTHTTP always)
+// ═══════════════════════════════════════════════════════════════════════
+$labelFinal = (is_string($labelOverride) && $labelOverride !== '') ? $labelOverride : $cfg['label'];
+
+header('Content-Type: application/x-mpegURL; charset=utf-8');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+// header('Pragma: no-cache');
+
+// #EXTM3U header — REQUIRED for Option B (Universal Player Support)
+// VLC, TiviMate, Kodi, etc. need this to treat the response as an M3U playlist.
+// OTT Navigator also handles it correctly when accessing directly.
+echo "#EXTM3U\n";
+echo '#EXTINF:-1 '
+    . 'ape-profile="' . $profile . '-VIP-HW" '
+    . 'codec="HEVC" '
+    . 'video-track="' . $cfg['res'] . '" '
+    . 'bl-video-track="1920x1080,1280x720,854x480"'
+    . ',' . $labelFinal . "\n";
+
+// #EXTHTTP — 80+ headers JSON (mirrors JS exthttpHEVC)
+echo '#EXTHTTP:' . json_encode($exthttp, JSON_UNESCAPED_SLASHES) . "\n";
+
+// #EXTVLCOPT — 63+ lines (mirrors JS generateEXTVLCOPT)
+echo implode("\n", $vlcopt) . "\n";
+
+// Stream URL
+echo $finalUrl . "\n";
+
+// ═══════════════════════════════════════════════════════════════════════
+// 9) LOGGING
+// ═══════════════════════════════════════════════════════════════════════
+$duration = microtime(true) - $start;
+$logEntry = sprintf("[%s] ch=%s prof=%s dev=%s vlc=%d hdr=%d ms=%.2f\n",
+    date('Y-m-d H:i:s'), $ch, $profile, $deviceClass,
+    count($vlcopt), $hdrEnabled ? 1 : 0, $duration * 1000);
+if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+@file_put_contents('/var/log/iptv-ape/resolver.log', $logEntry, FILE_APPEND | LOCK_EX);
+exit;

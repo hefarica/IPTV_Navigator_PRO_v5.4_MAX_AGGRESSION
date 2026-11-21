@@ -1,0 +1,414 @@
+/**
+ * ENRIQUECIMIENTO LOCAL AUTOMÁTICO - CONSTRUCTOR IPTV PRO STYLE
+ * ============================================================
+ * Módulo independiente para rellenar campos vacíos en canales IPTV
+ * usando heurísticas locales sin fuentes externas.
+ * 
+ * Uso: ConstructorStyleEnricher.apply(channel)
+ * 
+ * NO depende de:
+ * - iptv-org
+ * - TDTChannels
+ * - API externas
+ * 
+ * SÍ rellena:
+ * - qualityTags (array de strings)
+ * - resolution (8K, 4K, 1440p, 1080p, 720p, 480p, UNKNOWN)
+ * - codec (HEVC, AVC, AV1, UNKNOWN)
+ * - codecFamily (mismo)
+ * - frames (fps, número)
+ * - transport (HLS, DASH, TS, RTMP, RTSP, UNKNOWN)
+ * - bitrate (kbps estimado)
+ * - bitrateTierCode (UHD8K, UHD4K, FHD, HD, SD, UNKNOWN)
+ * - isHdr (boolean)
+ * - isDolbyAtmos (boolean)
+ * - isCatchup (boolean)
+ */
+
+class ConstructorStyleEnricher {
+
+    // ========================================
+    // HELPERS TEXTUALES
+    // ========================================
+
+    /**
+     * Construye un texto combinado del canal en UPPERCASE
+     * para búsquedas rápidas
+     */
+    static _buildText(ch) {
+        return [
+            ch.name || '',
+            ch.tvgName || '',
+            ch.group || ch.group_title || '',
+            ch.url || '',
+            ch.userAgent || '',
+        ].join(' ').toUpperCase();
+    }
+
+    /**
+     * Verifica si un regex coincide en el texto
+     */
+    static _has(text, regex) {
+        return regex.test(text);
+    }
+
+    /**
+     * Extrae números (fps, bitrate, etc) del texto
+     */
+    static _extractNumber(text, pattern, defaultValue = 0) {
+        const match = text.match(pattern);
+        return match ? parseInt(match[1], 10) : defaultValue;
+    }
+
+    // ========================================
+    // 1. QUALITY TAGS (4K, FHD, LATINO, etc)
+    // ========================================
+
+    static inferQualityTags(ch) {
+        const text = this._buildText(ch);
+        const tags = new Set(ch.qualityTags || []);
+
+        // --- RESOLUCIONES ---
+        if (this._has(text, /\b8K\b/)) tags.add('8K');
+        if (this._has(text, /\b4K\b|UHD/i)) tags.add('4K');
+        if (this._has(text, /\bFHD\b|\b1080P\b|\b1080I\b/)) tags.add('FHD');
+        if (this._has(text, /\b720P\b|\b720I\b/)) tags.add('HD');
+        // ✅ V4.29: 'HD' genérico (sin 720P/720I) → FHD (mayoría de canales HD son 1080p real)
+        else if (this._has(text, /\bHD\b/) && !tags.has('4K') && !tags.has('8K') && !tags.has('FHD')) tags.add('FHD');
+        if (this._has(text, /\b480P\b|\bSD\b|\bDEF\b/)) tags.add('SD');
+
+        // --- CODECS VIDEO ---
+        if (this._has(text, /HEVC|H\.?265|H265|HEV1|HEV2/)) tags.add('HEVC');
+        if (this._has(text, /AVC|H\.?264|H264|AVC1/)) tags.add('AVC');
+        if (this._has(text, /\bAV1\b|AV01/)) tags.add('AV1');
+
+        // --- CODECS AUDIO ---
+        if (this._has(text, /AAC|AACLC/)) tags.add('AAC');
+        if (this._has(text, /MP3/)) tags.add('MP3');
+        if (this._has(text, /AC-?3|AC3|DOLBY\s+DIGITAL/)) tags.add('AC3');
+        if (this._has(text, /EAC-?3|E-AC-?3|EAC3|DOLBY\s+DIGITAL\s+PLUS/)) tags.add('EAC3');
+        if (this._has(text, /OPUS/)) tags.add('OPUS');
+        if (this._has(text, /FLAC/)) tags.add('FLAC');
+
+        // --- IDIOMAS ---
+        if (this._has(text, /\bLATIN(O|A)?\b|LATAM/)) tags.add('LATINO');
+        if (this._has(text, /\bESP(AÑOL|ANOL)?\b|SPA\b/)) tags.add('SPANISH');
+        if (this._has(text, /\bENG(LISH)?\b|ENG\b/)) tags.add('ENGLISH');
+        if (this._has(text, /\bFRA(NCÉS|NCES)?\b|FRE\b|FRENCH/)) tags.add('FRENCH');
+        if (this._has(text, /\bDEU(TSCH)?\b|DEU\b|DEUTSCH/)) tags.add('GERMAN');
+        if (this._has(text, /\bITA(LIANO)?\b|ITA\b|ITALIAN/)) tags.add('ITALIAN');
+        if (this._has(text, /\bPOR(TUGUÉS|TUGUES)?\b|POR\b|PORTUGUESE/)) tags.add('PORTUGUESE');
+
+        // --- CATEGORÍAS / FLAGS ---
+        if (this._has(text, /\bVIP\b|PREMIUM|PLUS/)) tags.add('VIP');
+        if (this._has(text, /\bBACKUP\b|RESPALDO/)) tags.add('BACKUP');
+        if (this._has(text, /\bDEPORT(E|IV)?\b|SPORT|FUTBOL|FÚTBOL|SOCCER|NFL|NBA|NHL|UFC|BOXING/)) tags.add('SPORTS');
+        if (this._has(text, /\bMOVIE\b|CINE|PELÍCULAS?|FILMS?\b|CINEMA/)) tags.add('MOVIES');
+        if (this._has(text, /\bSERIES?\b|TV|SERIES|SERIALES?/)) tags.add('SERIES');
+        if (this._has(text, /\bNOTICIA|NEWS|NEWS?\b|NOTICIAS/)) tags.add('NEWS');
+        if (this._has(text, /\bKIDS\b|NIÑOS|INFANTIL|CHILDREN/)) tags.add('KIDS');
+        if (this._has(text, /\bDOCU(MENTAL)?\b|DOCUMENTARY/)) tags.add('DOCUMENTARY');
+        if (this._has(text, /\bMUSIC\b|MÚSICA|MUSICA/)) tags.add('MUSIC');
+        if (this._has(text, /\bRELIGION|RELIGIÓN/)) tags.add('RELIGION');
+
+        // --- CARACTERÍSTICAS TÉCNICAS ---
+        if (this._has(text, /HDR10|HLG|DOLBY\s+VISION|DOLBYVISION/)) tags.add('HDR');
+        if (this._has(text, /ATMOS|DOLBY\s+ATMOS/)) tags.add('DOLBY_ATMOS');
+        if (this._has(text, /LL-?HLS|LOW.?LATENCY|LOW-LATENCY/)) tags.add('LOW_LATENCY');
+        if (this._has(text, /CATCHUP|CATCH-UP|TIMESHIFT/)) tags.add('CATCHUP');
+        if (this._has(text, /LIVE/)) tags.add('LIVE');
+        if (this._has(text, /VOD|VIDEO.?ON.?DEMAND/)) tags.add('VOD');
+
+        return Array.from(tags);
+    }
+
+    // ========================================
+    // 2. RESOLUCIÓN
+    // ========================================
+
+    static inferResolution(ch) {
+        // Si ya existe y no es UNKNOWN/AUTO, respetarlo
+        if (ch.resolution && ch.resolution !== 'UNKNOWN' && ch.resolution !== 'AUTO') {
+            return ch.resolution;
+        }
+
+        const text = this._buildText(ch);
+
+        // Búsqueda directa en texto
+        if (/\b8K\b|7680X4320/i.test(text)) return '8K';
+        if (/\b4K\b|UHD|3840X2160/i.test(text)) return '4K';
+        if (/\b2160P\b/i.test(text)) return '4K';
+        if (/\b1440P\b/i.test(text)) return '1440p';
+        if (/\b1080P\b|1920X1080|\bFHD\b/i.test(text)) return '1080p';
+        if (/\b1080I\b|INTERLACED/i.test(text)) return '1080i';
+        if (/\b720P\b|1280X720/i.test(text)) return '720p';
+        if (/\b720I\b/i.test(text)) return '720i';
+        if (/\b480P\b|848X480/i.test(text)) return '480p';
+        if (/\b360P\b|640X360/i.test(text)) return '360p';
+
+        // ✅ V4.21: Fallback desde campo 'calidad' o 'quality' si existe
+        const qualityField = (ch.calidad || ch.quality || ch.qualityLabel || '').toUpperCase();
+        if (qualityField) {
+            if (qualityField.includes('8K')) return '8K';
+            if (qualityField.includes('4K') || qualityField.includes('2160')) return '4K';
+            if (qualityField.includes('1080') || qualityField.includes('FHD')) return '1080p';
+            if (qualityField.includes('720') || qualityField.includes('HD_720')) return '720p';
+            if (qualityField.includes('480') || qualityField.includes('SD_480') || qualityField.includes('SD')) return '480p';
+            if (qualityField.includes('360')) return '360p';
+        }
+
+        // Fallback a tags de calidad si existen
+        if (ch.qualityTags && ch.qualityTags.length > 0) {
+            if (ch.qualityTags.includes('8K')) return '8K';
+            if (ch.qualityTags.includes('4K')) return '4K';
+            if (ch.qualityTags.includes('FHD')) return '1080p';
+            // ✅ V5.0: 'HD' tag sin 'FHD' → 1080p (NO 720p). Alineado con Quantum Classifier.
+            if (ch.qualityTags.includes('HD')) return '1080p';
+            if (ch.qualityTags.includes('SD')) return '480p';
+        }
+
+        // ✅ V4.29: Último fallback: 'HD' genérico en nombre → 1080p (mayoría son 1080p real)
+        const rawText = this._buildText(ch);
+        if (/\bHD\b/i.test(rawText) && !/\b720P\b/i.test(rawText)) return '1080p';
+
+        return 'UNKNOWN';
+    }
+
+
+    // ========================================
+    // 3. CODEC Y CODEC FAMILY
+    // ========================================
+
+    static inferCodec(ch) {
+        // Si ya existe y no es UNKNOWN, respetarlo
+        if (ch.codec && ch.codec !== 'UNKNOWN') {
+            return ch.codec;
+        }
+
+        const text = this._buildText(ch);
+
+        if (/HEVC|H\.?265|H265|HEV1|HEV2/.test(text)) return 'HEVC';
+        if (/\bAV1\b|AV01/.test(text)) return 'AV1';
+        if (/AVC|H\.?264|H264|AVC1/.test(text)) return 'AVC';
+        if (/VP9|VP8/.test(text)) return text.includes('VP9') ? 'VP9' : 'VP8';
+
+        // Por defecto, asumir codec más común según resolución estimada
+        const res = this.inferResolution(ch);
+        if (res === '8K' || res === '4K') return 'HEVC'; // Asumir HEVC para UHD
+
+        return 'UNKNOWN';
+    }
+
+    static inferCodecFamily(ch) {
+        const codec = (ch.codec || this.inferCodec(ch)).toUpperCase();
+
+        if (!codec || codec === 'UNKNOWN') return 'UNKNOWN';
+        if (codec.includes('HEVC') || codec.includes('H265')) return 'HEVC';
+        if (codec.includes('AV1')) return 'AV1';
+        if (codec.includes('AVC') || codec.includes('H264')) return 'AVC';
+        if (codec.includes('VP9')) return 'VP9';
+        if (codec.includes('VP8')) return 'VP8';
+
+        return codec;
+    }
+
+    // ========================================
+    // 4. FPS (FRAMES PER SECOND)
+    // ========================================
+
+    static inferFps(ch) {
+        // Si ya existe y es > 0, respetarlo
+        if (ch.frames && ch.frames > 0) {
+            return ch.frames;
+        }
+
+        const text = this._buildText(ch);
+
+        // Búsqueda de patrón "XX FPS"
+        const match = text.match(/(\d{2})\s*FPS/);
+        if (match) {
+            const fps = parseInt(match[1], 10);
+            if (fps >= 20 && fps <= 120) return fps;
+        }
+
+        // Heurística por tipo de contenido
+        if (/SPORT|DEPORT|FUTBOL|FÚTBOL|ESPN|NBA|NHL|UFC|BOXING|SOCCER|NFL/.test(text)) {
+            return 50; // Deportes típicamente 50 fps (PAL)
+        }
+        if (/MOVIE|CINE|FILM|HBO|NETFLIX|PRIME|DISNEY|PARAMOUNT|WARNER/.test(text)) {
+            return 24; // Películas típicamente 24 fps
+        }
+        if (/DOCUMENTARY|DOCUMENTAL/.test(text)) {
+            return 24;
+        }
+
+        // Sin información clara, retornar 0 (desconocido)
+        return 0;
+    }
+
+    // ========================================
+    // 5. TRANSPORTE (HLS, DASH, TS, etc)
+    // ========================================
+
+    static inferTransport(ch) {
+        // Si ya existe, respetarlo
+        if (ch.transport && ch.transport !== 'UNKNOWN') {
+            return ch.transport;
+        }
+
+        const url = (ch.url || '').toLowerCase();
+
+        // Detectar por extensión/protocolo
+        if (url.includes('.m3u8') || url.includes('hls')) return 'HLS';
+        if (url.includes('.mpd') || url.includes('dash')) return 'DASH';
+        if (url.includes('.ts') || url.includes('/live/')) return 'TS';
+        if (url.startsWith('rtmp://')) return 'RTMP';
+        if (url.startsWith('rtsp://')) return 'RTSP';
+        if (url.startsWith('rtsps://')) return 'RTSPS';
+        if (url.startsWith('http://') && url.includes('playlist')) return 'HLS';
+        if (url.endsWith('.mp4') || url.endsWith('.mkv')) return 'MP4';
+
+        // Fallback
+        return 'UNKNOWN';
+    }
+
+    // ========================================
+    // 6. BITRATE ESTIMADO (kbps)
+    // ========================================
+
+    static inferAvgBitrateKbps(ch) {
+        // Si ya existe y es > 0, respetarlo
+        if (ch.bitrate && ch.bitrate > 0) {
+            return ch.bitrate;
+        }
+
+        const res = this.inferResolution(ch);
+        const tags = ch.qualityTags || [];
+        const codec = (ch.codec || this.inferCodec(ch)).toUpperCase();
+
+        // Tabla estilo Constructor: resolución + codec → bitrate estimado
+        const isHevc = codec.includes('HEVC') || tags.includes('HEVC');
+
+        if (res === '8K') {
+            return isHevc ? 60000 : 90000; // 8K HEVC vs H.264
+        }
+        if (res === '4K') {
+            return isHevc ? 25000 : 35000;
+        }
+        if (res === '1440p') {
+            return isHevc ? 12000 : 18000;
+        }
+        if (res === '1080p' || res === '1080i') {
+            return isHevc ? 8000 : 12000;
+        }
+        if (res === '720p' || res === '720i') {
+            return 6000;
+        }
+        if (res === '480p') {
+            return 3000;
+        }
+        if (res === '360p') {
+            return 2000;
+        }
+
+        // Si no hay resolución clara
+        if (tags.includes('4K') || tags.includes('8K')) return isHevc ? 25000 : 35000;
+        if (tags.includes('FHD')) return isHevc ? 8000 : 12000;
+        if (tags.includes('HD')) return 6000;
+        if (tags.includes('SD')) return 2500;
+
+        // Fallback: bitrate mínimo razonable
+        return 2500;
+    }
+
+    // ========================================
+    // 7. BITRATE TIER CODE
+    // ========================================
+
+    static mapBitrateTier(ch) {
+        const br = ch.bitrate || 0;
+
+        if (br >= 45000) return 'UHD8K';
+        if (br >= 20000) return 'UHD4K';
+        if (br >= 8000) return 'FHD';
+        if (br >= 4000) return 'HD';
+        if (br > 0) return 'SD';
+
+        return 'UNKNOWN';
+    }
+
+    // ========================================
+    // 8. FLAGS EXTRA (HDR, ATMOS, CATCHUP)
+    // ========================================
+
+    static inferExtraFlags(ch) {
+        const text = this._buildText(ch);
+
+        // HDR
+        if (ch.isHdr == null) {
+            ch.isHdr = /HDR10|HLG|DOLBY\s+VISION|DOLBYVISION/.test(text);
+        }
+
+        // Dolby Atmos
+        if (ch.isDolbyAtmos == null) {
+            ch.isDolbyAtmos = /ATMOS|DOLBY\s+ATMOS/.test(text);
+        }
+
+        // Catchup / Timeshift
+        if (ch.isCatchup == null) {
+            ch.isCatchup = /CATCHUP|CATCH-UP|TIMESHIFT/.test(text);
+        }
+
+        // Low Latency
+        if (ch.isLowLatency == null) {
+            ch.isLowLatency = /LL-?HLS|LOW.?LATENCY/.test(text);
+        }
+    }
+
+    // ========================================
+    // 9. APLICADOR PRINCIPAL
+    // ========================================
+
+    /**
+     * Aplica TODAS las heurísticas a un canal
+     * en cascada, respetando campos ya rellenos
+     */
+    static apply(ch) {
+        // 1️⃣ Tags de calidad (primer paso, alimenta otros)
+        ch.qualityTags = this.inferQualityTags(ch);
+
+        // 2️⃣ Resolución, codec, fps, transporte
+        ch.resolution = this.inferResolution(ch);
+        ch.codec = this.inferCodec(ch);
+        ch.codecFamily = this.inferCodecFamily(ch);
+        ch.frames = this.inferFps(ch);
+        ch.transport = this.inferTransport(ch);
+
+        // 3️⃣ Bitrate (usa resolución + codec)
+        ch.bitrate = this.inferAvgBitrateKbps(ch);
+
+        // 4️⃣ Tier de bitrate
+        ch.bitrateTierCode = this.mapBitrateTier(ch);
+
+        // 5️⃣ Flags extra
+        this.inferExtraFlags(ch);
+
+        // Marcar como procesado por Constructor
+        ch._constructorProcessed = true;
+
+        return ch;
+    }
+
+    /**
+     * Aplica enriquecimiento a un array de canales
+     */
+    static applyToAll(channels) {
+        if (!Array.isArray(channels)) return [];
+        return channels.map(ch => this.apply(ch));
+    }
+}
+
+// Exportar para uso en Node.js / worker
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = ConstructorStyleEnricher;
+}
