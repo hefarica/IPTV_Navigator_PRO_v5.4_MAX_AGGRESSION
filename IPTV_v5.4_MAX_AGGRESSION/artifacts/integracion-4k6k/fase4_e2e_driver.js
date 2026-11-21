@@ -155,5 +155,6 @@
   HTMLAnchorElement.prototype.click = origClick;
   var pre = document.createElement('pre'); pre.id = 'ape-e2e-out';
   pre.textContent = 'E2E:' + JSON.stringify(R);
+  try { fetch('/resultado', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(R) }); } catch (e) { }
   document.body.appendChild(pre);
 })();

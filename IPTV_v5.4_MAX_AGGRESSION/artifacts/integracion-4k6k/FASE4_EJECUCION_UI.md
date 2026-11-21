@@ -1983,3 +1983,20 @@ clasificaba como FHD. Ahora ese canal llega a P1.
 
 `EXIT=1` en esa corrida es **esperado y correcto**: el arnés exige 3 canales/sidecars y el fixture tiene 2.
 La aserción no se relajó; se usó otra entrada.
+## 86 · Primer paso del patrón callback: el driver ya publica su resultado
+
+Añadida una línea al final del driver, después del marcador DOM:
+
+```
+fetch('/resultado', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(R) });
+```
+
+`node --check` = 0. El **runner aún no tiene la ruta** (`runner_ruta_resultado = False`), así que hoy ese POST
+recibe 404 y **el arnés sigue funcionando por `--dump-dom`**: el cambio es inocuo y deja el terreno preparado.
+
+Falta para cerrar el patrón callback:
+1. En el runner, ruta `POST /resultado` que guarde el cuerpo y marque la finalización.
+2. Que `fin()` prefiera ese cuerpo al DOM y **no** dependa de `--dump-dom`.
+3. Verificar con 3 perfiles antes de los 12 (la lección de §58/§84/§86).
+
+Con eso el 12/12 saldría en una tirada sin carrera. Hoy se cubre con dos lotes de seis, reproducible.
