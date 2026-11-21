@@ -1739,3 +1739,26 @@ con la guarda en rojo midiendo el resto.
 
 Siguiente paso, ya acotado: localizar el punto de emisión real de `saturation`/`clock-jitter` (posterior a
 `:10747`) y aplicar allí la misma reescritura. La guarda dirá si `PASS=12`.
+## 75 · `saturation` está en `__omegaComplianceTags()` (`:3155`), llamada sin argumentos en `:13905`
+
+Localización definitiva del literal:
+
+```
+3155: function __omegaComplianceTags() {
+3163:    '#EXTVLCOPT:saturation=1.08',        ← literal del bloque OMEGA CRYSTAL
+13905: + '\n' + __omegaComplianceTags();      ← única llamada, sin argumentos
+```
+
+Intenté hacerlo consciente del perfil (parámetro opcional + `typeof profile` en la llamada). Corrida `P0,P3`:
+`EXIT=0`, pero `sat=1.08` seguía → **en `:13905` `profile` no está en ese ámbito** (`typeof profile` da
+`undefined`), así que el respaldo 1.08 se mantiene.
+
+**Revertido** con `git checkout` del fichero: `node --check` = 0, 0 ocurrencias de `FASE 12`, árbol igual a
+`dd43e972`.
+
+Conclusión operativa para la próxima: en `:13905` hay que pasar el identificador de perfil **desde el llamador
+que sí lo tiene** (el mismo que ya usa `vo`/`profile` para geometría y caching) y, además, reescribir
+`clock-jitter` en el mismo bloque. Es un cambio de firma con dos llamadores, no un parche local.
+
+Tres intentos sobre estos dos campos, tres descartes medidos: no están en el array de `:10747`, no reciben
+`profile` en `:13905`, y el literal vive en `__omegaComplianceTags()`.
