@@ -80,7 +80,8 @@
   try {
     var lab = await (await fetch('/lab.json', { headers: H })).text();
     var norm = window.APELabNormalize.normalize(JSON.parse(lab));
-    await window.APE_PROFILES_CONFIG.importFromLABData(norm.data);
+    await window.APE_PROFILES_CONFIG.importFromLABData(norm.data, { includeExtrasByProfile: {
+      'P0.5': true, 'P1.5': true, 'P2.5': true, 'P3.5': true, 'P4.5': true, 'P5.5': true } });
     var txt = await (await fetch('/entrada.m3u8', { headers: H })).text();
     var inp = document.getElementById('apeM3uLocal');
     var dt = new DataTransfer(); dt.items.add(new File([txt], 'entrada_3ch.m3u8', { type: 'audio/x-mpegurl' }));

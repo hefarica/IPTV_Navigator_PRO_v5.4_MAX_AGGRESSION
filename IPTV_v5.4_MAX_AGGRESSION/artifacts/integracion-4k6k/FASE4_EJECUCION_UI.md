@@ -1073,3 +1073,24 @@ Es decir: `video-hdr` / `video-hdr-mode` de los `.5` **no están homologados** y
 (que hoy homologa bien) y eso exige medir el efecto antes/después, no un interruptor a ciegas. La próxima
 ronda es: importar con `includeExtrasByProfile` a `true` **solo para los `.5`**, reexportar y comprobar los
 seis campos; si los base no se mueven, se generaliza.
+## 48 · `includeExtrasByProfile` para los `.5`: probado y SIN efecto (resultado negativo)
+
+Driver modificado para importar con
+`{ includeExtrasByProfile: { 'P0.5':true, 'P1.5':true, 'P2.5':true, 'P3.5':true, 'P4.5':true, 'P5.5':true } }`
+y corrida de P0.5:
+
+```
+{"ok":true,"perfiles":["P0.5"],"fallos":[]}
+salida_P0.5__1795242527857.m3u8
+video-hdr=false · video-hdr-mode=SDR · video-hdr-nits=4000 · audio-channels=6 · clock-jitter=0 · saturation=1.08
+```
+
+**Idénticos a antes del cambio.** La hipótesis del §47 (compuerta `includeExtrasByProfile`) **no se sostiene
+tal como la planteé**: activarla para los seis Premium no devuelve `video-hdr=true` / `HDR10PLUS`.
+
+Lo que queda acreditado: el valor HDR emitido no sale de `pmProfile.vlcopt` en esa ruta, pese a que ese
+objeto (medido en el §47) sí contiene `true`/`HDR10PLUS`. Hay otro origen por delante —probablemente `cfg`
+(la config por perfil calculada antes del bloque de emisión) o un override por canal.
+
+No presento esto como causa cerrada: es una hipótesis descartada con su medición. La siguiente sonda debe
+leer `cfg` y de dónde se puebla `hdr_support`/`peak_luminance_nits` para los `.5`, no `pmProfile`.
