@@ -1807,3 +1807,24 @@ gradiente completo 1.06→1.00)**. El único campo que no coincide es **`clock-j
 
 Queda un único defecto conocido en todo el cluster, con su emisor localizado en cuatro presets
 (`:14932/14970/15006/15042`) y patrón de arreglo ya probado (§76).
+## 78 · `clock-jitter`: mi valor aterriza PRIMERO y tres ceros lo pisan después
+
+Añadí `clock-jitter`/`clock-synchro` al bloque OMEGA (junto a `saturation`, que sí funcionó) leyéndolos del
+perfil. Medición por canal:
+
+```
+P0 clock-jitter = 2000,0,0,0   (4 ocurrencias)
+P3 clock-jitter = 1000,0,0,0   (4 ocurrencias)
+```
+
+**El valor correcto es el primero** y hay **tres ceros después** (`:14932/14970/15006/15042`). En VLC gana la
+última directiva, así que el 0 sigue imponiéndose. `saturation`, en cambio, aparece **una sola vez** — por eso
+su arreglo funcionó.
+
+Conclusión: para `clock-jitter` no basta con emitirlo bien; hay que emitirlo **después** de los presets, o
+eliminar las tres emisiones redundantes.
+
+Parche **revertido** (`git checkout`): `node --check` = 0, árbol en `1265d8db`.
+
+Estado final del cluster: tres campos en 12/12 (HDR, audio, saturation) y `clock-jitter` pendiente de mover su
+emisión al final del bloque de canal. La causa ya no es una hipótesis: está contada en ocurrencias por archivo.
