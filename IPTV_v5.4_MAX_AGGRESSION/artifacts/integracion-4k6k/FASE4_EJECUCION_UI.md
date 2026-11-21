@@ -996,3 +996,26 @@ compuerta `_isHDR` en la línea 4410 que puede forzar el valor declarado. En P0.
 ¿capacidad del device?) no he medido. La siguiente ronda debe leer 4400-4430 y decidir con el criterio a la
 vista, no por la etiqueta. Lo mismo aplica a `audio-channels` (2→6), `clock-jitter` (1000/2000→0) y
 `saturation` (1.06→1.08).
+## 45 · El cluster HDR/audio/saturación viene de una TERCERA resolución de perfil (`pmProfile`)
+
+Leído en `m3u8-typed-arrays-ultimate.js:4405-4424`:
+
+```
+const _labVo   = pmProfile?.vlcopt || {};
+const _isHDR   = _labVo['video-hdr'] === 'true' || ... cfg.hdr_support ...
+const _pixelFormat = ... _colorDepth de _labVo['video-bit-depth'] || cfg.color_depth
+const _hdrMode = _labVo['video-hdr-mode'] || (_isHDR ? 'HDR10' : 'SDR');
+```
+
+Estos campos no salen de `profile` (el que fuerza la selección) sino de **`pmProfile`**, otra resolución de
+perfil, más `cfg` para los respaldos. Por eso el `network-caching` y la geometría ya heredan bien (usan `vo`/
+`profile`) mientras que `video-hdr`, `video-hdr-mode`, `video-hdr-nits`, `audio-channels`, `clock-jitter` y
+`saturation` siguen mostrando valores de otra capa: **no vienen de la selección**.
+
+Consecuencia medida y coherente con todo lo anterior: el cluster de divergencias del §40/§44 no son siete
+defectos sueltos, es **una sola causa** — un tercer camino de resolución de perfil que `forceProfile` no toca.
+
+Dónde mirar en la próxima ronda, sin adivinar: `pmProfile` se construye antes de la línea 4405; hay que
+identificar su origen (`profileManager.getProfile(<id derivado del canal>)` o similar) y decidir si debe
+respetar la selección activa. **No lo modifico sin ver ese origen**: cambiar la fuente de HDR/audio/filtros a
+ciegas puede romper la coherencia codec↔resolución que la ley cardinal protege.
