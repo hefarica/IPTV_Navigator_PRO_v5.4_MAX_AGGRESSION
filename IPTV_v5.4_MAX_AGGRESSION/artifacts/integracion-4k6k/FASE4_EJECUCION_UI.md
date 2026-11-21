@@ -1779,3 +1779,31 @@ P2 | sat=1.08 | eSat=1.04 | archivo VIEJO
 
 El literal 1.08 ya no es el valor emitido cuando el perfil lo declara: `saturation` pasa a heredar.
 `clock-jitter` sigue en 0 (no incluido en este parche).
+## 77 · Tabla completa: TRES campos en 12/12 y `clock-jitter` como único rojo
+
+Salida completa de `guarda-hdr-audio.js` tras regenerar los doce:
+
+```
+perfil | hdr   | modo emitido  | modo LAB      | ac | sat emit | sat LAB | cj emit | cj LAB
+P0     | true  | DOLBY_VISION  | DOLBY_VISION  | 2  | 1.06     | 1.06    | 0       | 2000
+P1     | true  | HDR10_PLUS    | HDR10_PLUS    | 2  | 1.05     | 1.05    | 0       | 1000
+P2     | true  | HDR10         | HDR10         | 2  | 1.04     | 1.04    | 0       | 1000
+P3     | false | SDR           | SDR           | 2  | 1.03     | 1.03    | 0       | 1000
+P4     | false | SDR           | SDR           | 2  | 1.02     | 1.02    | 0       | 1000
+P5     | false | SDR           | SDR           | 2  | 1.00     | 1.00    | 0       | 1000
+P0.5   | true  | HDR10_PLUS    | HDR10_PLUS    | 2  | 1.06     | 1.06    | 0       | 1000
+P1.5   | true  | HDR10_PLUS    | HDR10_PLUS    | 2  | 1.05     | 1.05    | 0       | 1000
+P2.5   | true  | HDR10_PLUS    | HDR10_PLUS    | 2  | 1.04     | 1.04    | 0       | 1000
+P3.5   | true  | HDR10_PLUS    | HDR10_PLUS    | 2  | 1.03     | 1.03    | 0       | 1000
+P4.5   | true  | HDR10_PLUS    | HDR10_PLUS    | 2  | 1.02     | 1.02    | 0       | 1000
+P5.5   | true  | HDR10_PLUS    | HDR10_PLUS    | 2  | 1.00     | 1.00    | 0       | 1200
+GUARDA_HDR_AUDIO PASS=0 FAIL=12
+```
+
+Lectura correcta de ese 0/12: **la aserción es conjunta**. Por campo, los doce coinciden en
+`video-hdr` (12/12), `video-hdr-mode` (12/12), `audio-channels` (12/12) y **`saturation` (12/12, con el
+gradiente completo 1.06→1.00)**. El único campo que no coincide es **`clock-jitter`: 0 emitido frente a
+2000/1000/1200 del LAB**, y por él fallan las doce filas.
+
+Queda un único defecto conocido en todo el cluster, con su emisor localizado en cuatro presets
+(`:14932/14970/15006/15042`) y patrón de arreglo ya probado (§76).
