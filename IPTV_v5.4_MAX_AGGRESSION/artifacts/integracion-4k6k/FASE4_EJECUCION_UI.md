@@ -1197,3 +1197,34 @@ directiva, no de la importación — y el arreglo es elegir una sola fuente.
 
 Serie de hipótesis descartadas con medición: import genérico (§47) · `includeExtrasByProfile` (§48) ·
 precedencia 12K (§50, corregido en §51) · homologación (§52). Todas quedan escritas para no repetirlas.
+## 53 · `vo` y `_labVo` son EL MISMO objeto: queda una sola explicación posible
+
+Leído en el emisor:
+
+```
+4080: const vo     = pmProfile.vlcopt;
+4407: const _labVo = pmProfile?.vlcopt || {};
+```
+
+No hay dos fuentes: **`vo` y `_labVo` son el mismo objeto**. La hipótesis «dos objetos en juego» del §52
+queda descartada con la misma lectura que la inspiró.
+
+Deducción por eliminación, con todo lo medido:
+
+1. `norm.data` (LAB normalizado) **tiene** `vlcopt['video-hdr']=true` para P0.5 → §47.
+2. El import escribe `this.profiles[pid] = Object.assign({}, existente, lpFixed)` con
+   `lpFixed = Object.assign({}, lp)` (copia superficial) → §51-§52.
+3. `getProfile(id)` devuelve `this.profiles[id]` tal cual → §50.
+4. El emisor lee `pmProfile.vlcopt` → §4080/4407.
+5. El artefacto emite `video-hdr=false` / `SDR`.
+
+Si los pasos 1-4 son ciertos, el 5 no puede ocurrir. Por tanto **algo entre (1) y (4) no es como lo estoy
+leyendo**, y el único punto que no he inspeccionado directamente es el valor real de
+`this.profiles['P0.5'].vlcopt` **dentro del navegador**, después de la importación.
+
+Sonda final, ya sin ambigüedad: una línea en el driver que registre
+`JSON.stringify(window.APE_PROFILES_CONFIG.getProfile('P0.5').vlcopt['video-hdr'])` tras importar y antes de
+generar. Ese dato cierra el caso: `true` → el defecto está después (emisión); ausente/`'false'` → el defecto
+está en la importación, y habrá que ver qué `data` recibe realmente `importFromLABData`.
+
+Nota de la serie: cuatro hipótesis descartadas por lectura directa, ninguna aceptada sin ver el valor real.
