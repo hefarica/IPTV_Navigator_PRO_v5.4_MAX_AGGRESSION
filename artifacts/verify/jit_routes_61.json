@@ -1,8 +1,13 @@
 {
   "artifact": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js",
-  "sha256": "268bbd3a05f8d8645d8641821f98dfc76e72060c44681ecfe31701f210ba4eb0",
-  "bytes": 480976,
-  "lines": 9812,
+  "sha256": "ad37d894fda142c662fe6c4b67a0ed24974b5c0b034d7fa6f50e749da0df2479",
+  "bytes": 490421,
+  "lines": 9998,
+  "line_numbers_note": "Los numeros de linea de guards/end_lines son los medidos en R1 sobre el sha 268bbd3a (9812 lineas). Tras R11 (mismo dia) el fichero tiene 9998 lineas y las guardas se desplazaron ~+186: el CONTRATO usa LONGITUDES de tramo (spanFor), no posiciones absolutas, asi que sigue siendo valido; la posicion exacta hay que re-medirla con scratch/jit_route_scan.js si se necesita.",
+  "sha256_history": [
+    { "sha256": "268bbd3a05f8d8645d8641821f98dfc76e72060c44681ecfe31701f210ba4eb0", "bytes": 480976, "lines": 9812, "note": "R1 (linea base del inventario)" },
+    { "sha256": "ad37d894fda142c662fe6c4b67a0ed24974b5c0b034d7fa6f50e749da0df2479", "bytes": 490421, "lines": 9998, "note": "R11/W-01: /resolve + /go a lectura pura; escritura explicita autenticada, atomica y con backup" }
+  ],
   "extraction": {
     "pattern": "pathname === '<ruta>'",
     "guard_lines": 61,
@@ -14,6 +19,28 @@
     "read": 42,
     "write": 19,
     "unknown": 0
+  },
+  "perimeter_external_measured": {
+    "measured_by": "capitan",
+    "measured_at": "2026-11-21",
+    "method": "GET/HEAD desde Internet, cero POST",
+    "http_404": [
+      "/image/profiles",
+      "/image/state",
+      "/image/capacity",
+      "/capabilities.json",
+      "/jit/upscale",
+      "/jit/tune",
+      "/jit/signal"
+    ],
+    "http_200": [
+      "/jit/recipe (1192 B)",
+      "/jit/api/config (1268 B)"
+    ],
+    "http_400": [
+      "/jit/resolve"
+    ],
+    "consequence": "nginx no publica la raiz del motor: 18 de las 19 rutas que escriben no son alcanzables desde fuera. /jit/resolve es ALCANZABLE + POTENCIALMENTE MUTANTE (writeFileSync L6717, stopCurrent L6718) y NO EJERCITADA. Prohibido POSTearla desde el arnes."
   },
   "rows": [
     {
@@ -184,7 +211,7 @@
         "IMAGE_TARGETS",
         "IMAGE_LIMITS"
       ],
-      "notes": "guard duplicado: la rama de L9521 es inalcanzable (L9518 ya devuelve)",
+      "notes": "guarda exterior con OR (L9518) + rama interna (L9521) que sirve el payload y retorna en L9523-9526; código vivo",
       "mutating_sites": [],
       "egress_sites": [],
       "auth_sites": [],

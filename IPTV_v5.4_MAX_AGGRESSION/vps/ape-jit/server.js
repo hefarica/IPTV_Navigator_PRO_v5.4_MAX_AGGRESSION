@@ -54,6 +54,75 @@ const FFMPEG_BIN = fs.existsSync('/usr/bin/ffmpeg') ? '/usr/bin/ffmpeg' : 'ffmpe
 
 const IMAGE_CONFIG_FILE = process.env.IMAGE_CONFIG_FILE || '/opt/ape-jit/image-config.json';
 
+/* ── ESCRITURA DE image-config: UNA via, atomica y con backup (R11 / W-01) ────
+ * Antes habia tres escritores con tres comportamientos: /image/config (valida +
+ * atomico + para el job), /api/config (valida + atomico, NO para el job) y
+ * /resolve | /go (sin validar, sin atomicidad, paran el job). Desde R11:
+ *   · la LECTURA no escribe NUNCA y no corta el transcode;
+ *   · la escritura exige señal explicita + credencial (writeSignalOk);
+ *   · toda escritura usa writeJsonAtomic (tmp + fsync + rename + fsync del
+ *     directorio) y deja copia del fichero previo.
+ * El token es el MISMO que ya usa /api/config (/opt/ape-jit/api-key.txt), ahora
+ * redirigible con APE_JIT_API_KEY_FILE para poder probar la rama de escritura
+ * en un sandbox sin crear el fichero de produccion. */
+const API_KEY_FILE = process.env.APE_JIT_API_KEY_FILE || '/opt/ape-jit/api-key.txt';
+const IMAGE_CONFIG_BACKUP_DIR = path.join(path.dirname(IMAGE_CONFIG_FILE), 'backups', 'image-config');
+const IMAGE_CONFIG_KEEP_BACKUPS = Number(process.env.IMAGE_CONFIG_KEEP_BACKUPS || 20);
+
+/* Contador de cortes REALES: permite demostrar que una lectura no invoca
+ * stopCurrent sin depender de que exista un job vivo (si no hay job, stopCurrent
+ * retorna antes de loguear y el silencio no probaria nada). */
+let stopCalls = 0;
+
+function apiKeyExpected() {
+  try { return String(fs.readFileSync(API_KEY_FILE, 'utf8')).trim(); } catch (_) { return ''; }
+}
+
+/* Señal EXPLICITA de escritura. Sin esto, /resolve y /go son LECTURA PURA.
+ * Exige: POST + (X-APE-Write: 1 o ?write=1) + X-APE-Key valida. */
+function writeSignalOk(req, u) {
+  const asked = String(req.headers['x-ape-write'] || '') === '1' ||
+                String(u.searchParams.get('write') || '') === '1';
+  if (!asked) return { asked: false, ok: false, reason: 'sin señal de escritura: lectura pura' };
+  if (req.method !== 'POST') return { asked: true, ok: false, reason: 'la escritura exige POST' };
+  const esperada = apiKeyExpected();
+  if (!esperada) return { asked: true, ok: false, reason: 'escritura deshabilitada: falta ' + API_KEY_FILE };
+  if (String(req.headers['x-ape-key'] || '') !== esperada) return { asked: true, ok: false, reason: 'X-APE-Key invalida' };
+  return { asked: true, ok: true, reason: 'señal explicita verificada' };
+}
+
+function backupImageConfig() {
+  try {
+    if (!fs.existsSync(IMAGE_CONFIG_FILE)) return null;
+    _ensureDir(IMAGE_CONFIG_BACKUP_DIR);
+    const dst = path.join(IMAGE_CONFIG_BACKUP_DIR, 'image-config-' + _stamp() + '.json');
+    fs.copyFileSync(IMAGE_CONFIG_FILE, dst);
+    try {
+      const all = fs.readdirSync(IMAGE_CONFIG_BACKUP_DIR).filter((x) => x.endsWith('.json')).sort();
+      while (all.length > IMAGE_CONFIG_KEEP_BACKUPS) {
+        const viejo = all.shift();
+        try { fs.unlinkSync(path.join(IMAGE_CONFIG_BACKUP_DIR, viejo)); } catch (_) {}
+      }
+    } catch (_) {}
+    return dst;
+  } catch (_) { return null; }
+}
+
+/* Escritura atomica de verdad: .tmp + fsync del fichero + rename + fsync del
+ * directorio (para que el rename sobreviva a un corte). Relee lo escrito. */
+function writeJsonAtomic(file, obj) {
+  const json = JSON.stringify(obj, null, 2);
+  JSON.parse(json);                     // no se escribe lo que no se puede releer
+  const dir = path.dirname(file);
+  _ensureDir(dir);
+  const tmp = file + '.tmp';
+  const fd = fs.openSync(tmp, 'w', 0o644);
+  try { fs.writeSync(fd, json); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+  fs.renameSync(tmp, file);
+  try { const dfd = fs.openSync(dir, 'r'); try { fs.fsyncSync(dfd); } finally { fs.closeSync(dfd); } } catch (_) {}
+  return json;
+}
+
 const IMAGE_DEFAULTS = {
   // ── destino ──
   //  source     : conserva dimensiones de la fuente (sin escala si ya cumple)
@@ -4965,6 +5034,7 @@ function slotAcquire() {
 }
 
 function stopCurrent(reason) {
+  stopCalls++;                       // se cuenta ANTES del return: prueba de no-invocacion
   if (!current) return;
   const c = current; current = null;
   log('STOP', c.id, reason || '');
@@ -6708,15 +6778,82 @@ const server = http.createServer((req, res) => {
         res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
         return res.end('#EXTM3U\n# ERROR: canal ' + id + ' no existe en el mapa\n');
       }
-      const qp = String(u.searchParams.get('p') || '');
-      const prof = (qp && profileMatrix[qp]) ? qp : profileForChannel(id);
-      if (qp && profileMatrix[qp] && imageConfig.profile !== qp) {
-        imageConfig.profile = qp;
-        imageConfigSource = 'resolve:' + qp;
-        imageConfig.force_transcode = true;
-        try { fs.writeFileSync(IMAGE_CONFIG_FILE, JSON.stringify(imageConfig, null, 2)); } catch (_) {}
-        if (current) { try { stopCurrent('resolve-profile-change'); } catch (_) {} }
+      /* ── GATE DE ESCRITURA (R11 / W-01) ────────────────────────────────────
+       * Un GET aqui es LECTURA PURA: calcula el plan para `p`, lo declara en la
+       * respuesta y NO toca IMAGE_CONFIG_FILE ni corta el transcode. La escritura
+       * solo ocurre con señal explicita + credencial (writeSignalOk):
+       *   POST + X-APE-Write: 1 (o ?write=1) + X-APE-Key valida.
+       * Y `p` se NORMALIZA: "" y desconocidos se rechazan con motivo (antes
+       * caian en silencio al perfil del canal y podian disparar la escritura). */
+      const qpRaw = u.searchParams.get('p');
+      const qp = qpRaw === null ? '' : String(qpRaw).trim();
+      const wsig = writeSignalOk(req, u);
+      let gate = 'read';
+      let gateReason = 'lectura pura: no se escribe ni se corta el job';
+      let gateBackup = null;
+      let gateStopped = false;
+
+      if (qpRaw !== null && (qp === '' || !profileMatrix[qp])) {
+        const motivo = qp === '' ? 'p vacio' : ('perfil desconocido: ' + qp);
+        log('RESOLVE_REJECTED', id, motivo, 'stop_calls=' + stopCalls);
+        setNoCacheHeaders(res);
+        res.writeHead(400, {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'no-store, max-age=0',
+          'X-APE-Resolve': 'rejected',
+          'X-APE-Resolve-Reason': motivo,
+          'X-APE-Resolve-Channel': id
+        });
+        return res.end('#EXTM3U\n# ERROR: p rechazado (' + motivo + ')\n');
       }
+
+      const prof = (qp && profileMatrix[qp]) ? qp : profileForChannel(id);
+
+      /* Señal pedida pero no valida: fail-closed sobre la INTENCION de escribir
+       * (405 si el problema es el metodo, 403 si es la credencial). No se toca nada. */
+      if (wsig.asked && !wsig.ok) {
+        const code = /exige POST/.test(wsig.reason) ? 405 : 403;
+        log('RESOLVE_REJECTED', id, wsig.reason, 'stop_calls=' + stopCalls);
+        setNoCacheHeaders(res);
+        res.writeHead(code, {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'no-store, max-age=0',
+          'X-APE-Resolve': 'rejected',
+          'X-APE-Resolve-Reason': wsig.reason,
+          'X-APE-Resolve-Channel': id,
+          'X-APE-Resolve-Stop': 'not-stopped'
+        });
+        return res.end('#EXTM3U\n# ERROR: escritura rechazada (' + wsig.reason + ')\n');
+      }
+
+      /* Escritura: SOLO si hay señal explicita y valida, y solo si cambia algo. */
+      if (qp && profileMatrix[qp] && wsig.ok) {
+        if (imageConfig.profile !== qp) {
+          const previo = Object.assign({}, imageConfig);
+          const siguiente = Object.assign({}, imageConfig, { profile: qp, force_transcode: true });
+          try {
+            gateBackup = backupImageConfig();
+            writeJsonAtomic(IMAGE_CONFIG_FILE, siguiente);
+            imageConfig = siguiente;
+            imageConfigSource = 'resolve-write:' + qp;
+            gate = 'applied';
+            gateReason = 'escritura explicita autenticada' + (gateBackup ? ' (backup: ' + path.basename(gateBackup) + ')' : ' (sin backup: no habia fichero previo)');
+            const teniaJob = !!current;
+            stopCurrent('resolve-explicit-write');   // self-guarded: sin job es no-op (y cuenta)
+            gateStopped = teniaJob;
+          } catch (e) {
+            imageConfig = previo;                       // no se aplica a medias
+            gate = 'rejected';
+            gateReason = 'no se pudo persistir: ' + e.message;
+            log('RESOLVE_WRITE_FAILED', qp, e.message);
+          }
+        } else {
+          gateReason = 'perfil ya vigente: no se escribio';
+        }
+      } else if (qp && profileMatrix[qp] && !wsig.ok) {
+        gateReason = wsig.reason;
+      }
+      log('RESOLVE', id, 'gate=' + gate, 'p=' + (qp || '-'), 'stop_calls=' + stopCalls, '|', gateReason);
       governorApplied = { profile: prof, channel: id, at: new Date().toISOString(), via: 'extattrfromurl' };
 
       const base = publicBase(req);
@@ -6743,8 +6880,11 @@ const server = http.createServer((req, res) => {
         : '/media_0.m3u8';
       const target = base + '/live/' + encodeURIComponent(id) + playlist;
 
+      const pmRow = profileMatrix[prof] || {};
+      const planTxt = (pmRow.outW || '?') + 'x' + (pmRow.outH || '?') + '/' + (pmRow.codec || 'auto');
       const out = [
         '#EXTM3U',
+        '# APE-RESOLVE: ' + gate + ' p=' + (qp || '-') + ' plan=' + planTxt + ' — ' + gateReason,
         '#EXTINF:-1 tvg-id="' + id + '" tvg-name="' + name + '"' + logo +
           ' group-title="' + grp + '",' + name,
         target,
@@ -6759,7 +6899,13 @@ const server = http.createServer((req, res) => {
         'X-APE-Resolved-Channel': id,
         'X-APE-Resolved-Profile': prof,
         'X-APE-Resolved-Playlist': aceptaMaster ? 'master' : 'media',
-        'X-APE-Profile': prof
+        'X-APE-Profile': prof,
+        'X-APE-Resolve': gate,
+        'X-APE-Resolve-Reason': gateReason,
+        'X-APE-Resolve-P': qp || '',
+        'X-APE-Resolve-Plan': planTxt,
+        'X-APE-Resolve-Stop': gateStopped ? 'stopped' : 'not-stopped',
+        'X-APE-Resolve-Backup': gateBackup ? path.basename(gateBackup) : ''
       });
       return res.end(out);
     }
@@ -6797,26 +6943,63 @@ const server = http.createServer((req, res) => {
      * imageConfig como profile (del que buildEncodingPlan deriva la resolucion
      * de la matriz) antes de redirigir. Es single-slot por diseno: el ultimo
      * perfil pedido manda, y se declara en el manifiesto. */
-    const qp = String(u.searchParams.get('p') || '');
+    const qpRawGo = u.searchParams.get('p');
+    const qp = qpRawGo === null ? '' : String(qpRawGo).trim();
+    if (qpRawGo !== null && (qp === '' || !profileMatrix[qp])) {
+      const motivo = qp === '' ? 'p vacio' : ('perfil desconocido: ' + qp);
+      log('GO_REJECTED', id, motivo, 'stop_calls=' + stopCalls);
+      res.writeHead(400, {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'X-APE-Resolve': 'rejected',
+        'X-APE-Resolve-Reason': motivo
+      });
+      return res.end('# ERROR: p rechazado (' + motivo + ')\n');
+    }
+    /* R11: /go es LECTURA por defecto. El perfil de la URL manda en el redirect,
+     * pero escribir imageConfig (y cortar el job) exige señal explicita
+     * autenticada: POST + X-APE-Write: 1 (o ?write=1) + X-APE-Key valida.
+     * Sin señal: se declara el perfil pedido y NO se toca el disco ni el ffmpeg. */
+    const wsigGo = writeSignalOk(req, u);
+    if (wsigGo.asked && !wsigGo.ok) {
+      const codeGo = /exige POST/.test(wsigGo.reason) ? 405 : 403;
+      log('GO_REJECTED', id, wsigGo.reason, 'stop_calls=' + stopCalls);
+      res.writeHead(codeGo, {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'X-APE-Resolve': 'rejected',
+        'X-APE-Resolve-Reason': wsigGo.reason,
+        'X-APE-Resolve-Stop': 'not-stopped'
+      });
+      return res.end('# ERROR: escritura rechazada (' + wsigGo.reason + ')\n');
+    }
+    let goGate = 'read';
+    let goReason = qp ? 'lectura pura: p declarado, no aplicado' : 'lectura pura';
+    let goStopped = false;
     if (qp && profileMatrix[qp]) {
-      /* El perfil cambia la RESOLUCION de salida, y eso solo se aplica si el
-       * transcode ARRANCA DE NUEVO: cambiar imageConfig con un job vivo no toca
-       * el ffmpeg que ya esta corriendo.
-       *
-       * MEDIDO: pedir ?p=P4.5 (5760x3240) con un job en P1 dejaba la salida en
-       * 3840x2160, con el MISMO session id en el init. El perfil se registraba
-       * pero el video no cambiaba: la etiqueta mentia.
-       *
-       * Se para el trabajo cuando el perfil pedido no es el que esta produciendo. */
-      if (imageConfig.profile !== qp) {
-        imageConfig.profile = qp;
-        imageConfigSource = 'governance:' + qp;
-        imageConfig.force_transcode = true;
-        try { fs.writeFileSync(IMAGE_CONFIG_FILE, JSON.stringify(imageConfig, null, 2)); } catch (_) {}
-        if (current) {
-          try { stopCurrent('governance-profile-change'); } catch (_) {}
+      if (wsigGo.ok && imageConfig.profile !== qp) {
+        const previo = Object.assign({}, imageConfig);
+        const siguiente = Object.assign({}, imageConfig, { profile: qp, force_transcode: true });
+        try {
+          const bk = backupImageConfig();
+          writeJsonAtomic(IMAGE_CONFIG_FILE, siguiente);
+          imageConfig = siguiente;
+          imageConfigSource = 'go-write:' + qp;
+          goGate = 'applied';
+          goReason = 'escritura explicita autenticada' + (bk ? ' (backup: ' + path.basename(bk) + ')' : '');
+          const teniaJobGo = !!current;
+          stopCurrent('go-explicit-write');          // self-guarded: sin job es no-op (y cuenta)
+          goStopped = teniaJobGo;
+        } catch (e) {
+          imageConfig = previo;
+          goGate = 'rejected';
+          goReason = 'no se pudo persistir: ' + e.message;
+          log('GO_WRITE_FAILED', qp, e.message);
         }
+      } else if (!wsigGo.ok) {
+        goReason = wsigGo.reason;
+      } else {
+        goReason = 'perfil ya vigente: no se escribio';
       }
+      log('GO', id, 'gate=' + goGate, 'p=' + qp, 'stop_calls=' + stopCalls, '|', goReason);
     }
     // se registra SIEMPRE que la peticion traiga un perfil valido, no solo cuando
     // cambia la config: el recibo debe reflejar lo que pidio el player.
@@ -6838,7 +7021,11 @@ const server = http.createServer((req, res) => {
     const goPlaylist = goMaster ? '/master.m3u8' : '/media_0.m3u8';
     res.writeHead(302, {
       'Location': publicBase(req) + '/live/' + id + goPlaylist + qs,
-      'X-APE-Player-Class': goMaster ? 'master-capable' : 'media-only'
+      'X-APE-Player-Class': goMaster ? 'master-capable' : 'media-only',
+      'X-APE-Resolve': goGate,
+      'X-APE-Resolve-Reason': goReason,
+      'X-APE-Resolve-P': (qp && profileMatrix[qp]) ? qp : '',
+      'X-APE-Resolve-Stop': goStopped ? 'stopped' : 'not-stopped'
     });
     return res.end();
   }
@@ -9437,13 +9624,12 @@ function simChain(plan, tenBit, conPq) {
 
     if (req.method === 'POST') {
       /* FAIL-CLOSED: sin key no se escribe. Leer si se puede. */
-      let keyEsperada = '';
-      try { keyEsperada = String(fs.readFileSync('/opt/ape-jit/api-key.txt', 'utf8')).trim(); } catch (_) { }
+      const keyEsperada = apiKeyExpected();
       if (!keyEsperada) {
         res.writeHead(503, { 'Content-Type': 'application/json' });
         return res.end(JSON.stringify({
           ok: false,
-          error: 'escritura deshabilitada: falta /opt/ape-jit/api-key.txt',
+          error: 'escritura deshabilitada: falta ' + API_KEY_FILE,
           hint: 'crear el fichero con la clave compartida para habilitar POST',
           contract: contrato,
         }));

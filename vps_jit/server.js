@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 'use strict';
+/* NO ES EL MOTOR — programa LEGACY distinto (processing_domain vps_jit_legacy, 5 rutas).
+ * NO sincronizar con el canonico: el deploy legacy espera aqui un stub, y meter el motor lo rompe.
+ * Canonico del motor: IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js
+ * sha256 268bbd3a05f8d8645d8641821f98dfc76e72060c44681ecfe31701f210ba4eb0 — destino /opt/ape-jit/server.js
+ * Ver artifacts/verify/copias_server_js.md (R9) antes de tocarla. */
 /*
  * APE JIT CMAF — one active channel at a time.
  * Input: /opt/ape-jit/channels.json  { "<id>": { "url": "...", "ua": "..." } }

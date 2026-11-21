@@ -192,6 +192,9 @@ jobs:
       # ni el de produccion (cuatro identidades: recibo 8c1a0085, tools/lab 38c92b56,
       # vps/ape-jit a3c671a2, /opt/ape-jit 44d8bf84). Se re-baselineo a revision 2 sobre el
       # canonico medido (268bbd3a, 480976 B, union de las dos ramas) y el gate pasa 92/92.
-      # Ver docs/audits/INCIDENT_JIT_ENGINE_20261121.md.
+      # [R11 2026-11-21] Ese pin es HISTORICO: /resolve y /go pasaron a lectura pura y el
+      # motor cambio de bytes. Pin vigente: ad37d894… 490421 B 9998 l
+      # (contracts/canary_jit_contract_v1.json -> engine.deployable_engine_sha256).
+      # Ver docs/audits/INCIDENT_JIT_ENGINE_20261121.md y artifacts/verify/W01_resolve_readonly.md.
       - name: Contrato Canary-JIT (motor desplegado == lo pinado)
         run: node tools/quality/test_canary_jit_contract.js

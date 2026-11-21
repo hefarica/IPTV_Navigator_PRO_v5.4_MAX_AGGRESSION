@@ -1,9 +1,9 @@
 # Inventario ejecutable de las 61 rutas del motor JIT
 
-Artefacto medido: `IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js` — 480976 B, 9812 líneas, sha256 `268bbd3a05f8d8645d8641821f98dfc76e72060c44681ecfe31701f210ba4eb0`.
+Artefacto medido: `IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js` — **490421 B, 9998 líneas, sha256 `ad37d894fda142c662fe6c4b67a0ed24974b5c0b034d7fa6f50e749da0df2479`** (R11/W-01). La línea base del inventario se midió sobre `268bbd3a…ba4eb0` (480976 B, 9812 líneas): ver `sha256_history` en el `.json`. Los números de línea de guardas/`end_lines` son los de R1 — R11 desplazó el fichero ~+186 líneas y el contrato usa LONGITUDES de tramo, no posiciones.
 
 Extracción: `grep 'pathname ==='` sobre el fichero real → **61 líneas guard**, **66 ocurrencias** de literal, **61 rutas distintas**.
-Las 5 diferencias entre ocurrencias y rutas son alias en la misma guarda (`||`) y `/image/capacity`, que aparece en dos guardas (una de ellas inalcanzable).
+Las 5 ocurrencias de más (66 − 61) son segundas menciones del mismo literal: `/image/optimize`, `/image/rules`, `/image/governance` y `/image/matrix` tienen guarda GET y guarda POST separadas, y `/image/capacity` aparece en la guarda exterior con OR de L9518 y otra vez en la rama interna de L9521 que sirve su payload. **Ninguna de las dos es código muerto.**
 
 Clasificación: **61/61** clasificadas · **42** de sólo lectura · **19** con escritura/proceso · **0** UNKNOWN.
 
@@ -19,7 +19,7 @@ Clasificación: **61/61** clasificadas · **42** de sólo lectura · **19** con 
 | 4 | `/catalog.json` | ANY | lectura | 6767 | channels.json (loadMap) | **sí** | lista id/hls/dash/json de todos los canales |
 | 5 | `/crystal.json` | ANY | lectura | 6629 | constantes · current en memoria | **sí** | policy incl. truth_guard (no certifica HDR físico) |
 | 6 | `/health` | ANY | lectura | 9597 | current en memoria · gateStats | **sí** | slot activo + adjudicaciones del provider gate |
-| 7 | `/image/capacity` | ANY | lectura | 9518, 9521 | IMAGE_MEASURED_CAPACITY · IMAGE_TARGETS · IMAGE_LIMITS | **sí** | guard duplicado: la rama de L9521 es inalcanzable (L9518 ya devuelve) |
+| 7 | `/image/capacity` | ANY | lectura | 9518, 9521 | IMAGE_MEASURED_CAPACITY · IMAGE_TARGETS · IMAGE_LIMITS | **sí** | guarda exterior con OR (L9518) + rama interna (L9521) que sirve el payload y retorna en L9523-9526; código vivo |
 | 8 | `/image/cascade` | ANY | lectura | 7164 | CODEC_CASCADE · PLAYER_CAPS | **sí** | golden rule hvc1/hev1 declarada |
 | 9 | `/image/catalog` | ANY | lectura | 6848 | OUTPUT_TARGETS · CODEC_CATALOG · PLAYER_CAPS · RECIPE_PRESETS | **sí** |  |
 | 10 | `/image/config` | GET, POST | lectura+escritura | 9518 | IMAGE_CONFIG_FILE · imageConfig | **no** | POST escribe config y para el job en curso (stopCurrent) |
@@ -145,12 +145,31 @@ Clasificación: **61/61** clasificadas · **42** de sólo lectura · **19** con 
 ## Hallazgos de la lectura
 
 - **Alias reales (5 pares)**: `/playlist-idempotente.m3u8`≡`/APE_JIT_LIST_IDEMPOTENTE.m3u8`, `/resolve`≡`/jit/resolve`, `/jit/recipe`≡`/recipe`, `/jit/api/config`≡`/api/config`, `/image/config`≡`/image/capacity` (misma guarda). Son el mismo handler: 66 ocurrencias → 61 rutas distintas.
-- **Código inalcanzable**: la rama `if (u.pathname === '/image/capacity')` de **L9521** nunca se ejecuta, porque la guarda de **L9518** ya incluye `/image/capacity` y devuelve en L9523-9526. Duplicado muerto, no defecto funcional.
-- **Sin auth en las 61**: no hay token ni allowlist en la guarda. La única ruta con control es `/jit/api/config` **POST**, que exige `X-APE-Key` contra `/opt/ape-jit/api-key.txt` y es **fail-closed**: sin fichero → 503, clave distinta → 401. Todo lo demás (`/image/gestor/save`, `/image/governance` POST, `/jit/tune` POST, `/image/config` POST) escribe sin credencial: el perímetro tendría que estar en nginx.
-- **Sólo 2 rutas de las 61 detienen el job ffmpeg en curso**: `/resolve` (al cambiar de perfil) y `/image/config` POST. El resto de la escritura es a ficheros de estado.
+- **Sin auth en el handler, en las 61**: no hay token ni allowlist en la guarda. La única ruta con control propio es `/jit/api/config` **POST**, que exige `X-APE-Key` contra `/opt/ape-jit/api-key.txt` y es **fail-closed**: sin fichero → 503, clave distinta → 401.
+- **Perímetro medido desde Internet (capitán, 2026-11-21; sólo GET/HEAD, cero POST)**: nginx **no publica la raíz del motor**. 404 en `/image/profiles`, `/image/state`, `/image/capacity`, `/capabilities.json`, `/jit/upscale`, `/jit/tune`, `/jit/signal`; 200 en `/jit/recipe` (1192 B) y `/jit/api/config` (1268 B); **400 en `/jit/resolve`**, que demuestra que ese handler SÍ está expuesto. Consecuencia: 18 de las 19 rutas que escriben no son alcanzables desde fuera, pero `/jit/resolve` es **ALCANZABLE + POTENCIALMENTE MUTANTE y NO EJERCITADA** (no se le hizo POST).
+- **Sólo 2 rutas de las 61 detienen el job ffmpeg en curso**: `/resolve`/`/jit/resolve` (al cambiar de perfil) y `/image/config` POST. El resto de la escritura es a ficheros de estado.
 - **`/image/receipt` y `/image/receipts` lanzan `sh -c 'cat | ffprobe'`** y dejan `/tmp/ape-receipt-<pid>-<kind>.mp4`: no mutan estado persistente pero sí consumen CPU y disco temporal, en un host con un solo slot de transcode.
 - **`/jit/signal` POST puede sembrar el fichero de reglas**: llama `loadRules()` (L9214), que hace `saveRules()` si el fichero falta, está corrupto o vacío. Es una escritura condicional, no evidente desde el nombre.
 - **`/image/state` es la única fuente de verdad del job vivo** (slot, pid, outputTruth, filtro efectivo) y es de sólo lectura: es el endpoint natural para el arnés de verificación.
+
+## Copias del artefacto en el árbol (trampa de identidad)
+
+Hay **cuatro** `server.js` y sólo uno es el motor canónico. Medido con `Get-FileHash`:
+
+| copia | bytes | líneas | guardas / rutas distintas | sha256 | veredicto |
+|---|---|---|---|---|---|
+| `IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js` | 480976 | 9812 | 61 / **61** | `268bbd3a…ba4eb0` | **CANÓNICO** (el de este inventario) |
+| `vps/ape-jit/server.js` | 449392 | 9234 | 59 / 59 | `290b1103…f8aeb492` | otra versión; no es lo que corre producción |
+| `tools/lab/ape-jit/server.js` | 474044 | 9696 | 60 / 60 | `38c92b56…84afa0c7` | copia de laboratorio |
+| `vps_jit/server.js` | 29624 | 662 | 5 / 5 | `e400fa19…f46e807b` | **programa legacy** (5 rutas); el workflow de deploy lo instaló por error (incidente 21:37). No entra en el inventario del motor |
+
+Auditar la copia de la raíz (`vps/ape-jit/server.js`) da 59 guardas y no 61: es el error que este documento evita.
+
+## Correcciones aplicadas (2026-11-21, revisión del capitán)
+
+1. **RETIRADA una afirmación falsa de la primera versión de este documento**: decía que la rama `if (u.pathname === '/image/capacity')` de L9521 era "código muerto / inalcanzable". Es **falso**. L9518 es una guarda con OR y L9521 es la **rama interna** que sirve el payload de capacidad y retorna en L9523-9526. Medido: `/image/capacity` aparece exactamente dos veces (L9518 y L9521) y ambas son código vivo. La confusión fue de anidamiento: el `return` de L9523 está DENTRO de la rama de L9521, no antes. Se corrigió en la fila de la tabla, en la explicación de las 66 ocurrencias y en este hallazgo.
+2. **Añadido el perímetro medido** por el capitán desde Internet (sólo GET/HEAD): 18 de las 19 rutas que escriben devuelven 404 desde fuera; `/jit/resolve` responde 400 ⇒ expuesta y potencialmente mutante, no ejercitada.
+3. **Añadida la cuarta copia** (`vps_jit/server.js`, 5 rutas) al cuadro de identidad.
 
 ## Borde declarado (fuera de las 61)
 
@@ -173,6 +192,12 @@ $ node scratch/jit_route_scan.js IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js
 
 $ node scratch/jit_build_artifacts.js
 { "count": { "routes": 61, "read": 42, "write": 19, "unknown": 0 }, "problems": [], "routes": 61 }
+
+$ (las cuatro copias: bytes / lineas / guardas / ocurrencias / distintas / sha256)
+IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js -> 480976  9812  61 66 61  268bbd3a...
+vps/ape-jit/server.js                             -> 449392  9234  59 64 59  290b1103...
+tools/lab/ape-jit/server.js                       -> 474044  9696  60 65 60  38c92b56...
+vps_jit/server.js                                 ->  29624   662   5  5  5  e400fa19...
 ```
 
 Conteo final: **61/61 clasificadas · 0 UNKNOWN · 0 discrepancias** en el cross-check mecánico contra los sitios de escritura/proceso del propio fichero.

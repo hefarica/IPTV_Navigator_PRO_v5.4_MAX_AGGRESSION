@@ -314,7 +314,7 @@
   "engine": {
     "rule": "Fijar el motor por sha256, NUNCA por ruta. Un recibo que no nombra el sha256 del motor no acredita nada.",
     "receipt_required_field": "engine_sha256",
-    "deployable_engine_sha256": "268bbd3a05f8d8645d8641821f98dfc76e72060c44681ecfe31701f210ba4eb0",
+    "deployable_engine_sha256": "ad37d894fda142c662fe6c4b67a0ed24974b5c0b034d7fa6f50e749da0df2479",
     "deployable_engine_path": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js",
     "deployable_engine_manifest_line": 59,
     "candidates": [
@@ -334,8 +334,8 @@
       {
         "id": "B",
         "path": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js",
-        "bytes": 480976,
-        "sha256": "268bbd3a05f8d8645d8641821f98dfc76e72060c44681ecfe31701f210ba4eb0",
+        "bytes": 490421,
+        "sha256": "ad37d894fda142c662fe6c4b67a0ed24974b5c0b034d7fa6f50e749da0df2479",
         "manifest_row": true,
         "manifest_line": 59,
         "has_jit_signal": true,
@@ -367,8 +367,8 @@
       "reason": "La revision 1 (2026-11-14) pineaba un motor que ya no era ni el del repo ni el de produccion: cuatro identidades distintas (recibo 8c1a0085, tools/lab 38c92b56, vps/ape-jit a3c671a2, /opt/ape-jit 44d8bf84). Se re-midio el artefacto canonico y se re-baselinea.",
       "measured": {
         "canonical_path": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js",
-        "canonical_sha256": "268bbd3a05f8d8645d8641821f98dfc76e72060c44681ecfe31701f210ba4eb0",
-        "canonical_bytes": 480976,
+        "canonical_sha256": "ad37d894fda142c662fe6c4b67a0ed24974b5c0b034d7fa6f50e749da0df2479",
+        "canonical_bytes": 490421,
         "ancestor_path": "tools/lab/ape-jit/server.js",
         "production_before_sha256": "44d8bf841ca1f9e006c92868246bc407c1bf9cca4642dc80262c750df703fcb9",
         "production_before_bytes": 480253
@@ -384,6 +384,27 @@
         "/opt/ape-jit/channels.json no se inspecciono: el canonico se verifico con el mapa ausente",
         "de las 61 rutas solo se ejercitaron health, capabilities.json, lineup y streaming-health-llm",
         "no prueba calidad de imagen ni ausencia de freeze en un player real: eso se mide en produccion tras desplegar"
+      ]
+    },
+    {
+      "date": "2026-11-21",
+      "reason": "R11/W-01: /resolve (y /jit/resolve, /go/<id>) dejan de escribir por GET. Lectura pura por defecto; escritura solo con señal explicita autenticada (POST + X-APE-Write: 1 + X-APE-Key), p normalizado, escritura atomica con fsync y backup previo. El motor cambia de bytes: se re-pinea el sha256 del BLOB (LF).",
+      "measured": {
+        "canonical_path": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js",
+        "canonical_sha256": "ad37d894fda142c662fe6c4b67a0ed24974b5c0b034d7fa6f50e749da0df2479",
+        "canonical_bytes": 490421,
+        "canonical_lines": 9998,
+        "crlf_pairs_in_worktree": 0
+      },
+      "evidence": [
+        "node -c IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js -> OK",
+        "tools/quality/test_jit_resolve_readonly.js -> 31/31 PASS",
+        "tools/quality/test_jit_routes_contract.js -> 61/61 rutas, contrato cumplido",
+        "tools/quality/test_canary_jit_contract.js -> re-ejecutado tras el re-pin"
+      ],
+      "not_measured": [
+        "no se desplego al VPS: el pin acredita el artefacto del repo, NO el proceso en ejecucion (/health + reinicio siguen NO_COMPUTADOS)",
+        "no se ejercito /resolve contra produccion (prohibido en R11): las pruebas son de sandbox aislado"
       ]
     }
   ],

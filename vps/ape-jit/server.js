@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 'use strict';
+/* NO ES EL DESPLEGABLE — copia historica, no instalar. Canonico:
+ * IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js
+ * sha256 268bbd3a05f8d8645d8641821f98dfc76e72060c44681ecfe31701f210ba4eb0
+ * Falta: X-Buffer-Min al 62.5 % (aqui 60 %) y POST /image/streaming-health-llm (59 rutas, no 61).
+ * Ver artifacts/verify/copias_server_js.md (R9) antes de tocarla. */
 /*
  * APE JIT CMAF — one active channel at a time.
  * Input: /opt/ape-jit/channels.json  { "<id>": { "url": "...", "ua": "..." } }
