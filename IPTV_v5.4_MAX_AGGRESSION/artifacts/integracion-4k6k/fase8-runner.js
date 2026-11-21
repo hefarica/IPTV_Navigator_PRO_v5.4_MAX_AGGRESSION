@@ -68,7 +68,7 @@ const srv = http.createServer((req, res) => {
     if (u === '/guardar' && req.method !== 'POST') return responder(res, 405, 'text/plain', 'no');
 
     if (u === '/lab.json' || u === '/entrada.m3u8') {
-        const f = u === '/lab.json' ? LAB : ENTRADA;
+        const f = u === '/lab.json' ? LAB : (req.url.indexOf('mix=1') >= 0 ? 'C:/Users/HFRC/APE_PRIVADO/entrada_mixta.m3u8' : ENTRADA);
         fs.readFile(f, (e, b) => {
             if (e) { log('lectura_fallo', { f: f }); return responder(res, 404, 'text/plain', 'nf'); }
             responder(res, 200, u === '/lab.json' ? 'application/json' : 'audio/x-mpegurl', b);

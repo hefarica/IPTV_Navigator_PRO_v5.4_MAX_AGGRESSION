@@ -1913,3 +1913,32 @@ tiers** (P1 y P3), no de cinco. Se declara el alcance en vez de inventar señale
 Pendiente inmediato: construir la entrada con 1 canal UHD + 1 canal FHD reales, generar **sin** `forceProfile`
 (hay que permitir esa ruta en el driver) y leer el perfil emitido. Si sale P1 para el UHD y P3 para el FHD, el
 selector automático queda probado en el flujo real.
+## 83 · Prueba de la ruta automática con el fixture mixto: sigue sin ejercitarse, y el motivo es MI inyección
+
+Corrida con `entrada_mixta.m3u8` (1 canal UHD + 1 canal FHD, sha `73317b20…`) y `activeProfileId = null` antes de
+generar. Resultado en el archivo exportado:
+
+```
+video-width      = 1920,1920
+network-caching  = 55000,55000
+fallos: ["P3: ON sin 3 sidecar", "P3: recuperacion no exacta"]   ← esperado: la entrada tiene 2 canales, no 3
+```
+
+**Ambos canales resolvieron a P3**, incluido el UHD. Es decir, `determineProfile` **no tomó la decisión**: el
+perfil siguió viniendo de `forceProfile`.
+
+Causa, y es mía: la inyección del §35 tiene dos fuentes —
+
+```
+_sel = (pm && pm.activeProfileId) || (APE_PROFILES_CONFIG && APE_PROFILES_CONFIG.activeProfileId) || null
+```
+
+Anulé la primera y **la segunda siguió devolviendo P3**. Por tanto el flujo sigue forzado y la ruta automática
+nunca se ejecuta. No es un fallo del generador ni del selector.
+
+Corrección para la próxima: probar la ruta automática requiere **no inyectar nada** — es decir, un modo explícito
+en el driver (`window.APE_SIN_FORCE = true`) que el controlador respete, en lugar de intentar vaciar la selección
+por la puerta de atrás.
+
+Nota: los dos fallos del arnés (`ON sin 3 sidecar`, `recuperacion no exacta`) son correctos: la entrada tiene
+2 canales y las aserciones esperan 3. El arnés no se equivocó; la prueba cambió de entrada.
