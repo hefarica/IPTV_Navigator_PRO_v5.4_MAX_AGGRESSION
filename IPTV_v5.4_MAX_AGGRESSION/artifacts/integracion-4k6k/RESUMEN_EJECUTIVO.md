@@ -98,3 +98,39 @@ sin heredar y el selector automático sigue sin ser observable.
 - **Intermitencia del runner** con 12 perfiles de una tirada (carrera `--dump-dom` vs driver): mitigada con
   los dos lotes de seis. El patrón callback (usado con éxito en la prueba de 754 MB) queda como arreglo
   definitivo pendiente.
+---
+
+## 6 · Actualización final 2026-11-21 — verificado en el último ciclo
+
+```
+LOTE P0,P1,P2,P3,P4,P5             EXIT=0 · "fallos":[]
+LOTE P0.5,P1.5,P2.5,P3.5,P4.5,P5.5  EXIT=0 · "fallos":[]
+GUARDA_HDR_AUDIO PASS=12 FAIL=0
+Suite del adaptador                 PASS 204 · FAIL 0
+Sintaxis de los 8 ficheros tocados  8 OK / 0 FAIL
+```
+
+**Los seis defectos reales encontrados y corregidos, cada uno verificado en artefacto:**
+
+| # | Defecto | Antes → Después | Sección |
+|---|---|---|---|
+| 1 | `forceProfile` no llegaba al generador | geometría de P3 → **7680×4320 en P0** | §35-§41 |
+| 2 | `video-hdr` de los `.5` no heredaba | `SDR` → **`HDR10_PLUS`** | §65-§72 |
+| 3 | `audio-channels` literal | `6` → **`2`** (del perfil) | §67 |
+| 4 | `saturation` literal | `1.08` → **gradiente 1.06→1.00** | §76 |
+| 5 | `clock-jitter` pisado por 6 presets | `0` → **2000/1000/1200** | §79 |
+| 6 | `determineProfile` clasificaba UHD como FHD | `1920` → **3840 (P1)** con `sel=null` | §85 |
+
+**Selector automático**: ejercitado en el flujo real con `entrada_mixta.m3u8`
+(sha `73317b2088d72e2b4e922f193effa549573152069ee10f66092d39c268f918d5`): canal `UHD → P1` (3840) y canal
+`FHD → P3` (1920), con `selectedProfile: null`. Es la primera evidencia de la ruta automática decidiendo por
+canal.
+
+**Pendiente único**: portar al runner de la matriz el patrón callback (`POST /resultado`) ya validado en la
+prueba de 754 MB, para que los 12 perfiles salgan en una sola tirada sin depender de la carrera con
+`--dump-dom`. Hoy se cubren con dos lotes de seis, reproducible.
+
+**Errores propios documentados en la serie** (para no repetirlos): parchear código muerto dos veces (§57, §69),
+una aserción de recuperación inválida sobre generador polimórfico (§39), comparar contra campos equivocados en
+tres ocasiones (§29, §38, §52) y **tres ediciones del driver que rompieron el arnés** (§84, §58, §86), todas
+detectadas y revertidas.
