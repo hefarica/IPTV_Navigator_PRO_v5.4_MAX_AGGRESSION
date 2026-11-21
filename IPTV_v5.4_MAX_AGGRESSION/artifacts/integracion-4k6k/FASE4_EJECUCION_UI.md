@@ -1583,3 +1583,27 @@ EXIT=0 · "fallos":[] · guardar P0.5 260.483 B + salida_ok
 Dos de los tres literales del §66 corregidos y verificados. Queda `saturation` (`:3163`, literal 1.08 frente a
 1.06 del LAB) y `clock-jitter` (`:4247`, `cfg` con respaldo 1500 mientras el LAB declara 1000/2000), ambos con
 el mismo enfoque pendiente.
+## 68 · `saturation`: está en un preset estático (`:3163`), no en el bloque vivo
+
+Búsqueda acotada al tramo vivo del generador:
+
+```
+Select-String -Pattern 'saturation' | Where LineNumber -gt 10000   →  0 coincidencias
+```
+
+Luego el `saturation=1.08` del artefacto sale del **preset estático de la línea 3163** (un elemento de array),
+que el bloque de canal reutiliza. No es una línea condicional corregible con el patrón del §65: exige hacer ese
+preset **consciente del perfil** (o filtrar esa directiva del preset y emitirla desde el perfil), lo que es un
+cambio estructural, no un reemplazo puntual.
+
+Estado de los tres literales del §66:
+
+| Campo | Estado |
+|---|---|
+| `video-hdr-mode` | **corregido y verificado** (§65) |
+| `audio-channels` | **corregido y verificado** (§67) |
+| `saturation` | localizado en preset estático `:3163` — cambio estructural pendiente |
+| `clock-jitter` | `:4247` usa `cfg` con respaldo 1500; el LAB declara 1000/2000 — pendiente de trazar `cfg` |
+
+No lo aplico sin verificación: tocar un preset compartido afecta a todos los perfiles, y este repo ya pagó
+caro un cambio así (§57).
