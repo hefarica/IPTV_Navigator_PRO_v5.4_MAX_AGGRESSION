@@ -59,8 +59,9 @@ function medir(muestras, umbral, opciones, observado) {
             if (prev !== null && prev > 0 && buffer <= 0) { stalls++; stallMs += dt; }
             else if (prev === 0 && buffer === 0) { stallMs += dt; }
         }
-        if (isFinite(num(s.throughput_kbps, NaN))) tput.push(num(s.throughput_kbps, 0));
-        if (isFinite(num(s.bitrate_kbps, NaN))) btr.push(num(s.bitrate_kbps, 0));
+        // null/undefined NO son cero: se excluyen para no hundir la mediana
+        if (s.throughput_kbps !== null && s.throughput_kbps !== undefined && isFinite(Number(s.throughput_kbps))) tput.push(Number(s.throughput_kbps));
+        if (s.bitrate_kbps !== null && s.bitrate_kbps !== undefined && isFinite(Number(s.bitrate_kbps))) btr.push(Number(s.bitrate_kbps));
     }
 
     function mediana(a) { if (!a.length) return null; var b = a.slice().sort(function (x, y) { return x - y; }); var k = Math.floor(b.length / 2); return b.length % 2 ? b[k] : (b[k - 1] + b[k]) / 2; }
