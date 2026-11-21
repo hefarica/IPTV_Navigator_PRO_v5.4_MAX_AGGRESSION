@@ -49,8 +49,14 @@ const TMP = path.join(ROOT, 'scratch', 'hf_gate' + '_' + process.pid + '_' + Dat
 try { fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }); } catch (e) { /* EPERM en Windows no debe tumbar el gate */ }
 fs.mkdirSync(TMP, { recursive: true });
 
-const FUENTE = process.argv[2] ||
-    'C:\\Users\\HFRC\\Downloads\\WhatsApp Video 2026-11-13 at 1.01.22 AM.mp4';
+// [2026-11-21] El default era un path PERSONAL de Windows
+// ('C:\Users\<usuario>\Downloads\WhatsApp Video ….mp4'). Eso viola la doctrina
+// no-hardcode y ademas hace que el gate solo pueda pasar en esa maquina: en CI
+// moria con exit 2 y al estar en medio del workflow GitHub SALTABA los gates
+// siguientes. Ahora la fuente es un parametro explicito o APE_REF_VIDEO; sin
+// video de referencia el gate se declara NO_COMPUTADO (exit 3, no 2) y el
+// workflow lo informa sin apagar el resto.
+const FUENTE = process.argv[2] || process.env.APE_REF_VIDEO || '';
 
 const BITRATES = [20000, 3000, 400];   // alto, medio, bajo: basta para la monotonia
 
@@ -112,9 +118,13 @@ function medirBorde8(video, etiqueta) {
     return (eb / nb) / (fu / nf);
 }
 
-if (!fs.existsSync(FUENTE)) {
-    console.error('FALTA el video de referencia: ' + FUENTE);
-    process.exit(2);
+if (!FUENTE || !fs.existsSync(FUENTE)) {
+    // NO_COMPUTADO, no FAIL: sin video de referencia no hay nada que medir. Se usa
+    // exit 3 para que quien lo invoque pueda distinguirlo de un veredicto negativo
+    // (exit 1) y de un fallo de entorno (exit 2). El workflow lo trata como aviso.
+    console.error('NO_COMPUTADO: sin video de referencia. Uso: node tools/quality/test_hf_detail_metric.js <video.mp4>  (o APE_REF_VIDEO=<ruta>)');
+    console.error('  recibido: ' + JSON.stringify(FUENTE));
+    process.exit(3);
 }
 
 (async () => {

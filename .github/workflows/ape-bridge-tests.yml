@@ -120,10 +120,33 @@ jobs:
       # workflows mostraba la RUTA como nombre. Es decir: el gate anti-degradacion,
       # los tests de puente, el contrato Canary-JIT y el resto de este archivo NO se
       # ejecutaban desde entonces. Un gate que no corre es decorativo; se repara.
+      # [2026-11-21] Estos dos gates miden sobre un video de referencia que NO esta en el
+      # repo: hasta hoy su default era un path personal de Windows, asi que en CI morian
+      # con exit 2 y apagaban los gates siguientes. Ahora usan APE_REF_VIDEO y, sin video,
+      # declaran NO_COMPUTADO con exit 3. Aqui el 3 se informa como aviso; un veredicto
+      # negativo real (exit 1) sigue rompiendo el job.
       - name: Metrica de detalle HF (validada, monotona con bitrate)
-        run: node tools/quality/test_hf_detail_metric.js
+        run: |
+          set +e
+          node tools/quality/test_hf_detail_metric.js
+          rc=$?
+          set -e
+          if [ "$rc" -eq 3 ]; then
+            echo "::warning::NO_COMPUTADO test_hf_detail_metric — falta el video de referencia (APE_REF_VIDEO)."
+            exit 0
+          fi
+          exit "$rc"
       - name: Detector de bloque sobre HEVC (queda refutado, HF no)
-        run: node tools/quality/test_hevc_block_detector.js
+        run: |
+          set +e
+          node tools/quality/test_hevc_block_detector.js
+          rc=$?
+          set -e
+          if [ "$rc" -eq 3 ]; then
+            echo "::warning::NO_COMPUTADO test_hevc_block_detector — falta el video de referencia (APE_REF_VIDEO)."
+            exit 0
+          fi
+          exit "$rc"
 
       # CABLEADO: identidad + estructura + harness en un veredicto, sobre un FIXTURE.
       # Modo --sin-red para que el CI no dependa de la red ni del proveedor.
