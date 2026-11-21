@@ -17,15 +17,18 @@ var elegido = null, cols = null, filas = [];
 Object.keys(db.filas).forEach(function (t) { if (db.filas[t].length > filas.length) { filas = db.filas[t]; elegido = t; } });
 if (!elegido) { console.error('sin filas en las tablas de QoE'); process.exit(1); }
 cols = Object.keys(filas[0] || {});
-var cCap = buscar(cols, /bitrate|bytes_per|throughput|kbps/i);
+var cCap = buscar(cols, /bitrate|bytes_per|throughput|kbps|bps/i);
+var cReq = buscar(cols, /request_count|requests/i);
 var cReb = buscar(cols, /rebuffer|stall/i);
 var cPlay = buscar(cols, /play.*(ms|s)$|duration|elapsed/i);
 var cTs = buscar(cols, /(^|_)ts$|time|created|fecha/i);
 
-var muestras = [], t = 0, rebTotal = 0, playTotal = 0;
+var muestras = [], t = 0, rebTotal = 0, playTotal = 0, reqTotal = 0;
 filas.forEach(function (r) {
     t += 1000;
-    var cap = cCap ? Number(r[cCap]) : null;
+    var capRaw = cCap ? Number(r[cCap]) : null;
+    var cap = isFinite(capRaw) && capRaw > 0 ? (/_bps$/i.test(cCap) ? capRaw / 1000 : capRaw) : null;
+    if (cReq && isFinite(Number(r[cReq]))) reqTotal += Number(r[cReq]);
     var reb = cReb ? Number(r[cReb]) : 0;
     var play = cPlay ? Number(r[cPlay]) : 0;
     if (isFinite(reb)) rebTotal += reb;
@@ -39,7 +42,8 @@ var salida = {
     muestras: muestras, tabla: elegido, columnas: cols,
     mapeo: { capacidad: cCap, rebuffer: cReb, reproduccion: cPlay, marca_tiempo: cTs },
     declarado_kbps: declarado, filas: filas.length,
-    rebuffer_total: rebTotal, reproduccion_total: playTotal,
+    rebuffer_total: rebTotal, reproduccion_total: playTotal, peticiones_total: reqTotal,
+    rebuffer_ratio_observado: reqTotal > 0 ? Number((rebTotal / reqTotal).toFixed(6)) : null,
     no_computado: noComputado
 };
 fs.writeFileSync(path.join(dir, 'samples.json'), JSON.stringify(salida));
