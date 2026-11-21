@@ -2043,3 +2043,28 @@ ser intermitente.
 
 Cierre de la serie de mecánica del arnés, hecha en dos entregas verificadas (publicar → comprobar, recibir →
 comprobar, consumir → comprobar) en lugar de un solo gesto, que es lo que me había costado tres reversiones.
+## 89 · Hueco de seguridad propio, cerrado: `/resultado` exige testigo
+
+Al añadir la ruta `POST /resultado` (§87) la dejé **sin autenticación** — era una ruta que aceptaba datos de
+cualquier proceso local. Lo detecté al revisar el diseño antes de dar la mecánica por cerrada:
+
+```
+if (u === '/resultado' && req.method === 'POST') {
+    if (req.headers['x-ape-token'] !== TOKEN) { log('rechazo', {u, causa:'token'}); return responder(res, 401, …); }
+```
+
+Y el driver pasa el testigo:
+
+```
+headers: Object.assign({ 'Content-Type': 'application/json' }, H)
+```
+
+Verificación doble:
+
+```
+--selftest                        → 8/8 casos, fallos=0, EXIT=0
+12 perfiles en una tirada         → EXIT=0 · "fallos":[] · cb=True · rechazo=False
+```
+
+Es decir: el callback llega **autenticado** y, sin testigo, la ruta responde 401 como el resto de rutas
+sensibles. No quedó una puerta abierta por comodidad.

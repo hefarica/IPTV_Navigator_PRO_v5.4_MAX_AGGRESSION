@@ -89,6 +89,7 @@ const srv = http.createServer((req, res) => {
         return;
     }
     if (u === '/resultado' && req.method === 'POST') {
+        if (req.headers['x-ape-token'] !== TOKEN) { log('rechazo', { u: u, causa: 'token' }); return responder(res, 401, 'text/plain', 'no'); }
         let b = ''; req.on('data', d => b += d);
         req.on('end', () => { RESULTADO_CB = b; log('resultado_cb', { bytes: b.length }); responder(res, 200, 'application/json', '{}'); });
         return;
