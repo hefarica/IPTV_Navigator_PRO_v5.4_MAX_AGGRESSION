@@ -1144,3 +1144,24 @@ es la **precedencia entre el módulo 12K y el LAB para los `.5`**.
 Fix definido (no aplicado, por presupuesto): al importar el LAB, para los IDs que ya existen **fusionar
 `vlcopt`** (LAB rellena las claves ausentes; el 12K conserva lo suyo) en vez de omitir el perfil. Requiere
 medir antes/después en los doce, como se hizo con `forceProfile`.
+## 51 · CORRECCIÓN del §50: el LAB **sí** pisa al 12K. El fallo está en la homologación a `lpFixed`
+
+Leído `ape-profiles-config.js:5182-5199`. Para un perfil que ya existe, el import hace:
+
+```
+this.profiles[pid] = Object.assign({}, this.profiles[pid], JSON.parse(JSON.stringify(lpFixed)));
+```
+
+Es decir, **el LAB (`lpFixed`) sobrescribe en bloque** las secciones que trae. Mi explicación del §50
+(«el 12K crea el `.5` y el LAB no lo pisa») es **incorrecta**: el `if (this.profiles[id]) return;` que cité es de
+`_merge12kProfiles()`, que corre en el arranque, no del import.
+
+Consecuencia lógica, ahora sí consistente con el código: si `lpFixed` **no trae `vlcopt`** para los `.5`, el
+`Object.assign` conserva el `vlcopt` del 12K (que no tiene claves HDR). El punto de pérdida es, por tanto,
+**la construcción de `lpFixed`** — la homologación del perfil del LAB — y no la precedencia entre módulos.
+
+Los hechos que siguen firmes: el `vlcopt` del LAB crudo y normalizado **sí** contiene `video-hdr=true` /
+`HDR10PLUS` (§47, medido), y `ape-profiles-12k.js` **no contiene** esas claves (0 coincidencias, §50).
+
+Siguiente sonda exacta: instrumentar la importación de **un** ID `.5` y volcar `lpFixed.vlcopt` antes del
+`Object.assign`. Con eso se ve si la homologación lo omite o lo transforma. **No se toca nada antes de verlo.**
