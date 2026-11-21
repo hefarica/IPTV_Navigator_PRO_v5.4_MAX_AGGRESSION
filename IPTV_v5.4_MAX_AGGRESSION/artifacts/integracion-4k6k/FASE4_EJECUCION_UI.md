@@ -1567,3 +1567,19 @@ literal como último respaldo, igual que se hizo con el HDR. Es un cambio de tre
 
 Nota de doctrina: un literal en el emisor contradice `iptv-no-hardcode-doctrine` del propio repo; estos tres
 casos son la evidencia concreta de esa deuda.
+## 67 · CORREGIDO Y VERIFICADO: `audio-channels` literal 6 → valor del perfil (2)
+
+Parche en `:10747` con el mismo patrón del §65: lee `vlcopt['audio-channels']` del perfil efectivo y deja el
+`6` solo como respaldo.
+
+```
+antes   P0.5: audio-channels=6    P0: audio-channels=6
+ahora   P0.5: audio-channels=2    P0: audio-channels=2
+        P0.5: hdr=true mode=HDR10_PLUS   (sin regresión)
+        P0   : hdr=true mode=DOLBY_VISION (sin regresión)
+EXIT=0 · "fallos":[] · guardar P0.5 260.483 B + salida_ok
+```
+
+Dos de los tres literales del §66 corregidos y verificados. Queda `saturation` (`:3163`, literal 1.08 frente a
+1.06 del LAB) y `clock-jitter` (`:4247`, `cfg` con respaldo 1500 mientras el LAB declara 1000/2000), ambos con
+el mismo enfoque pendiente.
