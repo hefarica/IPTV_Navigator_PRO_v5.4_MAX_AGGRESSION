@@ -56,7 +56,7 @@ jobs:
         js/ape-v9/rea-processing-policy.js js/ape-v9/rea-export-finalizer.js
         js/ape-v9/rea-catalog-export.js js/ape-v9/ape-quality-prober.js js/ape-v9/list-cablear-panel.js
         js/ape-v9/unified-generator-integration.js js/ape-v9/m3u8-api-wrapper-integrated.js
-        js/ape-lab-import-helper.js js/ape-lab-normalize.js js/ape-4k6k-consumer.js js/ape-m3u-local-loader.js js/ape-v9/ape-4k6k-audit-adapter.js js/ape-worker.js js/m3u8-world-class-generator.js
+        js/ape-lab-import-helper.js js/ape-v9/ape-speed-meter-v9.js js/ape-v9/ape-speedmeter-bridge.js js/ape-lab-normalize.js js/ape-4k6k-consumer.js js/ape-m3u-local-loader.js js/ape-v9/ape-4k6k-audit-adapter.js js/ape-worker.js js/m3u8-world-class-generator.js
         js/m3u8-generator-v16-elite.js export-module.js app.js index-v4.html js/ape-v9/streaming/sufficiency-law-v1.js js/ape-v9/streaming/bandwidth-meter-v1.js js/ape-v9/streaming/auto-tune-v1.js js/ape-v9/streaming/qos-speedtest-v1.js
       SRC_DIR: IPTV_v5.4_MAX_AGGRESSION/frontend
       DEST_DIR: /var/www/html
