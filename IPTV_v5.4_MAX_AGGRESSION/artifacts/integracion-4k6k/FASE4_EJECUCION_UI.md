@@ -1450,3 +1450,37 @@ reescribe; si no cambia, el fallo está en el propio `generateEXTVLCOPT` recibie
 
 No aplico más parches hasta tener ese dato: tres intentos sobre este mismo punto (§57, §61) no han movido el
 valor, y el patrón indica que estoy mirando el sitio equivocado.
+## 63 · PRUEBA DIRECTA: la rama del LAB no se ejecuta. No es que el valor se pierda: no se emite
+
+Los tres vecinos de `video-hdr` en el mismo bloque salen del **mismo** `vo` y se emiten en las líneas
+inmediatamente anteriores (`:4133-4137`, `:4142`):
+
+```
+_hom    = vo['hdr-output-mode'] || vo['video-hdr-mode']     → #EXTVLCOPT:hdr-output-mode
+_tmpeak = vo['video-tone-mapping-peak'] || vo['video-hdr-nits'] → #EXTVLCOPT:tone-mapping-peak
+if (vo['tone-mapping']) …                                    → #EXTVLCOPT:tone-mapping
+if (vo['video-hdr']) …                                       → #EXTVLCOPT:video-hdr
+```
+
+Medido en el export de P0.5:
+
+```
+hdr-output-mode = (ausente)
+tone-mapping    = (ausente)
+tone-mapping-peak = (ausente)
+video-hdr       = false        ← este SÍ, pero viene de :10704
+```
+
+Si `vo` fuera el `vlcopt` del LAB (51 claves, medido tras importar), `hdr-output-mode` valdría `HDR10PLUS` y
+`tone-mapping-peak` valdría 1000. **No aparecen.** Por tanto la rama
+`if (pmProfile && pmProfile.vlcopt && Object.keys(...).length > 0)` (`:4074`) **no se ejecuta** para estos
+canales, y el `video-hdr=false` del artefacto procede únicamente del bloque posterior.
+
+Conclusión medida y coherente: `generateEXTVLCOPT(profile)` recibe un `profile` cuyo `getProfile()` no tiene
+`vlcopt`, aunque el sidecar declare `selectedProfile: "P0.5"` y la geometría sea 5760x3240.
+
+Sonda final (una línea, removible): registrar el argumento `profile` dentro de `generateEXTVLCOPT`. Con eso se
+ve qué identificador llega realmente, y el arreglo pasa a ser trivial — pasar el correcto.
+
+Esto también explica por qué `audio-channels`, `clock-jitter` y `saturation` no heredan: son de la misma rama
+que no se ejecuta.
