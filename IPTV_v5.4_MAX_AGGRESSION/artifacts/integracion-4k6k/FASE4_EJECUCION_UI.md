@@ -1607,3 +1607,15 @@ Estado de los tres literales del §66:
 
 No lo aplico sin verificación: tocar un preset compartido afecta a todos los perfiles, y este repo ya pagó
 caro un cambio así (§57).
+## 69 · `clock-jitter`: parcheé código muerto otra vez y lo revertí
+
+Intenté que `:4247` tomara el valor del perfil. Corrida: `EXIT=0` pero **`clock-jitter=0` igual** en P0 y P0.5.
+
+Causa: `:4107` y `:4247` están **dentro de `generateEXTVLCOPT`** — la función con 1 ocurrencia y 0 llamadas (§64).
+Volví a parchear código muerto. Revertido: `node --check` = 0 y el árbol queda sin ese cambio.
+
+El `clock-jitter=0` del artefacto lo emite el bloque 4K False, igual que `audio-channels` (§67). Es el único
+punto donde hay que mirar de ahora en adelante para este campo.
+
+Regla que me llevo, y que ya está escrita dos veces en este documento: **antes de parchear una directiva,
+confirmar que su línea pertenece a una función que se ejecuta**. El conteo de referencias va primero.
