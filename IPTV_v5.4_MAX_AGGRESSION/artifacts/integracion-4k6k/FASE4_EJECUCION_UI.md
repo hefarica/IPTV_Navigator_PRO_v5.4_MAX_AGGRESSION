@@ -1296,3 +1296,31 @@ lo demuestre — y si alguien lo reintroduce, vuelve a rojo.
 
 En la misma pasada, todo lo demás sigue verde: export verificado con sha y relectura, idempotencia del sidecar
 y recuperación quirúrgica.
+## 57 · Intento de arreglo del doble escritor: aplicado, rompió la página, REVERTIDO
+
+Parche intentado en `m3u8-typed-arrays-ultimate.js:10704` para que el segundo escritor no reemitiera una
+directiva HDR ya presente en el bloque del canal:
+
+```
+const _yaHdr  = lines.some(l => ... '#EXTVLCOPT:video-hdr=' ...);
+if (!_yaHdr)  lines.push(`#EXTVLCOPT:video-hdr=${_isAnyHdr ? 'true' : 'false'}`);
+… ídem nits y mode
+```
+
+Resultado de la corrida de verificación:
+
+```
+{"ok":false,"fallos":["marcador ausente"],"resultado":null}
+diag: chrome_close a los 62.9 s con 479.555 B
+```
+
+La página **no llegó al marcador**, lo que apunta a un error de ejecución introducido por el parche (posible
+redeclaración de `const` si ese bloque se evalúa en un ámbito ya usado). `node --check` pasaba, así que el
+fallo es de ejecución, no de sintaxis.
+
+**El parche fue revertido** en el acto: `ocurrencias_yaHdr=0`, generador con `node --check` = 0. El árbol queda
+como estaba en el commit anterior (`9e2b75bb`), sin cambios funcionales en el generador.
+
+Estado: el defecto del §54 **sigue presente y sigue cubierto por la guarda** (§56), que lo nombra y sale con
+código 1. El arreglo requiere un ámbito seguro (probablemente antes del ensamblado del bloque, no dentro) y su
+propia verificación; no lo dejo aplicado a medias.
