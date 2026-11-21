@@ -1260,3 +1260,21 @@ sección con sus propios valores.
 Fix definido (no aplicado): unificar en un solo escritor — que el bloque de 10704-10706 tome sus valores del
 `vlcopt` del perfil efectivo (como hace 4142) o que no emita si el primero ya lo hizo. Requiere medir los 12
 antes/después; es exactamente el tipo de cambio que no se aplica sin esa medición.
+## 55 · Guarda de regresión HDR añadida (aún sin ejercitar)
+
+Se añadió al arnés la comprobación que impide que el §54 pase desapercibido en el futuro:
+
+- **driver**: mide `#EXTVLCOPT:video-hdr-mode` del archivo ON y lo compara con
+  `APE_PROFILES_CONFIG.getProfile(pid).vlcopt['video-hdr-mode']` del LAB → `fila.hdr = { emitido, esperado }`.
+- **runner**: falla la fila si `emitido !== esperado`, con mensaje
+  `<id>: HDR emitido X != LAB Y`.
+
+Hoy **el guardián debe fallar** (dos escritores, `:4142` y `:10704`); se deja activo para que cualquier arreglo
+futuro se demuestre ahí y no en la prosa.
+
+**Estado de la corrida**: `{"ok":false,"fallos":["marcador ausente"],"diag":[{"t":55449,"k":"chrome_close"}]}`
+→ `EXIT=1`. La página no llegó al marcador en esa pasada, así que la guarda **no llegó a evaluarse**. El arnés
+hizo lo correcto (fallar en voz alta), pero el valor de la comparación sigue pendiente de una corrida que
+complete.
+
+Ambos ficheros pasan `node --check` (RUNNER=0, DRIVER=0).

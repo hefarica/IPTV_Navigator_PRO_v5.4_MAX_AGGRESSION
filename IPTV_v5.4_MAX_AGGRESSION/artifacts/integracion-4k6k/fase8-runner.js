@@ -204,6 +204,12 @@ srv.listen(0, '127.0.0.1', () => {
                 /* la reimportacion solo cuenta si de verdad se leyó el archivo exportado */
                 if (!f.reimport || f.reimport.bytes <= 1000 || f.reimport.tieneSidecar !== true) fallos.push(f.id + ': reimportacion vacua (bytes=' + (f.reimport && f.reimport.bytes) + ')');
                 if (!f.reimport || f.reimport.mismaSecuencia !== true) fallos.push(f.id + ': reimportacion no identica');
+                /* GUARDA §54: la directiva HDR debe coincidir con la del LAB del perfil.
+                   Hoy FALLA (dos escritores: :4142 y :10704). Se deja activa para que
+                   cualquier arreglo futuro se demuestre aquí, no en la prosa. */
+                if (f.hdr && f.hdr.esperado !== undefined && f.hdr.emitido !== undefined) {
+                    if (String(f.hdr.esperado) !== String(f.hdr.emitido)) fallos.push(f.id + ': HDR emitido ' + f.hdr.emitido + ' != LAB ' + f.hdr.esperado);
+                }
                 if (f.idempotente !== true) fallos.push(f.id + ': no idempotente');
                 if (f.recuperacionExacta !== true) fallos.push(f.id + ': recuperacion no exacta');
             }
