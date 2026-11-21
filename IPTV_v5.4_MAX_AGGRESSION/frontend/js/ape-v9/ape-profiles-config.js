@@ -29,7 +29,7 @@
         { tag: 'EXT-X-SERVER-CONTROL', value: 'CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0,HOLD-BACK=3.0',                                                                                                category: 'timeline' },
         { tag: 'EXT-X-TARGETDURATION', value: '2',                                                                                                                                                                        category: 'fragmentation' },
         { tag: 'EXT-X-PART-INF',       value: 'PART-TARGET=1.0',                                                                                                                                                          category: 'fragmentation' },
-        { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":20000,\\"bufferForPlaybackMs\\":1000,\\"bufferForPlaybackAfterRebufferMs\\":2000,\\"maxBufferMs\\":30000}"',     category: 'abr' },
+        { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":30000,\\"bufferForPlaybackMs\\":1000,\\"bufferForPlaybackAfterRebufferMs\\":2000,\\"maxBufferMs\\":30000}"',     category: 'abr' },
         { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="exoplayer.track_selection",VALUE="{\\"maxDurationForQualityDecreaseMs\\":2000,\\"minDurationForQualityIncreaseMs\\":15000,\\"bandwidthFraction\\":0.65}"',        category: 'abr' },
         // === Quality + Resume + Resilience (added 2026-05-19) ===
         { tag: 'EXT-X-INDEPENDENT-SEGMENTS', value: '',                                                                                                                                                                   category: 'quality' },
@@ -415,9 +415,9 @@
             //
             // FÓRMULA de lectura: segundos = valor_ms / 1000. No hay otra conversión.
             'X-Buffer-Unit':              'ms',
-            'X-Buffer-Max':               '1000000,750000,500000,250000',
-            'X-Buffer-Target':            '250000,180000,120000,80000',
-            'X-Buffer-Min':               '60000,45000,30000,20000',
+            'X-Buffer-Max':               '48000,48000,48000,48000',
+            'X-Buffer-Target':            '24000,24000,24000,24000',
+            'X-Buffer-Min':               '15000,15000,15000,15000',
             // ── HOMOLOGACIÓN segundos ↔ Mbps (mandato operador: la red pide MEGAS) ──────────
             //
             // Un buffer no se le pide a la red: se reserva en RAM del player (hls.js lo hace
@@ -787,9 +787,9 @@
                 "X-Congestion-Detect": "enabled,aggressive-extreme,enabled,aggressive,enabled,adaptive,enabled,adaptive,enabled,balanced",
                 "X-Tone-Mapping": "passthrough,passthrough,auto,auto,hdr-to-sdr",
                 "X-HDR-Output-Mode": "hdr,hdr,hdr,auto,auto",
-                "X-Buffer-Target": "250000",
-                "X-Buffer-Max": "1000000",
-                "X-Buffer-Min": "60000",
+                "X-Buffer-Target": "24000",
+                "X-Buffer-Max": "48000",
+                "X-Buffer-Min": "15000",
                 "X-Network-Caching": "10000",
                 "X-Live-Caching": "10000",
                 "X-File-Caching": "34000",
@@ -1007,9 +1007,9 @@
                 "X-CDN-Provider": "auto,generic,akamai,cloudflare,fastly",
                 "X-Failover-Enabled": "true,adaptive,auto,false",
                 "X-Buffer-Size": "500000,350000,200000,100000",
-                "X-Buffer-Target": "250000,180000,120000,80000",
-                "X-Buffer-Min": "60000,45000,30000,20000",
-                "X-Buffer-Max": "1000000,750000,500000,250000",
+                "X-Buffer-Target": "24000",
+                "X-Buffer-Min": "15000",
+                "X-Buffer-Max": "48000",
                 "X-Network-Caching": "25000,18000,12000,8000",
                 "X-Live-Caching": "18000,12000,8000,5000",
                 "X-File-Caching": "60000,45000,30000,20000",
@@ -1421,9 +1421,9 @@
                 "X-APE-Quality-Threshold": "0.99",
                 "X-Tone-Mapping": "passthrough,passthrough,auto,auto,hdr-to-sdr",
                 "X-HDR-Output-Mode": "hdr,hdr,hdr,auto,auto",
-                "X-Buffer-Target": "200000",
-                "X-Buffer-Max": "800000",
-                "X-Buffer-Min": "50000",
+                "X-Buffer-Target": "24000",
+                "X-Buffer-Max": "48000",
+                "X-Buffer-Min": "15000",
                 "X-Network-Caching": "10000",
                 "X-Live-Caching": "10000",
                 "X-File-Caching": "34000",
@@ -1641,9 +1641,9 @@
                 "X-CDN-Provider": "auto,generic,akamai,cloudflare,fastly",
                 "X-Failover-Enabled": "true,adaptive,auto,false",
                 "X-Buffer-Size": "400000,280000,180000,100000",
-                "X-Buffer-Target": "200000,140000,90000,60000",
-                "X-Buffer-Min": "50000,35000,25000,15000",
-                "X-Buffer-Max": "800000,600000,400000,200000",
+                "X-Buffer-Target": "24000",
+                "X-Buffer-Min": "15000",
+                "X-Buffer-Max": "48000",
                 "X-Network-Caching": "20000,15000,10000,8000",
                 "X-Live-Caching": "15000,10000,8000,5000",
                 "X-File-Caching": "50000,35000,25000,15000",
@@ -2054,9 +2054,9 @@
                 "X-APE-THROUGHPUT-T2": "34.4",
                 "X-Tone-Mapping": "passthrough,passthrough,auto,auto,hdr-to-sdr",
                 "X-HDR-Output-Mode": "hdr,hdr,hdr,auto,auto",
-                "X-Buffer-Target": "150000",
-                "X-Buffer-Max": "600000",
-                "X-Buffer-Min": "40000",
+                "X-Buffer-Target": "24000",
+                "X-Buffer-Max": "48000",
+                "X-Buffer-Min": "15000",
                 "X-Network-Caching": "10000",
                 "X-Live-Caching": "10000",
                 "X-File-Caching": "34000",
@@ -2135,9 +2135,9 @@
                 "X-CDN-Provider": "auto,generic,akamai,cloudflare,fastly",
                 "X-Failover-Enabled": "true,adaptive,auto,false",
                 "X-Buffer-Size": "300000,200000,120000,80000",
-                "X-Buffer-Target": "150000,100000,70000,45000",
-                "X-Buffer-Min": "40000,30000,20000,12000",
-                "X-Buffer-Max": "600000,400000,280000,150000",
+                "X-Buffer-Target": "24000",
+                "X-Buffer-Min": "15000",
+                "X-Buffer-Max": "48000",
                 "X-Network-Caching": "15000,12000,9000,6000",
                 "X-Live-Caching": "12000,9000,7000,4000",
                 "X-File-Caching": "40000,30000,20000,15000",
@@ -2548,9 +2548,9 @@
                 "X-Congestion-Detect": "enabled,aggressive-extreme,enabled,aggressive,enabled,adaptive,enabled,adaptive,enabled,balanced",
                 "X-Tone-Mapping": "passthrough,passthrough,auto,auto,hdr-to-sdr",
                 "X-HDR-Output-Mode": "hdr,hdr,hdr,auto,auto",
-                "X-Buffer-Target": "100000",
-                "X-Buffer-Max": "400000",
-                "X-Buffer-Min": "30000",
+                "X-Buffer-Target": "24000",
+                "X-Buffer-Max": "48000",
+                "X-Buffer-Min": "15000",
                 "X-Network-Caching": "10000",
                 "X-Live-Caching": "10000",
                 "X-File-Caching": "34000",
@@ -2769,9 +2769,9 @@
                 "X-CDN-Provider": "auto,generic,akamai,cloudflare,fastly",
                 "X-Failover-Enabled": "true,adaptive,auto,false",
                 "X-Buffer-Size": "200000,140000,90000,60000",
-                "X-Buffer-Target": "100000,70000,45000,30000",
-                "X-Buffer-Min": "30000,20000,15000,10000",
-                "X-Buffer-Max": "400000,280000,180000,120000",
+                "X-Buffer-Target": "24000",
+                "X-Buffer-Min": "15000",
+                "X-Buffer-Max": "48000",
                 "X-Network-Caching": "12000,9000,7000,5000",
                 "X-Live-Caching": "9000,7000,5000,3000",
                 "X-File-Caching": "30000,20000,15000,10000",
@@ -3181,9 +3181,9 @@
                 "X-Congestion-Detect": "enabled,aggressive-extreme,enabled,aggressive,enabled,adaptive,enabled,adaptive,enabled,balanced",
                 "X-Tone-Mapping": "passthrough,passthrough,auto,auto,hdr-to-sdr",
                 "X-HDR-Output-Mode": "hdr,hdr,hdr,auto,auto",
-                "X-Buffer-Target": "60000",
-                "X-Buffer-Max": "250000",
-                "X-Buffer-Min": "20000",
+                "X-Buffer-Target": "24000",
+                "X-Buffer-Max": "48000",
+                "X-Buffer-Min": "15000",
                 "X-Network-Caching": "10000",
                 "X-Live-Caching": "10000",
                 "X-File-Caching": "34000",
@@ -3403,9 +3403,9 @@
                 "X-CDN-Provider": "auto,generic,akamai,cloudflare,fastly",
                 "X-Failover-Enabled": "true,adaptive,auto,false",
                 "X-Buffer-Size": "120000,90000,60000,40000",
-                "X-Buffer-Target": "60000,40000,30000,20000",
-                "X-Buffer-Min": "20000,15000,10000,8000",
-                "X-Buffer-Max": "250000,180000,120000,80000",
+                "X-Buffer-Target": "24000",
+                "X-Buffer-Min": "15000",
+                "X-Buffer-Max": "48000",
                 "X-Network-Caching": "10000,8000,6000,4000",
                 "X-Live-Caching": "7000,5000,4000,3000",
                 "X-File-Caching": "20000,15000,12000,8000",
@@ -3815,9 +3815,9 @@
                 "X-Congestion-Detect": "enabled,aggressive-extreme,enabled,aggressive,enabled,adaptive,enabled,adaptive,enabled,balanced",
                 "X-Tone-Mapping": "passthrough,passthrough,auto,auto,hdr-to-sdr",
                 "X-HDR-Output-Mode": "hdr,hdr,hdr,auto,auto",
-                "X-Buffer-Max": "60000",
-                "X-Buffer-Target": "30000",
-                "X-Buffer-Min": "3000",
+                "X-Buffer-Max": "48000",
+                "X-Buffer-Target": "24000",
+                "X-Buffer-Min": "15000",
                 "X-Network-Caching": "10000",
                 "X-Live-Caching": "10000",
                 "X-File-Caching": "34000",
@@ -4039,9 +4039,9 @@
                 "X-CDN-Provider": "auto,generic,akamai,cloudflare,fastly",
                 "X-Failover-Enabled": "true,adaptive,auto,false",
                 "X-Buffer-Size": "80000,60000,40000,25000",
-                "X-Buffer-Target": "40000,30000,20000,12000",
-                "X-Buffer-Min": "12000,10000,8000,5000",
-                "X-Buffer-Max": "180000,120000,80000,50000",
+                "X-Buffer-Target": "24000",
+                "X-Buffer-Min": "15000",
+                "X-Buffer-Max": "48000",
                 "X-Network-Caching": "8000,6000,4000,3000",
                 "X-Live-Caching": "5000,4000,3000,2000",
                 "X-File-Caching": "15000,12000,8000,5000",
@@ -4290,9 +4290,9 @@
         "X-CDN-Provider": "auto",
         "X-Failover-Enabled": "true",
         "X-Buffer-Size": "8192",
-        "X-Buffer-Target": "30000",
-        "X-Buffer-Min": "3000",
-        "X-Buffer-Max": "60000",
+        "X-Buffer-Target": "24000",
+        "X-Buffer-Min": "15000",
+        "X-Buffer-Max": "48000",
         "X-Network-Caching": "60000",
         "X-Live-Caching": "60000",
         "X-File-Caching": "30000",
@@ -4686,8 +4686,6 @@
             this.profiles = this._ensureBandwidthFloor(
                 persistedProfiles || JSON.parse(JSON.stringify(DEFAULT_PROFILES))
             );
-            /* [t15 2026-11-18] 6 perfiles SIMULATE 6K materializados del LAB */
-            this._merge12kProfiles();
             this.manifest = this._loadManifest() || JSON.parse(JSON.stringify(DEFAULT_MANIFEST));
 
             // 🔄 Auto-migration v12.0 ELITE: upgrade old multilayer to 7-layer strategy
@@ -4902,8 +4900,7 @@
                 const imported = obj.profiles || obj;
                 if (!imported || typeof imported !== 'object') throw new Error('No profiles key found');
                 // Validar que tenga P0-P5 al menos
-                /* [2026-11-20] Acepta tambien los emulados P0.5..P5.5: con /^P[0-5]$ se DESCARTABAN al importar. */
-        const pids = Object.keys(imported).filter(k => /^P[0-5](?:[._]5)?$/.test(k));
+                const pids = Object.keys(imported).filter(k => /^P[0-5]$/.test(k));
                 if (pids.length === 0) throw new Error('No P0-P5 profiles found in JSON');
                 const hasREA = Object.prototype.hasOwnProperty.call(obj, 'rea_processing');
                 const importedREA = hasREA ? this._validatedREAProcessing(obj.rea_processing) : this.reaProcessing;
@@ -5088,7 +5085,7 @@
                 // amplía la aceptación de schema. JSON ajeno (sin omega_ y no bulletproof) sigue lanzando.
                 const isVersionSupported = (data && data.lab_version && /^omega_/i.test(String(data.lab_version)))
                     || supportedSchemas.includes(data && data.lab_version)
-                    || isBulletproof || (data && data._meta && data._meta.type === 'all_profiles') || (data && data.lab_schema_variant === 'all_profiles'); /* [FASE 4] forma all_profiles medida en la app */
+                    || isBulletproof;
                 if (!data || !isVersionSupported) {
                     throw new Error(`Schema invalido: lab_version='${data && data.lab_version}', schema_variant='${data && data.lab_schema_variant}' (esperado omega_* o bulletproof:true)`);
                 }
@@ -5135,10 +5132,7 @@
                     return out;
                 };
 
-                /* [FASE 3] Dos familias: profiles_calibrated (bulletproof) y profiles (fusión, 12 con P*.5). */
-            const labProfiles = (typeof global !== 'undefined' && global.APELabNormalize)
-                ? global.APELabNormalize.profilesOf(data)
-                : (data.profiles_calibrated || {});
+                const labProfiles = data.profiles_calibrated || {};
                 // [6K 2026-11-05] El LAB v24 trae seis variantes emuladas ademas de las seis base.
                 // Sin ampliar esta lista, P0.5..P5.5 se importaban como humo: estaban en el
                 // fichero y la app las ignoraba. Se recorren DESPUES de las base para que el
@@ -5817,48 +5811,6 @@
         /**
          * Obtiene todos los perfiles
          */
-        /* [t15 2026-11-18] Materializa los 6 perfiles SIMULATE 6K (P0.5..P5.5)
-         * desde APE_PROFILES_12K, que genera tools/gen-profiles-12k.js leyendo el
-         * LAB (su sha256 va en la cabecera del fichero generado). NO hay valores
-         * tecleados a mano. El 6K es SIMULATE: objetivo de display, EXECUTED=0;
-         * la receta de detalle del tier viaja en settings.flt y en vlcopt. */
-        _merge12kProfiles() {
-            const M = (typeof window !== 'undefined') ? window.APE_PROFILES_12K : null;
-            if (!M || !M.profiles) return 0;
-            let n = 0;
-            Object.keys(M.profiles).forEach((id) => {
-                const p = M.profiles[id];
-                if (!p || !p.is6k) return;
-                if (this.profiles[id]) return;      // no pisar un perfil ya persistido
-                this.profiles[id] = {
-                    name: p.name,
-                    settings: {
-                        resolution: p.resolution,
-                        codec: p.codec,
-                        bitrate: p.bitrate,
-                        fps: p.fps,
-                        bufferSeconds: (p.segment_duration_s || 6) * 2,
-                        playerBuffer: p.playerBuffer || 0,
-                        strategy: p.strategy || 'balanced',
-                        detail_tier: 6,
-                        simulate: true,
-                        executor: 'display',
-                        executed: 0,
-                        flt: p.flt
-                    },
-                    vlcopt: { 'video-filter': p.filter_chain_lab || '' },
-                    level: 'simulate-6k',
-                    quality: '6K'
-                };
-                n++;
-            });
-            if (n && typeof console !== 'undefined') {
-                console.log('[APE-Profiles] 12K: ' + n + ' perfiles SIMULATE 6K materializados del LAB (sha256 ' +
-                    String((M.lab && M.lab.sha256) || '').slice(0, 12) + '...)');
-            }
-            return n;
-        }
-
         getAllProfiles() {
             return this.profiles;
         }

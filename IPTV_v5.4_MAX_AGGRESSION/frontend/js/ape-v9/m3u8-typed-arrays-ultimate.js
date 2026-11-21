@@ -109,22 +109,10 @@
         if (!window.APE_HDCP_PROFILE_FRESH_AT) {
             window.APE_HDCP_PROFILE_FRESH_AT = 0;
         }
-        /* [2026-11-19] Las rutas relativas a /prisma/api NO existen cuando el panel se
- * sirve en local (127.0.0.1 / Live Server): los tres bulk (HDCP, PQ, imagen)
- * devolvian 404 y el generador local se quedaba SIN los perfiles por canal del
- * VPS, es decir, generaba con valores por defecto. En local se usa el origen
- * canonico; en el VPS se mantiene la ruta relativa (mas rapida, sin DNS). */
-window.APE_API_ORIGIN = window.APE_API_ORIGIN || (function () {
-    try {
-        var h = (typeof location !== 'undefined' && location.hostname) ? location.hostname : '';
-        var local = !h || /^(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(h);
-        return local ? 'https://iptv-ape.duckdns.org' : '';
-    } catch (_e) { return ''; }
-})();
-window.refreshApeHdcpProfile = function () {
+        window.refreshApeHdcpProfile = function () {
             const now = Date.now();
             if ((now - window.APE_HDCP_PROFILE_FRESH_AT) < 60000) return;  // TTL 60s
-            const url = window.APE_HDCP_BULK_ENDPOINT_ABS || (window.APE_API_ORIGIN + '/prisma/api/channel-hdcp-bulk.php');
+            const url = window.APE_HDCP_BULK_ENDPOINT_ABS || '/prisma/api/channel-hdcp-bulk.php';
             try {
                 fetch(url, { cache: 'no-store', mode: 'cors' })
                     .then(function (r) { return r.json(); })
@@ -153,7 +141,7 @@ window.refreshApeHdcpProfile = function () {
         window.refreshApePqProfile = function () {
             const now = Date.now();
             if ((now - window.APE_PQ_PROFILE_FRESH_AT) < 60000) return;  // TTL 60s
-            const url = window.APE_PQ_BULK_ENDPOINT_ABS || (window.APE_API_ORIGIN + '/prisma/api/channel-pq-bulk.php');
+            const url = window.APE_PQ_BULK_ENDPOINT_ABS || '/prisma/api/channel-pq-bulk.php';
             try {
                 fetch(url, { cache: 'no-store', mode: 'cors' })
                     .then(function (r) { return r.json(); })
@@ -181,7 +169,7 @@ window.refreshApeHdcpProfile = function () {
         window.refreshApeImageProfile = function () {
             const now = Date.now();
             if ((now - window.APE_IMAGE_PROFILE_FRESH_AT) < 60000) return;  // TTL 60s
-            const url = window.APE_IMAGE_BULK_ENDPOINT_ABS || (window.APE_API_ORIGIN + '/prisma/api/channel-image-bulk.php');
+            const url = window.APE_IMAGE_BULK_ENDPOINT_ABS || '/prisma/api/channel-image-bulk.php';
             try {
                 fetch(url, { cache: 'no-store', mode: 'cors' })
                     .then(function (r) { return r.json(); })
@@ -3152,11 +3140,7 @@ window.refreshApeHdcpProfile = function () {
     // OMEGA CRYSTAL compliance block. This is additive metadata: it does not
     // re-encode, downscale, or alter the source URL. No EXT-X-KEY is emitted
     // for clear streams; that would break playback.
-    function __omegaComplianceTags(__pId) {
-        var __sat = 1.08, __cj = null, __cs = null;
-        try { var __p = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG?.getProfile && __pId) ? window.APE_PROFILES_CONFIG.getProfile(__pId) : null; var __vo = (__p && __p.vlcopt) || {}; if (__vo['saturation'] !== undefined) __sat = __vo['saturation'];
-            if (__vo['clock-jitter'] !== undefined) __cj = __vo['clock-jitter'];
-            if (__vo['clock-synchro'] !== undefined) __cs = __vo['clock-synchro']; } catch (e) { }
+    function __omegaComplianceTags() {
         // [2026-11-04] Lee un valor Crystal del perfil con fallback al NIVEL 1 de la escalera.
         // El fallback NUNCA apaga el enhancement: la LEY CRYSTAL 4K UHD exige mejorar siempre.
         return [
@@ -3164,9 +3148,7 @@ window.refreshApeHdcpProfile = function () {
             '#EXTVLCOPT:colorspace=all=auto:trc=auto',
             '#EXTVLCOPT:tonemap=mobius',
             '#EXTVLCOPT:format=yuv444p10le',
-            '#EXTVLCOPT:saturation=' + __sat,
-            '#EXTVLCOPT:clock-jitter=' + (__cj !== null ? __cj : 1500),
-            '#EXTVLCOPT:clock-synchro=' + (__cs !== null ? __cs : 1),
+            '#EXTVLCOPT:saturation=1.08',
             '#EXT-X-APE-SPOOF-DEVICE-CLASS:premium-tv',
             '#EXT-X-APE-SPOOF-DECODING-CAPABILITY:hevc-main10-level6.1',
             '#EXT-X-APE-SPOOF-DEVICE-MODEL:SHIELD-TV-PRO',
@@ -3699,7 +3681,7 @@ ${__apeContinuityTags().join('\n')}
 #EXT-X-TARGETDURATION:2
 #EXT-X-PART-INF:PART-TARGET=0.5
 #EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=0.5,CAN-SKIP-UNTIL=6.0,HOLD-BACK=1.5
-#EXT-X-SESSION-DATA:DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":45000,\\"bufferForPlaybackMs\\":500,\\"bufferForPlaybackAfterRebufferMs\\":1000,\\"maxBufferMs\\":130000}"
+#EXT-X-SESSION-DATA:DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":30000,\\"bufferForPlaybackMs\\":500,\\"bufferForPlaybackAfterRebufferMs\\":3000,\\"maxBufferMs\\":90000}"
 #EXT-X-SESSION-DATA:DATA-ID="exoplayer.track_selection",VALUE="{\\"maxDurationForQualityDecreaseMs\\":500,\\"minDurationForQualityIncreaseMs\\":3000,\\"bandwidthFraction\\":0.95}"
 #EXT-X-SESSION-DATA:DATA-ID="exoplayer.bandwidth_meter",VALUE="{\\"resetOnNetworkTypeChange\\":false,\\"slidingWindowMaxWeight\\":2000,\\"initialBitrateEstimate\\":120000000}"
 #EXT-X-SESSION-DATA:DATA-ID="hls.js.config",VALUE="{\\"maxBufferLength\\":130,\\"maxMaxBufferLength\\":600,\\"abrBandWidthFactor\\":0.95,\\"abrBandWidthUpFactor\\":0.95,\\"lowLatencyMode\\":true}"
@@ -5155,109 +5137,40 @@ ${__apeContinuityTags().join('\n')}
     // 🧊 ANTIFREEZE NUCLEAR ENGINE v10.0 — EXTHTTP Headers Module
     // Namespace: X-AF-* (AntiFreeze) — NO conflictúa con X-APE-* ni X-EL-*
     // ═══════════════════════════════════════════════════════════════════
-    /* ═══════════════════════════════════════════════════════════════════════════
- * [2026-11-19] ANTI-FREEZE GOBERNADO POR EL SELECTOR DEL PANEL (L1..L5)
- *
- * DEFECTO MEDIDO QUE ESTO CORRIGE: el selector «Anti-Freeze (Buffer/Reconexión)»
- * se leia en app.js y se pasaba como options.antiFreezeLevel, pero el motor
- * (build_antifreeze_nuclear_headers) usaba valores FIJOS (buffer 180000,
- * caching 120000/300000) y su escalera interna de 10 niveles indexada por
- * DEVICE_TIER. Resultado: mover el selector NO cambiaba nada.
- * Peor aun: en export-module ese MISMO valor elegia el nivel de la matriz de
- * CABECERAS. Es decir, una opcion que dice «Buffer/Reconexion» mandaba sobre
- * las cabeceras y no sobre el buffer.
- *
- * AHORA: el nivel pedido (1..5) MANDA sobre el techo de buffer/cacheo/reconexion.
- * El piso sigue siendo DEVICE_TIER (nunca se baja de lo que el device soporta),
- * asi que no se rompe la doctrina «nunca bajan».
- * ═══════════════════════════════════════════════════════════════════════════ */
-const AF_PANEL_TABLE = {
-    1: { bufferTarget: '60000',  bufferMin: '30000',  bufferMax: '120000', prebuffer: '30',
-         net: '30000',  live: '30000',  file: '60000',  reconMax: '10', retryDelay: '200',
-         prefetchAggr: 'NORMAL',    pcache: '512MB',  dcache: '2048MB' },
-    2: { bufferTarget: '90000',  bufferMin: '45000',  bufferMax: '240000', prebuffer: '60',
-         net: '60000',  live: '60000',  file: '120000', reconMax: '25', retryDelay: '150',
-         prefetchAggr: 'HIGH',      pcache: '1024MB', dcache: '4096MB' },
-    3: { bufferTarget: '120000', bufferMin: '60000',  bufferMax: '360000', prebuffer: '90',
-         net: '90000',  live: '90000',  file: '180000', reconMax: '50', retryDelay: '100',
-         prefetchAggr: 'AGGRESSIVE', pcache: '1536MB', dcache: '6144MB' },
-    4: { bufferTarget: '150000', bufferMin: '60000',  bufferMax: '480000', prebuffer: '120',
-         net: '120000', live: '120000', file: '240000', reconMax: 'UNLIMITED', retryDelay: '50',
-         prefetchAggr: 'OBSCENE', pcache: '2048MB', dcache: '8192MB' },
-    5: { bufferTarget: '180000', bufferMin: '60000',  bufferMax: '600000', prebuffer: '120',
-         net: '120000', live: '120000', file: '300000', reconMax: 'UNLIMITED', retryDelay: '0',
-         prefetchAggr: 'LIVE_EDGE_MAX', pcache: '2048MB', dcache: '10240MB' }
-};
-const AF_PANEL_TO_TIER = { 1: 2, 2: 4, 3: 6, 4: 8, 5: 10 };
-
-function afReadPanelLevel() {
-    try {
-        let v = null;
-        if (typeof window !== 'undefined') {
-            if (window.APE_ANTIFREEZE_LEVEL !== undefined && window.APE_ANTIFREEZE_LEVEL !== null) {
-                v = window.APE_ANTIFREEZE_LEVEL;
-            } else if (window.app && window.app.state && window.app.state.antiFreezeLevel !== undefined) {
-                v = window.app.state.antiFreezeLevel;
-            }
-        }
-        const n = parseInt(v, 10);
-        return (n >= 1 && n <= 5) ? n : 3;   // 3 = Balanceado (el default del panel)
-    } catch (e) { return 3; }
-}
-
-/* Devuelve el nivel efectivo: el del panel manda, con piso en DEVICE_TIER. */
-function afResolve() {
-    const panel = afReadPanelLevel();
-    const autoTier = Math.min(Math.max(parseInt(DEVICE_TIER, 10) || 1, 1), 10);
-    const wantTier = AF_PANEL_TO_TIER[panel] || autoTier;
-    const tier = Math.max(autoTier, wantTier);       // NUNCA por debajo del device
-    return {
-        panel: panel,
-        tier: tier,
-        autoTier: autoTier,
-        values: AF_PANEL_TABLE[panel] || AF_PANEL_TABLE[3],
-        governedBy: (tier === wantTier) ? ('panel_L' + panel) : ('device_tier_' + autoTier)
-    };
-}
-function build_antifreeze_nuclear_headers(cfg, profile) {
-    const lvl = ACTIVE_ISP_LEVEL;
-    const _af = afResolve();
-    const _v = _af.values;
+    function build_antifreeze_nuclear_headers(cfg, profile) {
+        const lvl = ACTIVE_ISP_LEVEL;
         return {
             // ── Sub-capa 1: Antifreeze Core ──
             'X-AF-Version': '10.0-OBSCENE-AGGRESSION',
-        'X-AF-Requested-Level': 'L' + _af.panel,
-        'X-AF-Governed-By': _af.governedBy,
-        'X-AF-Effective-Tier': String(_af.tier) + '/10',
             'X-AF-Buffer-Strategy': 'NUCLEAR_NO_COMPROMISE',
             'X-AF-Engine-Mode': 'ZERO_TOLERANCE_FREEZE',
             // ── Sub-capa 2: Buffer Configuration ──
-            'X-AF-Buffer-Target': _v.bufferTarget,
-            'X-AF-Buffer-Min': _v.bufferMin,
-            'X-AF-Buffer-Max': _v.bufferMax,
-            'X-AF-Buffer-RAM-Cache': _v.pcache,
-            'X-AF-Buffer-SSD-Cache': _v.dcache,
+            'X-AF-Buffer-Target': '180000',
+            'X-AF-Buffer-Min': '60000',
+            'X-AF-Buffer-Max': '600000',
+            'X-AF-Buffer-RAM-Cache': '2048MB',
+            'X-AF-Buffer-SSD-Cache': '10240MB',
             'X-AF-Buffer-Underrun-Strategy': 'AGGRESSIVE_REFILL_INSTANT',
             'X-AF-Buffer-Overrun-Strategy': 'DROP_OLDEST',
-            'X-AF-Buffer-Prebuffer-Seconds': _v.prebuffer,
+            'X-AF-Buffer-Prebuffer-Seconds': '120',
             // ── Sub-capa 3: Prefetch Nuclear ──
             'X-AF-Prefetch-Segments': String(GLOBAL_PREFETCH.segments),
             'X-AF-Prefetch-Parallel': String(GLOBAL_PREFETCH.parallel),
-            'X-AF-Prefetch-Aggressiveness': _v.prefetchAggr,
+            'X-AF-Prefetch-Aggressiveness': 'OBSCENE',
             'X-AF-Prefetch-Adaptive': 'TRUE',
             'X-AF-Prefetch-Predictive': 'TRUE',
             'X-AF-Prefetch-All-Qualities': 'TRUE',
             // ── Sub-capa 4: Network Caching Nuclear ──
-            'X-AF-Network-Caching': _v.net,
-            'X-AF-Live-Caching': _v.live,
-            'X-AF-File-Caching': _v.file,
+            'X-AF-Network-Caching': '120000',
+            'X-AF-Live-Caching': '120000',
+            'X-AF-File-Caching': '300000',
             'X-AF-TCP-Caching': '60000',
             'X-AF-Disc-Caching': '30000',
             'X-AF-Sout-Mux-Caching': '120000',
             // ── Sub-capa 5: Reconnection Nuclear ──
-            'X-AF-Reconnect-Max': _v.reconMax,
+            'X-AF-Reconnect-Max': 'UNLIMITED',
             'X-AF-Reconnect-Delay-Min': '0',
-            'X-AF-Reconnect-Delay-Max': _v.retryDelay,
+            'X-AF-Reconnect-Delay-Max': '50',
             'X-AF-Reconnect-Parallel': '64',
             'X-AF-Reconnect-Instant-Failover': 'TRUE',
             'X-AF-Reconnect-Pool-Size': '50',
@@ -5769,19 +5682,8 @@ function build_antifreeze_nuclear_headers(cfg, profile) {
         'X-Prefetch-Enabled', 'X-Prefetch-Adaptive', 'X-Prefetch-Segments',
         'X-Parallel-Segments', 'X-Concurrent-Downloads',
         // presupuesto de red declarado
-        'X-Expected-Bitrate', 'X-Max-Bitrate', 'X-Min-Bitrate', 'X-Buffer-Target',
-            // [2026-11-19] ANTI-FREEZE: lo que DEBE sobrevivir al recorte 200/8192 B.
-            // El recorte (_sanitizePayloadSize) se aplica DESPUES de fusionar X-AF-*,
-            // asi que sin prioridad el motor podia quedar truncado justo cuando
-            // importa y la auditoria desaparecia en silencio. Solo los 5 que
-            // gobiernan comportamiento o lo declaran; el resto de X-AF-* puede caer.
-            'X-AF-Buffer-Target', 'X-AF-Network-Caching',
-            /* [2026-11-19 VERIF-AF F1] estas 2 SE PERDIAN: el motor las calculaba
-             * (file 60000..300000, recon 10..UNLIMITED) pero el recorte de 200
-             * las tiraba por no estar priorizadas. Verificado con listas reales. */
-            'X-AF-File-Caching', 'X-AF-Reconnect-Max',
-            'X-AF-Requested-Level', 'X-AF-Governed-By', 'X-AF-Effective-Tier'
-        ];
+        'X-Expected-Bitrate', 'X-Max-Bitrate', 'X-Min-Bitrate', 'X-Buffer-Target'
+    ];
 
     /** Devuelve las claves de `obj` con las prioritarias primero (orden estable). */
     function _priorityOrderKeys(obj) {
@@ -6454,16 +6356,7 @@ function build_antifreeze_nuclear_headers(cfg, profile) {
         Object.assign(headers, build_proven_quality(cfg, profile, { _exHdrMode, _exKodiTf, _exColorPrimaries, _exPeakNits, _exTmRef, _exColorDepth, _exPixelFmt, _exIsHDR }));
 
         // ── 🧊 ANTIFREEZE NUCLEAR ENGINE v10.0: Merge X-AF-* headers ──
-        /* [2026-11-19] BLINDAJE: este merge NO estaba protegido. Un fallo dentro del
- * motor anti-freeze (una clave undefined, un panel corrupto, una tabla futura
- * mal editada) lanzaba excepcion y se llevaba por delante la GENERACION COMPLETA
- * de la lista. Aqui un fallo del motor debe costar SOLO sus cabeceras X-AF-*,
- * nunca el fichero. Se degrada y se declara; no se propaga. */
-try {
-    Object.assign(headers, build_antifreeze_nuclear_headers(cfg, profile));
-} catch (e) {
-    console.warn('[ANTIFREEZE] motor no aplicable en este canal, la lista continua:', (e && e.message) || e);
-}
+        Object.assign(headers, build_antifreeze_nuclear_headers(cfg, profile));
 
         // ── 🎯 CHANNEL CLASSIFIER v3.0: Classification metadata headers ──
         if (cfg._classification) {
@@ -8053,7 +7946,7 @@ try {
         if (name.includes('4K') || name.includes('UHD')) { scores.P1 += 20; signals.push('NAME:4K/UHD→P1'); }
         if (name.includes('FHD') || name.includes('1080')) { scores.P3 += 20; signals.push('NAME:FHD/1080→P3'); }
         // HD genérico → P3 (1080p), NO P4
-        if (name.includes('HD') && !name.includes('UHD') && !name.includes('4K') && !name.includes('720') && !name.includes('480') && !name.includes('SD')) {
+        if (name.includes('HD') && !name.includes('720') && !name.includes('480') && !name.includes('SD')) {
             scores.P3 += 15; signals.push('NAME:HD(generic)→P3');
         }
         if (name.includes('720')) { scores.P4 += 20; signals.push('NAME:720→P4'); }
@@ -9506,8 +9399,7 @@ try {
         if (typeof key !== 'string' || key.length === 0) return null;   // sin clave ⇒ sin línea
         if (_apeIsTiviMateUa(ua)) return null;                          // TiviMate ignora el tag ⇒ no ensuciar
         const host = (typeof cfg.host === 'string' && cfg.host) ? cfg.host.replace(/\/+$/, '') : 'https://iptv-ape.duckdns.org';
-        /* [2026-11-20] Un canal con P0.5/P1.5.. caia a P3 (1080p) = degradacion silenciosa. */
-            const p = /^P[0-5](?:[._]5)?$/.test(String(profile || '')) ? String(profile) : 'P3';
+        const p = /^P[0-5]$/.test(String(profile || '')) ? String(profile) : 'P3';
         const id = String((channel && (channel.id || channel.name)) || '');
         if (!id) return null;
         const c = _apeB64Url(_apeUtf8Bytes(id));
@@ -9545,8 +9437,7 @@ try {
             const ok = wl.some(hh => hh && (host === hh || host.endsWith('.' + hh)));
             if (!ok) return ua;                             // host no autorizado ⇒ UA intacto
         }
-        /* [2026-11-20] Un canal con P0.5/P1.5.. caia a P3 (1080p) = degradacion silenciosa. */
-            const p = /^P[0-5](?:[._]5)?$/.test(String(profile || '')) ? String(profile) : 'P3';
+        const p = /^P[0-5]$/.test(String(profile || '')) ? String(profile) : 'P3';
         const dev = (String(cfg.devModel || 'generic').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 32)) || 'generic';
         const soc = (String(cfg.soc || 'unknown').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 32)) || 'unknown';
         return base + ' APE/1.0 dev=' + dev + ' soc=' + soc + ' p=' + p;
@@ -9566,8 +9457,7 @@ try {
     // Es METADATA para el daemon/ARA: la playlist no toca píxeles (PIXELS=0, SCOPE=DISPLAY).
     const _APE_CRYSTAL_VPP = { P0: 40, P1: 35, P2: 45, P3: 55, P4: 70, P5: 85 };
     function _apeCrystalVppLine(profile) {
-        /* [2026-11-20] Un canal con P0.5/P1.5.. caia a P3 (1080p) = degradacion silenciosa. */
-            const p = /^P[0-5](?:[._]5)?$/.test(String(profile || '')) ? String(profile) : 'P3';
+        const p = /^P[0-5]$/.test(String(profile || '')) ? String(profile) : 'P3';
         const n = _APE_CRYSTAL_VPP[p];
         return '#EXT-X-APE-CRYSTAL-UHD:PROFILE=' + p + ';VPP_INTENSITY=' + n + ';SCOPE=DISPLAY;PIXELS=0';
     }
@@ -10420,56 +10310,11 @@ return lines.join('\n');
             && typeof window.APE_PROFILES_CONFIG.getProfile === 'function')
             ? window.APE_PROFILES_CONFIG.getProfile(profile) : null;
         const _labBufMs = parseInt(_pmProfile796?.vlcopt?.['network-caching'], 10);
-        /* ═══════════════════════════════════════════════════════════════════
-         * [2026-11-20 · ORDEN DEL OPERADOR] "no cambies valores, revisa la
-         * estructura y luego el origen ... para que esto se haga de manera
-         * automatica tomando en cuenta el proceso de preprocesamiento automatico
-         * que se esta implementando desde la toma de la velocidad de red y esos
-         * parametros como se alinean a estos que deben ser ajustados se incluyan".
-         *
-         * ORIGEN UNICO: APE_HEALTH_TUNER (streaming/auto-tune-v1.js) ya deriva con
-         * formulas deterministas desde el RATIO MEDIDO:
-         *   bufferTargetS = clamp(segDur*(1+max(0,1/r-1)*3), 10, 32) [s]
-         *   readTimeoutMs = clamp(45000+max(0,1/r-1)*30000, 45e3, 120e3)
-         *   prefetchSegments, parallelDownloads
-         * El generador NUNCA lo consultaba: emitia el cache del LAB y luego lo
-         * pisaba con optimized_knobs.buffer_seconds. Aqui se CONECTA. No se elige
-         * ningun valor a mano: sin medicion fresca devuelve null y manda el perfil.
-         * ═══════════════════════════════════════════════════════════════════ */
-        if (typeof window !== 'undefined' && typeof window._APE_AUTO_PLAYER !== 'function') {
-            window._APE_AUTO_PLAYER = function (profileId) {
-                try {
-                    var T = window.APE_HEALTH_TUNER;
-                    var PM = window.ProfileManagerV9;
-                    if (!T || typeof T.deterministic !== 'function' || !PM) return null;
-                    var last = PM._lastBw;
-                    if (!last || !last.ok) return null;
-                    var acc = last.measurement || {};
-                    var mbps = (typeof acc.mbpsSafe === 'number' && isFinite(acc.mbpsSafe)) ? acc.mbpsSafe : null;
-                    var ratio = (typeof last.headroomRatio === 'number' && isFinite(last.headroomRatio)) ? last.headroomRatio : null;
-                    if (!(ratio > 0)) return null;
-                    var plan = T.deterministic(mbps, ratio, 6);
-                    if (!plan) return null;
-                    return {
-                        basis: 'measured', profile: profileId || null,
-                        ratio: ratio, mbps: mbps,
-                        cacheMs: Math.round(plan.bufferTargetS * 1000),
-                        timeoutMs: plan.readTimeoutMs,
-                        prefetch: plan.prefetchSegments,
-                        parallel: plan.parallelDownloads
-                    };
-                } catch (_e) { return null; }
-            };
-        }
-        const _apeAuto = (typeof window !== 'undefined' && typeof window._APE_AUTO_PLAYER === 'function')
-            ? window._APE_AUTO_PLAYER(profile) : null;
         const _labBufMB = parseInt(_pmProfile796?.hlsjs?.maxBufferSize, 10);
         const _labBufSeg = parseInt(_pmProfile796?.prefetch_config?.prefetch_segments, 10);
 
-        /* Precedencia: MEDICION (auto-tune) > LAB vlcopt > CAPACITY_OVERDRIVE. */
-        const _buf796 = _apeAuto ? _apeAuto.cacheMs
-            : (!Number.isNaN(_labBufMs) ? _labBufMs
-            : ((typeof CAPACITY_OVERDRIVE !== 'undefined') ? (CAPACITY_OVERDRIVE.buffer_ms || 60000) : 60000));
+        const _buf796 = !Number.isNaN(_labBufMs) ? _labBufMs
+            : ((typeof CAPACITY_OVERDRIVE !== 'undefined') ? (CAPACITY_OVERDRIVE.buffer_ms || 60000) : 60000);
         const _bufMB = !Number.isNaN(_labBufMB) ? Math.round(_labBufMB / (1024 * 1024))
             : ((typeof CAPACITY_OVERDRIVE !== 'undefined') ? (CAPACITY_OVERDRIVE.buffer_mb || 60) : 60);
         const _bufSeg = !Number.isNaN(_labBufSeg) ? _labBufSeg
@@ -10537,17 +10382,7 @@ return lines.join('\n');
         // master clock → deriva A/V progresiva con cadenas de filtro pesadas
         // (minterpolate 120fps). =1 re-esclaviza video al clock maestro.
         lines.push(`#EXTVLCOPT:clock-synchro=1`);
-        /* [2026-11-20] El timeout NO se elige a mano: sale de la misma formula que
-         * el buffer (timeoutForRatio). Sin medicion se restaura el valor previo. */
-        /* [2026-11-20] timeout: MEDICION > settings.network_timeout_ms que dejo el
-         * gobernador en el perfil > 60000 (valor previo). Nada elegido a mano. */
-        const _pmTo = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG
-            && typeof window.APE_PROFILES_CONFIG.getProfile === 'function')
-            ? Number((window.APE_PROFILES_CONFIG.getProfile(profile) || {}).settings?.network_timeout_ms) : NaN;
-        lines.push(`#EXTVLCOPT:network-timeout=${_apeAuto ? _apeAuto.timeoutMs : (isFinite(_pmTo) && _pmTo > 0 ? _pmTo : 60000)}`);
-        if (_apeAuto) {
-            lines.push(`#EXT-X-APE-AUTO-TUNE:BASIS=measured;CACHE_MS=${_apeAuto.cacheMs};TIMEOUT_MS=${_apeAuto.timeoutMs};PREFETCH=${_apeAuto.prefetch};PARALLEL=${_apeAuto.parallel};RATIO=${_apeAuto.ratio};MBPS=${_apeAuto.mbps === null ? 'unknown' : _apeAuto.mbps};SOURCE=APE_HEALTH_TUNER.deterministic`);
-        }
+        lines.push(`#EXTVLCOPT:network-timeout=60000`);
         lines.push(`#EXTVLCOPT:network-reconnect=true`);
         lines.push(`#EXTVLCOPT:network-reconnect-delay=500`);
         lines.push(`#EXTVLCOPT:network-reconnect-count=99`);
@@ -10593,28 +10428,9 @@ return lines.join('\n');
         // + video-hdr-mode=SDR — contradictorio. Ahora cada perfil declara su tier
         // (P0=dolby-vision, P1=hdr10+, P2=hdr10, P3=hlg, P4/P5=sdr) y el bloque
         // emite zscale + transfer + primaries + tone-mapping coherentes.
-        /* [FASE 10 · 2026-11-21] MEDIDO: settings.hdr_canonical falta en los .5 y el
-         * tuning del LAB vive en vlcopt['video-hdr-mode']. El emisor anterior
-         * (generateEXTVLCOPT) es codigo muerto (0 llamadas), asi que aqui se toma
-         * ese dato como respaldo: sin el, P0.5 declaraba SDR frente a HDR10PLUS. */
-        const _pmHdrCanonical = (function () {
-            try {
-                const cfgP = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG?.getProfile)
-                    ? window.APE_PROFILES_CONFIG.getProfile(profile) : null;
-                /* Prioridad del LAB: si el propietario calibro video-hdr-mode para este
-                 * perfil, manda sobre settings.hdr_canonical de la app (P3 declaraba
-                 * HLG cuando su LAB dice SDR). */
-                const modoLabP = String(((cfgP && cfgP.vlcopt) || {})['video-hdr-mode'] || '').toUpperCase();
-                const mapaP = { 'HDR10PLUS': 'hdr10+', 'HDR10+': 'hdr10+', 'HDR10': 'hdr10', 'DOLBY_VISION': 'dolby-vision', 'DOLBY-VISION': 'dolby-vision', 'HLG': 'hlg', 'SDR': 'sdr' };
-                if (mapaP[modoLabP]) return mapaP[modoLabP];
-                const deSettings = (cfgP && cfgP.settings && cfgP.settings.hdr_canonical) ? String(cfgP.settings.hdr_canonical).toLowerCase() : '';
-                if (deSettings) return deSettings;
-                const modoLab = String(((cfgP && cfgP.vlcopt) || {})['video-hdr-mode'] || '').toUpperCase();
-                const mapa = { 'HDR10PLUS': 'hdr10+', 'HDR10+': 'hdr10+', 'HDR10': 'hdr10', 'DOLBY_VISION': 'dolby-vision', 'DOLBY-VISION': 'dolby-vision', 'HLG': 'hlg', 'SDR': 'sdr' };
-                if (mapa[modoLab]) return mapa[modoLab];
-            } catch (e) { }
-            return 'sdr';
-        })();
+        const _pmHdrCanonical = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG?.getProfile)
+            ? (window.APE_PROFILES_CONFIG.getProfile(profile)?.settings?.hdr_canonical || 'sdr').toLowerCase()
+            : 'sdr';
         const _pmNitsTarget = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG?.getProfile)
             ? parseInt(window.APE_PROFILES_CONFIG.getProfile(profile)?.settings?.nits_target || (_pmHdrCanonical === 'sdr' ? 100 : 1000), 10)
             : 100;
@@ -10726,9 +10542,9 @@ return lines.join('\n');
             lines.push(`#EXT-X-APE-4KFALSE-TARGET-RES:3840x2160`);
             lines.push(`#EXT-X-APE-4KFALSE-ENGINE:ZSCALE-LANCZOS+MEMC-120FPS+HQDN3D+UNSHARP`);
         }
-                if (!lines.some(l => typeof l === 'string' && l.indexOf('#EXTVLCOPT:video-hdr=') === 0)) lines.push(`#EXTVLCOPT:video-hdr=${_isAnyHdr ? 'true' : 'false'}`);
-        if (!lines.some(l => typeof l === 'string' && l.indexOf('#EXTVLCOPT:video-hdr-nits=') === 0)) lines.push(`#EXTVLCOPT:video-hdr-nits=${_pmNitsTarget}`);
-        if (!lines.some(l => typeof l === 'string' && l.indexOf('#EXTVLCOPT:video-hdr-mode=') === 0)) lines.push(`#EXTVLCOPT:video-hdr-mode=${_hdrModeM3U}`);
+        lines.push(`#EXTVLCOPT:video-hdr=${_isAnyHdr ? 'true' : 'false'}`);
+        lines.push(`#EXTVLCOPT:video-hdr-nits=${_pmNitsTarget}`);
+        lines.push(`#EXTVLCOPT:video-hdr-mode=${_hdrModeM3U}`);
         lines.push(`#EXTVLCOPT:video-tone-mapping=${_isAnyHdr ? 'hable' : 'off'}`);
         if (_isAnyHdr) {
             lines.push(`#EXTVLCOPT:video-tone-mapping-peak=${_pmNitsTarget}`);
@@ -10756,7 +10572,7 @@ return lines.join('\n');
         lines.push(`#EXTVLCOPT:video-snap-format=png`);
         lines.push(`#EXTVLCOPT:audio-language=spa,eng,por`);
         lines.push(`#EXTVLCOPT:audio-track-id=0`);
-        lines.push(`#EXTVLCOPT:audio-channels=${(function(){ try { const pA=(typeof window!=='undefined' && window.APE_PROFILES_CONFIG?.getProfile) ? window.APE_PROFILES_CONFIG.getProfile(profile) : null; const vA=(pA && pA.vlcopt) ? pA.vlcopt['audio-channels'] : undefined; return (vA!==undefined && vA!==null && String(vA)!=='') ? vA : 6; } catch(e){ return 6; } })()}`);
+        lines.push(`#EXTVLCOPT:audio-channels=6`);
         lines.push(`#EXTVLCOPT:audio-samplerate=48000`);
         lines.push(`#EXTVLCOPT:audio-replay-gain-mode=none`);
         // AV-SYNC (2026-08-30, owner): audio-time-stretch=1 — si el video va lento por
@@ -11374,11 +11190,7 @@ return lines.join('\n');
         for (const _k of _priorityOrderKeys(_httpPayload)) {   // CALIB 2026-11-01
             const _v = String(_httpPayload[_k]);
             const _entryBytes = _k.length + _v.length + 6;
-            /* [2026-11-19 VERIF-AF F2] 198 y no 200: DESPUES de este bucle se inyectan
-     * 2 claves mas (X-Device-Id y X-CMAF-Program-Date-Time), y nginx cuenta
-     * cabeceras: el bloque salia con 202 y el limite es 200. Reservando 2 el
-     * total emitido queda en 200 exactas. */
-    if (_finalCount < 198 && (_finalBytes + _entryBytes) < 8192) {
+            if (_finalCount < 200 && (_finalBytes + _entryBytes) < 8192) {
                 _finalPrimary[_k] = _v;
                 _finalCount++;
                 _finalBytes += _entryBytes;
@@ -12600,30 +12412,8 @@ return lines.join('\n');
                 // [2026-11-04 mandato operador] El buffer debe ser el del perfil del Gestor APE v9.0
                 // (P3 = 8000 ms), no el `optimized_knobs.buffer_seconds` del LAB, que traia 55 s y
                 // sobrescribia los cuatro cachés. El LAB solo manda si el perfil no trae buffer.
-        /* [2026-11-20 · OPERADOR: "se queda pegada y no zappea rápido" · "busca la
-         * parametrizacion"] MEDIDO en la lista entregada: network-caching=55000.
-         * Causa: cfg.buffer llegaba vacio y se caia a optimized_knobs.buffer_seconds
-         * del LAB (55 s), que es un TIEMPO DE BUFFER DE PREFETCH, no un cache de
-         * red. El perfil SI trae el valor calibrado en ms: settings.buffer
-         * (P0 19000, P1 12000, P2 10000, P3 8000, P4 10000, P5 5000).
-         * Precedencia nueva, nombrada:
-         *   settings.buffer del perfil (ms)  >  cfg.buffer  >  buffer_seconds*1000
-         * Asi el mando es UNO solo y esta en el panel de perfiles. */
-        const _pmBufP = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG
-            && typeof window.APE_PROFILES_CONFIG.getProfile === 'function')
-            ? window.APE_PROFILES_CONFIG.getProfile(profile) : null;
-        const _bufPerfilMs = Math.round(Number(
-            (cfg && cfg.settings && cfg.settings.buffer)
-            || (cfg && cfg.buffer)
-            || (_pmBufP && _pmBufP.settings && _pmBufP.settings.buffer)
-        ) || 0);
-                const _atB = (typeof window !== 'undefined' && typeof window._APE_AUTO_PLAYER === 'function')
-            ? window._APE_AUTO_PLAYER(profile) : null;
-        /* [2026-11-20] MEDICION > settings.buffer del perfil > buffer_seconds del LAB.
-         * Antes este bloque PISABA el cache con buffer_seconds (55 s) porque
-         * cfg.buffer llegaba vacio: eso producia network-caching=55000. */
-        const bufMs = _atB ? _atB.cacheMs
-            : (_bufPerfilMs > 0 ? _bufPerfilMs : (opt.buffer_seconds || 0) * 1000);
+                const _bufPerfilMs = (Number(cfg && cfg.buffer) > 0) ? Math.round(Number(cfg.buffer)) : 0;
+                const bufMs = _bufPerfilMs > 0 ? _bufPerfilMs : (opt.buffer_seconds || 0) * 1000;
                 if (bufMs > 0) {
                     upsertVlcopt(lines, 'network-caching', bufMs);
                     upsertVlcopt(lines, 'live-caching', bufMs);
@@ -13023,27 +12813,13 @@ return lines.join('\n');
             // VIDEO-RANGE=PQ es la decision LOCKED del propietario (CLAUDE.md, 2026-06-16).
             const _p6k = String(profile || 'P3').toUpperCase();
             const _bw6kMap = { P0: 120000000, P1: 80000000, P2: 50000000, P3: 25000000, P4: 15000000, P5: 8000000 };
-            // [2026-11-15] DEPRECADO: ya NO se lee para emitir. El nivel se deriva del objetivo
-            // 5760x3240 con _apeHcLevel6k (abajo). No volver a usarlo: mapeaba por perfil y dejaba
-            // L123 (Level 4.1) sobre un picture de 18,66 Mpx.
             const _cd6kMap = {
                 P0: 'hvc1.2.4.L186.B0', P1: 'hvc1.2.4.L153.B0', P2: 'hvc1.2.4.L153.B0',
                 P3: 'hvc1.2.4.L123.B0', P4: 'hvc1.2.4.L120.B0', P5: 'hvc1.2.4.L93.B0'
             };
             const _bw6k = _bw6kMap[_p6k] || 25000000;
+            const _cd6k = _cd6kMap[_p6k] || 'hvc1.2.4.L123.B0';
             const _fps6k = _noProbeFps(profile);
-            // [2026-11-15 · owner decision P-4] Nivel derivado del objetivo declarado (5760x3240).
-            // A 60 fps exige Level 6.1 (L183); a 120 fps, Level 6.2 (L186). Familia hvc1.2.4.*
-            const _apeHcLevel6k = (function (w, h, fps) {
-                const T = [['L120', 2228224, 66845184], ['L123', 2228224, 133693056],
-                           ['L150', 8912896, 267386880], ['L153', 8912896, 534773760],
-                           ['L156', 8912896, 1069547520], ['L180', 35651584, 1069547520],
-                           ['L183', 35651584, 2139095040], ['L186', 35651584, 4278190080]];
-                const ps = w * h, sr = ps * fps;
-                for (let i = 0; i < T.length; i++) { if (ps <= T[i][1] && sr <= T[i][2]) return T[i][0]; }
-                return 'L186';
-            })(5760, 3240, Number(_fps6k) || 60);
-            const _cd6k = 'hvc1.2.4.' + _apeHcLevel6k + '.B0';
             _streamInfLine = `#EXT-X-STREAM-INF:BANDWIDTH=${_bw6k},AVERAGE-BANDWIDTH=${Math.round(_bw6k * 0.8)},CODECS="${_cd6k},mp4a.40.2",RESOLUTION=5760x3240,FRAME-RATE=${Number(_fps6k).toFixed(3)},VIDEO-RANGE=PQ`;
             _fpsSource = (_fps6k === 120) ? 'default-120' : 'default-60';
             // La fuente medida va declarada, y su multiplicador. Sin medida => UNKNOWN y
@@ -13712,16 +13488,7 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
         // Se aplica sobre el bloque YA finalizado para que el tag sea la ÚLTIMA
         // línea de tag e inmediatamente preceda a la URI. No toca ni reordena
         // EXTHTTP / EXTVLCOPT / KODIPROP / EXT-X-APE-* / EXT-X-STREAM-INF.
-        var _fase2Block = _apeAppendExtshimottTag(_reaFinalBlock, channel, profile, _probeData, cfg, index, _uaApeProfile, 'https://www.google.com/');
-        // [FASE 2 · 2026-11-20] Intención 4K/Premium 6K en sidecar propio (window.APE_4K6K_AUDIT).
-        // OFF por defecto: si el flag no está activo NO se ejecuta nada y el bloque
-        // sale byte a byte como antes. La lógica vive en el adaptador (probada en
-        // Node y en navegador); aquí solo hay un guard de una línea.
-        if (typeof window !== 'undefined' && window.APE_4K6K && typeof window.APE_4K6K.insertIntentTag === 'function'
-            && window.APE_4K6K.isEnabled()) {
-            _fase2Block = window.APE_4K6K.insertIntentTag(_fase2Block, channel);
-        }
-        return _fase2Block;
+        return _apeAppendExtshimottTag(_reaFinalBlock, channel, profile, _probeData, cfg, index, _uaApeProfile, 'https://www.google.com/');
     }
 
     if (typeof window !== 'undefined') window.APE_GEN = generateM3U8Stream; // [t53/t72] export headless (hoisting)
@@ -13908,7 +13675,7 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                         // metadata JSON en el mismo .m3u8. Devuelve '' si no es hybrid, asi
                         // que la ruta normal no cambia ni un byte.
                         + __apeHybridHeaderBlock(options)
-                        + '\n' + __omegaComplianceTags((typeof forceProfile !== 'undefined' && forceProfile) || (typeof window !== 'undefined' && window.ProfileManagerV9 && window.ProfileManagerV9.activeProfileId) || 'P3');
+                        + '\n' + __omegaComplianceTags();
                     // 🛡️ M5: RFC 8216 order guard — verifica EXTM3U/VERSION/MEDIA-SEQUENCE order.
                     // Solo telemetría: registra violations en _apeAuditAcc.rfcViolations,
                     // NO aborta. Player ignora; verifier post-gen puede reportar.
@@ -14941,7 +14708,7 @@ const APE_PROFILE_MATRIX = {
     // VLC/Kodi opts
     vlcopt: {
       'network-caching': '90000', 'live-caching': '45000',
-      
+      'clock-jitter': '0', 'clock-synchro': '0',
       'http-reconnect': 'true', 'http-continuous-stream': 'true',
       'http-max-retries': '99', 'http-timeout': '8000',
       'avcodec-dr': '1', 'avcodec-hw': 'any',
@@ -14979,7 +14746,7 @@ const APE_PROFILE_MATRIX = {
     },
     vlcopt: {
       'network-caching': '60000', 'live-caching': '30000',
-      
+      'clock-jitter': '0', 'clock-synchro': '0',
       'http-reconnect': 'true', 'http-continuous-stream': 'true',
       'http-max-retries': '99', 'http-timeout': '8000',
       'avcodec-dr': '1', 'avcodec-hw': 'any',
@@ -15015,7 +14782,7 @@ const APE_PROFILE_MATRIX = {
     },
     vlcopt: {
       'network-caching': '45000', 'live-caching': '22000',
-      
+      'clock-jitter': '0', 'clock-synchro': '0',
       'http-reconnect': 'true', 'http-continuous-stream': 'true',
       'http-max-retries': '50', 'http-timeout': '8000',
       'avcodec-dr': '1', 'avcodec-hw': 'any',
@@ -15051,7 +14818,7 @@ const APE_PROFILE_MATRIX = {
     },
     vlcopt: {
       'network-caching': '30000', 'live-caching': '15000',
-      
+      'clock-jitter': '0', 'clock-synchro': '0',
       'http-reconnect': 'true', 'http-continuous-stream': 'true',
       'http-max-retries': '30', 'http-timeout': '8000',
       'avcodec-dr': '1', 'avcodec-hw': 'any',
@@ -15087,7 +14854,7 @@ const APE_PROFILE_MATRIX = {
     },
     vlcopt: {
       'network-caching': '20000', 'live-caching': '10000',
-      
+      'clock-jitter': '0', 'clock-synchro': '0',
       'http-reconnect': 'true', 'http-continuous-stream': 'true',
       'http-max-retries': '20', 'http-timeout': '10000',
       'avcodec-dr': '1', 'avcodec-hw': 'any',
@@ -15123,7 +14890,7 @@ const APE_PROFILE_MATRIX = {
     },
     vlcopt: {
       'network-caching': '10000', 'live-caching': '5000',
-      
+      'clock-jitter': '0', 'clock-synchro': '0',
       'http-reconnect': 'true', 'http-continuous-stream': 'true',
       'http-max-retries': '10', 'http-timeout': '15000',
       'avcodec-dr': '1', 'avcodec-hw': 'any',

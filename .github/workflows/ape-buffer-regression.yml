@@ -1,0 +1,49 @@
+name: APE buffer regression
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js'
+      - 'IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js'
+      - '.github/workflows/ape-buffer-regression.yml'
+permissions:
+  contents: read
+jobs:
+  matriz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_sqlite, json, mbstring
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Sintaxis JS
+        run: |
+          set -euo pipefail
+          node --check IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js
+          node --check IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js
+          echo "sintaxis OK"
+      - name: Gates de ley
+        run: |
+          set -euo pipefail
+          node tools/check_anti_degradation_policy.js
+          node tools/check_crystal_4k_law.js
+          node tools/check_crystal_6k_law.js
+      - name: Engine del cableado (42)
+        run: php -d memory_limit=32M tools/quality/test_cablear_engine.php
+      - name: Flow Crystal (52)
+        run: php tools/quality/test_crystal_flow_conformance.php
+      - name: CMAF copy
+        run: php tools/quality/test_cmaf_copy.php
+      - name: Panel (76)
+        run: node tools/quality/test_list_cablear_panel.js
+      - name: Worker (94)
+        run: bash IPTV_v5.4_MAX_AGGRESSION/vps/bin/ape-cablear-queue-worker.test.sh
+      - name: ShellCheck warning
+        run: shellcheck --severity=warning IPTV_v5.4_MAX_AGGRESSION/vps/bin/ape-cablear-queue-worker.sh || true
+      - name: Limpieza de whitespace
+        run: git diff --check HEAD
