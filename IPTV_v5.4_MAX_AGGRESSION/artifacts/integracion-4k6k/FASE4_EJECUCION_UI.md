@@ -1828,3 +1828,25 @@ Parche **revertido** (`git checkout`): `node --check` = 0, árbol en `1265d8db`.
 
 Estado final del cluster: tres campos en 12/12 (HDR, audio, saturation) y `clock-jitter` pendiente de mover su
 emisión al final del bloque de canal. La causa ya no es una hipótesis: está contada en ocurrencias por archivo.
+## 79 · CERRADO: guarda HDR/audio/saturación/jitter en **12/12 PASS**
+
+Se eliminaron las **6** ocurrencias del preset `'clock-jitter': '0', 'clock-synchro': '0',` y se emiten desde el
+bloque OMEGA con el valor del perfil (respaldo 1500/1). Medición por canal antes y después:
+
+```
+antes   P0 clock-jitter = 2000,0,0,0 (4 ocurrencias)   ← ganaba el último 0
+ahora   P0 clock-jitter = 2000 (1) · sat=1.06 (1)
+        P3 clock-jitter = 1000 (1) · sat=1.03 (1)
+```
+
+Regenerados los doce (dos lotes, ambos `EXIT=0` con `"fallos":[]`) y guarda completa:
+
+```
+GUARDA_HDR_AUDIO PASS=12 FAIL=0
+```
+
+Por campo, los doce perfiles coinciden ahora con el LAB en `video-hdr`, `video-hdr-mode`,
+`audio-channels`, `saturation` y `clock-jitter`. El cluster queda cerrado de punta a punta:
+
+`generateEXTVLCOPT` código muerto (§64) → literales en el emisor (§66) → precedencia invertida (§71) →
+emisión pisada por presets (§78) → **12/12**.
