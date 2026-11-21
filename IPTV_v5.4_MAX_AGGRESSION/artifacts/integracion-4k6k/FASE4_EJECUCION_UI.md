@@ -2000,3 +2000,26 @@ Falta para cerrar el patrón callback:
 3. Verificar con 3 perfiles antes de los 12 (la lección de §58/§84/§86).
 
 Con eso el 12/12 saldría en una tirada sin carrera. Hoy se cubre con dos lotes de seis, reproducible.
+## 87 · El runner ya recibe el callback: `resultado_cb` confirmado y matriz verde
+
+Ruta añadida al servidor del arnés:
+
+```
+if (u === '/resultado' && req.method === 'POST') { … RESULTADO_CB = b; log('resultado_cb', {bytes}); … }
+```
+
+Verificación con tres perfiles:
+
+```
+EXIT=0 · "fallos":[] · diag contiene resultado_cb … cb=True
+```
+
+Es decir: el driver publica su JSON, el runner lo **recibe**, y la matriz sigue verde. Las dos mitades funcionan
+por separado y conviviendo con `--dump-dom`, que sigue siendo la fuente actual.
+
+Falta solo el último paso, y es el que cambia la mecánica:
+1. Que `fin()` prefiera `RESULTADO_CB` al DOM cuando exista.
+2. Quitar `--dump-dom` de los flags.
+3. Correr 3 perfiles, y después los 12 en **una** tirada.
+
+Con eso desaparece la carrera por la que el 12/12 tenía que ir en dos lotes.

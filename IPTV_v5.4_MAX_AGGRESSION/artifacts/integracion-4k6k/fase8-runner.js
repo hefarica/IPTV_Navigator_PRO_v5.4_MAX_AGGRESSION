@@ -29,6 +29,7 @@ const IDS = new Set(['P0','P1','P2','P3','P4','P5','P0.5','P1.5','P2.5','P3.5','
 const TOKEN = crypto.randomBytes(24).toString('hex');
 const ORIGIN_OK = (o) => o === 'http://127.0.0.1' || (typeof o === 'string' && /^http:\/\/127\.0\.0\.1(:\d+)?$/.test(o));
 const T0 = Date.now();
+let RESULTADO_CB = null;
 const diag = [];
 function log(k, v) { diag.push({ t: Date.now() - T0, k: k, v: v }); }
 
@@ -85,6 +86,11 @@ const srv = http.createServer((req, res) => {
             log('salida_ok', { f: f, bytes: b.length });
             responder(res, 200, 'audio/x-mpegurl', b);
         });
+        return;
+    }
+    if (u === '/resultado' && req.method === 'POST') {
+        let b = ''; req.on('data', d => b += d);
+        req.on('end', () => { RESULTADO_CB = b; log('resultado_cb', { bytes: b.length }); responder(res, 200, 'application/json', '{}'); });
         return;
     }
     if (u === '/guardar') {
