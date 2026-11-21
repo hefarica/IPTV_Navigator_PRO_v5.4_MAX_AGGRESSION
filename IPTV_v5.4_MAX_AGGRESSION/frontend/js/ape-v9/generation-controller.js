@@ -1329,6 +1329,27 @@
     }
 
     async function prepublishAndGenerate(options = {}) {
+    /* [FASE 8 · 2026-11-20] MEDIDO: la selección visible del profile manager no
+     * llegaba al generador; orceProfile quedaba undefined y el pipeline
+     * resolvía por canal (determineProfile → 'P3'). Efecto: los seis perfiles
+     * Premium emitían el tuning de P3 (network-caching 55000 en vez de
+     * 105000/72000/58000/55000/52000/30000). Se inyecta la selección activa SOLO
+     * si el llamador no la fija; el default P3 mantiene el comportamiento previo. */
+    try {
+        if (!options.forceProfile && typeof window !== 'undefined') {
+            var _pm = window.ProfileManagerV9;
+            var _sel = (_pm && _pm.activeProfileId) || (window.APE_PROFILES_CONFIG && window.APE_PROFILES_CONFIG.activeProfileId) || null;
+            /* [ACOTADO · medido] Inyectar para TODOS cambiaba el comportamiento previo
+             * de los perfiles base (P0-P5 pasaban de vlcopt 19000/12000/10000/8000/10000/5000
+             * a los L3 105000/72000/58000/55000/52000/30000). Solo los Premium (.5) lo
+             * necesitan, porque sin inyección caían al perfil por defecto P3. */
+            /* [MEDIDO · anti-degradación] Acotarlo a los .5 dejaba el defecto en los base:
+             * con P0 seleccionado, el artefacto emitía video-width=1920/video-height=1080
+             * y network-caching=55000 (los de P3), contradiciendo el objetivo declarado.
+             * Se inyecta para TODOS: el perfil elegido manda en la geometría y en el tuning. */
+            if (typeof window !== 'undefined' && window.APE_SIN_FORCE === true) { /* modo sonda: ruta automatica */ } else if (_sel) options = Object.assign({}, options, { forceProfile: String(_sel) });
+        }
+    } catch (e) { /* nunca romper la generación por esto */ }
         // ── [FIX 2026-11-06] Lock ÚNICO para todos los caminos ─────────────────────
         // MEDIDO: el lock vivía solo en prepublishAndGenerateGuarded, y ese lo usa
         // exclusivamente prepublishAndGenerateDual. Los otros dos caminos —runDirect del

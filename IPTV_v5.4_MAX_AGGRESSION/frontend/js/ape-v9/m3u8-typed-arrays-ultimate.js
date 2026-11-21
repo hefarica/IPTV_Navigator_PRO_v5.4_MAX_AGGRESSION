@@ -3152,7 +3152,11 @@ window.refreshApeHdcpProfile = function () {
     // OMEGA CRYSTAL compliance block. This is additive metadata: it does not
     // re-encode, downscale, or alter the source URL. No EXT-X-KEY is emitted
     // for clear streams; that would break playback.
-    function __omegaComplianceTags() {
+    function __omegaComplianceTags(__pId) {
+        var __sat = 1.08, __cj = null, __cs = null;
+        try { var __p = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG?.getProfile && __pId) ? window.APE_PROFILES_CONFIG.getProfile(__pId) : null; var __vo = (__p && __p.vlcopt) || {}; if (__vo['saturation'] !== undefined) __sat = __vo['saturation'];
+            if (__vo['clock-jitter'] !== undefined) __cj = __vo['clock-jitter'];
+            if (__vo['clock-synchro'] !== undefined) __cs = __vo['clock-synchro']; } catch (e) { }
         // [2026-11-04] Lee un valor Crystal del perfil con fallback al NIVEL 1 de la escalera.
         // El fallback NUNCA apaga el enhancement: la LEY CRYSTAL 4K UHD exige mejorar siempre.
         return [
@@ -3160,7 +3164,9 @@ window.refreshApeHdcpProfile = function () {
             '#EXTVLCOPT:colorspace=all=auto:trc=auto',
             '#EXTVLCOPT:tonemap=mobius',
             '#EXTVLCOPT:format=yuv444p10le',
-            '#EXTVLCOPT:saturation=1.08',
+            '#EXTVLCOPT:saturation=' + __sat,
+            '#EXTVLCOPT:clock-jitter=' + (__cj !== null ? __cj : 1500),
+            '#EXTVLCOPT:clock-synchro=' + (__cs !== null ? __cs : 1),
             '#EXT-X-APE-SPOOF-DEVICE-CLASS:premium-tv',
             '#EXT-X-APE-SPOOF-DECODING-CAPABILITY:hevc-main10-level6.1',
             '#EXT-X-APE-SPOOF-DEVICE-MODEL:SHIELD-TV-PRO',
@@ -8047,7 +8053,7 @@ try {
         if (name.includes('4K') || name.includes('UHD')) { scores.P1 += 20; signals.push('NAME:4K/UHD→P1'); }
         if (name.includes('FHD') || name.includes('1080')) { scores.P3 += 20; signals.push('NAME:FHD/1080→P3'); }
         // HD genérico → P3 (1080p), NO P4
-        if (name.includes('HD') && !name.includes('720') && !name.includes('480') && !name.includes('SD')) {
+        if (name.includes('HD') && !name.includes('UHD') && !name.includes('4K') && !name.includes('720') && !name.includes('480') && !name.includes('SD')) {
             scores.P3 += 15; signals.push('NAME:HD(generic)→P3');
         }
         if (name.includes('720')) { scores.P4 += 20; signals.push('NAME:720→P4'); }
@@ -10587,9 +10593,28 @@ return lines.join('\n');
         // + video-hdr-mode=SDR — contradictorio. Ahora cada perfil declara su tier
         // (P0=dolby-vision, P1=hdr10+, P2=hdr10, P3=hlg, P4/P5=sdr) y el bloque
         // emite zscale + transfer + primaries + tone-mapping coherentes.
-        const _pmHdrCanonical = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG?.getProfile)
-            ? (window.APE_PROFILES_CONFIG.getProfile(profile)?.settings?.hdr_canonical || 'sdr').toLowerCase()
-            : 'sdr';
+        /* [FASE 10 · 2026-11-21] MEDIDO: settings.hdr_canonical falta en los .5 y el
+         * tuning del LAB vive en vlcopt['video-hdr-mode']. El emisor anterior
+         * (generateEXTVLCOPT) es codigo muerto (0 llamadas), asi que aqui se toma
+         * ese dato como respaldo: sin el, P0.5 declaraba SDR frente a HDR10PLUS. */
+        const _pmHdrCanonical = (function () {
+            try {
+                const cfgP = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG?.getProfile)
+                    ? window.APE_PROFILES_CONFIG.getProfile(profile) : null;
+                /* Prioridad del LAB: si el propietario calibro video-hdr-mode para este
+                 * perfil, manda sobre settings.hdr_canonical de la app (P3 declaraba
+                 * HLG cuando su LAB dice SDR). */
+                const modoLabP = String(((cfgP && cfgP.vlcopt) || {})['video-hdr-mode'] || '').toUpperCase();
+                const mapaP = { 'HDR10PLUS': 'hdr10+', 'HDR10+': 'hdr10+', 'HDR10': 'hdr10', 'DOLBY_VISION': 'dolby-vision', 'DOLBY-VISION': 'dolby-vision', 'HLG': 'hlg', 'SDR': 'sdr' };
+                if (mapaP[modoLabP]) return mapaP[modoLabP];
+                const deSettings = (cfgP && cfgP.settings && cfgP.settings.hdr_canonical) ? String(cfgP.settings.hdr_canonical).toLowerCase() : '';
+                if (deSettings) return deSettings;
+                const modoLab = String(((cfgP && cfgP.vlcopt) || {})['video-hdr-mode'] || '').toUpperCase();
+                const mapa = { 'HDR10PLUS': 'hdr10+', 'HDR10+': 'hdr10+', 'HDR10': 'hdr10', 'DOLBY_VISION': 'dolby-vision', 'DOLBY-VISION': 'dolby-vision', 'HLG': 'hlg', 'SDR': 'sdr' };
+                if (mapa[modoLab]) return mapa[modoLab];
+            } catch (e) { }
+            return 'sdr';
+        })();
         const _pmNitsTarget = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG?.getProfile)
             ? parseInt(window.APE_PROFILES_CONFIG.getProfile(profile)?.settings?.nits_target || (_pmHdrCanonical === 'sdr' ? 100 : 1000), 10)
             : 100;
@@ -10701,9 +10726,9 @@ return lines.join('\n');
             lines.push(`#EXT-X-APE-4KFALSE-TARGET-RES:3840x2160`);
             lines.push(`#EXT-X-APE-4KFALSE-ENGINE:ZSCALE-LANCZOS+MEMC-120FPS+HQDN3D+UNSHARP`);
         }
-        lines.push(`#EXTVLCOPT:video-hdr=${_isAnyHdr ? 'true' : 'false'}`);
-        lines.push(`#EXTVLCOPT:video-hdr-nits=${_pmNitsTarget}`);
-        lines.push(`#EXTVLCOPT:video-hdr-mode=${_hdrModeM3U}`);
+                if (!lines.some(l => typeof l === 'string' && l.indexOf('#EXTVLCOPT:video-hdr=') === 0)) lines.push(`#EXTVLCOPT:video-hdr=${_isAnyHdr ? 'true' : 'false'}`);
+        if (!lines.some(l => typeof l === 'string' && l.indexOf('#EXTVLCOPT:video-hdr-nits=') === 0)) lines.push(`#EXTVLCOPT:video-hdr-nits=${_pmNitsTarget}`);
+        if (!lines.some(l => typeof l === 'string' && l.indexOf('#EXTVLCOPT:video-hdr-mode=') === 0)) lines.push(`#EXTVLCOPT:video-hdr-mode=${_hdrModeM3U}`);
         lines.push(`#EXTVLCOPT:video-tone-mapping=${_isAnyHdr ? 'hable' : 'off'}`);
         if (_isAnyHdr) {
             lines.push(`#EXTVLCOPT:video-tone-mapping-peak=${_pmNitsTarget}`);
@@ -10731,7 +10756,7 @@ return lines.join('\n');
         lines.push(`#EXTVLCOPT:video-snap-format=png`);
         lines.push(`#EXTVLCOPT:audio-language=spa,eng,por`);
         lines.push(`#EXTVLCOPT:audio-track-id=0`);
-        lines.push(`#EXTVLCOPT:audio-channels=6`);
+        lines.push(`#EXTVLCOPT:audio-channels=${(function(){ try { const pA=(typeof window!=='undefined' && window.APE_PROFILES_CONFIG?.getProfile) ? window.APE_PROFILES_CONFIG.getProfile(profile) : null; const vA=(pA && pA.vlcopt) ? pA.vlcopt['audio-channels'] : undefined; return (vA!==undefined && vA!==null && String(vA)!=='') ? vA : 6; } catch(e){ return 6; } })()}`);
         lines.push(`#EXTVLCOPT:audio-samplerate=48000`);
         lines.push(`#EXTVLCOPT:audio-replay-gain-mode=none`);
         // AV-SYNC (2026-08-30, owner): audio-time-stretch=1 — si el video va lento por
@@ -13687,7 +13712,16 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
         // Se aplica sobre el bloque YA finalizado para que el tag sea la ÚLTIMA
         // línea de tag e inmediatamente preceda a la URI. No toca ni reordena
         // EXTHTTP / EXTVLCOPT / KODIPROP / EXT-X-APE-* / EXT-X-STREAM-INF.
-        return _apeAppendExtshimottTag(_reaFinalBlock, channel, profile, _probeData, cfg, index, _uaApeProfile, 'https://www.google.com/');
+        var _fase2Block = _apeAppendExtshimottTag(_reaFinalBlock, channel, profile, _probeData, cfg, index, _uaApeProfile, 'https://www.google.com/');
+        // [FASE 2 · 2026-11-20] Intención 4K/Premium 6K en sidecar propio (window.APE_4K6K_AUDIT).
+        // OFF por defecto: si el flag no está activo NO se ejecuta nada y el bloque
+        // sale byte a byte como antes. La lógica vive en el adaptador (probada en
+        // Node y en navegador); aquí solo hay un guard de una línea.
+        if (typeof window !== 'undefined' && window.APE_4K6K && typeof window.APE_4K6K.insertIntentTag === 'function'
+            && window.APE_4K6K.isEnabled()) {
+            _fase2Block = window.APE_4K6K.insertIntentTag(_fase2Block, channel);
+        }
+        return _fase2Block;
     }
 
     if (typeof window !== 'undefined') window.APE_GEN = generateM3U8Stream; // [t53/t72] export headless (hoisting)
@@ -13874,7 +13908,7 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                         // metadata JSON en el mismo .m3u8. Devuelve '' si no es hybrid, asi
                         // que la ruta normal no cambia ni un byte.
                         + __apeHybridHeaderBlock(options)
-                        + '\n' + __omegaComplianceTags();
+                        + '\n' + __omegaComplianceTags((typeof forceProfile !== 'undefined' && forceProfile) || (typeof window !== 'undefined' && window.ProfileManagerV9 && window.ProfileManagerV9.activeProfileId) || 'P3');
                     // 🛡️ M5: RFC 8216 order guard — verifica EXTM3U/VERSION/MEDIA-SEQUENCE order.
                     // Solo telemetría: registra violations en _apeAuditAcc.rfcViolations,
                     // NO aborta. Player ignora; verifier post-gen puede reportar.
@@ -14907,7 +14941,7 @@ const APE_PROFILE_MATRIX = {
     // VLC/Kodi opts
     vlcopt: {
       'network-caching': '90000', 'live-caching': '45000',
-      'clock-jitter': '0', 'clock-synchro': '0',
+      
       'http-reconnect': 'true', 'http-continuous-stream': 'true',
       'http-max-retries': '99', 'http-timeout': '8000',
       'avcodec-dr': '1', 'avcodec-hw': 'any',
@@ -14945,7 +14979,7 @@ const APE_PROFILE_MATRIX = {
     },
     vlcopt: {
       'network-caching': '60000', 'live-caching': '30000',
-      'clock-jitter': '0', 'clock-synchro': '0',
+      
       'http-reconnect': 'true', 'http-continuous-stream': 'true',
       'http-max-retries': '99', 'http-timeout': '8000',
       'avcodec-dr': '1', 'avcodec-hw': 'any',
@@ -14981,7 +15015,7 @@ const APE_PROFILE_MATRIX = {
     },
     vlcopt: {
       'network-caching': '45000', 'live-caching': '22000',
-      'clock-jitter': '0', 'clock-synchro': '0',
+      
       'http-reconnect': 'true', 'http-continuous-stream': 'true',
       'http-max-retries': '50', 'http-timeout': '8000',
       'avcodec-dr': '1', 'avcodec-hw': 'any',
@@ -15017,7 +15051,7 @@ const APE_PROFILE_MATRIX = {
     },
     vlcopt: {
       'network-caching': '30000', 'live-caching': '15000',
-      'clock-jitter': '0', 'clock-synchro': '0',
+      
       'http-reconnect': 'true', 'http-continuous-stream': 'true',
       'http-max-retries': '30', 'http-timeout': '8000',
       'avcodec-dr': '1', 'avcodec-hw': 'any',
@@ -15053,7 +15087,7 @@ const APE_PROFILE_MATRIX = {
     },
     vlcopt: {
       'network-caching': '20000', 'live-caching': '10000',
-      'clock-jitter': '0', 'clock-synchro': '0',
+      
       'http-reconnect': 'true', 'http-continuous-stream': 'true',
       'http-max-retries': '20', 'http-timeout': '10000',
       'avcodec-dr': '1', 'avcodec-hw': 'any',
@@ -15089,7 +15123,7 @@ const APE_PROFILE_MATRIX = {
     },
     vlcopt: {
       'network-caching': '10000', 'live-caching': '5000',
-      'clock-jitter': '0', 'clock-synchro': '0',
+      
       'http-reconnect': 'true', 'http-continuous-stream': 'true',
       'http-max-retries': '10', 'http-timeout': '15000',
       'avcodec-dr': '1', 'avcodec-hw': 'any',

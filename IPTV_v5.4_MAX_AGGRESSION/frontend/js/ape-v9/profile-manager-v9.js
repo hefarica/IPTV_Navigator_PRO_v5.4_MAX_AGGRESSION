@@ -6148,7 +6148,10 @@
                 'inputstream.adaptive.manifest_update_parameter'
             ]);
 
-            const labProfiles = data.profiles_calibrated || {};
+            /* [FASE 3] Dos familias: profiles_calibrated (bulletproof) y profiles (fusión, 12 con P*.5). */
+            const labProfiles = (typeof global !== 'undefined' && global.APELabNormalize)
+                ? global.APELabNormalize.profilesOf(data)
+                : (data.profiles_calibrated || {});
             // [6K 2026-11-05] El LAB v24 trae P0.5..P5.5 ademas de P0..P5. El diff del import
             // debe contarlos o el panel reporta menos cambios de los que realmente aplica.
             const APE_6K_IDS = ['P0.5','P1.5','P2.5','P3.5','P4.5','P5.5'];

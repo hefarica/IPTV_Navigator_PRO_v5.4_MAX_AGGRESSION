@@ -5088,7 +5088,7 @@
                 // amplía la aceptación de schema. JSON ajeno (sin omega_ y no bulletproof) sigue lanzando.
                 const isVersionSupported = (data && data.lab_version && /^omega_/i.test(String(data.lab_version)))
                     || supportedSchemas.includes(data && data.lab_version)
-                    || isBulletproof;
+                    || isBulletproof || (data && data._meta && data._meta.type === 'all_profiles') || (data && data.lab_schema_variant === 'all_profiles'); /* [FASE 4] forma all_profiles medida en la app */
                 if (!data || !isVersionSupported) {
                     throw new Error(`Schema invalido: lab_version='${data && data.lab_version}', schema_variant='${data && data.lab_schema_variant}' (esperado omega_* o bulletproof:true)`);
                 }
@@ -5135,7 +5135,10 @@
                     return out;
                 };
 
-                const labProfiles = data.profiles_calibrated || {};
+                /* [FASE 3] Dos familias: profiles_calibrated (bulletproof) y profiles (fusión, 12 con P*.5). */
+            const labProfiles = (typeof global !== 'undefined' && global.APELabNormalize)
+                ? global.APELabNormalize.profilesOf(data)
+                : (data.profiles_calibrated || {});
                 // [6K 2026-11-05] El LAB v24 trae seis variantes emuladas ademas de las seis base.
                 // Sin ampliar esta lista, P0.5..P5.5 se importaban como humo: estaban en el
                 // fichero y la app las ignoraba. Se recorren DESPUES de las base para que el

@@ -4315,6 +4315,8 @@
 <script src="js/ape-v9/rea-catalog-export.js?v=20261107-rea"></script>
 <script src="js/ape-v9/ape-profiles-12k.js?v=20261119-12k"></script>
   <script src="js/ape-v9/ape-profiles-config.js?v=20261120-perfiles12"></script>
+  <script src="js/ape-v9/ape-4k6k-audit-adapter.js?v=20261120-fase2"></script>
+  <script src="js/ape-4k6k-consumer.js?v=20261120-f8"></script>
   <!-- profile-manager-v9.js loaded later at v9.0.3 (line ~3171) -->
   <script src="js/ape-v9/profile-bridge-v9.js?v=1.1"></script>
   <script src="js/ape-v9/ape-xtream-atomic-probe.js?v=20261106-gen6k-atad"></script>
@@ -4458,6 +4460,7 @@
        La DNA contiene credenciales de proveedor → se sirve solo desde el
        servidor local (mismo origen), nunca desde internet.
        Uso en consola:  await apeImportLabLocal()   |   apeLabStatus() -->
+  <script src="js/ape-lab-normalize.js?v=20261120-lab-fusion"></script>
   <script src="js/ape-lab-import-helper.js?v=20261107-rea"></script>
 
   <!-- 🔧 Transform línea a línea BYTE-EXACTO (solo reescribe líneas ^http://)
@@ -5156,6 +5159,59 @@
   <script src="tests/integration.test.js" defer></script>
   <script src="tests/performance.test.js" defer></script>
 
+<!-- ═══ [FASE 2 · 2026-11-20] Invocación visible de la auditoría 4K/Premium 6K ═══
+     Panel autocontenido y sin robo de foco: solo actúa al hacer clic el dueño.
+     Con window.APE_4K6K_AUDIT apagado (por defecto) no emite nada. -->
+<div id="ape4k6k-panel" style="position:fixed;right:12px;bottom:12px;z-index:2147483000;
+     background:#101418;color:#d7e3ee;border:1px solid #2a3a48;border-radius:8px;
+     font:12px/1.4 monospace;padding:8px 10px;max-width:420px">
+  <div style="font-weight:700;margin-bottom:4px">APE · 4K / Premium 6K</div>
+  <button id="ape4k6k-audit" type="button">Auditar</button>
+  <button id="ape4k6k-on" type="button">Activar</button>
+  <button id="ape4k6k-off" type="button">Desactivar</button>
+  <button id="ape4k6k-tag" type="button">Probar etiqueta</button>
+  <pre id="ape4k6k-out" style="white-space:pre-wrap;margin:6px 0 0">listo</pre>
+</div>
+<script>
+(function () {
+  var out = document.getElementById('ape4k6k-out');
+  function api() { return (typeof window.APE_4K6K !== 'undefined') ? window.APE_4K6K : null; }
+  function log(o) { try { out.textContent = 'APE4K6K:' + JSON.stringify(o); } catch (e) { out.textContent = 'APE4K6K:{"error":"log"}'; } }
+  var BLOQUE = '#EXTINF:-1 tvg-id="1",Canal\n#EXTSHIMOTT:{"ver":1}\nhttps://x/pulse/1.m3u8?u=a&d=b';
+  document.getElementById('ape4k6k-audit').addEventListener('click', function () {
+    var a = api();
+    if (!a) { log({ loaded: false }); return; }
+    var r = a.audit([{ name: 'demo', url: 'https://x/pulse/1.m3u8?u=a&d=b', rea: { schema: 'ape.rea-intent/1' } }]);
+    log({ loaded: true, flag: a.isEnabled(), canales: r.channels || r.canales || null, estado: r.implementation_state || null });
+  });
+  document.getElementById('ape4k6k-on').addEventListener('click', function () {
+    window.APE_4K6K_AUDIT = true;                 /* booleano explícito, como manda el contrato */
+    log({ accion: 'on', flag: api() ? api().isEnabled() : null, tipo: 'boolean' });
+  });
+  document.getElementById('ape4k6k-off').addEventListener('click', function () {
+    window.APE_4K6K_AUDIT = false;
+    log({ accion: 'off', flag: api() ? api().isEnabled() : null, tipo: 'boolean' });
+  });
+  document.getElementById('ape4k6k-tag').addEventListener('click', function () {
+    var a = api(); if (!a) { log({ loaded: false }); return; }
+    var ins = a.insertIntentTag(BLOQUE, { ape_profile: 'P3' });
+    log({ flag: a.isEnabled(), identico: ins === BLOQUE, lineas: ins.split('\n').length });
+  });
+  if (location.hash === '#ape4k6k-selftest') {
+    var a = api();
+    var off = a ? a.insertIntentTag(BLOQUE, { ape_profile: 'P3' }) : null;
+    var offFlag = a ? a.isEnabled() : null;
+    window.APE_4K6K_AUDIT = true;
+    var on = a ? a.insertIntentTag(BLOQUE, { ape_profile: 'P3' }) : null;
+    window.APE_4K6K_AUDIT = false;
+    log({ loaded: !!a, offFlag: offFlag, offIdentico: off === BLOQUE,
+          onLineas: on ? on.split('\n').length : null,
+          onUris: on ? (on.match(/^https:\/\//gm) || []).length : null,
+          onTagAntesDeUri: on ? (on.indexOf('#EXT-X-APE-4K6K-INTENT:') < on.indexOf('https://')) : null });
+  }
+})();
+</script>  <script src="js/ape-m3u-local-loader.js?v=20261120-f4"></script>
+  <div style="position:fixed;left:12px;bottom:12px;z-index:2147483000;background:#101418;color:#d7e3ee;padding:6px 8px;border-radius:6px;font:12px monospace">Cargar M3U local: <input type="file" id="apeM3uLocal" accept=".m3u,.m3u8,.txt"></div>
 </body>
 
 </html>
