@@ -29,6 +29,8 @@ jobs:
           node --check IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js
           node --check IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js
           echo "sintaxis OK"
+      - name: Buffer contract (skill iptv-hls-buffer-forensics)
+        run: node .agents/skills/iptv-hls-buffer-forensics/scripts/check_buffer_contract.js --generator IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js --jit IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js --lab contracts/lab/APE_LAB_CANONICAL_BULLETPROOF.json --segments 2,4,6
       - name: Buffer objetivo y TARGETDURATION (38)
         run: node tools/quality/test_buffer_targetduration.js
       - name: Medidor de caudal y puente
