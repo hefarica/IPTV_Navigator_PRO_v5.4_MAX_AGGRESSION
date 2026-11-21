@@ -2034,6 +2034,11 @@ try {
     // API directa para el botón inyectado por el solver. No depende de eventos
     // ni del orden de carga de los scripts.
     if (typeof window !== 'undefined') {
+        /* [2026-11-21] un solo perfil: medicion real -> sus headerOverrides */
+        window.apeAutoAdjustProfileWithSpeedtest = function (idPerfil) {
+            if (!idPerfil || typeof window.apeAutoAdjustWithSpeedtest !== 'function') return Promise.resolve({ ok: false, motivo: 'sin medidor o sin perfil' });
+            return Promise.resolve(window.apeAutoAdjustWithSpeedtest({ alcance: String(idPerfil) }));
+        };
         window.apeOpenAutoAdjustMenu = function (e) {
             if (e && typeof e.preventDefault === 'function') e.preventDefault();
             if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
@@ -2049,6 +2054,18 @@ try {
                         try { PM._paintCoherentValues(); PM._paintPerfPanel(PM._lastCoherent); PM._updateStreamingHealth(); } catch (x) {}
                     }).catch(function () { /* no bloqueante */ });
                 } catch (x) { /* no bloqueante */ }
+            }
+            /* [2026-11-21] APE-SPEED] medicion real de caudal al pulsar AUTO-AJUSTAR.
+             * Aditivo y no bloqueante: si el medidor no esta cargado, el menu se
+             * comporta exactamente igual que antes. Mide en paralelo, descarta el
+             * warmup y usa el p10 (peor caso sostenido) para derivar buffer/caching/bitrate. */
+            if (window.APE_SPEEDMETER && typeof window.apeAutoAdjustWithSpeedtest === 'function') {
+                try {
+                    Promise.resolve(window.apeAutoAdjustWithSpeedtest({ alcance: 'todos' })).then(function (r) {
+                        window.APE_SPEEDMETER_LAST = r;
+                        try { if (window.console && console.info) console.info('[APE-SPEED]', r && r.medicion && r.medicion.mbps, 'Mbps'); } catch (_i) { }
+                    }).catch(function () { /* nunca bloquea el menu */ });
+                } catch (_s) { /* nunca bloquea el menu */ }
             }
             var m = document.getElementById('apeAutoAdjustMenu');
             if (m && m.style.display === 'flex') closeMenu();
