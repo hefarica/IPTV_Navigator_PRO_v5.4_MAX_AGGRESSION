@@ -7248,6 +7248,111 @@ function loadFromGestorProfile(gp) {
     return;
   }
 
+  /* ═══ STREAMING HEALTH: el LLM PROPONE los parametros del cliente ═══════
+   * Objetivo del operador (2026-11-16): riesgo lo mas bajo posible y headroom
+   * superior. VERDAD: la config no crea banda. Si ratio < 3x el gate no es
+   * alcanzable y se declara el gap en Mbps; la config solo absorbe jitter.
+   * El LLM propone DENTRO de los rangos; lo que se sale se recorta y lo que
+   * toca fallback/codec/resolucion se RECHAZA entero. */
+  if (u.pathname === '/image/streaming-health-llm' && req.method === 'POST') {
+    let body = '';
+    let tooBig = false;
+    req.on('data', (c) => { body += c; if (body.length > 32768) { tooBig = true; req.destroy(); } });
+    req.on('end', async () => {
+      const J = (code, obj) => { setBaseHeaders(res); setNoCacheHeaders(res); res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
+      if (tooBig) return J(413, { ok: false, error: 'body grande' });
+      let pl; try { pl = JSON.parse(body || '{}'); } catch (_) { return J(400, { ok: false, error: 'JSON invalido' }); }
+      const sh = pl.streaming_health || {};
+      const reqMbps = Number(sh.required_mbps);
+      const ratio = Number(sh.headroom_ratio);
+      if (!(reqMbps > 0) || !isFinite(reqMbps) || !isFinite(ratio) || ratio <= 0) {
+        return J(400, { ok: false, error: 'sin medicion o sin exigencia: no se proponen valores' });
+      }
+      const _cl = (v, a, b) => (v < a ? a : (v > b ? b : v));
+      const RANGES = {
+        bufferTargetS: [6, 20], prefetchSegments: [2, 8],
+        parallelDownloads: [1, 8], readTimeoutMs: [45000, 120000]
+      };
+      const segD = Number(sh.segDurationSec || pl.segDurationSec || 6) || 6;
+      const deficit = Math.max(0, 1 / ratio - 1);
+      const det = {
+        bufferTargetS: _cl(Math.round(segD * (1 + deficit * 3)), 6, 20),
+        prefetchSegments: _cl(Math.ceil((_cl(Math.round(segD * (1 + deficit * 3)), 6, 20)) / segD), 2, 8),
+        parallelDownloads: _cl(Math.floor(2 * ratio) || 1, 1, 8),
+        readTimeoutMs: _cl(Math.round((45000 + deficit * 30000) / 5000) * 5000, 45000, 120000)
+      };
+      const measured = +(reqMbps * ratio).toFixed(2);
+      const verdict = {
+        reachable: ratio >= 3,
+        state: ratio >= 3 ? 'GATE_OK' : (ratio >= 1.3 ? 'SUB_GATE' : 'NETWORK_INSUFFICIENT'),
+        headroom_ratio: +ratio.toFixed(2),
+        measured_mbps: measured,
+        needed_mbps_for_gate: +(reqMbps * 3).toFixed(2),
+        gap_mbps_for_gate: Math.max(0, +(reqMbps * 3 - measured).toFixed(2))
+      };
+
+      /* ── propuesta del LLM (dentro de rangos; si falla gana el determinista) ── */
+      let out = { ok: true, source: 'deterministic', health_config: det, verdict, deterministic: det, llm: { used: false } };
+      const apiKey = readLLMKey();
+      if (!apiKey) { out.llm = { used: false, error: 'sin key del LLM' }; return J(200, out); }
+      const sys = [
+        'Eres el ajustador de Streaming Health de un cliente IPTV en vivo.',
+        'OBJETIVO: riesgo lo mas bajo posible y headroom lo mas alto posible.',
+        'REGLA DURA: la configuracion del cliente NO crea ancho de banda. Solo mueve',
+        'buffer, prefetch, descargas paralelas y read-timeout para absorber jitter.',
+        'PROHIBIDO tocar fallback, codec, resolucion, hdcp, tier de calidad o bitrate.',
+        'Responde SOLO JSON con las 4 claves numericas:',
+        '{"bufferTargetS":N,"prefetchSegments":N,"parallelDownloads":N,"readTimeoutMs":N}',
+        'Rangos: bufferTargetS 6..20 | prefetchSegments 2..8 | parallelDownloads 1..8 | readTimeoutMs 45000..120000.',
+        'parallelDownloads NUNCA mayor que 8. Si el headroom es bajo, prioriza buffer alto y timeout alto.'
+      ].join(' ');
+      const usr = JSON.stringify({
+        required_mbps: reqMbps, headroom_ratio: +ratio.toFixed(3), measured_mbps: measured,
+        risk: sh.risk, jitter: sh.jitter, window_s: sh.window_s, seg_duration_s: segD,
+        deterministic_reference: det, gate: 'risk<=10 and headroom>=3.0x'
+      });
+      try {
+        const ctl = new AbortController();
+        const timer = setTimeout(() => ctl.abort(), LLM_TIMEOUT_MS);
+        const r = await fetch(process.env.LLM_ENDPOINT || 'https://api.deepseek.com/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+          body: JSON.stringify({
+            model: LLM_MODEL,
+            messages: [{ role: 'system', content: sys }, { role: 'user', content: usr }],
+            temperature: 0.2, max_tokens: 400, response_format: { type: 'json_object' }
+          }),
+          signal: ctl.signal
+        });
+        clearTimeout(timer);
+        if (!r.ok) { out.llm = { used: false, error: 'HTTP ' + r.status }; return J(200, out); }
+        const j = await r.json();
+        const txt = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+        let prop = null;
+        try { prop = JSON.parse(txt); } catch (_) { const m = (txt || '').match(/\{[\s\S]*\}/); if (m) { try { prop = JSON.parse(m[0]); } catch (_) {} } }
+        if (!prop || typeof prop !== 'object') { out.llm = { used: false, error: 'sin JSON del LLM' }; return J(200, out); }
+        const keys = Object.keys(prop);
+        const bad = keys.filter((k) => !RANGES[k]);
+        if (bad.length) { out.llm = { used: false, error: 'claves no permitidas', rejected: bad }; return J(200, out); }
+        const cfg = {}; const clamped = [];
+        for (const k of Object.keys(RANGES)) {
+          const v = Number(prop[k]);
+          if (!isFinite(v)) { out.llm = { used: false, error: 'valor no numerico en ' + k }; return J(200, out); }
+          const cv = _cl(Math.round(v), RANGES[k][0], RANGES[k][1]);
+          if (cv !== Math.round(v)) clamped.push({ key: k, from: v, to: cv });
+          cfg[k] = cv;
+        }
+        out.health_config = cfg;
+        out.source = 'llm';
+        out.llm = { used: true, model: LLM_MODEL, clamped };
+      } catch (e) {
+        out.llm = { used: false, error: e && e.name === 'AbortError' ? 'timeout' : ('red: ' + (e && e.message)) };
+      }
+      return J(200, out);
+    });
+    return;
+  }
+
   /* Estado del LLM: si hay key, que modelo, sin exponer la clave */
   /* KEY del LLM: guardar, borrar, consultar estado. En caliente, sin reinicio. */
   if (u.pathname === '/image/llm-key' && req.method === 'POST') {

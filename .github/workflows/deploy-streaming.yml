@@ -58,6 +58,10 @@ jobs:
         run: |
           set -euo pipefail
           TARGET="$VPS_USER@$VPS_HOST"
+          # [2026-11-21] FUENTE CANONICA: IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js
+          # vps_jit/server.js es el programa LEGACY (5 rutas: capabilities/catalog/crystal/
+          # health/playlist; su propio /capabilities.json declara processing_domain
+          # "vps_jit_legacy"). Instalarlo encima del motor de imagen borraba 56 rutas.
           # [2026-11-21] GATE ANTI-DEGRADACION DEL MOTOR. Medido ese dia sobre el VPS:
           #   vps_jit/server.js (este, la fuente)   662 lineas /   29624 B / e400fa19 (commit 2026-11-02)
           #   /opt/ape-jit/server.js (EN EJECUCION) 9801 lineas / 480253 B / 44d8bf84
@@ -67,7 +71,7 @@ jobs:
           # real por un stub y reiniciar el servicio. Hasta que se decida que artefacto es
           # canonico, este paso SE NIEGA a instalar algo que encoge el motor a menos de la
           # mitad. Para forzarlo hay que aportar la confirmacion literal en el input.
-          LOCAL_BYTES=$(stat -c %s vps_jit/server.js)
+          LOCAL_BYTES=$(stat -c %s "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js")
           REMOTE_BYTES=$(ssh "$TARGET" "sudo -n stat -c %s /opt/ape-jit/server.js 2>/dev/null || echo 0")
           echo "  fuente local: $LOCAL_BYTES B | motor desplegado: $REMOTE_BYTES B"
           if [ "${REMOTE_BYTES:-0}" -gt 0 ] && [ "$LOCAL_BYTES" -lt $((REMOTE_BYTES / 2)) ]; then
@@ -77,8 +81,29 @@ jobs:
             fi
             echo "  AVISO: encogimiento confirmado por el operador (confirm_shrink)"
           fi
-          scp vps_jit/server.js "$TARGET:/tmp/ape-jit-server.js"
-          ssh "$TARGET" 'set -euo pipefail; cp -a /opt/ape-jit/server.js /root/ape-jit-server.$(date -u +%Y%m%dT%H%M%SZ).bak; install -m 0644 /tmp/ape-jit-server.js /opt/ape-jit/server.js; systemctl restart ape-jit; sleep 2; curl -fsS http://127.0.0.1:3099/health'
+          scp "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js" "$TARGET:/tmp/ape-jit-server.js"
+          ssh "$TARGET" 'set -euo pipefail
+            # [2026-11-21] El restart ya no deja el motor a medias: si /health no responde
+            # en 20 s, se reinstala el backup y se vuelve a arrancar. Antes el paso moria
+            # con curl -f y el servicio quedaba con el fichero nuevo y sin verificar.
+            BAK=/root/ape-jit-server.$(date -u +%Y%m%dT%H%M%SZ).bak
+            cp -a /opt/ape-jit/server.js "$BAK"
+            install -m 0644 /tmp/ape-jit-server.js /opt/ape-jit/server.js
+            systemctl restart ape-jit
+            ok=0
+            for i in $(seq 1 20); do
+              sleep 1
+              if curl -fsS -m 3 http://127.0.0.1:3099/health >/tmp/ape-health.json 2>/dev/null; then ok=1; break; fi
+            done
+            if [ "$ok" != "1" ]; then
+              echo "::error::/health no respondio en 20 s. ROLLBACK a $BAK"
+              install -m 0644 "$BAK" /opt/ape-jit/server.js
+              systemctl restart ape-jit
+              sleep 2
+              curl -fsS -m 3 http://127.0.0.1:3099/health || echo "rollback tampoco responde: revision manual"
+              exit 1
+            fi
+            echo "health OK: $(cat /tmp/ape-health.json)"' 
 
       - name: Patch nginx streaming headers
         run: |
