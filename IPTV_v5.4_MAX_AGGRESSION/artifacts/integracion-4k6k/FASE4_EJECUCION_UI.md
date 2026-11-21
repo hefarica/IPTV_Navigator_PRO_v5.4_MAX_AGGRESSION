@@ -1675,3 +1675,19 @@ precedencia al LAB cuando existe** `vlcopt['video-hdr']`, no solo como respaldo.
 
 La guarda queda como artefacto reejecutable: cualquier cambio futuro en esta zona se mide en un segundo, sin
 navegador.
+## 72 · CORREGIDO Y VERIFICADO: el LAB manda sobre `settings` — guarda en 12/12
+
+Cambio de precedencia en `:10589`: si el perfil trae `vlcopt['video-hdr-mode']`, **se usa antes** que
+`settings.hdr_canonical` de la app. Antes era al revés (settings primero, LAB solo de respaldo), y por eso P3
+declaraba `HLG` sobre un perfil que el propietario calibró como `SDR`.
+
+```
+antes   GUARDA_HDR_AUDIO PASS=11 FAIL=1   (P3: HLG vs SDR)
+ahora   GUARDA_HDR_AUDIO PASS=12 FAIL=0
+        corrida P3,P0.5,P0 → EXIT=0 · "fallos":[] · guardar P3 291.040 B
+```
+
+Los doce perfiles coinciden ahora con su LAB en `video-hdr`, `video-hdr-mode` y `audio-channels`.
+
+Cadena completa de esta zona, toda medida: causa raíz = `generateEXTVLCOPT` código muerto (§64) → emisor vivo
+con literales (§66) → precedencia invertida (§71) → **12/12**.
