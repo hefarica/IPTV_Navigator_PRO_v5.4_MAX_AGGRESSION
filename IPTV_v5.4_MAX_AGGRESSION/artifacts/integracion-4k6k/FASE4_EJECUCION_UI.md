@@ -1484,3 +1484,34 @@ ve qué identificador llega realmente, y el arreglo pasa a ser trivial — pasar
 
 Esto también explica por qué `audio-channels`, `clock-jitter` y `saturation` no heredan: son de la misma rama
 que no se ejecuta.
+## 64 · CAUSA DEFINITIVA: `generateEXTVLCOPT` es CÓDIGO MUERTO — una sola ocurrencia en 17k líneas
+
+Conteo medido sobre `m3u8-typed-arrays-ultimate.js`:
+
+```
+Select-String -Pattern 'generateEXTVLCOPT'   →  1 coincidencia
+4066: function generateEXTVLCOPT(profile) {      ← la definición, y NADA MÁS
+```
+
+**Cero llamadas.** Toda la función que contiene el bloque del LAB —`hdr-output-mode` (`:4134`),
+`tone-mapping-peak` (`:4136`), `video-hdr` (`:4142`), `video-hdr-nits`, `audio-channels`, `clock-jitter`,
+`saturation`, etc.— **nunca se ejecuta**.
+
+Eso explica el cluster completo, sin excepciones, y explica por qué todos mis intentos anteriores no movían el
+valor: estaba parchando una función que nadie invoca.
+
+Lo que sí se emite viene de otros escritores:
+- `EXTVLCOPT:network-caching` aparece **8 veces** en el fichero (por eso el caching sí hereda).
+- `video-hdr` / `video-hdr-mode` / `video-hdr-nits` salen del bloque 4K False (`:10704-10706`), que usa
+  `_isAnyHdr` / `_hdrModeM3U` / `_pmNitsTarget` — no el `vlcopt` del perfil.
+
+**Consecuencia**: para los `.5` (y para cualquier perfil cuya rama LAB se esperaba) el tuning HDR/audio de la
+audio del LAB no llega al artefacto porque su emisor está desconectado.
+
+Arreglo, dos caminos (ninguno aplicado aún):
+1. **Conectar** `generateEXTVLCOPT(profile)` en el ensamblado del bloque de canal (respetando el orden y sin
+   duplicar `network-caching`, ya emitido por otro camino).
+2. **Portar** solo la lógica de las claves ausentes al emisor vivo (`:10704`), leyendo `vo` del perfil efectivo.
+
+Ambos exigen una corrida de verificación con la guarda HDR y los 12 perfiles. Es la corrección de fondo que
+queda identificada con prueba estática, no con sospechas.
