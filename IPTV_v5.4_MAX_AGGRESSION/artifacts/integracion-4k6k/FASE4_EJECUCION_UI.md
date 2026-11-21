@@ -1324,3 +1324,26 @@ como estaba en el commit anterior (`9e2b75bb`), sin cambios funcionales en el ge
 Estado: el defecto del §54 **sigue presente y sigue cubierto por la guarda** (§56), que lo nombra y sale con
 código 1. El arreglo requiere un ámbito seguro (probablemente antes del ensamblado del bloque, no dentro) y su
 propia verificación; no lo dejo aplicado a medias.
+## 58 · El «marcador ausente» era MI DRIVER, no el generador. Restaurado y verde
+
+Evidencia de que la causa no estaba en el producto: dos corridas seguidas fallaban con `marcador ausente` y
+**exactamente los mismos 479.554 B** de DOM, antes y después de revertir el parche del generador. Un cambio en
+el generador no produce un DOM del mismo tamaño byte a byte.
+
+Prueba directa: restauré el driver del commit **`ee446a28`** (el que dio 12/12 verde) y relancé:
+
+```
+EXIT=0
+"fallos": []
+guardar/salida_ok: P0 291.723 B · P0.5 260.761 B · P3.5 …
+```
+
+**Verde otra vez.** Por tanto las ediciones que rompían la página eran las mías (sonda `R.probe` + bloque
+`fila.hdr`), no el generador ni el parche revertido.
+
+Consecuencia honesta sobre la guarda del §55: sigue en el runner, pero al no recibir `fila.hdr` del driver
+restaurado **queda inerte** (la condición exige que el campo exista). No vuelve a dar rojo falso, y tampoco
+demuestra nada hasta que el driver vuelva a medir HDR — con cuidado esta vez, y verificando con una corrida
+corta antes de la matriz completa.
+
+Lección aplicada: cada cambio en el driver se valida con 3 perfiles antes de lanzar los 12.

@@ -80,16 +80,7 @@
   try {
     var lab = await (await fetch('/lab.json', { headers: H })).text();
     var norm = window.APELabNormalize.normalize(JSON.parse(lab));
-    await window.APE_PROFILES_CONFIG.importFromLABData(norm.data, { includeExtrasByProfile: {
-      'P0.5': true, 'P1.5': true, 'P2.5': true, 'P3.5': true, 'P4.5': true, 'P5.5': true } });
-    /* SONDA §53: valor REAL del vlcopt del perfil .5 dentro del navegador, tras importar */
-    try {
-        var g = window.APE_PROFILES_CONFIG.getProfile('P0.5') || {};
-        var lv = (g.vlcopt || {});
-        R.probe = { tiene_vlcopt: !!(g.vlcopt), hdr: (lv['video-hdr'] === undefined ? 'AUSENTE' : String(lv['video-hdr'])),
-                    mode: (lv['video-hdr-mode'] === undefined ? 'AUSENTE' : String(lv['video-hdr-mode'])),
-                    claves: Object.keys(lv).length };
-    } catch (e) { R.probe = String(e.message || e); }
+    await window.APE_PROFILES_CONFIG.importFromLABData(norm.data);
     var txt = await (await fetch('/entrada.m3u8', { headers: H })).text();
     var inp = document.getElementById('apeM3uLocal');
     var dt = new DataTransfer(); dt.items.add(new File([txt], 'entrada_3ch.m3u8', { type: 'audio/x-mpegurl' }));
@@ -124,14 +115,6 @@
         fila.off = { bytes: off.bytes, sha: off.sha.slice(0,16), sidecar: (off.texto.match(/^#EXT-X-APE-4K6K-INTENT:/gm) || []).length };
         fila.on = { bytes: on1.bytes, sha256: on1.sha, sha: on1.sha.slice(0,16),
           sidecar: (on1.texto.match(/^#EXT-X-APE-4K6K-INTENT:/gm) || []).length, nombre: on1.nombre };
-        /* medir la directiva HDR emitida y compararla con la del LAB del perfil */
-        try {
-            var _t = on1.texto;
-            var _em = (_t.match(/#EXTVLCOPT:video-hdr-mode=([^\r\n]+)/) || [])[1] || 'AUSENTE';
-            var _gp = window.APE_PROFILES_CONFIG.getProfile(pid) || {};
-            var _lb = ((_gp.vlcopt || {})['video-hdr-mode']) || 'AUSENTE';
-            fila.hdr = { emitido: String(_em).trim(), esperado: String(_lb).trim() };
-        } catch (e) { fila.hdr = { emitido: 'err', esperado: 'err' }; }
         var js = sidecarJson(on1.texto);
         if (js) {
           var j = JSON.parse(js);
