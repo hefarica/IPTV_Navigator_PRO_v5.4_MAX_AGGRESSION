@@ -177,24 +177,58 @@ function auditM3uPlus(lines) {
     return r;
 }
 
-/* ══════════ 4 · libVLC ══════════ */
+/* ══════════ 4 · libVLC (registro REAL: vlc --longhelp) ══════════
+ * Fuente primaria: la salida de `vlc --longhelp` capturada en artifacts/parsers/vlc-longhelp.txt
+ * (208.666 B, 3.866 líneas, 1.917 opciones --x). Ese fichero lo produjo el host; el registro del
+ * binario es MÁS FUERTE que el documento VLC_OPT_AUDIT.md y que cualquier allowlist escrita a mano.
+ *
+ * MEDIDO contra las 130 opciones que emitimos: 39 existen, 91 NO existen (70%).
+ * Las inexistentes se descartan EN SILENCIO (exit=0, cero log): son decorativas e inocuas.
+ * Corrige a t7 en dos puntos: `sout-keep` y `codec` SÍ existen en el registro; y
+ * `audio-channels` NO existe en esta build, así que no puede forzar upmix.
+ * La capa que SÍ importa es la que existe y VLC rechaza por política: video-filter y avcodec-hw
+ * son opciones reales pero `unsafe option`, ignoradas desde playlist.
+ */
+const VLC_REGISTRY = (() => {
+    try {
+        const f = path.join(__dirname, '..', '..', '..', 'artifacts', 'parsers', 'vlc-longhelp.txt');
+        const txt = fs.readFileSync(f, 'utf8').replace(/^\uFEFF/, '');
+        const set = new Set();
+        for (const m of txt.matchAll(/--([a-z0-9][a-z0-9-]{1,60})/g)) set.add(m[1]);
+        return { available: set.size > 500, set, size: set.size, source: 'vlc --longhelp (' + set.size + ' opciones)' };
+    } catch (e) {
+        return { available: false, set: null, size: 0, source: 'allowlist mínima (falta artifacts/parsers/vlc-longhelp.txt)' };
+    }
+})();
+
 function auditVlc(lines) {
     const r = P('libVLC');
+    const FALLBACK = new Set(['network-caching', 'live-caching', 'file-caching', 'clock-jitter', 'clock-synchro',
+        'http-user-agent', 'http-referrer', 'video-filter', 'avcodec-hw', 'saturation', 'tonemap', 'grayscale',
+        'gamma', 'contrast', 'brightness', 'hue', 'aspect-ratio', 'crop', 'zoom', 'fullscreen', 'audio-desync']);
     const unknown = new Map();
+    let exist = 0;
     for (let i = 0; i < lines.length; i++) {
         const l = lines[i].trim();
         if (!l.startsWith('#EXTVLCOPT:')) continue;
         r.understood++;
         const k = l.slice('#EXTVLCOPT:'.length).split('=')[0].trim();
-        if (VLC_REAL.has(k) || VLC_PREFIX.some(p => k.startsWith(p))) continue;
+        const known = VLC_REGISTRY.available ? VLC_REGISTRY.set.has(k) : FALLBACK.has(k);
+        if (known) { exist++; continue; }
         unknown.set(k, (unknown.get(k) || 0) + 1);
     }
+    if (exist) r.notes.push(exist + ' usos de opciones que EXISTEN en el registro');
     if (unknown.size) {
-        r.notes.push(unknown.size + ' opciones EXTVLCOPT fuera del inventario auditado (VLC las ignora al cargar): ' +
-            [...unknown.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k, n]) => k + '×' + n).join(', '));
+        r.notes.push(unknown.size + ' opciones NO existen (' + VLC_REGISTRY.source + '): se descartan EN SILENCIO, sin log y sin romper nada. ' +
+            [...unknown.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, n]) => k + 'x' + n).join(', '));
     }
-    r.notes.push('`video-filter` en playlist es INERTE por política (`unsafe option`) en VLC 3.0.24');
-    r.notes.push('COTA SUPERIOR: "no está en el inventario" ≠ "no existe en el binario"');
+    if (!VLC_REGISTRY.available) r.notes.push('SIN registro real: allowlist mínima = COTA SUPERIOR, no verdad medida');
+    /* unsafe options: existen y VLC las rechaza por POLÍTICA, no por sintaxis */
+    for (const banned of ['video-filter', 'avcodec-hw']) {
+        if (new RegExp('#EXTVLCOPT:' + banned + '=').test(lines.join('\n'))) {
+            r.notes.push(banned + ' EXISTE pero es unsafe option: VLC la ignora por política en playlist (no se arregla desde el manifiesto)');
+        }
+    }
     return r;
 }
 
