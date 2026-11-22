@@ -15,6 +15,41 @@
 (function () {
     'use strict';
 
+    /* [2026-11-22 · PM9-RENDER-NULL] Resolver el perfil activo SIN desreferenciar null.
+     *
+     * DEFECTO MEDIDO (consola del operador, 2026-11-22):
+     *   [LAB] Import falló: TypeError: Cannot read properties of null (reading 'color')
+     *       at ProfileManagerV9.render (profile-manager-v9.js:912:91)
+     * El id activo persistido era de un perfil `.5` mientras la config sólo tenía los 6
+     * canónicos, así que `getProfile(id)` devolvió null y `activeProfile.color` tumbó el
+     * render completo: el operador veía "Import falló" con el import YA aplicado.
+     *
+     * Regla: se cae al primer perfil DISPONIBLE; nunca se inventa un perfil ni se toca un
+     * valor. Si no hay ninguno, devuelve null y el llamador pinta un estado vacío legible.
+     * Función pura y aislada para poder probarla sin DOM. */
+    function _pm9ResolveActive(config, activeProfileId) {
+        let list = [];
+        try {
+            if (config && typeof config.getDegradationHierarchy === 'function') {
+                const h = config.getDegradationHierarchy();
+                if (Array.isArray(h)) list = h;
+            } else if (config && typeof config.getAllProfiles === 'function') {
+                const all = config.getAllProfiles();
+                if (all && typeof all === 'object') list = Object.values(all);
+            }
+        } catch (_eHier) { list = []; }
+        let active = null;
+        try {
+            if (config && typeof config.getProfile === 'function' && activeProfileId != null) {
+                active = config.getProfile(activeProfileId);
+            }
+        } catch (_eGet) { active = null; }
+        if (!active || typeof active !== 'object') {
+            active = (list.length && list[0] && typeof list[0] === 'object') ? list[0] : null;
+        }
+        return { profiles: list, active: active };
+    }
+
     class ProfileManagerV9 {
         // ═══════════════════════════════════════════════════════════════════════
         // CONSTANTES QUIRÚRGICAS v13.1 PRO
@@ -865,8 +900,20 @@
             this.isOpen = true;
 
             this.normalizeAllProfiles();
-            const profiles = this.config.getDegradationHierarchy ? this.config.getDegradationHierarchy() : Object.values(this.config.getAllProfiles());
-            const activeProfile = this.config.getProfile(this.activeProfileId);
+            const _pm9Res = _pm9ResolveActive(this.config, this.activeProfileId);
+            const profiles = _pm9Res.profiles;
+            const activeProfile = _pm9Res.active;
+            if (activeProfile && activeProfile.id && activeProfile.id !== this.activeProfileId) {
+                console.warn('[PM9] perfil activo "' + this.activeProfileId + '" inexistente en la config → se muestra "' + activeProfile.id + '" (ningún valor se inventó)');
+                this.activeProfileId = activeProfile.id;
+            }
+            if (!activeProfile) {
+                this.container.innerHTML = '<div class="pm9-empty-state" style="padding:24px;font-family:monospace;color:#f87171;line-height:1.6;">'
+                    + '⚠️ No hay ningún perfil disponible en APE_PROFILES_CONFIG.<br>'
+                    + 'No se ha inventado ningún valor: importa el LAB o restaura un perfil antes de editar.</div>';
+                console.warn('[PM9] render abortado: 0 perfiles disponibles');
+                return;
+            }
             const activeManifest = this.config.getManifestConfig();
             const categories = this.config.getCategories();
 
