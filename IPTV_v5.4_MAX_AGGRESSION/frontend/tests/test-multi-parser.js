@@ -573,6 +573,77 @@ function testApeHttpHeaders() {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
+// 7d · H-7 presupuesto EXTHTTP (8192 B / 200 cabeceras) y H-5 declarado
+// ───────────────────────────────────────────────────────────────────────────
+
+function testExtHttpBudget() {
+    console.log('\n── 7d · H-7 presupuesto EXTHTTP · H-5 transformaciones declaradas ─');
+
+    /* (1) entrada > 8192 B: recorta por prioridad y AVISA con cifras */
+    const big = { 'User-Agent': 'PRIORITY-UA' };
+    for (let i = 0; i < 40; i++) big['X-Big-' + String(i).padStart(2, '0')] = 'A'.repeat(250);
+    const tBig = '#EXTM3U\n#EXTINF:-1,A\n#EXTHTTP:' + JSON.stringify(big) + '\nhttp://example.com/1.m3u8\n';
+    const mBig = MP.parse(tBig);
+    const outBig = MP.render(mBig, 'exoplayer');
+    const bodyBig = outBig.split('\n').filter(function (l) { return l.indexOf('#EXTHTTP:') === 0; })[0].slice('#EXTHTTP:'.length);
+    const parsedBig = JSON.parse(bodyBig);
+    assert(Buffer.byteLength(bodyBig, 'utf8') <= 8192, 'H-7 · la salida cabe en 8192 B', Buffer.byteLength(bodyBig, 'utf8') + ' B');
+    assert(Object.keys(parsedBig).length < 41, 'H-7 · se descartaron cabeceras', Object.keys(parsedBig).length + ' de 41');
+    assertEqual(parsedBig['User-Agent'], 'PRIORITY-UA', 'H-7 · la cabecera prioritaria sobrevive al recorte');
+    const wBig = mBig.warnings.filter(function (x) { return x.indexOf('EXTHTTP recortado') === 0; });
+    assertEqual(wBig.length, 1, 'H-7 · warning con cifras en model.warnings');
+    assertIncludes(wBig[0], 'B / 41 cabeceras ->', 'H-7 · el warning declara entrada (B/cabeceras) y salida');
+    assertEqual(mBig.renderAudit.byDialect.exoplayer.extHttp.blocks, 1, 'H-7 · auditoría: 1 bloque recortado');
+    assert(mBig.renderAudit.byDialect.exoplayer.extHttp.dropped > 0, 'H-7 · auditoría declara las descartadas');
+    const repBig = MP.buildReport(mBig, { dialects: [] });
+    assert(repBig.limits.some(function (l) { return l.indexOf('H-7:') === 0 && l.indexOf('aviso') !== -1; }),
+        'H-7 · el reporte publica el recorte con cifras en limits');
+
+    /* (2) entrada con > 200 cabeceras (pero pequeña) */
+    const many = {};
+    for (let i = 0; i < 260; i++) many['X-K' + String(i).padStart(3, '0')] = 'v';
+    const tMany = '#EXTM3U\n#EXTINF:-1,A\n#EXTHTTP:' + JSON.stringify(many) + '\nhttp://example.com/1.m3u8\n';
+    const mMany = MP.parse(tMany);
+    const bodyMany = MP.render(mMany, 'exoplayer').split('\n').filter(function (l) { return l.indexOf('#EXTHTTP:') === 0; })[0].slice('#EXTHTTP:'.length);
+    assertEqual(Object.keys(JSON.parse(bodyMany)).length, 200, 'H-7 · se queda en 200 cabeceras exactas');
+    assertEqual(mMany.warnings.filter(function (x) { return x.indexOf('EXTHTTP recortado') === 0; }).length, 1,
+        'H-7 · warning también cuando el motivo es el número de cabeceras');
+
+    /* (3) lo que YA cabe no se toca ni avisa */
+    const smallLine = '{"User-Agent":"UA","Referer":"http://example.com/","X-APE-Profile":"P3"}';
+    const tSmall = '#EXTM3U\n#EXTINF:-1,A\n#EXTHTTP:' + smallLine + '\nhttp://example.com/1.m3u8\n';
+    const mSmall = MP.parse(tSmall);
+    const outSmall = MP.render(mSmall, 'exoplayer');
+    assertIncludes(outSmall, smallLine, 'H-7 · lo que cabe se emite byte a byte igual');
+    assertEqual(mSmall.warnings.filter(function (x) { return x.indexOf('EXTHTTP recortado') === 0; }).length, 0,
+        'H-7 · sin warning si no hay recorte');
+    assertEqual(mSmall.renderAudit.byDialect.exoplayer.extHttp.blocks, 0, 'H-7 · 0 recortes cuando cabe');
+    assertEqual(mSmall.renderAudit.byDialect.exoplayer.exthttpReserialized, 0,
+        'H-5 · re-emitir idéntico NO se cuenta como transformación');
+
+    /* (4) H-5 · el round-trip universal DECLARA lo que transforma */
+    const h5 = MP.parse('#EXTM3U\n' +
+        '#EXTINF:-1,A\n' +
+        '#EXTVLCOPT:network-caching=8000\n' +
+        '#EXTVLCOPT:network-caching=8000\n' +
+        '#KODIPROP:inputstream.adaptive.stream_headers=User-Agent=UA/1.0&Connection=keep-alive\n' +
+        'http://example.com/1.m3u8\n');
+    const uniH5 = MP.render(h5, 'universal');
+    const au = h5.renderAudit.universal;
+    assertEqual(au.duplicateLinesCollapsed, 1, 'H-5 · declara la línea duplicada colapsada');
+    assertEqual(au.kodipropReserialized, 1, 'H-5 · declara el bloque KODIPROP re-serializado');
+    assertEqual(au.headersPercentEncoded, 1, 'H-5 · declara el valor re-codificado en percent-encoding');
+    const wH5 = h5.warnings.filter(function (x) { return x.indexOf('[universal] render transforma') === 0; });
+    assertEqual(wH5.length, 1, 'H-5 · warning con números en model.warnings');
+    assertIncludes(wH5[0], '1 línea(s) duplicada(s) colapsada(s)', 'H-5 · el warning da la cifra de colapsadas');
+    assertIncludes(wH5[0], '1 valor(es) re-codificado(s)', 'H-5 · el warning da la cifra de re-codificados');
+    assertNotIncludes(uniH5, 'Connection=keep-alive', 'H-5 · la cabecera tóxica sigue fuera');
+    const repH5 = MP.buildReport(h5, { dialects: [] });
+    assert(repH5.limits.some(function (l) { return l.indexOf('H-5: universal declara') === 0 && l.indexOf('1 línea(s)') !== -1; }),
+        'H-5 · el reporte declara las transformaciones con cifras en limits');
+}
+
+// ───────────────────────────────────────────────────────────────────────────
 // 8 · LISTA GRANDE
 // ───────────────────────────────────────────────────────────────────────────
 
@@ -767,6 +838,7 @@ function main() {
     testQuarantine();
     testDiagnose();
     testApeHttpHeaders();
+    testExtHttpBudget();
     testLargeList();
     testZip();
     testReportPrivacy();

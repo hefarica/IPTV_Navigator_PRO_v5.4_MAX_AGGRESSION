@@ -978,9 +978,12 @@
     const DIALECT_DEFS = {
         universal: {
             id: 'universal',
-            label: 'Universal sin pérdida',
+            /* H-5: NO se llama "sin pérdida". Conserva todo el contenido, pero declara
+             * sus transformaciones (duplicados colapsados, KODIPROP re-codificado) en
+             * model.renderAudit y en report.limits. */
+            label: 'Universal (diagnóstico, transformaciones declaradas)',
             file: 'universal.m3u8',
-            description: 'Conserva todos los tags y atributos. Para diagnóstico y players tolerantes.',
+            description: 'Conserva todos los tags y atributos; declara en renderAudit/limits lo que transforma. Para diagnóstico y players tolerantes.',
             layers: ALL_LAYERS,
             flat: { header: 'all', attrs: 'all', headerMode: 'preserve', keepExtGrp: true, keepVlc: true, keepKodi: true, keepApe: true, keepUnknown: true },
             hls: { layers: ALL_LAYERS }
@@ -1280,7 +1283,116 @@
         return '#EXTVLCOPT:http-header=' + name + ': ' + value;
     }
 
-    function renderKodiHeaders(headers) {
+    /* ═══════════════════════════════════════════════════════════════════════
+     * H-7 · PRESUPUESTO REAL DE #EXTHTTP
+     * Techo doctrinal: 8.192 B de cuerpo y 200 cabeceras (nginx
+     * large_client_header_buffers=8K). El #EXTHTTP real del catálogo LAB ocupa
+     * 7.526 B: 666 B por debajo del techo. El módulo lo re-emitía sin comprobarlo
+     * (medido en t9: 9.012 B de entrada -> 9.017 B de salida, sin warning).
+     * La prioridad NO se inventa aquí: es la del generador,
+     * m3u8-typed-arrays-ultimate.js -> EXTHTTP_PRIORITY_KEYS (31 claves).
+     * ═══════════════════════════════════════════════════════════════════════ */
+    const EXTHTTP_MAX_BYTES = 8192;
+    const EXTHTTP_MAX_KEYS = 200;
+    const EXTHTTP_PRIORITY_KEYS = [
+        'User-Agent', 'Accept', 'Accept-Language', 'Accept-Encoding',
+        'Cache-Control', 'Pragma', 'Origin', 'Referer',
+        'X-APE-Profile', 'X-APE-Tier',
+        'X-Prefetch-Enabled', 'X-Prefetch-Adaptive', 'X-Prefetch-Segments',
+        'X-Parallel-Segments', 'X-Concurrent-Downloads',
+        'X-Expected-Bitrate', 'X-Max-Bitrate', 'X-Min-Bitrate', 'X-Buffer-Target',
+        'X-APE-BITRATE-FLOOR', 'X-Low-Latency-Mode', 'X-Segment-Duration',
+        'X-Segment-Duration-S', 'X-Live-Sync-Duration-Count', 'X-Live-Max-Latency-Count',
+        'X-Fragment-TTFB-Max-Ms', 'X-Fragment-Retry-Max', 'X-Stall-Detection-Ms',
+        'X-Nudge-Max-Retry', 'X-APE-BUFFER-STRATEGY', 'CMCD-Request'
+    ];
+
+    function exthttpPriorityIndex(name) {
+        const lower = toStr(name).toLowerCase();
+        for (let i = 0; i < EXTHTTP_PRIORITY_KEYS.length; i++) {
+            if (EXTHTTP_PRIORITY_KEYS[i].toLowerCase() === lower) return i;
+        }
+        return EXTHTTP_PRIORITY_KEYS.length;
+    }
+
+    /* Recorta un set de cabeceras al presupuesto por prioridad declarada.
+     * Si YA cabe, devuelve el MISMO objeto (sin reordenar ni re-serializar). */
+    function fitExtHttpBudget(headers) {
+        const src = isObj(headers) ? headers : Object.create(null);
+        const names = Object.keys(src);
+        const bytesIn = byteLength(JSON.stringify(src));
+        if (names.length <= EXTHTTP_MAX_KEYS && bytesIn <= EXTHTTP_MAX_BYTES) {
+            return {
+                headers: src, bytesIn: bytesIn, bytesOut: bytesIn,
+                keysIn: names.length, keysOut: names.length, dropped: [], trimmed: false
+            };
+        }
+        const ordered = names.map(function (n, i) { return { n: n, i: i, p: exthttpPriorityIndex(n) }; })
+            .sort(function (a, b) { return (a.p - b.p) || (a.i - b.i); });
+        const keep = Object.create(null);
+        let keysOut = 0;
+        let bytesOut = 2; // '{}'
+        for (let i = 0; i < ordered.length && keysOut < EXTHTTP_MAX_KEYS; i++) {
+            const rec = ordered[i];
+            const v = toStr(src[rec.n]);
+            const cost = byteLength(JSON.stringify(rec.n) + ':' + JSON.stringify(v)) + (keysOut ? 1 : 0);
+            if (bytesOut + cost > EXTHTTP_MAX_BYTES) continue; // deja hueco a una cabecera más corta
+            keep[rec.n] = v;
+            keysOut++;
+            bytesOut += cost;
+        }
+        const dropped = names.filter(function (n) { return !(n in keep); });
+        return {
+            headers: keep, bytesIn: bytesIn, bytesOut: bytesOut,
+            keysIn: names.length, keysOut: keysOut, dropped: dropped, trimmed: dropped.length > 0
+        };
+    }
+
+    /* ── H-5 · auditoría del render en curso ────────────────────────────────
+     * El render es síncrono y de un solo hilo: `render()` abre esta auditoría y la
+     * cierra en un try/finally, así que no hay concurrencia que la pise. Sirve para
+     * DECLARAR con números lo que el render transforma (duplicados colapsados,
+     * claves re-codificadas) en vez de llamarlo "sin pérdida" sin decirlo. */
+    let RENDER_AUDIT = null;
+
+    function auditNew(model, dialectId) {
+        RENDER_AUDIT = {
+            model: model,
+            dialect: dialectId,
+            duplicateLinesCollapsed: 0,
+            kodipropReserialized: 0,
+            headersPercentEncoded: 0,
+            exthttpReserialized: 0,
+            extHttp: { blocks: 0, bytesIn: 0, bytesOut: 0, keysIn: 0, keysOut: 0, dropped: 0 }
+        };
+        return RENDER_AUDIT;
+    }
+
+    function auditBump(key, n) { if (RENDER_AUDIT) RENDER_AUDIT[key] += (n == null ? 1 : n); }
+
+    function auditWarn(msg) {
+        const a = RENDER_AUDIT;
+        if (!a || !a.model) return;
+        if (!Array.isArray(a.model.warnings)) a.model.warnings = [];
+        if (a.model.warnings.indexOf(msg) === -1) a.model.warnings.push(msg);
+    }
+
+    function auditExtHttpTrim(fit) {
+        if (!RENDER_AUDIT) return;
+        const e = RENDER_AUDIT.extHttp;
+        e.blocks++;
+        e.bytesIn = Math.max(e.bytesIn, fit.bytesIn);
+        e.bytesOut = Math.max(e.bytesOut, fit.bytesOut);
+        e.keysIn = Math.max(e.keysIn, fit.keysIn);
+        e.keysOut = Math.max(e.keysOut, fit.keysOut);
+        e.dropped += fit.dropped.length;
+        auditWarn('EXTHTTP recortado por presupuesto (H-7): ' + fit.bytesIn + ' B / ' + fit.keysIn +
+            ' cabeceras -> ' + fit.bytesOut + ' B / ' + fit.keysOut + ' cabeceras; ' +
+            fit.dropped.length + ' descartada(s) por prioridad declarada (límite ' +
+            EXTHTTP_MAX_BYTES + ' B / ' + EXTHTTP_MAX_KEYS + ' cabeceras)');
+    }
+
+    function renderKodiHeaders(headers, sourceRaw) {
         const pairs = [];
         Object.keys(headers).forEach(function (k) {
             if (isToxicHeader(k)) return;
@@ -1289,20 +1401,46 @@
             pairs.push(encodeURIComponent(k) + '=' + encodeURIComponent(v));
         });
         if (!pairs.length) return '';
-        return '#KODIPROP:inputstream.adaptive.stream_headers=' + pairs.join('&');
+        const line = '#KODIPROP:inputstream.adaptive.stream_headers=' + pairs.join('&');
+        /* H-5: sólo cuenta como transformación si difiere de la línea original. */
+        if (sourceRaw == null || toStr(sourceRaw).trim() !== line) {
+            auditBump('kodipropReserialized');
+            auditBump('headersPercentEncoded', pairs.length);
+        }
+        return line;
     }
 
-    function renderHttpHeaders(headers) {
+    /* Serializa un set de cabeceras aplicando el presupuesto H-7 y contando la
+     * transformación sólo cuando el resultado DIFIERE del original (H-5). */
+    function serializeHeaderPayload(headers, tagName, sourceRaw) {
         const safe = sanitizeHeaders(headers).headers;
         if (!Object.keys(safe).length) return '';
+        const fit = fitExtHttpBudget(safe);
+        if (fit.trimmed) auditExtHttpTrim(fit);
+        if (!fit.keysOut) {
+            auditWarn('EXTHTTP descartado por presupuesto (H-7): ' + fit.bytesIn + ' B / ' + fit.keysIn +
+                ' cabeceras no caben en ' + EXTHTTP_MAX_BYTES + ' B / ' + EXTHTTP_MAX_KEYS + ' cabeceras');
+            return '';
+        }
+        const line = tagName + JSON.stringify(fit.headers);
+        if (!fit.trimmed && sourceRaw != null && toStr(sourceRaw).trim() === line) {
+            return line; // byte a byte igual al original: NO es una transformación
+        }
+        auditBump('exthttpReserialized');
+        return line;
+    }
+
+    function renderHttpHeaders(headers, sourceRaw) {
         // El generador emite EXTHTTP con JSON plano; el parser acepta también
         // la variante {"headers":{...}}. Emitimos plano para máxima compatibilidad.
-        return '#EXTHTTP:' + JSON.stringify(safe);
+        return serializeHeaderPayload(headers, '#EXTHTTP:', sourceRaw);
     }
 
     function pushUnique(arr, line) {
-        if (!line) return;
-        if (arr.indexOf(line) === -1) arr.push(line);
+        if (!line) return false;
+        if (arr.indexOf(line) === -1) { arr.push(line); return true; }
+        auditBump('duplicateLinesCollapsed');
+        return false;
     }
 
     function renderUniversalDirective(item) {
@@ -1312,8 +1450,11 @@
         if (tag === '#EXTHTTP') {
             const p = parseExtHttp(item.body);
             const safe = sanitizeHeaders(p.headers);
-            if (safe.removed.length || p.format === 'urlencoded' || p.format === 'colon') {
-                return renderHttpHeaders(safe.headers);
+            /* H-7: el camino "verbatim" no puede saltarse el presupuesto. */
+            const overBudget = byteLength(toStr(item.body).trim()) > EXTHTTP_MAX_BYTES ||
+                Object.keys(p.headers).length > EXTHTTP_MAX_KEYS;
+            if (safe.removed.length || p.format === 'urlencoded' || p.format === 'colon' || overBudget) {
+                return renderHttpHeaders(safe.headers, item.raw);
             }
             return item.raw.trim();
         }
@@ -1321,8 +1462,10 @@
         if (tag === '#EXT-X-APE-HTTP-HEADERS') {
             const p = parseExtHttp(item.body);
             const safe = sanitizeHeaders(p.headers);
-            if (safe.removed.length) {
-                return '#EXT-X-APE-HTTP-HEADERS:' + JSON.stringify(safe.headers);
+            const overBudget = byteLength(toStr(item.body).trim()) > EXTHTTP_MAX_BYTES ||
+                Object.keys(p.headers).length > EXTHTTP_MAX_KEYS;
+            if (safe.removed.length || overBudget) {
+                return serializeHeaderPayload(p.headers, '#EXT-X-APE-HTTP-HEADERS:', item.raw);
             }
             return item.raw.trim();
         }
@@ -1346,9 +1489,14 @@
             const p = parseKodiProp(item.body);
             const safe = sanitizeHeaders(p.headers);
             if (safe.removed.length) {
-                return '#KODIPROP:' + p.key + '=' + Object.keys(safe.headers).map(function (k) {
+                const line = '#KODIPROP:' + p.key + '=' + Object.keys(safe.headers).map(function (k) {
                     return encodeURIComponent(k) + '=' + encodeURIComponent(safe.headers[k]);
                 }).join('&');
+                if (line !== item.raw.trim()) {
+                    auditBump('kodipropReserialized');
+                    auditBump('headersPercentEncoded', Object.keys(safe.headers).length);
+                }
+                return line;
             }
             return item.raw.trim();
         }
@@ -1376,6 +1524,16 @@
     function renderChannelDirectives(channel, dialect) {
         const out = [];
         const headers = channel.safeHeaders || Object.create(null);
+        /* Línea original del canal, para poder afirmar "salió idéntico" en vez de contarlo
+         * como transformación por defecto (H-5). */
+        const allDirs = (channel.leading || []).concat(channel.directives || []);
+        let httpSourceRaw = null;
+        let kodiSourceRaw = null;
+        for (let i = 0; i < allDirs.length; i++) {
+            if (httpSourceRaw == null && allDirs[i].tagUpper === '#EXTHTTP') httpSourceRaw = allDirs[i].raw;
+            if (kodiSourceRaw == null && allDirs[i].tagUpper === '#KODIPROP' &&
+                Object.keys(parseKodiProp(allDirs[i].body).headers).length) kodiSourceRaw = allDirs[i].raw;
+        }
 
         if (dialect.id === 'universal') {
             const all = (channel.leading || []).concat(channel.directives || []);
@@ -1412,6 +1570,8 @@
                         pushUnique(out, '#KODIPROP:' + p.key + '=' + Object.keys(safe.headers).map(function (k) {
                             return encodeURIComponent(k) + '=' + encodeURIComponent(safe.headers[k]);
                         }).join('&'));
+                        auditBump('kodipropReserialized');
+                        auditBump('headersPercentEncoded', Object.keys(safe.headers).length);
                     }
                 } else {
                     pushUnique(out, dirs[i].raw.trim());
@@ -1424,11 +1584,11 @@
                 pushUnique(out, renderVlcHeader({ name: k, value: headers[k] }));
             });
         } else if (dialect.flat.headerMode === 'kodi') {
-            pushUnique(out, renderKodiHeaders(headers));
+            pushUnique(out, renderKodiHeaders(headers, kodiSourceRaw));
         } else if (dialect.flat.headerMode === 'http') {
-            pushUnique(out, renderHttpHeaders(headers));
+            pushUnique(out, renderHttpHeaders(headers, httpSourceRaw));
         } else if (dialect.flat.headerMode === 'mixed') {
-            pushUnique(out, renderHttpHeaders(headers));
+            pushUnique(out, renderHttpHeaders(headers, httpSourceRaw));
             const ua = headers['User-Agent'] || headers['user-agent'];
             const ref = headers['Referer'] || headers['referer'];
             if (ua) pushUnique(out, renderVlcHeader({ name: 'User-Agent', value: ua }));
@@ -1498,7 +1658,7 @@
                     dialect.flat.headerMode === 'mixed' ||
                     dialect.flat.headerMode === 'preserve';
                 if (!carriesHttp) continue;
-                const hline = renderHttpHeaders(parseExtHttp(item.body).headers);
+                const hline = renderHttpHeaders(parseExtHttp(item.body).headers, item.raw);
                 if (hline) out.push(hline);
                 continue;
             }
@@ -1515,9 +1675,14 @@
                 const safe = sanitizeHeaders(p.headers);
                 if (safe.removed.length) {
                     if (Object.keys(safe.headers).length) {
-                        out.push('#KODIPROP:' + p.key + '=' + Object.keys(safe.headers).map(function (k) {
+                        const kline = '#KODIPROP:' + p.key + '=' + Object.keys(safe.headers).map(function (k) {
                             return encodeURIComponent(k) + '=' + encodeURIComponent(safe.headers[k]);
-                        }).join('&'));
+                        }).join('&');
+                        if (kline !== item.raw.trim()) {
+                            auditBump('kodipropReserialized');
+                            auditBump('headersPercentEncoded', Object.keys(safe.headers).length);
+                        }
+                        out.push(kline);
                     }
                 } else {
                     out.push(item.raw.trim());
@@ -1549,10 +1714,45 @@
         opts = opts || {};
         const dialect = getDialect(dialectId);
         if (!model) return '';
-        if (model.kind === 'flat' || (model.channels && model.channels.length && model.kind !== 'hls_media' && model.kind !== 'hls_master')) {
-            return renderFlat(model, dialect, opts);
+        const audit = auditNew(model, dialect.id);
+        let text;
+        try {
+            text = (model.kind === 'flat' || (model.channels && model.channels.length && model.kind !== 'hls_media' && model.kind !== 'hls_master'))
+                ? renderFlat(model, dialect, opts)
+                : renderHls(model, dialect, opts);
+
+            /* H-5: si el render transformó algo, DECLARARLO con números. Prohibido
+             * llamar "sin pérdida" a un render que colapsa líneas o re-codifica claves. */
+            const transforms = audit.duplicateLinesCollapsed + audit.kodipropReserialized + audit.exthttpReserialized;
+            if (transforms > 0) {
+                auditWarn('[' + dialect.id + '] render transforma (H-5 declarado): ' +
+                    audit.duplicateLinesCollapsed + ' línea(s) duplicada(s) colapsada(s), ' +
+                    audit.kodipropReserialized + ' bloque(s) KODIPROP re-serializado(s), ' +
+                    audit.headersPercentEncoded + ' valor(es) re-codificado(s) en percent-encoding, ' +
+                    audit.exthttpReserialized + ' bloque(s) EXTHTTP re-serializado(s)');
+            }
+        } finally {
+            /* Auditoría verificable en el modelo (campo aditivo, por dialecto). */
+            if (!isObj(model.renderAudit)) model.renderAudit = { byDialect: {} };
+            if (!isObj(model.renderAudit.byDialect)) model.renderAudit.byDialect = {};
+            model.renderAudit.byDialect[dialect.id] = {
+                duplicateLinesCollapsed: audit.duplicateLinesCollapsed,
+                kodipropReserialized: audit.kodipropReserialized,
+                headersPercentEncoded: audit.headersPercentEncoded,
+                exthttpReserialized: audit.exthttpReserialized,
+                extHttp: {
+                    blocks: audit.extHttp.blocks,
+                    bytesIn: audit.extHttp.bytesIn,
+                    bytesOut: audit.extHttp.bytesOut,
+                    keysIn: audit.extHttp.keysIn,
+                    keysOut: audit.extHttp.keysOut,
+                    dropped: audit.extHttp.dropped
+                }
+            };
+            if (dialect.id === 'universal') model.renderAudit.universal = model.renderAudit.byDialect.universal;
+            RENDER_AUDIT = null;
         }
-        return renderHls(model, dialect, opts);
+        return text;
     }
 
     // ───────────────────────────────────────────────────────────────────────
@@ -1859,7 +2059,7 @@
         lines.push('PRIVACIDAD: este ZIP contiene URLs y cabeceras de tu lista. No lo compartas.');
         lines.push('');
         lines.push('Contenido:');
-        lines.push('  universal.m3u8      -> todos los tags, sin pérdida (diagnóstico)');
+        lines.push('  universal.m3u8      -> todos los tags; transformaciones declaradas (renderAudit/limits)');
         lines.push('  vlc.m3u8            -> VLC / libVLC');
         lines.push('  kodi.m3u8           -> Kodi / PVR IPTV Simple');
         lines.push('  tivimate.m3u8       -> TiviMate');
@@ -1935,6 +2135,30 @@
         };
     }
 
+    /* H-7 / H-5 publicados en buildReport.limits con las CIFRAS medidas, no como promesa. */
+    function limitExtHttp(model) {
+        const w = (model && Array.isArray(model.warnings) ? model.warnings : []).filter(function (l) {
+            return l.indexOf('EXTHTTP recortado') === 0 || l.indexOf('EXTHTTP descartado') === 0;
+        });
+        if (!w.length) {
+            return 'H-7: ningún #EXTHTTP emitido superó el presupuesto de ' + EXTHTTP_MAX_BYTES +
+                ' B / ' + EXTHTTP_MAX_KEYS + ' cabeceras en este bundle.';
+        }
+        return 'H-7: ' + w.length + ' aviso(s) de presupuesto EXTHTTP en este bundle — ' + w[0];
+    }
+
+    function limitUniversal(model) {
+        const u = (model && isObj(model.renderAudit)) ? model.renderAudit.universal : null;
+        if (!u) return 'H-5: universal no se renderizó en este bundle; no hay transformaciones que declarar.';
+        const transforms = u.duplicateLinesCollapsed + u.kodipropReserialized + u.exthttpReserialized;
+        if (!transforms) {
+            return 'H-5: universal no transformó nada (0 líneas colapsadas, 0 claves re-codificadas, 0 bloques re-serializados).';
+        }
+        return 'H-5: universal declara sus transformaciones — ' + u.duplicateLinesCollapsed +
+            ' línea(s) duplicada(s) colapsada(s), ' + u.kodipropReserialized + ' bloque(s) KODIPROP re-serializado(s), ' +
+            u.headersPercentEncoded + ' valor(es) percent-encoded, ' + u.exthttpReserialized + ' bloque(s) EXTHTTP re-serializado(s).';
+    }
+
     function buildReport(model, bundle) {
         const d = getDialectList();
         const tagInventory = model.stats ? model.stats.tags : {};
@@ -1995,7 +2219,9 @@
                 'Los tags desconocidos se conservan en universal.m3u8 y se listan aquí.',
                 'Apple/AVPlayer y ffmpeg reciben cabeceras por sidecar, no por M3U.',
                 'http403Count y c2aCount cuentan sólo señales en contexto de reproducción (URI, nombre visible o tags que NO son #EXT-X-APE-*); las que aparecen dentro de metadata APE se publican aparte en metadata403Count y metadataC2aCount y no son eventos de reproducción.',
-                'El manifiesto no se lista a sí mismo (manifest.json): un hash no puede depender de su propio contenido; la exclusión se declara en manifest.excluded.'
+                'El manifiesto no se lista a sí mismo (manifest.json): un hash no puede depender de su propio contenido; la exclusión se declara en manifest.excluded.',
+                limitExtHttp(model),
+                limitUniversal(model)
             ]
         };
     }
