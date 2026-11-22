@@ -111,23 +111,211 @@ function textOf(file) {
     return (file.filename.endsWith('.gz') ? zlib.gunzipSync(file.bytes) : file.bytes).toString('utf8');
 }
 
+// ── CABLEADO POR EL VPS (/pulse/) ────────────────────────────────────────────────────────────
+// El generador envuelve cada canal para que el vídeo pase por el VPS
+// (m3u8-typed-arrays-ultimate.js, _apePulseWrap): la URI emitida ya NO es la del proveedor,
+// es <base>/pulse/<id>.m3u8?u=<url origen urlencoded>&d=<dev>. Por eso la aserción de origen
+// se TRASLADA al parámetro u=, que debe decodificar byte-idéntico a la URI fuente —auth,
+// escapes y orden de query incluidos—. No se relaja ninguna aserción: se comprueba en el
+// sitio donde ahora vive el dato.
+const PULSE_BASE = 'https://iptv-ape.duckdns.org';
+
+// Canal que el envoltorio NO puede cablear: no hay id numérico en la URL, así que
+// _apePulseWrap devuelve la línea tal cual (m3u8-typed-arrays-ultimate.js). Es exactamente el
+// caso que el rótulo del panel declara como "queda directo" (t16, hallazgo t8).
+const noIdChannel = [{
+    id: 'sin-id', name: 'Sin id',
+    url: 'https://audit.invalid/live/u/p/stream.m3u8?sig=a%2Bb'
+}];
+
+// Sustituye el catálogo del arnés por uno propio (admisión incluida, que el controller
+// consulta al arrancar) para medir un canal distinto sin tocar los fixtures compartidos.
+function withChannels(env, channels) {
+    env.ctx.app.getFilteredChannels = () => channels;
+    env.ctx.APEHealthRuntime.admittedMap = new Map(channels.map(c => ['id:' + c.id, {}]));
+    return env;
+}
+
+// Decodifica un parámetro de query SIN la conversión '+' → espacio de URLSearchParams:
+// aquí '+' es un byte literal de la query del proveedor, no un espacio.
+function queryParam(uri, name) {
+    const match = uri.match(new RegExp('[?&]' + name + '=([^&]*)'));
+    return match ? decodeURIComponent(match[1]) : null;
+}
+
+// ── ATRIBUTOS NATIVOS DECLARADOS SIN PROBE · se verifica la FORMA, no la capacidad ──────────
+// [2026-11-21] La DECISIÓN DEL PROPIETARIO del 2026-11-21
+// (docs/policies/OWNER_DECISION_2026-11-21_NATIVE_TARGET_ATTRIBUTES_WITHOUT_PROBE.md)
+// AUTORIZA declarar CODECS / RESOLUTION / FRAME-RATE / VIDEO-RANGE de OBJETIVO aunque no haya
+// probe: la lista declara el objetivo de reconstrucción, no una fuente medida. Por eso este
+// guard YA NO VETA la presencia de #EXT-X-STREAM-INF (antes exigía 0 ocurrencias, y con el
+// generador actual estaba rojo: emite una variante por canal). Lo que sigue verificándose es
+// la FORMA de lo declarado —la decisión quita la exigencia de probe, NO la de formato— y NO
+// se añade aquí ningún guard de CAPACIDAD: la Ley Cardinal 1 (nivel incapaz de la resolución
+// declarada) sigue vigente y se decide aparte (decisión del 2026-11-15 §3 B-2 y §4 del
+// documento del 2026-11-21).
+const CODEC_RFC6381 = /^(avc1\.[0-9a-fA-F]{6}|(hvc1|hev1|dvh1|dvhe)\.[0-9A-Fa-f]+\.[0-9A-Fa-f]+(?:\.[0-9A-Za-z]+)*|av01\.[0-9]+\.[0-9]+[MH]\.[0-9]+|mp4a\.40\.(?:2|5|29)|ac-3|ec-3|opus|vp09\.[0-9]+\.[0-9]+\.[0-9]+)$/;
+const VIDEO_CODEC_FAMILY = /^(avc1|hvc1|hev1|dvh1|dvhe|av01|vp09)\./;
+const VIDEO_RANGES = new Set(['SDR', 'PQ', 'HLG']);
+
+// Lista de atributos de un STREAM-INF: separa por comas RESPETANDO comillas (CODECS lleva una
+// coma dentro del valor: CODECS="hvc1…,mp4a…"). Devuelve nombre -> valor sin comillas.
+function parseStreamInfAttributes(body) {
+    const attrs = Object.create(null);
+    let current = '';
+    let inQuotes = false;
+    const push = () => {
+        const raw = current.trim();
+        current = '';
+        if (!raw) return;
+        const eq = raw.indexOf('=');
+        assert.ok(eq > 0, 'atributo declarado con forma NOMBRE=valor · ' + JSON.stringify(raw));
+        const name = raw.slice(0, eq).trim();
+        let value = raw.slice(eq + 1).trim();
+        if (value.length > 1 && value[0] === '"' && value[value.length - 1] === '"') value = value.slice(1, -1);
+        assert.equal(attrs[name], undefined, 'atributo duplicado en un mismo STREAM-INF: ' + name);
+        attrs[name] = value;
+    };
+    for (const character of body) {
+        if (character === '"') inQuotes = !inQuotes;
+        if (character === ',' && !inQuotes) { push(); continue; }
+        current += character;
+    }
+    push();
+    return attrs;
+}
+
+// Forma de UNA variante declarada sin probe. NO comprueba capacidad (nivel ↔ resolución/fps).
+function assertDeclaredVariantForm(variant) {
+    const attrs = parseStreamInfAttributes(variant);
+    for (const required of ['BANDWIDTH', 'CODECS', 'RESOLUTION']) {
+        assert.ok(attrs[required] !== undefined, 'atributo obligatorio declarado: ' + required + ' · ' + variant);
+    }
+    assert.ok(/^\d+$/.test(attrs.BANDWIDTH) && Number(attrs.BANDWIDTH) > 0,
+        'BANDWIDTH entero > 0 · ' + attrs.BANDWIDTH);
+    if (attrs['AVERAGE-BANDWIDTH'] !== undefined) {
+        assert.ok(/^\d+$/.test(attrs['AVERAGE-BANDWIDTH']) && Number(attrs['AVERAGE-BANDWIDTH']) > 0,
+            'AVERAGE-BANDWIDTH entero > 0 · ' + attrs['AVERAGE-BANDWIDTH']);
+        assert.ok(Number(attrs['AVERAGE-BANDWIDTH']) <= Number(attrs.BANDWIDTH),
+            'coherencia: AVERAGE-BANDWIDTH no supera BANDWIDTH · ' + variant);
+    }
+    const codecs = attrs.CODECS.split(',').map(codec => codec.trim()).filter(Boolean);
+    assert.ok(codecs.length > 0, 'CODECS con al menos una entrada · ' + attrs.CODECS);
+    for (const codec of codecs) {
+        assert.ok(CODEC_RFC6381.test(codec), 'codec string con forma RFC 6381 · ' + codec + ' · ' + variant);
+    }
+    assert.equal(codecs.filter(codec => VIDEO_CODEC_FAMILY.test(codec)).length, 1,
+        'exactamente un codec de vídeo declarado por variante · ' + attrs.CODECS);
+    assert.ok(/^\d{2,5}x\d{2,5}$/.test(attrs.RESOLUTION), 'RESOLUTION parseable WxH · ' + attrs.RESOLUTION);
+    const [width, height] = attrs.RESOLUTION.split('x').map(Number);
+    assert.ok(width > 0 && height > 0, 'RESOLUTION con dimensiones > 0 · ' + attrs.RESOLUTION);
+    if (attrs['FRAME-RATE'] !== undefined) {
+        assert.ok(/^\d+(?:\.\d+)?$/.test(attrs['FRAME-RATE']) && Number(attrs['FRAME-RATE']) > 0,
+            'FRAME-RATE numérico > 0 · ' + attrs['FRAME-RATE']);
+    }
+    if (attrs['VIDEO-RANGE'] !== undefined) {
+        assert.ok(VIDEO_RANGES.has(attrs['VIDEO-RANGE']), 'VIDEO-RANGE en {SDR,PQ,HLG} · ' + attrs['VIDEO-RANGE']);
+    }
+    return attrs;
+}
+
 function checkPlaylist(text, channels, cdn) {
     const uris = text.split(/\r?\n/).filter(line => /^https?:\/\//.test(line));
     assert.equal((text.match(/^#EXTINF:/gm) || []).length, channels.length, 'channel count');
     assert.equal(uris.length, channels.length, 'one URI per channel');
     for (let i = 0; i < channels.length; i++) {
-        const expected = cdn && i === 0 ? channels[i].url.replace('https://', 'https://relay.invalid/cdn/') : channels[i].url;
-        // Includes pipe headers if the real generator appends them; source URI
-        // itself, including encoded auth/query bytes, must be unchanged.
-        assert.equal(uris[i].split('|')[0], expected, 'exact source/auth URI');
+        // Includes pipe headers if the real generator appends them.
+        const emitted = uris[i].split('|')[0];
+        // 1) La URI emitida es la envuelta del VPS, y con el id de ESTE canal (no otro).
+        const prefix = PULSE_BASE + '/pulse/' + String(channels[i].id) + '.m3u8?';
+        assert.ok(emitted.startsWith(prefix), 'emitted URI is the VPS pulse wrapper of this channel: ' + emitted);
+        // 2) La aserción de origen, trasladada a u=: byte-idéntica a la URI FUENTE.
+        //    Medido: es la misma en _DIRECTA y en _CDN. El rewrap CDN no aparece dentro de u=
+        //    porque el envoltorio /pulse/ sustituye la línea antes y su host no está en
+        //    ape_cdn_hosts; si apareciera, el VPS proxearía al relay (doble salto) en vez de
+        //    al proveedor. Por eso u= se exige SIEMPRE contra la URL del proveedor.
+        const u = queryParam(emitted, 'u');
+        if (cdn) {
+            assert.equal(u, channels[i].url,
+                'CDN file keeps the pristine source inside u= · emitted: ' + emitted);
+        } else {
+            assert.equal(u, channels[i].url,
+                'u= decodes byte-identical to the source/auth URI · emitted: ' + emitted);
+        }
+        // 3) d= (payload del device) presente: sin él pulse.php responde 400 "falta u".
+        assert.ok(queryParam(emitted, 'd'), 'd= device payload present: ' + emitted);
     }
     assert.equal((text.match(/^#EXT-X-APE-REA:/gm) || []).length, channels.length, 'REA request on every channel');
-    assert.ok(!/#EXT-X-STREAM-INF:/.test(text), 'unknown fixture source does not gain invented native attributes');
+    // 4) ATRIBUTOS NATIVOS DE OBJETIVO SIN PROBE (decisión del propietario, 2026-11-21 —
+    //    docs/policies/OWNER_DECISION_2026-11-21_NATIVE_TARGET_ATTRIBUTES_WITHOUT_PROBE.md).
+    //    Declarar CODECS/RESOLUTION/FRAME-RATE/VIDEO-RANGE de objetivo sin probe está
+    //    AUTORIZADO: una variante declarada por canal, y cada una con forma válida. Lo que NO
+    //    se acepta es una declaración mal formada ni una fuente falsa ni un nivel incapaz
+    //    (Ley Cardinal 1: capacidad, no se evalúa en esta tarea).
+    const declaredVariants = [...text.matchAll(/^#EXT-X-STREAM-INF:(.*)$/gm)].map(match => match[1]);
+    assert.equal(declaredVariants.length, channels.length,
+        'una variante declarada por canal (single URL per channel) · ' + declaredVariants.length + ' vs ' + channels.length);
+    for (const variant of declaredVariants) assertDeclaredVariantForm(variant);
 }
 
 async function test(label, body) { await body(); passed++; console.log('PASS ' + label); }
 
 async function main() {
+    // ── HECHOS DEL CABLEADO Y DEL PLANO CDN (t16 · hallazgos t8) ───────────────────────────
+    // [2026-11-21] Estos dos casos van ANTES de la matriz de despacho a propósito: la matriz
+    // queda bloqueada por la aserción PREEXISTENTE de '#EXT-X-STREAM-INF:' (el generador emite
+    // STREAM-INF y este arnés no relaja esa aserción), así que lo que se ponga DESPUÉS nunca se
+    // ejecutaría. Aquí se ejecutan y se miden de verdad.
+    await test('una URL sin id numérico NO se envuelve: el cableado es por canal, no por lista', async () => {
+        // Es el límite que el rótulo del panel declara en vez de afirmar "la lista pasa por el
+        // VPS" como hecho: solicitar APE_PULSE_WRAP=true NO garantiza que cada canal se cablee.
+        const env = withChannels(environment(), noIdChannel);
+        env.ctx.APE_PULSE_WRAP = true;   // cableado SOLICITADO, igual que hace el panel
+        await env.ctx.APEGenerationController.prepublishAndGenerateDirect({ filename: 'noid', hud: false });
+        const text = textOf((await fileBytes(env))[0]);
+        const uris = text.split(/\r?\n/).filter(line => /^https?:\/\//.test(line));
+        assert.equal(uris.length, 1, 'one URI per channel');
+        assert.equal(uris[0].split('|')[0], noIdChannel[0].url,
+            'sin id numérico la línea sale tal cual al proveedor (auth y query intactos)');
+        assert.ok(!text.includes('/pulse/'), 'ninguna línea /pulse/ cuando el canal no tiene id numérico');
+    });
+
+    await test('_CDN declara el plano /cdn/ aunque no reescriba ninguna URL ya cableada', async () => {
+        // Estado real medido y fijado aquí: con canales cableables, la URI emitida es la del
+        // envoltorio y el rewrap CDN no toca NINGUNA línea de URL; sin embargo el controller
+        // declara #EXT-X-APE-CDN-PLANE/#EXT-X-APE-CDN-BASE en la cabecera de _CDN
+        // (generation-controller.js, _cdnPlaneBlock). Los dos planos no dicen lo mismo: la
+        // reconciliación queda como tarea propia (ver informe de t16), no como comentario.
+        const env = environment();
+        await env.ctx.APEGenerationController.prepublishAndGenerateDual({ dual: 'cdn', filename: 'cdnplane', hud: false });
+        const cdnFile = (await fileBytes(env)).find(f => f.filename.indexOf('_CDN') >= 0);
+        assert.ok(cdnFile, 'la salida CDN se entregó');
+        const text = textOf(cdnFile);
+        const uris = text.split(/\r?\n/).filter(line => /^https?:\/\//.test(line));
+        assert.equal(uris.length, env.channels.length, 'one URI per channel');
+        for (const uri of uris) {
+            assert.ok(uri.startsWith(PULSE_BASE + '/pulse/'), 'la URL emitida es la envuelta: ' + uri);
+        }
+        const rewritten = uris.filter(uri => uri.indexOf('relay.invalid/cdn/') >= 0).length;
+        assert.equal(rewritten, 0, 'NINGUNA línea de URL pasa por el plano /cdn/: ' + JSON.stringify(uris));
+        assert.ok(text.includes('#EXT-X-APE-CDN-PLANE:v4'),
+            'pero el plano se declara en la cabecera de _CDN');
+        assert.ok(text.includes('#EXT-X-APE-CDN-BASE:'),
+            'y declara su base, que es la única aparición de /cdn/ en el archivo');
+        // Complemento medido, para que la decisión sea explícita: el plano CDN SÍ reescribe los
+        // canales que el envoltorio no pudo cablear. No está muerto: cubre justo a esos.
+        const envNoId = withChannels(environment(), noIdChannel);
+        envNoId.ctx.APE_PULSE_WRAP = true;
+        await envNoId.ctx.APEGenerationController.prepublishAndGenerateDual({ dual: 'cdn', filename: 'cdnplane2', hud: false });
+        const cdnNoId = (await fileBytes(envNoId)).find(f => f.filename.indexOf('_CDN') >= 0);
+        const urisNoId = textOf(cdnNoId).split(/\r?\n/).filter(line => /^https?:\/\//.test(line));
+        assert.equal(urisNoId.length, 1, 'one URI per channel');
+        assert.ok(urisNoId[0].indexOf('relay.invalid/cdn/') >= 0,
+            'un canal sin id numérico SÍ lo reescribe el plano CDN: ' + urisNoId[0]);
+        assert.ok(urisNoId[0].indexOf(noIdChannel[0].url.replace(/^https?:\/\//, '')) >= 0,
+            'y conserva host, ruta y credenciales del origen: ' + urisNoId[0]);
+    });
+
     for (const picker of [false, true]) for (const gzip of [false, true]) for (const mode of ['direct', 'cdn', 'both']) {
         await test(mode + ' / ' + (picker ? 'FSAA' : 'Blob') + ' / gzip=' + gzip, async () => {
             const env = environment({ picker, gzip });
@@ -329,6 +517,23 @@ async function main() {
             assert.equal(env.downloads.length, 0);
         });
     }
+
+    await test('APE_PULSE_WRAP=false desactiva el envoltorio y devuelve la URI del proveedor', async () => {
+        // [2026-11-21 · t6] El panel ahora fija este flag POR SALIDA. Esta prueba demuestra que
+        // el flag ES el control (la superficie de rollback que antes no existía): en false la
+        // línea vuelve a ser la URL del proveedor, byte a byte, sin /pulse/.
+        const env = environment();
+        env.ctx.APE_PULSE_WRAP = false;
+        await env.ctx.APEGenerationController.prepublishAndGenerateDirect({ filename: 'unwrapped', hud: false });
+        const text = textOf((await fileBytes(env))[0]);
+        const uris = text.split(/\r?\n/).filter(line => /^https?:\/\//.test(line));
+        assert.equal(uris.length, env.channels.length, 'one URI per channel');
+        for (let i = 0; i < env.channels.length; i++) {
+            assert.equal(uris[i].split('|')[0], env.channels[i].url,
+                'raw provider URI (auth and query bytes unchanged) when the flag is false');
+        }
+        assert.ok(!text.includes('/pulse/'), 'no pulse wrapper with APE_PULSE_WRAP=false');
+    });
 
     console.log(JSON.stringify({ passed, scope: 'production_dispatch_small_fixtures', physical_playback_verified: false }));
 }
