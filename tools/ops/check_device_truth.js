@@ -37,7 +37,12 @@ if (!fs.existsSync(target)) {
 
 let j;
 try {
-    j = JSON.parse(fs.readFileSync(target, 'utf8'));
+    /* [2026-11-22 · MEDIDO] El watchdog escribe LATEST.json con BOM UTF-8 (0xEF 0xBB 0xBF,
+     * tipico de Out-File/Set-Content de PowerShell en Windows). JSON.parse lo rechaza
+     * ("Unexpected token '\uFEFF'"). Se tolera el BOM al leer; el defecto real esta en el
+     * escritor y se reporta aparte — no se parchea el productor desde el consumidor. */
+    const raw = fs.readFileSync(target, 'utf8').replace(/^\uFEFF/, '');
+    j = JSON.parse(raw);
 } catch (e) {
     fail(1, 'ILEGIBLE: ' + target + ' — ' + (e && e.message));
 }
