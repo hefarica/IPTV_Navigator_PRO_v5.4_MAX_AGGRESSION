@@ -100,6 +100,53 @@ const HLS_MEDIA = '#EXTM3U\n' +
     'seg2.m4s\n' +
     '#EXT-X-ENDLIST\n';
 
+/* ─── FORMA DE CATÁLOGO REAL (H-1/H-2/H-12) ────────────────────────────────
+ * Reproduce el ORDEN LITERAL medido en artifacts/parsers/_emisiones.../_catalogo_12.m3u8:
+ * cabecera de catálogo con metadata de media playlist heredada (#EXT-X-TARGETDURATION,
+ * SERVER-CONTROL, PART-INF, START, SESSION-KEY) y, por cada uno de los 12 perfiles del LAB:
+ *
+ *   #EXTINF:-1 tvg-* ape-profile=…   ← el canal
+ *   …directivas (EXTHTTP, APE, EXTVLCOPT, KODIPROP, personalizada)
+ *   #EXT-X-STREAM-INF:…             ← la variante de ESE canal
+ *   http://…/1.m3u8                 ← la URL del canal
+ *
+ * Se genera en vez de incrustar 1,7 MB, pero el orden y las familias de tag son las reales.
+ * withStreamInf=false da la variante de los modos A/B del generador (sin STREAM-INF). */
+const LAB_PROFILES = ['P0', 'P0.5', 'P1', 'P1.5', 'P2', 'P2.5', 'P3', 'P3.5', 'P4', 'P4.5', 'P5', 'P5.5'];
+
+function buildRealCatalog(withStreamInf) {
+    const out = ['#EXTM3U x-tvg-url="http://example.com/epg.xml"'];
+    out.push('#EXT-X-TARGETDURATION:2');
+    out.push('#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.5');
+    out.push('#EXT-X-PART-INF:PART-TARGET=0.5');
+    out.push('#EXT-X-START:TIME-OFFSET=0');
+    out.push('#EXT-X-SESSION-KEY:METHOD=NONE');
+    LAB_PROFILES.forEach(function (p, i) {
+        out.push('#EXTINF:-1 tvg-id="t.' + p + '" tvg-name="TEST ' + p + '" tvg-logo="" tvg-chno="' + (i + 1) +
+            '" tvg-shift="0" group-title="TEST" ape-profile="' + p + '",TEST ' + p);
+        out.push('#EXTHTTP:{"User-Agent":"UA/' + p + '","Origin":"http://example.com","Range":"bytes=0-","X-APE-Profile":"' + p + '"}');
+        out.push('#EXT-X-APE-REA-HTTP-OVERFLOW:{"exo_tunneled_playback":"true"}');
+        out.push('#EXTVLCOPT:network-caching=8000');
+        out.push('#EXTVLCOPT:clock-synchro=1');
+        out.push('#EXTVLCOPT:video-hdr-nits=400');
+        out.push('#KODIPROP:inputstream.adaptive.manifest_type=hls');
+        out.push('#KODIPROP:inputstream.adaptive.stream_headers=User-Agent=UA%2F' + p + '&Connection=keep-alive');
+        out.push('#EXT-X-APE-PROFILE:' + p);
+        out.push('#EXT-X-APE-CONNECTION-BUDGET:1');
+        out.push('#EXT-X-APE-INSTALLER:DECLARED=1');
+        out.push('#EXT-X-CUSTOM-DESCONOCIDO:' + p);
+        if (withStreamInf) {
+            out.push('#EXT-X-STREAM-INF:BANDWIDTH=25000000,AVERAGE-BANDWIDTH=20000000,RESOLUTION=5760x3240,' +
+                'CODECS="hvc1.2.4.L183.B0,mp4a.40.2",FRAME-RATE=120.000,VIDEO-RANGE=PQ');
+        }
+        out.push('http://example.com/live/u/p/' + (i + 1) + '.m3u8');
+    });
+    return out.join('\n') + '\n';
+}
+
+const REAL_CATALOG = buildRealCatalog(true);        // modo C (producción): con STREAM-INF
+const REAL_CATALOG_FLAT = buildRealCatalog(false);  // modos A/B del generador: sin STREAM-INF
+
 // ───────────────────────────────────────────────────────────────────────────
 // 1 · PARSEO PLANO
 // ───────────────────────────────────────────────────────────────────────────
@@ -307,6 +354,86 @@ function testHlsMedia() {
 
     const vlc = MP.render(m, 'vlc');
     assertIncludes(vlc, '#EXTVLCOPT:http-user-agent=TestUA', 'VLC conserva EXTVLCOPT de media');
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// 6b · FORMA DE CATÁLOGO REAL (H-1 extracción de canales, H-2 EXTHTTP en HLS)
+// ───────────────────────────────────────────────────────────────────────────
+
+function testRealCatalogShape() {
+    console.log('\n── 6b · Catálogo real: EXTINF + directivas + STREAM-INF + URI ─');
+    const m = MP.parse(REAL_CATALOG, { sourceName: 'catalogo-12' });
+
+    /* ── H-1: la forma de producción NO pierde el canal ── */
+    assertEqual(m.kind, 'hls_master', 'catálogo real con STREAM-INF: tipo master');
+    assertEqual(m.hls.variants.length, 12, '12 variantes (una por perfil)');
+    assertEqual(m.channels.length, 12, 'H-1 · 12 canales extraídos (antes: 0)');
+    assertEqual(m.quarantine.length, 0, 'H-1 · cero cuarentena por STREAM-INF');
+    assertEqual(m.stats.channels, 12, 'stats.channels = 12');
+    assertEqual(m.stats.segments, 0, 'un catálogo no se cuenta como 12 segmentos');
+
+    const c0 = m.channels[0];
+    const c11 = m.channels[11];
+    assertEqual(c0.meta.name, 'TEST P0', 'nombre del canal desde su EXTINF');
+    assertEqual(c11.meta.name, 'TEST P5.5', 'el último canal conserva su nombre');
+    assert(!!c0.url && /^https?:\/\/.+\.m3u8/.test(c0.url), 'H-1 · url = URI que sigue al STREAM-INF', c0.url);
+    assert(c0.directives.length >= 9, 'H-1 · directivas intermedias asociadas al canal', 'n=' + c0.directives.length);
+    assertEqual(c0.directives.filter(function (d) { return d.tagUpper === '#EXTVLCOPT'; }).length, 3, '3 EXTVLCOPT en el canal 0');
+    assertEqual(c0.directives.filter(function (d) { return d.tagUpper === '#KODIPROP'; }).length, 2, '2 KODIPROP en el canal 0');
+    assertEqual(c0.directives.filter(function (d) { return d.tagUpper === '#EXT-X-STREAM-INF'; }).length, 0, 'el STREAM-INF no se duplica como directiva');
+    assertEqual(m.channels.filter(function (c) { return !c.url; }).length, 0, 'ningún canal sin URL');
+    assertEqual(m.channels.filter(function (c) { return !c.meta.name; }).length, 0, 'ningún canal sin nombre');
+    assertEqual(m.channels.filter(function (c) { return c.directives.length === 0; }).length, 0, 'ningún canal sin directivas');
+
+    /* cabeceras por canal, cosechadas de las directivas intermedias */
+    assertEqual(c0.safeHeaders['User-Agent'], 'UA/P0', 'User-Agent cosechado del EXTHTTP del canal');
+    assert(!c0.safeHeaders['Range'], 'Range eliminado del canal (tóxica)');
+    assert(!c0.safeHeaders['Connection'], 'Connection eliminada del canal (tóxica)');
+    assertEqual(m.stats.headers, 12, '12 canales con cabeceras saneadas');
+
+    /* ── H-2: quien declara exthttp DEBE emitirlo también en el render HLS ── */
+    const exo = MP.render(m, 'exoplayer');
+    assertIncludes(exo, '#EXTHTTP:', 'H-2 · ExoPlayer emite EXTHTTP en render HLS');
+    assertEqual(exo.split('\n').filter(function (l) { return l.indexOf('#EXTHTTP:') === 0; }).length, 12, 'H-2 · 12 bloques EXTHTTP para 12 canales');
+    assertNotIncludes(exo, '"Range"', 'H-2 · EXTHTTP emitido sin Range');
+    assertIncludes(MP.render(m, 'tivimate'), '#EXTHTTP:', 'H-2 · TiviMate emite EXTHTTP');
+    assertIncludes(MP.render(m, 'ott'), '#EXTHTTP:', 'H-2 · OTT Navigator emite EXTHTTP');
+    assertIncludes(MP.render(m, 'smarters'), '#EXTHTTP:', 'H-2 · Smarters emite EXTHTTP');
+    assertIncludes(MP.render(m, 'generic'), '#EXTHTTP:', 'H-2 · genérico emite EXTHTTP');
+    assertNotIncludes(MP.render(m, 'hlsjs'), '#EXTHTTP', 'hls.js NO emite EXTHTTP (va en sidecar, y capabilities lo dice)');
+    assertNotIncludes(MP.render(m, 'vlc'), '#EXTHTTP', 'VLC NO emite EXTHTTP (usa EXTVLCOPT)');
+    assertIncludes(MP.render(m, 'vlc'), '#EXTVLCOPT:network-caching=8000', 'VLC conserva sus EXTVLCOPT');
+
+    /* capabilities coherente en los dos caminos (no a medias) */
+    const caps = MP.getCapabilities().dialects;
+    const cap = function (id) { return caps.filter(function (x) { return x.id === id; })[0]; };
+    assertEqual(cap('exoplayer').flat.exthttp, true, 'capabilities.flat.exthttp de exoplayer = true');
+    assertEqual(cap('exoplayer').hls.exthttp, true, 'capabilities.hls.exthttp de exoplayer = true (H-2)');
+    assertEqual(cap('tivimate').hls.exthttp, true, 'capabilities.hls.exthttp de tivimate = true');
+    assertEqual(cap('hlsjs').hls.exthttp, false, 'capabilities.hls.exthttp de hls.js = false (verdad)');
+    assertEqual(cap('vlc').hls.exthttp, false, 'capabilities.hls.exthttp de vlc = false (verdad)');
+
+    /* universal conserva el documento; el bundle ve los 12 canales */
+    const uni = MP.render(m, 'universal');
+    assertEqual(uni.split('\n').filter(function (l) { return l.indexOf('#EXTINF:') === 0; }).length, 12, 'universal conserva los 12 EXTINF');
+    assertIncludes(uni, '#EXT-X-CUSTOM-DESCONOCIDO:P0', 'universal conserva la directiva no estándar del canal');
+    assertIncludes(uni, '#EXT-X-APE-INSTALLER:DECLARED=1', 'universal conserva el tag APE del canal');
+    const bundle = MP.buildBundleZip(m, { includeSidecars: true });
+    const man = JSON.parse(bundle.files['manifest.json']);
+    assertEqual(man.channels, 12, 'manifiesto declara 12 canales');
+    assertEqual(man.variants, 12, 'manifiesto declara 12 variantes');
+    const sidecars = Object.keys(bundle.files).filter(function (f) { return f.indexOf('sidecars/') === 0; });
+    assert(sidecars.length >= 4, 'H-2 · el bundle genera sidecars (antes: 0)', sidecars.join(','));
+
+    /* ── variante sin STREAM-INF (modos A/B del generador): también 12 canales ── */
+    const mf = MP.parse(REAL_CATALOG_FLAT, { sourceName: 'catalogo-12-sin-streaminf' });
+    assertEqual(mf.kind, 'flat', 'catálogo sin STREAM-INF: tipo flat, no media', 'kind=' + mf.kind);
+    assertEqual(mf.channels.length, 12, 'H-1 · 12 canales también sin STREAM-INF');
+    assertEqual(mf.hls.segments.length, 0, 'no inventa 12 segmentos');
+    assertEqual(mf.quarantine.length, 0, 'cero cuarentena');
+
+    /* el master puro sigue sin canales: el assert de la sección 5 NO se toca */
+    assertEqual(MP.parse(HLS_MASTER).channels.length, 0, 'un master sin EXTINF sigue con 0 canales');
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -561,6 +688,7 @@ function main() {
     testRoundTrip();
     testHlsMaster();
     testHlsMedia();
+    testRealCatalogShape();
     testQuarantine();
     testDiagnose();
     testApeHttpHeaders();

@@ -801,15 +801,28 @@
             }
 
             if (tag === '#EXT-X-STREAM-INF') {
-                closeCurrent('STREAM-INF anterior sin URI');
-                current = {
-                    type: 'variant',
-                    lineNo: item.lineNo,
-                    attrs: item.attrs || Object.create(null),
-                    leading: pending,
-                    directives: [],
-                    uri: null
-                };
+                /* FORMA DE CATÁLOGO REAL (medida en t9/t12 sobre la emisión de los 12 perfiles):
+                 * el canal se declara con un #EXTINF y sus ~950 directivas, y MÁS ABAJO aparece el
+                 * #EXT-X-STREAM-INF de su variante. Ese #EXTINF no se cierra ni se encuarentena:
+                 * se PROMOCIONA a variante conservando extinf, leading y directivas. La URI que
+                 * sigue al STREAM-INF es la URL del canal. Antes de este arreglo cada canal real
+                 * iba a cuarentena ("STREAM-INF anterior sin URI") y la variante quedaba sin
+                 * nombre, sin metadatos y sin una sola directiva: 12 canales -> 0 canales. */
+                if (current && current.type === 'extinf' && !current.uri) {
+                    current.type = 'variant';
+                    current.attrs = item.attrs || Object.create(null);
+                    current.promoted = true;
+                } else {
+                    closeCurrent('STREAM-INF anterior sin URI');
+                    current = {
+                        type: 'variant',
+                        lineNo: item.lineNo,
+                        attrs: item.attrs || Object.create(null),
+                        leading: pending,
+                        directives: [],
+                        uri: null
+                    };
+                }
                 pending = [];
                 continue;
             }
@@ -853,7 +866,24 @@
             return it.type === 'tag' && it.tagUpper === '#EXT-X-MEDIA';
         });
 
-        if (variantBlocks.length || hasMediaTag) {
+        /* ¿Catálogo de canales o media playlist? Un catálogo IPTV apunta cada entrada a un
+         * MANIFIESTO (.m3u8/.m3u) o lleva ape-profile; una media playlist apunta a SEGMENTOS.
+         * La distinción importa porque el catálogo APE arrastra metadata de media playlist
+         * (#EXT-X-TARGETDURATION, SERVER-CONTROL, PART-INF, START — medido en t8) que NO lo
+         * convierte en media: sin este discriminante, 12 canales se contaban como 12 "segmentos"
+         * y channels quedaba en 0. */
+        const looksChannelCatalog = extinfBlocks.length > 0 && extinfBlocks.every(function (b) {
+            const u = b.uri || '';
+            if (/\.(m3u8?|m3u)(\?|#|$)/i.test(u)) return true;
+            const a = (b.extinf && b.extinf.attrsLower) || {};
+            return !!(a['ape-profile'] || a['me-profile']);
+        });
+
+        if (variantBlocks.length) {
+            model.kind = 'hls_master';
+        } else if (looksChannelCatalog) {
+            model.kind = 'flat';
+        } else if (hasMediaTag) {
             model.kind = 'hls_master';
         } else if (hasTarget || (extinfBlocks.length && model.items.some(function (it) {
             return it.type === 'uri' && /\.(ts|m4s|mp4|aac|vtt|key)(\?|#|$)/i.test(it.uri || '');
@@ -867,19 +897,27 @@
 
         model.blocks = model.blocks.filter(function (b) { return !!b.uri; });
 
+        /* Construcción de canales con un único tope, para todos los tipos. */
+        const maxChannels = opts.maxChannels && opts.maxChannels > 0 ? opts.maxChannels : Infinity;
+        function buildChannels(chBlocks) {
+            for (let i = 0; i < chBlocks.length && i < maxChannels; i++) {
+                model.channels.push(makeChannel(chBlocks[i], i));
+            }
+            if (chBlocks.length > maxChannels) {
+                model.warnings.push('maxChannels alcanzado: ' + maxChannels + ' de ' + chBlocks.length);
+            }
+        }
+
         if (model.kind === 'flat') {
-            const flatBlocks = model.blocks.filter(function (b) { return b.type === 'extinf'; });
-            const max = opts.maxChannels && opts.maxChannels > 0 ? opts.maxChannels : flatBlocks.length;
-            for (let i = 0; i < flatBlocks.length && i < max; i++) {
-                model.channels.push(makeChannel(flatBlocks[i], i));
-            }
-            if (flatBlocks.length > max) {
-                model.warnings.push('maxChannels alcanzado: ' + max + ' de ' + flatBlocks.length);
-            }
+            buildChannels(model.blocks.filter(function (b) { return b.type === 'extinf'; }));
         } else if (model.kind === 'hls_media') {
             model.hls.segments = model.blocks.filter(function (b) { return b.type === 'extinf'; });
         } else if (model.kind === 'hls_master') {
             model.hls.variants = variantBlocks;
+            /* Cada variante PROMOCIONADA (nació de un #EXTINF) ES un canal: url = URI que sigue
+             * al #EXT-X-STREAM-INF, directivas = las ~950 intermedias, nombre/metadatos = EXTINF.
+             * Un master HLS puro no tiene EXTINF y sigue con channels = 0 (correcto). */
+            buildChannels(variantBlocks.filter(function (b) { return !!b.extinf; }));
         }
 
         analyzeHls(model);
@@ -962,7 +1000,7 @@
             description: 'EXTINF + EXTVLCOPT + EXTHTTP; sin KODIPROP ni tags APE.',
             layers: [LAYER.HEADER, LAYER.EXTINF, LAYER.EXTGRP, LAYER.HTTP, LAYER.VLC],
             flat: { header: 'safe', attrs: 'all', headerMode: 'mixed', keepExtGrp: true, keepVlc: true, keepKodi: false, keepApe: false, keepUnknown: false },
-            hls: { layers: [LAYER.HEADER, LAYER.EXTINF, LAYER.HLS] }
+            hls: { layers: [LAYER.HEADER, LAYER.EXTINF, LAYER.HTTP, LAYER.HLS] }
         },
         ott: {
             id: 'ott',
@@ -971,7 +1009,7 @@
             description: 'EXTHTTP JSON + EXTVLCOPT de cabeceras; sin KODIPROP.',
             layers: [LAYER.HEADER, LAYER.EXTINF, LAYER.EXTGRP, LAYER.HTTP, LAYER.VLC],
             flat: { header: 'safe', attrs: 'all', headerMode: 'mixed', keepExtGrp: true, keepVlc: true, keepKodi: false, keepApe: false, keepUnknown: false },
-            hls: { layers: [LAYER.HEADER, LAYER.EXTINF, LAYER.HLS] }
+            hls: { layers: [LAYER.HEADER, LAYER.EXTINF, LAYER.HTTP, LAYER.HLS] }
         },
         smarters: {
             id: 'smarters',
@@ -980,7 +1018,7 @@
             description: 'EXTINF + EXTVLCOPT + EXTHTTP; formato clásico de apps Android.',
             layers: [LAYER.HEADER, LAYER.EXTINF, LAYER.EXTGRP, LAYER.HTTP, LAYER.VLC],
             flat: { header: 'safe', attrs: 'all', headerMode: 'mixed', keepExtGrp: true, keepVlc: true, keepKodi: false, keepApe: false, keepUnknown: false },
-            hls: { layers: [LAYER.HEADER, LAYER.EXTINF, LAYER.HLS] }
+            hls: { layers: [LAYER.HEADER, LAYER.EXTINF, LAYER.HTTP, LAYER.HLS] }
         },
         exoplayer: {
             id: 'exoplayer',
@@ -989,7 +1027,7 @@
             description: 'HLS estándar + EXTHTTP; sin EXTVLCOPT, KODIPROP ni APE.',
             layers: [LAYER.HEADER, LAYER.EXTINF, LAYER.HTTP],
             flat: { header: 'safe', attrs: 'exoplayer', headerMode: 'http', keepExtGrp: false, keepVlc: false, keepKodi: false, keepApe: false, keepUnknown: false },
-            hls: { layers: [LAYER.HEADER, LAYER.EXTINF, LAYER.HLS] }
+            hls: { layers: [LAYER.HEADER, LAYER.EXTINF, LAYER.HTTP, LAYER.HLS] }
         },
         apple: {
             id: 'apple',
@@ -1034,7 +1072,7 @@
             description: 'EXTINF + EXTVLCOPT + EXTHTTP; el mínimo que casi cualquier app acepta.',
             layers: [LAYER.HEADER, LAYER.EXTINF, LAYER.EXTGRP, LAYER.HTTP, LAYER.VLC],
             flat: { header: 'safe', attrs: 'all', headerMode: 'mixed', keepExtGrp: true, keepVlc: true, keepKodi: false, keepApe: false, keepUnknown: false },
-            hls: { layers: [LAYER.HEADER, LAYER.EXTINF, LAYER.HLS] }
+            hls: { layers: [LAYER.HEADER, LAYER.EXTINF, LAYER.HTTP, LAYER.HLS] }
         }
     };
 
@@ -1116,6 +1154,8 @@
                 },
                 hls: {
                     standard: true,
+                    /* Misma verdad que el lado flat: es lo que renderHls emite de verdad. */
+                    exthttp: d.flat.headerMode === 'http' || d.flat.headerMode === 'mixed' || d.flat.headerMode === 'preserve',
                     extvlcopt: d.hls.layers.indexOf(LAYER.VLC) !== -1,
                     kodiprop: d.hls.layers.indexOf(LAYER.KODI) !== -1,
                     ape: d.hls.layers.indexOf(LAYER.APE) !== -1,
@@ -1437,9 +1477,19 @@
             if (item.layer === LAYER.EXTGRP && dialect.id !== 'universal') continue;
 
             if (item.layer === LAYER.HTTP) {
-                if (dialect.id !== 'universal') continue;
-                const p = parseExtHttp(item.body);
-                out.push(renderHttpHeaders(p.headers));
+                /* H-2: un dialecto que declara `exthttp:true` (headerMode http/mixed/preserve)
+                 * DEBE emitir el bloque también en el render HLS. Antes sólo lo emitía `universal`
+                 * y en producción eso significaba 0 de 236 cabeceras para tivimate/ott/smarters/
+                 * exoplayer mientras capabilities.json declaraba exthttp:true. Los dialectos con
+                 * headerMode 'none'/'vlc'/'kodi' siguen sin emitirlo, y ahora capabilities.json lo
+                 * declara también en el lado HLS (getCapabilities). */
+                const carriesHttp = dialect.id === 'universal' ||
+                    dialect.flat.headerMode === 'http' ||
+                    dialect.flat.headerMode === 'mixed' ||
+                    dialect.flat.headerMode === 'preserve';
+                if (!carriesHttp) continue;
+                const hline = renderHttpHeaders(parseExtHttp(item.body).headers);
+                if (hline) out.push(hline);
                 continue;
             }
 
