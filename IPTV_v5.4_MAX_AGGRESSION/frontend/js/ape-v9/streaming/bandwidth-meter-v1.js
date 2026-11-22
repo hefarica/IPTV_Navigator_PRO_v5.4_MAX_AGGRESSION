@@ -70,6 +70,16 @@ function apeProbeUrl(path) {
         RISK_ANCHORS: [[3.0, 5], [2.0, 20], [1.5, 35], [1.3, 50], [1.0, 70], [0, 95]],
         CONCURRENCY_MAX: 8,          // invariante del repo: 8, nunca más
         MIN_BINS_VALIDOS: 3,
+        /* [2026-11-21] Un sampler PASIVO sólo es evidencia de transporte si de
+         * verdad corrieron bytes de media en la ventana. Por debajo de este umbral
+         * es el ruido de la propia página (recursos, sondas fallidas) y NO puede
+         * dimensionar un buffer: el caso medido publicó 0.2 Mbps y reescribió los
+         * 12 perfiles a 0.01x. */
+        RT_MIN_BYTES: 2 * 1024 * 1024,
+        /* [2026-11-21] Piso de la sonda SINTÉTICA. `bytes > 0` era demasiado débil:
+         * una sonda que solo alcanzó a traer 4 KB publicó 1.18 Mbps y reescribió los
+         * 12 perfiles. Una muestra por debajo de esto no dimensiona transporte. */
+        PROBE_MIN_BYTES: 512 * 1024,
         // SONDA SINTÉTICA: fichero estático del propio servidor (nunca el
         // proveedor: su slot es único y una sonda lo tumbaría). Se cancela en
         // cuanto pasa la ventana, así que el tope sólo acota el daño.
@@ -133,6 +143,11 @@ function apeProbeUrl(path) {
         }
         var sum = 0, i;
         for (i = 0; i < usados.length; i++) sum += usados[i];
+        /* [2026-11-21] BYTES reales de la ventana: la prueba de que hubo transporte.
+         * Un `mbpsSafe` pequeño con pocos KB es tráfico incidental de la página, no
+         * un enlace lento. Sin este número el auto-tune no podía distinguirlos. */
+        var bytesVentana = 0;
+        for (i = 0; i < (samples || []).length; i++) bytesVentana += (Number(samples[i] && samples[i].bytes) || 0);
         var avg = sum / usados.length;
         var min = Math.min.apply(null, usados);
         var max = Math.max.apply(null, usados);
@@ -145,6 +160,7 @@ function apeProbeUrl(path) {
             warmupBinsDropped: dropped,
             bins: perBin.length,
             binsActivos: activos.length,
+            bytes: bytesVentana,
             perBinMbps: perBin.map(round2),
             windowS: windowS || LAW.WINDOW_S_DEFAULT
         };
@@ -354,10 +370,16 @@ function apeProbeUrl(path) {
                 if (ci < cands.length - 1) { ci++; return oneRound(); }
                 return null;
             }
+            /* [2026-11-21 · MEDIDO EN CHROME 157] SIN `Range`. Corrección de la
+             * primera hipótesis: `Range` simple es CORS-safelisted, NO disparaba el
+             * preflight (medido: GET con Range → 206 OK). Se quita por doctrina del
+             * repo (header tóxico) y porque el presupuesto de bytes ya se aplica
+             * cortando el reader. Se deja sólo `Accept`, que sí es safelisted.
+             * El preflight real del ciclo lo disparaba `X-APE-Rtt` en headRtt. */
             return fetchFn(cands[ci] + baseBust + '-' + round, {
                 cache: 'no-store',
                 signal: ctlC.signal,
-                headers: { 'Accept': '*/*', 'Range': 'bytes=0-' + (maxBytes - 1) }
+                headers: { 'Accept': '*/*' }
             }).then(function (res) {
                 clearTimeout(tCand);
                 if (!res || !res.ok) {
@@ -478,6 +500,59 @@ function apeProbeUrl(path) {
         });
     }
 
+    /* [2026-11-21 · MEDIDO] ¿Esta lectura puede mover parámetros? Sólo si describe
+     * TRANSPORTE. Rechaza el artefacto exacto que degradó los 12 perfiles:
+     * sonda bloqueada por preflight (405) → fallback al sampler pasivo → 0.2 Mbps
+     * de tráfico incidental de la página → ratios 0.01x. Un no-dato no se convierte
+     * en decisión de ingeniería. Devuelve {ok, reason} — nunca lanza. */
+    function isTrustworthyMeasurement(r) {
+        if (!r || r.ok !== true) {
+            return { ok: false, reason: 'medición no válida (' + ((r && (r.state || r.reason)) || 'sin estado') + ')' };
+        }
+        var m = r.measurement || null;
+        if (!m || m.state !== 'MEASURED') {
+            return { ok: false, reason: 'sin bins en régimen (' + ((m && (m.state || m.reason)) || 'sin measurement') + ')' };
+        }
+        var mbps = Number(m.mbpsSafe);
+        if (!(mbps > 0)) return { ok: false, reason: 'mbpsSafe no positivo' };
+        /* 1 · sonda sintética real (mode 'probe'): hay bytes y hay URL objetivo. */
+        if (r.probe && Number(r.probe.bytes) > 0) {
+            var bytesSonda = Number(r.probe.bytes) || 0;
+            var L = (root && root.APE_LEDGER) ? root.APE_LEDGER : null;
+            /* 1a · loopback no es transporte: mide el disco del propio host. */
+            if (L && typeof L.scopeOf === 'function' && L.scopeOf(r.probe.probeUrl) === 'loopback') {
+                return {
+                    ok: false,
+                    reason: 'sonda contra loopback (' + (r.probe.probeUrl || 'sin url') + '): mide el disco, no el enlace',
+                    bytes: bytesSonda
+                };
+            }
+            /* 1b · piso de bytes: 4 KB no dimensionan un buffer. */
+            if (bytesSonda < LAW.PROBE_MIN_BYTES) {
+                return {
+                    ok: false,
+                    reason: 'sonda con ' + bytesSonda + ' B (< ' + LAW.PROBE_MIN_BYTES + ' B): muestra insuficiente para dimensionar el transporte',
+                    bytes: bytesSonda
+                };
+            }
+            return { ok: true, source: r.probe.source || 'synthetic-probe', bytes: bytesSonda, mbps: mbps };
+        }
+        /* 2 · sonda 8 MB del medidor de caudal (ape-speed-meter-v9). */
+        if (m.source === 'ape-speed-meter-v9') {
+            return { ok: true, source: m.source, bytes: Number(m.bytes) || 0, mbps: mbps };
+        }
+        /* 3 · sampler pasivo: sólo si de verdad corrieron MB de media. */
+        var bytes = Number(m.bytes) || 0;
+        if (bytes < LAW.RT_MIN_BYTES) {
+            return {
+                ok: false,
+                reason: 'sin sonda: ' + bytes + ' B medidos (< ' + LAW.RT_MIN_BYTES + ' B) — sampler pasivo con tráfico incidental, no dimensiona el transporte',
+                bytes: bytes
+            };
+        }
+        return { ok: true, source: m.source || 'resource-timing', bytes: bytes, mbps: mbps };
+    }
+
     return {
         LAW: LAW,
         toBins: toBins,
@@ -487,6 +562,7 @@ function apeProbeUrl(path) {
         integrate: integrate,
         startSampler: startSampler,
         probe: probe,
-        measureAndIntegrate: measureAndIntegrate
+        measureAndIntegrate: measureAndIntegrate,
+        isTrustworthyMeasurement: isTrustworthyMeasurement
     };
 });

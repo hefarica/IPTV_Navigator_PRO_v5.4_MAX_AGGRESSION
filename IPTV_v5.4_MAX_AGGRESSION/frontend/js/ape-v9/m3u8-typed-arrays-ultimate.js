@@ -460,7 +460,14 @@
                 triggerCortexRecovery(response.status, response.url || url);
                 return response;
             } catch (err) {
-                triggerCortexRecovery(0, url);
+                /* [2026-11-21 · MEDIDO] Un AbortError es NUESTRA cancelación (fin de
+                 * la ventana de medición, cambio de canal, timeout propio), no un
+                 * host caído. Marcarlo como status=0 aplicaba la curva 2→16 s al
+                 * proveedor y reventaba el ciclo siguiente: el medidor se envenenaba
+                 * a sí mismo (CYCLE_DEADLINE 12000 ms + tormenta de CÓRTEX).
+                 * Sólo se penaliza un fallo real de transporte. */
+                const _cancelado = !!(err && (err.name === 'AbortError' || err.code === 20));
+                if (!_cancelado) triggerCortexRecovery(0, url);
                 throw err;
             }
         };

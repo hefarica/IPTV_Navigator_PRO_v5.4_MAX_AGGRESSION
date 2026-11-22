@@ -3430,8 +3430,53 @@
             const cfg = this.config;
             if (!T || typeof T.deterministic !== 'function' || !cfg || typeof cfg.getProfile !== 'function') return null;
             const acc = (r && r.measurement) || {};
+            /* [2026-11-21 · MEDIDO] GATE DE PROCEDENCIA. Un número sólo mueve
+             * parámetros si describe TRANSPORTE. Caso real: la sonda estaba
+             * bloqueada por preflight (405 → status 0), `mode:'auto'` cayó al
+             * sampler pasivo y publicó 0.2 Mbps de tráfico incidental de la
+             * página; este método reescribió los 12 perfiles a 0.01x. La ley
+             * anti-degradación prohíbe degradar por un no-dato. Sin procedencia
+             * verificable: no se toca nada y se nombra la causa. */
+            const BW = (typeof window !== 'undefined') ? window.APE_BW_METER : null;
+            if (BW && typeof BW.isTrustworthyMeasurement === 'function') {
+                const tv = BW.isTrustworthyMeasurement(r);
+                if (!tv.ok) {
+                    this._lastAutoTuneSkip = { at: Date.now(), reason: tv.reason };
+                    if (typeof console !== 'undefined' && console.warn) {
+                        console.warn('[AUTO-TUNE] omitido: ' + tv.reason + ' (los perfiles NO se tocan)');
+                    }
+                    return null;
+                }
+            }
             const mbps = (typeof acc.mbpsSafe === 'number' && isFinite(acc.mbpsSafe) && acc.mbpsSafe > 0) ? acc.mbpsSafe : null;
             if (mbps === null) return null;
+
+            /* [2026-11-21 · MEDIDO] HISTÉRESIS ASIMÉTRICA contra el vaivén real de la
+             * sesión: 355 → 1.18 → 102 Mbps en 90 s, tres planes distintos y los 12
+             * perfiles reescritos tres veces. SUBIR es inmediato (una medición mejor
+             * siempre se aprovecha). BAJAR exige DOS mediciones consecutivas dentro de
+             * 10 min: una caída súbita puede ser una sonda defectuosa, no el enlace.
+             * El estado vive en el ledger, así que sobrevive a la recarga (F5). */
+            const LED = (typeof window !== 'undefined') ? window.APE_LEDGER : null;
+            const HOLD_MS = 10 * 60 * 1000;
+            if (LED && typeof LED.getState === 'function') {
+                const prev = LED.getState() || null;
+                const prevMbps = (prev && Number(prev.mbps) > 0) ? Number(prev.mbps) : null;
+                const prevAt = (prev && Number(prev.at)) ? Number(prev.at) : 0;
+                const reciente = prevMbps !== null && (Date.now() - prevAt) < HOLD_MS;
+                if (reciente && mbps < prevMbps * 0.5) {
+                    const pend = (Number(prev.pendingLow) || 0) + 1;
+                    if (pend < 2) {
+                        LED.setState({ pendingLow: pend, lastLowMbps: mbps, lastLowAt: Date.now(), mbps: prevMbps, reason: 'caída súbita en espera de confirmación' });
+                        this._lastAutoTuneHold = { at: Date.now(), mbps: mbps, prevMbps: prevMbps, pendingLow: pend };
+                        if (typeof console !== 'undefined' && console.warn) {
+                            console.warn('[AUTO-TUNE] en espera (' + pend + '/2): ' + mbps + ' Mbps es <50% de ' + prevMbps + ' Mbps recientes. Perfiles intactos; se confirma con la próxima medición.');
+                        }
+                        return null;
+                    }
+                }
+                LED.setState({ mbps: mbps, pendingLow: 0, confirmedAt: Date.now(), reason: 'aplicado', scope: acc.scope || null });
+            }
             const ids = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P0.5', 'P1.5', 'P2.5', 'P3.5', 'P4.5', 'P5.5'];
             const aplicado = [];
             for (const id of ids) {
@@ -3457,6 +3502,21 @@
             }
             if (!aplicado.length) return null;
             if (typeof cfg.save === 'function') cfg.save();
+            /* [2026-11-21 · ENCARGO] El CÁLCULO también se persiste: qué número lo
+             * produjo, con qué ámbito, y el antes/después de cada perfil. Única
+             * fuente de verdad del plan aplicado, cubre la vía del gobernador y la
+             * del botón AUTO-AJUSTAR. Si el ledger falla, el tune sigue. */
+            if (LED && typeof LED.pushPlan === 'function') {
+                try {
+                    LED.pushPlan({
+                        mbps: mbps,
+                        alcance: 'todos',
+                        source: acc.source || (r && r.source) || 'APE_BW_METER',
+                        scope: acc.scope || null,
+                        perfiles: aplicado
+                    });
+                } catch (e) { /* el ledger nunca rompe el tune */ }
+            }
             this._lastAutoTune = { at: Date.now(), mbps: mbps, perfiles: aplicado };
             if (typeof console !== 'undefined') {
                 console.log('[AUTO-TUNE] aplicado a ' + aplicado.length + ' perfiles · medido ' + mbps +

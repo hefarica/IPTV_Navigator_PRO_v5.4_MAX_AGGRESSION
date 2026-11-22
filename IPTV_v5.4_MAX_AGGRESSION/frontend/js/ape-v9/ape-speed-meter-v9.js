@@ -14,6 +14,21 @@
  */
 'use strict';
 
+/* [2026-11-21 · MEDIDO] Fetch NATIVO capturado en carga, antes de que nadie lo
+ * parchee. `ape-runtime-evasion-engine.js` reemplaza window.fetch y su
+ * `interceptedFetch` SÍ matchea `.m3u8` (isMediaRequest), así que la sonda entraba
+ * en la cadena de reintentos del motor y se comía la ventana entera. Probado en el
+ * stack real del operador:
+ *     tirarDeUrl → interceptedFetch @ ape-runtime-evasion-engine.js:569
+ *               → window.fetch @ :938 → net::ERR_FAILED
+ * El motor inyecta además una pausa humana aleatoria (25 % de las peticiones,
+ * 50-2000 ms) y un gate de cooldown por host: veneno puro para medir caudal.
+ * Se mide con el fetch del navegador, sin adorno. `opts.fetch` sigue disponible
+ * para pruebas. Mismo patrón que bandwidth-meter-v1.js (NATIVE_FETCH). */
+var NATIVE_FETCH = (typeof window !== 'undefined' && typeof window.fetch === 'function')
+    ? window.fetch
+    : ((typeof globalThis !== 'undefined' && typeof globalThis.fetch === 'function') ? globalThis.fetch : null);
+
 var DEFAULTS = {
     concurrency: 4,
     durationMs: 4000,
@@ -50,10 +65,11 @@ function construirUrl(u) {
  * Si la respuesta no entrega bytes se anota en `fallos` con el HTTP real: un 404
  * no es "sin muestras", es una sonda inexistente. Fail-honest: se nombra la causa. */
 async function tirarDeUrl(url, opts, muestras, fallos, deadline) {
+    var f = (opts && typeof opts.fetch === 'function') ? opts.fetch : (NATIVE_FETCH || fetch);
     var ac = new AbortController();
     var stop = setTimeout(function () { try { ac.abort(); } catch (e) { } }, Math.max(100, deadline - now()));
     try {
-        var res = await fetch(construirUrl(url), { signal: ac.signal, cache: 'no-store', credentials: 'same-origin' });
+        var res = await f(construirUrl(url), { signal: ac.signal, cache: 'no-store', credentials: 'same-origin' });
         if (!res.ok || !res.body) {
             if (fallos) {
                 fallos.push({

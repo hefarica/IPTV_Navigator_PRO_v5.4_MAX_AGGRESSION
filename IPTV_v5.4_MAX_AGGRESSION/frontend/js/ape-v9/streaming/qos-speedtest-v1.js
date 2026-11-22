@@ -47,6 +47,16 @@ function apeProbeUrl(path) {
 })(typeof globalThis !== 'undefined' ? globalThis : this, function (root) {
     'use strict';
 
+    /* [2026-11-21 · MEDIDO] Fetch NATIVO capturado en carga, antes de que nadie lo
+     * parchee. `ape-runtime-evasion-engine.js` intercepta window.fetch y su
+     * `interceptedFetch` SÍ matchea `.m3u8` (isMediaRequest): la sonda entraba en la
+     * cadena de reintentos y se comía la ventana. Stack real del operador:
+     *     headRtt → interceptedFetch @ ape-runtime-evasion-engine.js:589
+     *             → window.fetch @ :938 → net::ERR_FAILED
+     * El motor añade además pausa humana aleatoria (25 %, 50-2000 ms) y cooldowns
+     * por host: veneno para medir. `opts.fetch` sigue sirviendo para pruebas. */
+    var NATIVE_FETCH = (root && typeof root.fetch === 'function') ? root.fetch : null;
+
     var DEFAULTS = {
         minWindowS: 5,
         maxWindowS: 10,
@@ -55,7 +65,10 @@ function apeProbeUrl(path) {
         stopBins: 3,
         rampBins: 1,         // descartar el primer bin siempre
         rampBins2: 2,        // y el segundo si hay >= 6 bins
-        maxBytesPerStream: 96 * 1024 * 1024,
+        /* [2026-11-21] 96 MB por stream × 8 streams eran 768 MB por medición: la
+         * sonda saturaba el mismo enlace que intenta medir y, con `no-store`,
+         * volvía a bajarlo entero en cada ciclo. 24 MB × 8 = 192 MB de techo. */
+        maxBytesPerStream: 24 * 1024 * 1024,
         streamsMin: 4,
         streamsMax: 8
     };
@@ -94,7 +107,14 @@ function apeProbeUrl(path) {
     function openStream(f, url, aborter, budget, onBytes) {
         var ctl = new AbortController();
         var st = { url: url, bytes: 0, done: false, error: null, reader: null };
-        var opts = { cache: 'no-store', method: 'GET', headers: { Range: 'bytes=0-' } };
+        /* [2026-11-21 · MEDIDO EN CHROME 157] SIN `Range`. Corrección de la primera
+         * hipótesis: en el estándar Fetch `Range` es **safelisted** cuando es un
+         * rango simple, así que este header NO rompía el CORS (medido en navegador:
+         * GET con `Range: bytes=0-` → 206 OK). Se quita igualmente porque figura en
+         * la lista de headers tóxicos del repo y no aporta nada aquí: el presupuesto
+         * de bytes ya se aplica cancelando el reader. El preflight real venía de
+         * `X-APE-Rtt` en headRtt (ver allí, medido BLOCKED). */
+        var opts = { cache: 'no-store', method: 'GET' };
         if (aborter) opts.signal = ctl.signal;
         st.abort = function () { try { ctl.abort(); } catch (e) { /* noop */ } };
         st.promise = Promise.resolve()
@@ -134,7 +154,9 @@ function apeProbeUrl(path) {
     /* RTT de un HEAD al MISMO origen (no a otro host: nada de CORS). */
     function headRtt(f, url, opts) {
         var t0 = nowMs(opts);
-        return f(url, { method: 'HEAD', cache: 'no-store', headers: { 'X-APE-Rtt': '1' } })
+        /* Mismo motivo que en openStream: un header propio dispara preflight y el
+         * edge contesta 405. `X-APE-Rtt` era el disparador en los HEAD de RTT. */
+        return f(url, { method: 'HEAD', cache: 'no-store' })
             .then(function (res) {
                 var ms = Math.round(nowMs(opts) - t0);
                 if (!res || res.ok !== true) return { ok: false, ms: ms, state: 'HTTP_' + (res ? res.status : 'x') };
@@ -198,7 +220,7 @@ function apeProbeUrl(path) {
     function measure(opts) {
         opts = opts || {};
         var d = opts.defaults || DEFAULTS;
-        var f = opts.fetch || root.fetch;
+        var f = opts.fetch || NATIVE_FETCH || root.fetch;
         if (typeof f !== 'function') {
             return Promise.resolve({ ok: false, state: 'NO_FETCH', reason: 'sin fetch: no se puede medir' });
         }

@@ -4418,15 +4418,17 @@
      generador. Es un snapshot con fecha: si el TTL paso, re-medir y regenerar. -->
 <script src="js/ape-v9/ape-server-profiles-data.js?v=20261106-ready"></script>
 
-<script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20261120-autoapply"></script>
+<script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20261121-preflight"></script>
   <!-- 🪦 OMEGA SLOT REAPER — Pre-flight liberation of Xtream max_connections slots -->
   <script src="js/ape-v9/slot-reaper.js?v=1.0.0-omega-20260409"></script>
   <script src="js/ape-v9/m3u8-quality-upgrader-v2.js?v=2.0"></script>
   <script src="js/ape-v9/hud-typed-arrays.js?v=16.1-tickprofile-20260417"></script>
   <!-- 🩺 APE GENERATION CONTROLLER — engancha botón health-check + generateHealthyList -->
-  <script src="js/ape-v9/ape-speed-meter-v9.js?v=20261121-speed"></script>
-  <script src="js/ape-v9/ape-speedmeter-bridge.js?v=20261121-speed"></script>
-  <script src="js/ape-v9/generation-controller.js?v=20261119-allprofiles"></script>
+  <!-- 🗃️ APE MEASUREMENT LEDGER — memoria durable: toda medición y todo plan aplicado -->
+  <script src="js/ape-v9/ape-measurement-ledger.js?v=20261121-preflight"></script>
+  <script src="js/ape-v9/ape-speed-meter-v9.js?v=20261121-preflight"></script>
+  <script src="js/ape-v9/ape-speedmeter-bridge.js?v=20261121-preflight"></script>
+  <script src="js/ape-v9/generation-controller.js?v=20261121-preflight"></script>
   <!-- 🩺 GENERATION HUD OVERLAY — panel discreto top-right que muestra fases del pipeline.
        Solo observa console.log (no toca el flow). window.GenerationHUD.show()/hide() -->
   <script src="js/ape-v9/generation-hud-overlay.js?v=1.2-auto-close-inactivity"></script>
@@ -4716,14 +4718,14 @@
   <!-- Productor de medicion que la ley de suficiencia exige: bins de 1 s sobre
        ventana de 5-10 s desde Resource Timing. Sin el, el panel no puede pasar
        de NO_MEASUREMENT y muestra UNSTABLE/79.97% sin dato real. -->
-  <script src="js/ape-v9/streaming/bandwidth-meter-v1.js?v=20261120-sonda-v2"></script>
-  <script src="js/ape-v9/streaming/qos-speedtest-v1.js?v=20261120-sonda-v2"></script>
+  <script src="js/ape-v9/streaming/bandwidth-meter-v1.js?v=20261121-preflight"></script>
+  <script src="js/ape-v9/streaming/qos-speedtest-v1.js?v=20261121-preflight"></script>
   <!-- Autotuner: NO muestra el health, MUEVE los parametros. Formulas + propuesta
        del LLM de la plataforma (/image/optimize-llm), validada por rangos; si el
        LLM falla o toca fallbacks/codec/resolucion, gana el determinista. -->
   <script src="js/ape-v9/streaming/auto-tune-v1.js?v=20261119-reabase"></script>
   <script src="js/ape-v9/profiles-sync.js?v=20261119-sync"></script>
-<script src="js/ape-v9/profile-manager-v9.js?v=20261120-autotune"></script>
+<script src="js/ape-v9/profile-manager-v9.js?v=20261121-preflight"></script>
   <!-- Profile Manager - Custom Headers Extension -->
   <script src="js/profile-manager-custom-headers.js"></script>
   <script src="js/m3u8-custom-headers-integration.js"></script>
