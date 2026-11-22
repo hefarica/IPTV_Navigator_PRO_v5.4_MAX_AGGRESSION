@@ -99,6 +99,29 @@ if (!fixture) {
     const exp = (J._meta && (J._meta.exported_at || J._meta.exported)) || J.exported_at || null;
     check(!!exp, 'el JSON declara la fecha (exported_at o _meta.exported)', String(exp));
     check(i2.openLabGate(exp) === true && i2.labExportedAt === exp, 'tras abrir el gate, el generador ya no bloquea', String(i2.labExportedAt));
+
+    /* [2026-11-22] el camino A también debe declarar el HDR que dice el fichero, no el literal
+     * del DEFAULT_PROFILES: P3 arrastraba 'hlg' sobre un hdr_mode=SDR (mentira medida). */
+    const DER = (m) => {
+        const u = String(m == null ? '' : m).toUpperCase().replace(/[\s-]+/g, '_');
+        if (u.startsWith('DOLBY_VISION') || u === 'DV') return 'dolby-vision';
+        if (u === 'HDR10PLUS' || u === 'HDR10_PLUS') return 'hdr10+';
+        if (u === 'HDR10') return 'hdr10';
+        if (u === 'HLG') return 'hlg';
+        if (u === 'SDR') return 'sdr';
+        return null;
+    };
+    let coherentes = 0;
+    const malos = [];
+    for (const id of Object.keys(J.profiles)) {
+        const mode = (J.profiles[id].settings || {}).hdr_mode;
+        const got = (i2.profiles[id] && i2.profiles[id].settings || {}).hdr_canonical;
+        const want = DER(mode);
+        if (got === want) coherentes++;
+        else malos.push(id + ': ' + JSON.stringify(got) + ' ≠ ' + JSON.stringify(want) + ' (hdr_mode=' + mode + ')');
+    }
+    check(coherentes === 12, 'camino A: hdr_canonical derivado de hdr_mode en 12/12', malos.join(' | '));
+    check((i2.profiles.P3.settings || {}).hdr_canonical === 'sdr', 'camino A: P3 deja de declarar HLG falso', JSON.stringify((i2.profiles.P3.settings || {}).hdr_canonical));
 }
 
 console.log('\n{"passed":' + pass + ',"failed":' + fail + ',"gate":"honesto"}');

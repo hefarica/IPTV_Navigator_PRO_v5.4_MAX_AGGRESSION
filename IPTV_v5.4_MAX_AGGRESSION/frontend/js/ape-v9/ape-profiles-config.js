@@ -4995,6 +4995,24 @@
                     } else {
                         merged[pid] = imported[pid];
                     }
+                    /* [2026-11-22 · la verdad del HDR también por el camino A] El deep merge
+                     * conserva `hdr_canonical` del DEFAULT_PROFILES cuando el fichero no lo
+                     * declara, y ese literal MIENTE en P3: el fichero dice `hdr_mode=SDR` y el
+                     * default dice 'hlg'. Regla: si el payload declara hdr_mode y NO declara
+                     * hdr_canonical, manda la derivación; si el payload SÍ lo declara, manda el
+                     * fichero (es el SSOT) y no se toca. */
+                    const _imp = imported[pid] || {};
+                    const _impS = (_imp && _imp.settings) ? _imp.settings : {};
+                    if (_impS.hdr_canonical == null && _impS.hdr_mode != null) {
+                        const _der = _apeHdrCanonicalFromMode(_impS.hdr_mode);
+                        if (_der && merged[pid] && merged[pid].settings) {
+                            merged[pid].settings.hdr_canonical = _der;
+                        }
+                    }
+                    _apeBackfillCalibSettings(
+                        merged[pid] && merged[pid].settings,
+                        (DEFAULT_PROFILES[pid] && DEFAULT_PROFILES[pid].settings) || null
+                    );
                 }
                 this.profiles = merged;
                 this.reaProcessing = importedREA;
