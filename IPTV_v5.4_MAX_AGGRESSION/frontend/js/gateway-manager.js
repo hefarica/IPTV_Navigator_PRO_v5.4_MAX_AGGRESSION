@@ -951,10 +951,19 @@
                     signal: AbortSignal.timeout(5000)
                 });
 
-                if (response.type === 'opaque' || response.ok) {
+                // [2026-11-22 · MEDIDO] Una respuesta opaque tiene status 0: prueba
+                // que ALGO contestó, NO que /api/health exista. Medido: /api/health
+                // devuelve 404 y aun así se anunciaba "VPS Online". Se separa.
+                if (response.ok) {
                     dot.style.backgroundColor = '#4ade80';
                     text.innerHTML = `<span style="color: #4ade80; font-weight: bold;">✅ VPS Online:</span> <span style="font-size: 0.7rem;">${vpsUrl}</span>`;
                     console.log('%c✅ Gateway VPS connected (no-cors fallback)', 'color: #4ade80; font-weight: bold;');
+                    return;
+                }
+                if (response.type === 'opaque') {
+                    dot.style.backgroundColor = '#fbbf24';
+                    text.innerHTML = `<span style="color: #fbbf24; font-weight: bold;">⚠️ VPS alcanzable:</span> <span style="font-size: 0.7rem;">${vpsUrl} — salud NO verificada (/api/health)</span>`;
+                    console.log('%c⚠️ Gateway VPS reachable but health UNVERIFIED (opaque)', 'color: #fbbf24;');
                     return;
                 }
             } catch (e) {

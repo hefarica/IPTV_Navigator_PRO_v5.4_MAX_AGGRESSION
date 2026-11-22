@@ -2827,9 +2827,9 @@
                                        oninput="window.ProfileManagerV9.updatePrefetchValue('buffer_target_seconds', parseInt(this.value) || 90)">
                             </div>
                             <div class="pm9-prefetch-setting">
-                                <label>BW Mínimo (Mbps) <span style="font-size:9px;color:#10b981;">AUTO ×1.15 (exigencia)</span></label>
+                                <label>BW Mínimo (Mbps) <span style="font-size:9px;color:#10b981;">AUTO ×1.15 · piso del perfil</span></label>
                                 <input type="number" id="pm9_prefetch_bw" 
-                                       value="${prefetchConfig.min_bandwidth_mbps === 'AUTO' ? 40 : prefetchConfig.min_bandwidth_mbps}"
+                                       value="${this._displayMinBwMbps()}"
                                        readonly style="opacity: 0.8; cursor: not-allowed; border-color: #00ff41;">
                             </div>
                         </div>
@@ -3388,6 +3388,61 @@
          *   3. sin calculador                                 → settings.bitrate (declarado)
          * El riesgo y el headroom del panel se calculan con ESTA base, no con el
          * bitrate declarado a secas: eran dos bases distintas y de ahí el 95. */
+        /* ═══ BW mínimo de prefetch: resolución DETERMINISTA (2026-11-22) ═════════
+         * MEDIDO: el panel mostraba `BW mínimo = 1` en un plan 8K. Origen: el piso
+         * caía a los 0,5 Mbps genéricos de `_requiredMbpsBasis`, se multiplicaba por
+         * 1,15 y redondeaba a 1; ese 1 se persistía y el generador emitía
+         * `#EXT-X-APE-PREFETCH-BW-MIN:1Mbps` sobre un canal 8K.
+         *
+         * REGLA: el piso lo fija el TIER del perfil (resolución). Un valor persistido
+         * MENOR que el piso del tier es basura y NO se acepta como piso. La medición
+         * de red sólo puede SUBIR el valor, nunca bajarlo. Sin medición no se inventa
+         * nada: se devuelve el piso. Todo el cálculo vive en la función pura
+         * `prefetch-min-bw.js` (18 tests en tests/prefetch-min-bw.test.js). */
+        _prefetchFloorMbps(profile) {
+            const M = (typeof window !== 'undefined') ? window.APEPrefetchMinBw : null;
+            if (!M || typeof M.resolveMinBwMbps !== 'function') return null;
+            const p = profile || (this.config && this.config.getProfile
+                ? this.config.getProfile(this.activeProfileId) : null);
+            const st = (p && p.settings) || {};
+            const tierSrc = st.resolution || (p && p.quality_level) || (p && p.qualityLevel) || (p && p.id) || '';
+            const tierMbps = M.tierFloor(tierSrc);
+            const rawDeclared = Number(p && p.prefetch_config && p.prefetch_config.min_bandwidth_mbps);
+            const declaredMbps = (isFinite(rawDeclared) && tierMbps !== null && rawDeclared >= tierMbps)
+                ? rawDeclared : null;
+            return { tierMbps: tierMbps, declaredMbps: declaredMbps, tierSrc: tierSrc };
+        }
+
+        _resolvePrefetchMinBw(profile, measuredMbps) {
+            const M = (typeof window !== 'undefined') ? window.APEPrefetchMinBw : null;
+            if (!M || typeof M.resolveMinBwMbps !== 'function') return null;
+            const f = this._prefetchFloorMbps(profile);
+            if (!f) return null;
+            return M.resolveMinBwMbps({
+                tierMbps: f.tierMbps,
+                declaredMbps: f.declaredMbps,
+                measuredMbps: measuredMbps,
+                margin: this._safetyMargin()
+            });
+        }
+
+        /* Pinta el campo readonly con la MISMA verdad que el veredicto del plan:
+         * si hay plan, su bwMinMbps; si no, el piso determinista del perfil. Nunca
+         * el valor persistido — esa era la segunda fuente de verdad. */
+        _displayMinBwMbps() {
+            try {
+                const plan = this._coherentPlanFor(null, this._activeStrategyId());
+                if (plan && plan.values && plan.values.bwMinMbps !== null && plan.values.bwMinMbps !== undefined) {
+                    const c = this._clampPlanValues(plan.values);
+                    if (c && c.values && c.values.min_bandwidth_mbps !== null && c.values.min_bandwidth_mbps !== undefined) {
+                        return c.values.min_bandwidth_mbps;
+                    }
+                }
+            } catch (e) { /* no bloqueante: se cae al piso */ }
+            const r = this._resolvePrefetchMinBw(null, null);
+            return (r && r.mbps !== null) ? r.mbps : '';
+        }
+
         _requiredMbpsBasis(profile) {
             const p = profile || (this.config && this.config.getProfile
                 ? this.config.getProfile(this.activeProfileId) : null);
@@ -5013,12 +5068,19 @@
                 // bwMinMbps y el que ya rige el panel en
                 // streaming-calculator.js:45 (SAFETY_MARGIN = 1.15).
                 if (this.config && this.config.updatePrefetchSetting) {
-                    const margin = this._safetyMargin();
-                    const __baseRealBW = (typeof ProfileManagerV9 !== "undefined" && ProfileManagerV9._requiredMbpsBasis)
-                    ? ProfileManagerV9._requiredMbpsBasis(profile).mbps : Number(value);
-                const minBwMbps = Math.round((__baseRealBW * margin) * 100) / 100;
-                    this.config.updatePrefetchSetting(profile.id, 'min_bandwidth_mbps', minBwMbps);
-                    console.log(`🧠 Reactive PRO [v13.1]: BW Mínimo Prefetch AUTO → ${minBwMbps} Mbps (${margin}× ${value})`);
+                    /* [2026-11-22] Antes: baseReal × 1,15. Cuando la base caía a los
+                     * 0,5 Mbps genéricos, un perfil 8K quedaba exigiendo 1 Mbps y ese
+                     * valor se persistía y viajaba al generador. Ahora manda el piso
+                     * del TIER del perfil y la medición de red sólo puede SUBIRLO.
+                     * Sin piso declarado no se escribe nada (no se inventa). */
+                    const _meas = (this._freshMeasurement && this._freshMeasurement()) || {};
+                    const _r = this._resolvePrefetchMinBw(profile, _meas.measuredMbpsSafe);
+                    if (_r && _r.mbps !== null) {
+                        this.config.updatePrefetchSetting(profile.id, 'min_bandwidth_mbps', _r.mbps);
+                        console.log(`🧠 [PRE-FETCH BW] ${profile.id}: ${_r.mbps} Mbps (${_r.source}; piso ${_r.floor}; margen ×${_r.margin})`);
+                    } else {
+                        console.log('[PRE-FETCH BW] ' + profile.id + ': sin piso declarado — no se escribe');
+                    }
                 }
             }
 

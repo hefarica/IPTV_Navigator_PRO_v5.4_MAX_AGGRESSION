@@ -1985,8 +1985,24 @@
     injectCss();
     root.className = 'aip';
 
+    // [2026-11-22 · MEDIDO] Gate de capacidad: UNA sola sonda. En el despliegue
+    // actual /jit/image/* responde 404 SIN Access-Control-Allow-Origin, asi que
+    // el navegador rechaza cada fetch; el cortex clasifica ese rechazo como
+    // status=0 (host caido) y penaliza 2,2 s a TODO iptv-ape.duckdns.org.
+    // Con el gate: 1 solicitud en vez de 18 y cero penalizacion al host.
+    api('/image/config').then(function (cfg) {
+      loadAll(root, cfg);
+    }, function () {
+      S.unsupported = true;
+      root.innerHTML = '<div style="padding:10px;font-size:.8rem;line-height:1.5;color:#f59e0b;">' +
+        'Módulo de imagen no disponible en este despliegue (<code>/image/*</code> responde 404). ' +
+        'Panel inactivo: no se envían solicitudes.</div>';
+    });
+  }
+
+  function loadAll(root, cfg) {
     Promise.all([
-      api('/image/config').catch(function () { return null; }),
+      Promise.resolve(cfg),
       api('/image/capacity').catch(function () { return null; }),
       api('/image/state').catch(function () { return null; }),
       api('/image/matrix').catch(function () { return null; }),
@@ -2045,6 +2061,9 @@
   }
 
   function startLive() {
+    // [2026-11-22] Sin modulo de imagen no hay nada que sondear: el poll de
+    // /image/state cada 4 s repetia el rechazo CORS y la penalizacion al host.
+    if (S.unsupported) return;
     setInterval(function () {
       var r = document.getElementById('ape-image-panel');
       if (!r || !r.offsetParent) return;   // solo con la pestana visible

@@ -11699,6 +11699,10 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             };
 
             // Cambiar a pestaña análisis y mostrar éxito
+            // [2026-11-22 · MEDIDO] El flag se libera ANTES de showTab: la propia
+            // guarda de showTab (app.js:2537) bloqueaba esta llamada y la app
+            // nunca aterrizaba en Análisis tras conectar (6× "Tab switch blocked").
+            this._connectionInProgress = false;
             this.showTab('analysis');
             this.showNotification(`✅ ${server.name}: ${rawChannels.length} canales cargados`, false);
 

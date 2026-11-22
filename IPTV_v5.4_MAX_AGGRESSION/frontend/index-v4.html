@@ -2181,7 +2181,7 @@
                           <strong style="color:#4ade80; font-size: 0.75rem;">Anti-Freeze (Buffer/Reconexión)</strong>
                         </div>
                         <select id="antiFreezeLevel" class="input sm" style="width: 100%; font-size: 0.78rem;"
-                          onchange="app.state.antiFreezeLevel = parseInt(this.value); console.log('❄️ Anti-Freeze Level:', this.value);">
+                          onchange="if (window.app) { window.app.state.antiFreezeLevel = parseInt(this.value); } console.log('❄️ Anti-Freeze Level:', this.value);">
                           <option value="1" title="Buffer mínimo, sin reconexión automática">L1 - Mínimo</option>
                           <option value="2" title="Buffer moderado, reconexión básica">L2 - Normal</option>
                           <option value="3" selected title="Buffer balanceado, reconexión automática">L3 - Balanceado ⭐
@@ -4725,6 +4725,9 @@
        LLM falla o toca fallbacks/codec/resolucion, gana el determinista. -->
   <script src="js/ape-v9/streaming/auto-tune-v1.js?v=20261119-reabase"></script>
   <script src="js/ape-v9/profiles-sync.js?v=20261119-sync"></script>
+<!-- [2026-11-22] Resolutor determinista del BW mínimo de prefetch: debe cargarse
+     ANTES de profile-manager-v9.js (el panel lo consulta al pintar). -->
+<script src="js/ape-v9/prefetch-min-bw.js?v=20261122-deterministic"></script>
 <script src="js/ape-v9/profile-manager-v9.js?v=20261121-preflight"></script>
   <!-- Profile Manager - Custom Headers Extension -->
   <script src="js/profile-manager-custom-headers.js"></script>
