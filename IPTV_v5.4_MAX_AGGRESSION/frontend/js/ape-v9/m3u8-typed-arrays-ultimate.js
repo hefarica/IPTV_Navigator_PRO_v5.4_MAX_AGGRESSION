@@ -13577,7 +13577,13 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
         return _apeAppendExtshimottTag(_reaFinalBlock, channel, profile, _probeData, cfg, index, _uaApeProfile, 'https://www.google.com/');
     }
 
-    if (typeof window !== 'undefined') window.APE_GEN = generateM3U8Stream; // [t53/t72] export headless (hoisting)
+    if (typeof window !== 'undefined') window.APE_GEN = generateM3U8Stream; // [t53/t72] export headless
+    // [2026-11-22 · cierra el NO_COMPUTADO de t5] Emisor POR CANAL expuesto para pruebas.
+    // El perfil es el 2º ARGUMENTO de generateChannelEntry, no un campo del canal: por eso
+    // ocho invocaciones a APE_GEN devolvían todas PROFILE=P1 y el experimento se descartó.
+    // Aditivo: no altera la ruta de generación ni un byte de la salida; sólo la hace
+    // verificable desde un test headless (emisión real de la cadena de mejora por perfil).
+    if (typeof window !== 'undefined') window.APE_GEN_CHANNEL = generateChannelEntry; // [t5] emisión por perfil (hoisting)
 
     // [URL-GUARD-DIAG] Resolvedores expuestos para prueba y diagnóstico en consola.
     // Permiten verificar, con los módulos REALES cargados, qué URL resuelve cada
