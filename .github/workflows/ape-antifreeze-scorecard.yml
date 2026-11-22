@@ -1,0 +1,66 @@
+name: ape-antifreeze-scorecard
+
+# Gate del scorer anti-freeze: valida el CONTRATO del script (no el score de una lista
+# concreta). Corre solo cuando cambia el scorer o este workflow, para no meter ruido
+# en el resto del CI.
+#
+# Contrato verificado:
+#   1. sintaxis del script
+#   2. rubric_points = 100 (la rubrica declarada no se altera en silencio)
+#   3. los flags NO se puntuan como ficheros (defecto medido 2026-11-22: el parser
+#      metia "50", la ruta del JSON y la del MD como entradas [AUSENTE])
+#   4. salida determinista entre dos corridas con distinta ruta de salida
+#
+# Lo que este gate NO hace: medir una lista del producto. El score de una lista real
+# depende de sus cartuchos y se mide a mano con --out-json/--out-md sobre los ficheros
+# servidos; ver artifacts/verify/antifreeze_scorecard.md.
+
+on:
+  push:
+    paths:
+      - 'tools/quality/score_antifreeze_lists.js'
+      - '.github/workflows/ape-antifreeze-scorecard.yml'
+  pull_request:
+    paths:
+      - 'tools/quality/score_antifreeze_lists.js'
+      - '.github/workflows/ape-antifreeze-scorecard.yml'
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Sintaxis del scorer
+        run: node --check tools/quality/score_antifreeze_lists.js
+
+      - name: Corrida A sobre fixture versionado
+        run: |
+          node tools/quality/score_antifreeze_lists.js \
+            _vps_stage/tests/regen_headless/fixtures/mini_15.m3u8 \
+            --max-channels 50 --out-json /tmp/a.json --out-md /tmp/a.md
+
+      - name: Corrida B (determinismo)
+        run: |
+          node tools/quality/score_antifreeze_lists.js \
+            _vps_stage/tests/regen_headless/fixtures/mini_15.m3u8 \
+            --max-channels 50 --out-json /tmp/b.json --out-md /tmp/b.md
+
+      - name: Contrato de salida
+        run: |
+          node -e '
+            const a = require("/tmp/a.json"), b = require("/tmp/b.json");
+            if (a.rubric_points !== 100) throw new Error("rubric_points=" + a.rubric_points);
+            if (!Array.isArray(a.results)) throw new Error("results no es array");
+            if (a.results.length !== 1) throw new Error("resultados=" + a.results.length + " (los flags se estan puntuando como ficheros)");
+            const r = a.results[0];
+            if (r.error) throw new Error("error de escaneo: " + r.error);
+            if (r.channels_analyzed !== 15) throw new Error("canales=" + r.channels_analyzed);
+            const k = (x) => JSON.stringify({ ...x, generated_at: 0 });
+            if (k(a) !== k(b)) throw new Error("salida NO determinista entre corridas");
+            console.log("OK rubric=" + a.rubric_points + " results=" + a.results.length + " canales=" + r.channels_analyzed + " determinista=si");
+          '
