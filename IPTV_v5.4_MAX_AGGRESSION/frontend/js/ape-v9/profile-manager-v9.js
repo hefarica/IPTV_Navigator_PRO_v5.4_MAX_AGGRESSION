@@ -6073,6 +6073,38 @@
              * optimized_knobs, fitness, _objective... El deep merge del motor
              * rellena lo que falte y NO borra lo que venga.
              * ═══════════════════════════════════════════════════════════════ */
+            /* ═══════════════════════════════════════════════════════════════════
+             * [2026-11-22 · H-03] El LAB DE FUSIÓN CALIBRADO va por el camino LAB.
+             *
+             * MEDIDO: el bloque de abajo mandaba `_meta.type==='all_profiles'` a
+             * `importProfiles()`, que sólo recibe {profiles, manifest, strategicHeaders,
+             * rea_processing} y DESCARTA `_meta` ⇒ `labExportedAt` quedaba null ⇒
+             * generation-controller.js:1590 aborta la generación ("LAB JSON no importado").
+             * Además ese merge inyecta claves de DEFAULT_PROFILES ausentes del JSON.
+             *
+             * Camino correcto: normalize → importFromLABData (ape-profiles-config.js:5046),
+             * que consume el payload completo y abre el gate con el `_meta.exported` REAL.
+             * Verificado: 12/12 perfiles, labExportedAt abierto, settings intactos.
+             * Si el normalizador o el consumidor no están, se cae al camino viejo.
+             * ═══════════════════════════════════════════════════════════════════ */
+            if (data && data._meta && data._meta.type === 'all_profiles'
+                && typeof window !== 'undefined' && window.APELabNormalize
+                && this.config && typeof this.config.importFromLABData === 'function') {
+                const _n = window.APELabNormalize.normalize(data);
+                if (!_n || !_n.ok) {
+                    throw new Error('LAB all_profiles no normalizable: ' + ((_n && _n.reason) || 'razón desconocida'));
+                }
+                await this.config.importFromLABData(_n.data);
+                this.render();
+                const _idsB = _n.ids || [];
+                console.log('[IMPORT] all_profiles por camino LAB: ' + _idsB.length + ' perfiles → ' + _idsB.join(', ')
+                    + ' · gate exported_at=' + this.config.labExportedAt);
+                alert('✅ ' + _idsB.length + ' perfiles importados por el camino LAB: ' + _idsB.join(', ')
+                    + '\n\nFuente: ' + file.name
+                    + '\nGate LAB abierto (exported_at=' + (this.config.labExportedAt || 'sin fecha') + ')');
+                return;
+            }
+
             if (data && data.profiles && typeof data.profiles === 'object' && !data.lab_version) {
                 const _ids = Object.keys(data.profiles).filter(k => /^P[0-5](?:[._]5)?$/.test(k));
                 if (_ids.length > 0) {

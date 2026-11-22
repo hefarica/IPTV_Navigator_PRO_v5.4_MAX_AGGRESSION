@@ -5079,7 +5079,14 @@
             };
             try {
                 const supportedSchemas = ['omega_v1', 'omega_v1_bulletproof_20260520'];
-                const isBulletproof = data.lab_schema_variant === 'omega_v2_bulletproof_perprofile' || data.bulletproof === true;
+                // [H-02 · 2026-11-22] El LAB de fusión calibrado declara _meta.type='all_profiles'
+                // y el normalizador (ape-lab-normalize.js:55) lo copia a lab_schema_variant.
+                // El gate no lo conocía, así que B (helper → normalize → importFromLABData)
+                // lanzaba "Schema invalido" con 12 perfiles válidos. Se acepta el variant EXACTO
+                // de esa familia; no se abre por prefijo ni se relaja para JSON ajeno.
+                const isBulletproof = data.lab_schema_variant === 'omega_v2_bulletproof_perprofile'
+                    || data.lab_schema_variant === 'all_profiles'
+                    || data.bulletproof === true;
                 // [HARDENING 2026-06-07] Gate de versión tolerante a drift omega_v1→v2+.
                 // El lab_schema_variant YA es 'omega_v2_*'; el día que lab_version suba a
                 // 'omega_v2' por coherencia, el gate viejo (startsWith 'omega_v1') tumbaba el
