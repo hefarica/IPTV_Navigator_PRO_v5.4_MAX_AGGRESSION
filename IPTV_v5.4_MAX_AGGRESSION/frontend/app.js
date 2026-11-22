@@ -5276,11 +5276,9 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             // de una cuenta max_connections=1 y dejaba al player con 403.
             // Además, una respuesta no-cors es opaca: status=0 y Location vacío,
             // así que el probe NUNCA podía detectar el redirect que decía detectar.
-            // Por eso el 403 era INTERMITENTE: dependía de si el slot quedaba
-            // tomado cuando el player pedía su primer segmento.
             //
             // Ahora la decisión se toma con datos que el API ya devolvió:
-            // allowed_output_formats + max_connections. Cero conexiones extra.
+            // allowed_output_formats. Cero conexiones extra, cero slot robado.
             // ═══════════════════════════════════════════════════════════════
             const rawMaxConnections = userInfo.max_connections;
             const parsedMaxConnections = parseInt(rawMaxConnections, 10);

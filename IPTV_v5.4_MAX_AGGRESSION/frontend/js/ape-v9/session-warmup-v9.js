@@ -126,6 +126,12 @@
             this.maxConcurrent = CONFIG.MAX_CONCURRENT;
         }
 
+        /**
+         * Ajusta el presupuesto de conexiones del warmup.
+         * max_connections=1 → 1 HEAD a la vez y sin warmup de /live/.
+         * @param {number} n
+         * @returns {number} concurrencia efectiva
+         */
         setMaxConnections(n) {
             this.maxConnections = Math.max(0, parseInt(n, 10) || 0);
             this.maxConcurrent = this.maxConnections > 0
@@ -156,7 +162,7 @@
                 return { success: true, reason: 'level_too_low', cached: false };
             }
 
-            // Con un solo slot, un HEAD a /live/ puede robarle la conexion al player.
+            // Con un solo slot, un HEAD a /live/ puede robarle la conexión al player.
             if (this.maxConnections === 1 && CONFIG.SKIP_LIVE_ON_SINGLE_SLOT && /\/live\//i.test(url)) {
                 this.stats.skipped++;
                 return { success: false, reason: 'skipped_single_slot', cached: false };
@@ -271,7 +277,7 @@
             }
 
             // Procesar en lotes para no saturar la red.
-            // El tamano de lote respeta el presupuesto de conexiones.
+            // El tamaño de lote respeta el presupuesto de conexiones.
             const results = [];
             const concurrency = Math.max(1, this.maxConcurrent || CONFIG.MAX_CONCURRENT);
             for (let i = 0; i < urls.length; i += concurrency) {
