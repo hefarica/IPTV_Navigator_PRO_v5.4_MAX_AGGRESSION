@@ -555,6 +555,60 @@
     }
 
 
+    /* ═══════════════════════════════════════════════════════════════════════════
+     * [2026-11-22 · VETO t5 — RESTITUCIÓN DE LAS 3 CLAVES DE CALIDAD]
+     *
+     * DEFECTO MEDIDO por el gate de calidad (18 campos, 3 × 6 perfiles):
+     * el merge BULLETPROOF de `importFromLABData` sustituye `settings` EN BLOQUE por el
+     * objeto del LAB, y el LAB no declara tres claves que sólo aportaba el frontend:
+     *
+     *   settings.hdr_canonical   settings.codec_ladder_hvc1   settings.codec_ladder_hev1
+     *
+     * Consecuencia emitida, verificada en el texto real del generador:
+     *   · `#EXT-X-APE-HDR-CANONICAL` dejaba de emitirse (emisor único m3u8:10731).
+     *   · `#EXT-X-APE-PROFILE-CODEC-LADDER-HVC1/-HEV1` dejaban de emitirse (m3u8:8249-8250).
+     *   · `_pmHdrCanonical` caía a 'sdr' → P0 DOLBY_VISION→SDR, P1 HDR10_PLUS→SDR,
+     *     P2 HDR10→SDR, P3 HLG→SDR. Eso es degradación DECLARADA: prohibida por la
+     *     ley anti-degradación.
+     *
+     * REPARACIÓN (medida sobre el JSON real, 12/12 perfiles):
+     *   · `hdr_canonical` se DERIVA de `settings.hdr_mode`, que el LAB SÍ declara en los 12
+     *     (P0 DOLBY_VISION_P8 · P1..P5.5 según su modo). Esto además corrige el HLG falso
+     *     que arrastraba P3 en DEFAULT_PROFILES: el LAB dice SDR y SDR es lo que se declara.
+     *   · Las dos escaleras se toman del DEFAULT_PROFILES del propio perfil cuando el LAB
+     *     no las declare. No se inventa ninguna: si el default tampoco la tiene, la clave
+     *     no se escribe y el consumidor sigue con su fallback.
+     * Lo que YA venga en el LAB manda: sólo se rellena lo ausente.
+     * ═══════════════════════════════════════════════════════════════════════════ */
+    function _apeHdrCanonicalFromMode(hdrMode) {
+        const m = String(hdrMode == null ? '' : hdrMode).trim().toUpperCase().replace(/[\s-]+/g, '_');
+        if (!m) return null;
+        if (m === 'DOLBY_VISION_P8' || m === 'DOLBY_VISION_P5' || m === 'DOLBY_VISION'
+            || m === 'DOLBYVISION' || m === 'DV') return 'dolby-vision';
+        if (m === 'HDR10PLUS' || m === 'HDR10_PLUS') return 'hdr10+';
+        if (m === 'HDR10' || m === 'HDR_10') return 'hdr10';
+        if (m === 'HLG') return 'hlg';
+        if (m === 'SDR') return 'sdr';
+        return null;
+    }
+
+    function _apeBackfillCalibSettings(settings, defaults) {
+        if (!settings || typeof settings !== 'object') return settings;
+        const d = (defaults && typeof defaults === 'object') ? defaults : null;
+        if (settings.hdr_canonical == null) {
+            const derived = _apeHdrCanonicalFromMode(settings.hdr_mode);
+            const fill = derived || (d && d.hdr_canonical) || null;
+            if (fill) settings.hdr_canonical = fill;
+        }
+        if (settings.codec_ladder_hvc1 == null && d && d.codec_ladder_hvc1) {
+            settings.codec_ladder_hvc1 = d.codec_ladder_hvc1;
+        }
+        if (settings.codec_ladder_hev1 == null && d && d.codec_ladder_hev1) {
+            settings.codec_ladder_hev1 = d.codec_ladder_hev1;
+        }
+        return settings;
+    }
+
     const DEFAULT_PROFILES = {
         "P0": {
             "id": "P0",
@@ -5198,6 +5252,15 @@
                                 this.profiles[pid],
                                 JSON.parse(JSON.stringify(lpFixed))
                             );
+                            // [2026-11-22 · VETO t5] El merge sustituye `settings` EN BLOQUE, así que
+                            // se restituyen las 3 claves de calidad que el LAB no declara:
+                            // hdr_canonical se DERIVA de settings.hdr_mode (dato que el LAB sí trae) y
+                            // las escaleras caen al default del perfil. Sin esto se apagaban
+                            // #EXT-X-APE-HDR-CANONICAL y los dos #EXT-X-APE-PROFILE-CODEC-LADDER.
+                            _apeBackfillCalibSettings(
+                                this.profiles[pid].settings,
+                                (DEFAULT_PROFILES[pid] && DEFAULT_PROFILES[pid].settings) || null
+                            );
                             result.headersAdded += Object.keys(lpFixed.headerOverrides || {}).length;
                         } else {
                             // Modo legacy (no-bulletproof): deep merge preserva headers viejos
@@ -5212,6 +5275,10 @@
                     } else {
                         // Profile nuevo (no debería pasar pero safe-guard)
                         this.profiles[pid] = JSON.parse(JSON.stringify(lpFixed));
+                        _apeBackfillCalibSettings(
+                            this.profiles[pid].settings,
+                            (DEFAULT_PROFILES[pid] && DEFAULT_PROFILES[pid].settings) || null
+                        );
                         result.headersAdded += Object.keys(lpFixed.headerOverrides || {}).length;
                     }
 
