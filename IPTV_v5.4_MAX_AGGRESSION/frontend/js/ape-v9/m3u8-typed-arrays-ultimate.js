@@ -9453,6 +9453,21 @@ ${__apeContinuityTags().join('\n')}
         return m ? m[1] : 'P3';   // el resto conserva el fallback histórico
     }
 
+    /* [2026-11-22 · UPSCALING SIEMPRE] Base 6K de un perfil de canal.
+     * La tabla _APE_6K_TABLE está indexada por P0..P5. Antes se exigía que el canal
+     * trajera EXACTAMENTE uno de esos ids: un canal etiquetado `P4.5` (el que el LAB
+     * calibrado habilita) NO recibía su declaración 6K, mientras un canal `P4` sí.
+     * Regla: un `.5` usa la entrada de su tier base; un id desconocido sigue sin tag
+     * (no se inventa). No cambia nada para P0..P5 ni para perfiles inválidos. */
+    function _ape6kBaseOf(profile, table) {
+        const s = String(profile == null ? '' : profile);
+        if (!table) return null;
+        if (Object.prototype.hasOwnProperty.call(table, s) && /^P[0-5]$/.test(s)) return s;
+        const m = s.match(/^(P[0-5])[._]5$/);
+        if (m && Object.prototype.hasOwnProperty.call(table, m[1])) return m[1];
+        return null;
+    }
+
     function _apeIsTiviMateUa(ua) { return /TiviMate/i.test(String(ua == null ? '' : ua)); }
 
     // URL firmada por canal. Devuelve null (⇒ NO se emite línea) si falta la clave.
@@ -9651,7 +9666,7 @@ ${__apeContinuityTags().join('\n')}
         const _APE_6K_RES = _ape6kResolve();
         const _APE_6K_TABLE = _APE_6K_RES.table;
         const _APE_6K_SOURCE = _APE_6K_RES.source;
-        const _6kBase = Object.prototype.hasOwnProperty.call(_APE_6K_TABLE, String(c.profile || '')) ? String(c.profile) : null;
+        const _6kBase = _ape6kBaseOf(c.profile, _APE_6K_TABLE);
         const _6k = _6kBase ? _APE_6K_TABLE[_6kBase] : null;
         if (_6k) {
             // [2026-11-13] SOURCE= HONESTO — el 6K emulado SE MANTIENE, pero calculado sobre la
