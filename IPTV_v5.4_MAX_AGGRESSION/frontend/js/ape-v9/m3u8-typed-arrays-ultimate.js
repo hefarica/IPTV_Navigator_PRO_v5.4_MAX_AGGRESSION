@@ -11295,6 +11295,34 @@ return lines.join('\n');
             if (/^X-APE-/i.test(_k) && !_ca1Keep.has(_k)) delete _httpPayload[_k];
         }
 
+        // ═══ LAB WINS EN EXTHTTP (2026-11-22 · MEDIDO) ═══════════════════════════════════
+        // El LAB calibra estas claves en `headerOverrides` y las declara críticas, pero el
+        // generador las sobrescribía con derivaciones/literales propios. Medido en P0 emitido:
+        //   X-Min-Bitrate        8 000 000 (literal :6937)  vs LAB 52 325 000  → 6,5× menos
+        //   X-Fragment-Retry-Max 6   (hlsjs)                vs LAB 8
+        //   X-Stall-Detection-Ms 250 (hlsjs)                vs LAB 750
+        //   X-Segment-Duration   2000 (literal)             vs LAB 2,4,6
+        //   CMCD-Request         bl=90000,mtp=150000,su     vs LAB bl=30000,…,nrr,su
+        // Regla de doctrina ("LAB es SSOT de los datos calibrados"): SÓLO para las claves que
+        // son legales upstream, el valor del perfil gana. Si el perfil no declara el valor se
+        // conserva la derivación (nunca se inventa). Las X-APE-* quedan fuera: CA1.
+        const _labHdrOverrides = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG
+            && typeof window.APE_PROFILES_CONFIG.getProfile === 'function')
+            ? ((window.APE_PROFILES_CONFIG.getProfile(profile) || {}).headerOverrides || null)
+            : null;
+        if (_labHdrOverrides && typeof _labHdrOverrides === 'object') {
+            const _labWinsKeys = [
+                'X-Min-Bitrate', 'X-Low-Latency-Mode', 'X-Live-Sync-Duration-Count',
+                'X-Live-Max-Latency-Count', 'X-Fragment-TTFB-Max-Ms', 'X-Fragment-Retry-Max',
+                'X-Stall-Detection-Ms', 'X-Segment-Duration', 'X-Segment-Duration-S', 'CMCD-Request'
+            ];
+            for (const _k of _labWinsKeys) {
+                const _v = _labHdrOverrides[_k];
+                if (_v === undefined || _v === null || String(_v).trim() === '') continue;
+                _httpPayload[_k] = String(_v);
+            }
+        }
+
         // ── CAP REAL #EXTHTTP: 200 headers / 8192 bytes ──────────────────────
         // build_exthttp() ya particiona, pero generateChannelEntry agrega headers
         // anabólicos/JWT/realtime DESPUÉS y podía superar el cap (auditoría real:
@@ -11456,7 +11484,33 @@ return lines.join('\n');
         lines.push(`#KODIPROP:inputstream.adaptive.max_live_sync_playback_rate=1.04`);
         lines.push(`#KODIPROP:inputstream.adaptive.live_delay=0`);
         lines.push(`#KODIPROP:inputstream.hlsjs.live_duration_infinity=true`);
-        lines.push(`#KODIPROP:inputstream.hlsjs.nudge_max_retry=6`);
+        // [2026-11-22 · MEDIDO] El LAB calibra X-Nudge-Max-Retry=10 y esta línea emitía la
+        // constante 6. El valor del perfil gana si existe; sin dato se conserva el 6.
+        const _labNudgeMaxRetry = (_labHdrOverrides && _labHdrOverrides['X-Nudge-Max-Retry'] != null
+            && String(_labHdrOverrides['X-Nudge-Max-Retry']).trim() !== '')
+            ? String(_labHdrOverrides['X-Nudge-Max-Retry']).trim() : '6';
+        lines.push(`#KODIPROP:inputstream.hlsjs.nudge_max_retry=${_labNudgeMaxRetry}`);
+
+        /* ═══ VALORES X-APE CALIBRADOS SIN TRANSPORTE (2026-11-22 · MEDIDO) ═════════════════
+         * El LAB los declara críticos en `headerOverrides`, pero CA1 prohíbe la familia X-APE-*
+         * en #EXTHTTP y el generador no los emitía en NINGUNA capa: dato calibrado que no llegaba
+         * al borde. Se declaran como tag APE (la capa que lee nuestro VPS, sin tocar CA1).
+         * Si el perfil no trae el valor, no se emite la línea: no se inventa nada. */
+        if (_labHdrOverrides) {
+            const _floorLab = _labHdrOverrides['X-APE-BITRATE-FLOOR'];
+            if (_floorLab != null && String(_floorLab).trim() !== ''
+                && !lines.some(l => l.indexOf('#EXT-X-APE-BITRATE-FLOOR:') === 0)) {
+                lines.push('#EXT-X-APE-BITRATE-FLOOR:' + String(_floorLab).trim());
+            }
+            const _bufStratLab = _labHdrOverrides['X-APE-BUFFER-STRATEGY'];
+            if (_bufStratLab != null && String(_bufStratLab).trim() !== '') {
+                const _bsVal = String(_bufStratLab).trim();
+                const _bsIdx = lines.findIndex(l => l.indexOf('#EXT-X-APE-BUFFER-STRATEGY:') === 0);
+                // si ya hay un tag con el valor constante, se SUSTITUYE en su sitio (no se duplica)
+                if (_bsIdx >= 0) lines[_bsIdx] = '#EXT-X-APE-BUFFER-STRATEGY:' + _bsVal;
+                else lines.push('#EXT-X-APE-BUFFER-STRATEGY:' + _bsVal);
+            }
+        }
         lines.push(`#KODIPROP:inputstream.adaptive.network_user_agent=${_ua796}`);
         lines.push(`#KODIPROP:inputstream.adaptive.network_session_id=${_sid796}`);
         lines.push(`#KODIPROP:inputstream.adaptive.network_request_id=${reqId}`);

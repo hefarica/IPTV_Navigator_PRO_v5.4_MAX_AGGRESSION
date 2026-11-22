@@ -1,24 +1,25 @@
 #!/usr/bin/env node
 'use strict';
 /*
- * ape-exthttp-critical-headers.test.js — ¿LLEgan LAS 12 CRÍTICAS DEL LAB AL MANIFIESTO?
+ * ape-exthttp-critical-headers.test.js — ¿LLEGA LA CALIBRACIÓN AL MANIFIESTO, CON SU VALOR?
  *
- * CONTEXTO DEL DEFECTO (medido 2026-11-22). El informe de calibración (§8) afirma que las 12
- * cabeceras críticas "caen dentro de los primeros 8192 bytes en los 12 perfiles". Eso se validó
- * sobre el JSON, no sobre el manifiesto. La emisión real dice otra cosa:
+ * HISTORIA MEDIDA (2026-11-22). El informe de calibración (§8) afirma que las 12 cabeceras
+ * críticas "caen dentro de los primeros 8192 bytes en los 12 perfiles". Se validó sobre el JSON,
+ * no sobre el manifiesto. La emisión real decía:
+ *   1) 10-11 de 12 AUSENTES — y no por el techo de bytes (P0 emitía 7813 B con 202 claves): el
+ *      recorte real es 200 HEADERS y el orden del generador no era el del JSON.
+ *   2) Las que sí llegaban traían el valor del GENERADOR, no el del LAB:
+ *      X-Min-Bitrate 8 000 000 vs 52 325 000 · retry 6 vs 8 · stall 250 vs 750.
+ *   3) Dos valores X-APE no viajaban en NINGUNA capa, y nudge_max_retry emitía 6 vs 10.
  *
- *   ANTES del fix: 10-11 de 12 AUSENTES en los 12 perfiles. Y no por el techo de bytes: P0
- *   emitía 7813 B (< 8192) con 202 claves. El recorte real es 200 HEADERS y el orden del
- *   generador (`_priorityOrderKeys`) no es el del JSON, así que el reordenado del LAB no servía.
+ * ARREGLOS QUE ESTE TEST VIGILA:
+ *   · las 9 críticas no internas se reservan en EXTHTTP_PRIORITY_KEYS (sobreviven al cap 200);
+ *   · el valor CALIBRADO del perfil gana sobre la derivación del generador (EXTHTTP);
+ *   · las 2 X-APE se declaran como tag APE (CA1 prohíbe EXTHTTP para esa familia);
+ *   · nudge_max_retry usa el valor calibrado.
  *
- * ARREGLO: las 9 críticas que NO son familia interna (`X-APE-*`) se reservan en
- * `EXTHTTP_PRIORITY_KEYS` antes del cap de 200 → sobreviven.
- *
- * DOCTRINA CA1: la familia `X-APE-*` NO se emite en EXTHTTP (no se filtra metadata interna al
- * proveedor). Por eso `X-APE-BITRATE-FLOOR` y `X-APE-BUFFER-STRATEGY` se evaluan como SKIP(CA1):
- * no es un PASS ni un fallo de este test, y su transporte va por la capa de tags APE.
- *
- * Este test es fail-honest: lo que no se puede afirmar sale como SKIP/NO_COMPUTADO, nunca PASS.
+ * TRES CAPAS, TRES LECTORES: #EXT-X-APE-* → nuestro VPS · #EXTHTTP → el player hacia el
+ * proveedor · #KODIPROP/#EXTVLCOPT → el motor del player en local.
  */
 const fs = require('fs');
 const vm = require('vm');
@@ -28,9 +29,8 @@ const FE = path.join(__dirname, '..');
 const REPO = path.join(FE, '..', '..');
 const NAME = 'APE_FUSION_PREMIUM_6K_4K_ZAPPING_ATOMICO_LAB_CALIBRATED_BULLETPROOF.json';
 
-let pass = 0, skip = 0, fail = 0;
-const check = (cond, name, extra) => { if (cond) { pass++; console.log('PASS  ' + name); } else { fail++; console.log('FALLA ' + name + (extra !== undefined ? ' — ' + extra : '')); } };
-const skipLine = (name, why) => { skip++; console.log('SKIP  ' + name + ' — ' + why); };
+let pass = 0, fail = 0;
+const check = (c, name, extra) => { if (c) { pass++; console.log('PASS  ' + name); } else { fail++; console.log('FALLA ' + name + (extra !== undefined ? ' — ' + extra : '')); } };
 
 const fixture = [process.argv[2], process.env.APE_LAB_CALIBRATED_JSON, path.join(REPO, 'artifacts', 'lab', 'calibrated', NAME)].filter(Boolean)
     .find(p => { try { return fs.statSync(p).isFile(); } catch (e) { return false; } });
@@ -56,77 +56,70 @@ vm.runInContext(fs.readFileSync(path.join(FE, 'js', 'ape-v9', 'm3u8-typed-arrays
 vm.runInContext(fs.readFileSync(path.join(FE, 'js', 'ape-v9', 'ape-profiles-config.js'), 'utf8'), ctx, { filename: 'cfg.js', timeout: 60000 });
 const NORM = require(path.join(FE, 'js', 'ape-lab-normalize.js'));
 
-/* Las 12 críticas declaradas por el informe de calibración §8. */
-const CRIT = [
-    'X-Min-Bitrate', 'X-APE-BITRATE-FLOOR', 'X-Low-Latency-Mode', 'X-Live-Sync-Duration-Count',
-    'X-Live-Max-Latency-Count', 'X-Fragment-TTFB-Max-Ms', 'X-Fragment-Retry-Max',
-    'X-Stall-Detection-Ms', 'X-Nudge-Max-Retry', 'X-APE-BUFFER-STRATEGY',
-    'X-Segment-Duration-S', 'CMCD-Request'
+/* Claves que SÍ viajan por EXTHTTP (legales upstream) — se exige el valor del LAB. */
+const IN_EXTHTTP = [
+    'X-Min-Bitrate', 'X-Low-Latency-Mode', 'X-Live-Sync-Duration-Count', 'X-Live-Max-Latency-Count',
+    'X-Fragment-TTFB-Max-Ms', 'X-Fragment-Retry-Max', 'X-Stall-Detection-Ms',
+    'X-Segment-Duration', 'X-Segment-Duration-S', 'CMCD-Request'
 ];
-/* Capas por doctrina: estas claves NO viajan por EXTHTTP, y no es una pérdida.
- *  · X-APE-*      → CA1: metadata interna, no se filtra al proveedor.
- *  · nudge_max_retry → familia hls.js: se emite con namespace, como KODIPROP. */
-const LAYERED = [
-    { key: 'X-APE-BITRATE-FLOOR', why: 'CA1: familia interna (capa de tags APE)' },
-    { key: 'X-APE-BUFFER-STRATEGY', why: 'CA1: familia interna (capa de tags APE)' },
-    { key: 'X-Nudge-Max-Retry', why: 'namespace hls.js: se emite como KODIPROP nudge_max_retry' }
-];
-const INTERNAL = LAYERED.map(l => l.key);
+/* Claves cuya casa NO es EXTHTTP: se vigila su capa real. */
+const VIA_TAG = ['X-APE-BITRATE-FLOOR', 'X-APE-BUFFER-STRATEGY'];
+const VIA_KODIPROP = 'X-Nudge-Max-Retry';
 
 (async () => {
     const J = JSON.parse(fs.readFileSync(fixture, 'utf8').replace(/^\uFEFF/, ''));
     await ctx.APE_PROFILES_CONFIG.importFromLABData(NORM.normalize(J).data);
     const ids = Object.keys(J.profiles);
+    const N = ids.length;
 
-    let jsonOk = 0, sizeOk = 0, critOk = 0, internalLeak = 0;
-    const missingByProfile = {};
+    let jsonOk = 0, sizeOk = 0, valuesOk = 0, ca1Ok = 0, tagOk = 0, nudgeOk = 0;
+    const valueDiffs = {}, tagDiffs = {}, nudgeDiffs = {};
 
     for (const id of ids) {
         const out = String(ctx.APE_GEN_CHANNEL({ name: 'T ' + id, url: 'http://example.invalid/live/t/1.m3u8', group: 'T', tvg_id: 't.' + id, profile: id }, id, 0, {}, {}));
+        const lab = (J.profiles[id] && J.profiles[id].headerOverrides) || {};
         const line = (out.split('\n').filter(l => l.indexOf('#EXTHTTP:') === 0)[0]) || '';
         const body = line.slice('#EXTHTTP:'.length);
         let obj = null;
         try { obj = JSON.parse(body); } catch (e) { /* inválido */ }
-        if (obj) jsonOk++; else check(false, id + ' · #EXTHTTP es JSON estrictamente válido', body.slice(0, 60));
-
-        /* el límite declarado por la doctrina es 8192 B (con 1 entrada de holgura del emisor) */
+        if (obj) jsonOk++;
         if (Buffer.byteLength(body, 'utf8') <= 8300) sizeOk++;
-        else check(false, id + ' · #EXTHTTP ≤ 8300 B', Buffer.byteLength(body, 'utf8') + ' B');
-
         if (!obj) continue;
-        const missing = CRIT.filter(k => !INTERNAL.includes(k) && !(k in obj));
-        const leaked = INTERNAL.filter(k => (k in obj));
-        if (leaked.length) internalLeak++;
-        if (missing.length === 0) critOk++;
-        else missingByProfile[id] = missing;
+
+        /* 1 · el valor del LAB llega Y coincide */
+        const bad = IN_EXTHTTP.filter(k => !(k in obj) || String(obj[k]) !== String(lab[k]));
+        if (bad.length === 0) valuesOk++;
+        else valueDiffs[id] = bad.map(k => k + ': app=' + String(obj[k]).slice(0, 20) + ' lab=' + String(lab[k]).slice(0, 20));
+
+        /* 2 · CA1: ninguna X-APE-* interna filtrada al proveedor */
+        const leaked = Object.keys(obj).filter(k => /^X-APE-/i.test(k)
+            && !['X-APE-Profile', 'X-APE-Tier', 'X-APE-Max-Quality', 'X-APE-Codec-Cascade', 'X-APE-Channel-Id'].includes(k));
+        if (leaked.length === 0) ca1Ok++;
+
+        /* 3 · los dos X-APE calibrados viven como tag APE, con su valor, UNA vez */
+        const tagBad = [];
+        for (const k of VIA_TAG) {
+            const want = String(lab[k] == null ? '' : lab[k]).trim();
+            const hits = out.split('\n').filter(l => l.indexOf('#EXT-X-APE-' + k.replace('X-APE-', '') + ':') === 0);
+            if (!want) continue;
+            if (hits.length !== 1) tagBad.push(k + ' → ' + hits.length + ' ocurrencias');
+            else if (hits[0].slice(hits[0].indexOf(':') + 1).trim() !== want) tagBad.push(k + ' valor≠LAB');
+        }
+        if (tagBad.length === 0) tagOk++; else tagDiffs[id] = tagBad;
+
+        /* 4 · nudge_max_retry con el valor calibrado */
+        const wantN = String(lab[VIA_KODIPROP] == null ? '' : lab[VIA_KODIPROP]).trim();
+        const gotN = (out.match(/#KODIPROP:[^\n]*nudge_max_retry=(\d+)/) || [])[1];
+        if (!wantN || gotN === wantN) nudgeOk++; else nudgeDiffs[id] = 'app=' + gotN + ' lab=' + wantN;
     }
 
-    const N = ids.length;
     check(jsonOk === N, '#EXTHTTP válido como JSON en ' + N + '/' + N, jsonOk + '/' + N);
     check(sizeOk === N, '#EXTHTTP dentro del techo de bytes en ' + N + '/' + N, sizeOk + '/' + N);
-    check(critOk === N, 'las 10 criticas no internas llegan en ' + N + '/' + N + ' perfiles (' + Object.keys(missingByProfile).length + ' con faltantes)', JSON.stringify(missingByProfile).slice(0, 200));
-    check(internalLeak === 0, 'CA1 respetado: ninguna cabecera X-APE-* de calibración se filtra al proveedor', internalLeak + ' perfiles con fuga');
-    LAYERED.forEach(l => skipLine(l.key + ' por EXTHTTP', l.why));
+    check(valuesOk === N, 'las ' + IN_EXTHTTP.length + ' criticas llegan CON EL VALOR DEL LAB en ' + N + '/' + N, JSON.stringify(valueDiffs).slice(0, 260));
+    check(ca1Ok === N, 'CA1 respetado: ninguna X-APE-* interna viaja al proveedor en ' + N + '/' + N, ca1Ok + '/' + N);
+    check(tagOk === N, 'los 2 X-APE calibrados se declaran como tag APE (valor del LAB, 1 sola vez) en ' + N + '/' + N, JSON.stringify(tagDiffs).slice(0, 200));
+    check(nudgeOk === N, 'nudge_max_retry usa el valor calibrado en ' + N + '/' + N, JSON.stringify(nudgeDiffs).slice(0, 160));
 
-    /* NO_COMPUTADO declarado: no hay emisión de tag APE para 2 valores calibrados ni coincidencia
-     * en el KODIPROP de nudge. Se reporta medido, no se disfraza de PASS. */
-    const one = String(ctx.APE_GEN_CHANNEL({ name: 'T', url: 'http://example.invalid/live/t/1.m3u8', group: 'T', tvg_id: 't', profile: 'P0' }, 'P0', 0, {}, {}));
-    const labFloor = String((J.profiles.P0.headerOverrides || {})['X-APE-BITRATE-FLOOR'] || '');
-    const labNudge = String((J.profiles.P0.headerOverrides || {})['X-Nudge-Max-Retry'] || '');
-    const tagFloor = /#EXT-X-APE-BITRATE-FLOOR:/.test(one);
-    const kodNudge = (one.match(/#KODIPROP:[^\n]*nudge_max_retry=(\d+)/) || [])[1];
-    if (!tagFloor && labFloor) {
-        skipLine('X-APE-BITRATE-FLOOR=' + labFloor, 'NO COMPUTADO: no se emite como tag APE ni como EXTHTTP (valor del LAB sin transporte medido)');
-    } else if (tagFloor) {
-        check(true, 'X-APE-BITRATE-FLOOR se declara como tag APE');
-    }
-    if (labNudge && kodNudge !== labNudge) {
-        skipLine('X-Nudge-Max-Retry LAB=' + labNudge + ' vs KODIPROP=' + (kodNudge || 'ausente'),
-            'DEFECTO ABIERTO: el KODIPROP usa una constante, no el valor calibrado');
-    } else if (labNudge) {
-        check(true, 'X-Nudge-Max-Retry del LAB coincide con el KODIPROP emitido');
-    }
-
-    console.log('\n{"passed":' + pass + ',"skipped":' + skip + ',"failed":' + fail + ',"perfiles":' + N + ',"exthttp":"emitido"}');
+    console.log('\n{"passed":' + pass + ',"failed":' + fail + ',"perfiles":' + N + ',"exthttp":"valor=LAB"}');
     process.exit(fail === 0 ? 0 : 1);
 })();
