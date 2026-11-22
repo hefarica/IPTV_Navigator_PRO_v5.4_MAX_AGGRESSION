@@ -156,6 +156,32 @@ function load(file, extra) {
     check(c0.includes('"X-Concurrent-Downloads":"10"'), 'maxConnections=0 conserva X-Concurrent-Downloads=10 (sin clamp)');
     check(!/undefined/.test(c1 + c2 + c0), 'el clamp no inyecta valores undefined');
 
+    /* ── 7 · perfil REAL del LAB: SYS-PREFETCH-PARALLEL se emite como #APE-SYS:...=N ── */
+    const labFx = path.join(FE, '..', '..', 'artifacts', 'lab', 'calibrated', 'APE_FUSION_PREMIUM_6K_4K_ZAPPING_ATOMICO_LAB_CALIBRATED_BULLETPROOF.json');
+    if (!fs.existsSync(labFx)) {
+        console.log('SKIP  perfil real del LAB (fixture ausente)');
+    } else {
+        const J = JSON.parse(fs.readFileSync(labFx, 'utf8').replace(/^\uFEFF/, ''));
+        const mk = () => {
+            const c = sandbox({ Blob: global.Blob, TextEncoder, TextDecoder });
+            c.window.APE_PROFILES_CONFIG = {
+                labVersion: 'omega_v1', bulletproof: true, labExportedAt: '2026-11-22T00:00:00Z',
+                nivel1Directives: [], nivel3PerLayer: {}, profiles: { P2: J.profiles.P2 }
+            };
+            vm.runInContext(fs.readFileSync(path.join(FE, 'js', 'm3u8-world-class-generator.js'), 'utf8'), c, { filename: 'wc-real.js' });
+            return c.window.WorldClassM3U8Generator;
+        };
+        const g = mk();
+        const ch2 = { profile: 'P2', name: 'TEST', id: '1', url: 'http://example.test/live/1.ts' };
+        const out1 = (g.generateWorldClassM3U8([ch2], { maxConnections: 1, includeStart: false }) || {}).content || '';
+        const out0 = (g.generateWorldClassM3U8([ch2], { maxConnections: 0, includeStart: false }) || {}).content || '';
+        const sys = (t) => (t.match(/SYS-PREFETCH-PARALLEL=\d+/) || ['(ausente)'])[0];
+        check(/SYS-PREFETCH-PARALLEL=1\b/.test(out1), 'perfil REAL del LAB: SYS-PREFETCH-PARALLEL se clampa a 1', sys(out1));
+        check(/SYS-PREFETCH-PARALLEL=2\b/.test(out0), 'perfil REAL del LAB: sin limite conserva SYS-PREFETCH-PARALLEL=2', sys(out0));
+        check(/SYS-PREFETCH-PARALLEL=1\b/.test(out1) && /X-Concurrent-Downloads":"1"/.test(out1),
+            'perfil REAL del LAB: los 2 lados del presupuesto coinciden en 1');
+    }
+
     console.log('\n{"passed":' + pass + ',"failed":' + fail + ',"scope":"connection-budget","physical_playback_verified":false}');
     process.exit(fail === 0 ? 0 : 1);
 })();
