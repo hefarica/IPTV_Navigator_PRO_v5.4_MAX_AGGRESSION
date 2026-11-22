@@ -1900,9 +1900,20 @@
         return lines.join('\n');
     }
 
+    /* F-03 (verificado, NO es defecto): un manifiesto no puede declarar el hash de sí mismo —
+     * el CRC32 del manifiesto dependería de su propio contenido (dependencia circular).
+     * `renderBundle` escribe `manifest.json` DESPUÉS de evaluar `buildManifest(model, files)`,
+     * así que el manifiesto ve todos los demás archivos del bundle y ninguno más se pierde
+     * (medido: 21 archivos, 20 listados, el único ausente es manifest.json).
+     * Para que la ausencia sea explícita y no parezca una pérdida, se declara en `excluded`. */
+    const MANIFEST_SELF = 'manifest.json';
+
     function buildManifest(model, files, report) {
-        const list = Object.keys(files).map(function (name) {
-            const bytes = toBytes(files[name]);
+        const src = isObj(files) ? files : {};
+        const list = Object.keys(src).filter(function (name) {
+            return name !== MANIFEST_SELF;
+        }).map(function (name) {
+            const bytes = toBytes(src[name]);
             return { name: name, bytes: bytes.length, crc32: ('00000000' + crc32(bytes).toString(16)).slice(-8) };
         });
         return {
@@ -1915,6 +1926,11 @@
             segments: model.hls ? model.hls.segments.length : 0,
             privacy: 'contains-user-urls-and-headers',
             files: list,
+            fileCount: list.length,
+            excluded: [{
+                name: MANIFEST_SELF,
+                reason: 'self-reference: el manifiesto no declara su propio CRC32/hash (dependencia circular); si el bundle lo incluye, es este mismo archivo'
+            }],
             report: report ? 'reports/multiparser-report.json' : null
         };
     }
@@ -1949,6 +1965,9 @@
             anomalies: {
                 c2aCount: anomalies.c2a.length,
                 http403Count: anomalies.http403.length,
+                /* F-05: metadata APE que menciona 403 (política de evasión). Se publica para no
+                 * perder el dato, pero NO se suma a http403Count ni a las anomalías. */
+                metadata403Count: anomalies.metadata403.length,
                 extXErrorCount: anomalies.extXError.length,
                 malformedUrlCount: anomalies.malformedUrls.length,
                 missingUrlCount: anomalies.missingUrl
@@ -1971,7 +1990,9 @@
                 'No garantiza que un player soporte un codec que no implementa.',
                 'Las cabeceras tóxicas se eliminan por diseño.',
                 'Los tags desconocidos se conservan en universal.m3u8 y se listan aquí.',
-                'Apple/AVPlayer y ffmpeg reciben cabeceras por sidecar, no por M3U.'
+                'Apple/AVPlayer y ffmpeg reciben cabeceras por sidecar, no por M3U.',
+                'http403Count cuenta sólo 403 en URI/host o en tags que NO son #EXT-X-APE-*; los 403 dentro de metadata APE se publican aparte en metadata403Count y no son respuestas HTTP.',
+                'El manifiesto no se lista a sí mismo (manifest.json): un hash no puede depender de su propio contenido; la exclusión se declara en manifest.excluded.'
             ]
         };
     }
@@ -2111,17 +2132,28 @@
      * Diagnóstico de anomalías temporales sin exponer URLs ni credenciales.
      * Detecta `c2.a`, `403`, `#EXT-X-ERROR`, URIs malformadas y bloques sin URL.
      * No afirma que `c2.a` sea un bug del parser: solo lo localiza.
+     *
+     * F-05 — un `403` dentro de un tag `#EXT-X-APE-*` es METADATA, no una respuesta HTTP
+     * (`#EXT-X-APE-CORTEX-ERROR-403:EVASION=true` es la POLÍTICA de evasión de 403 del
+     * generador). Contarlo como `http403` daba 12 falsos positivos sobre el catálogo real y
+     * enmascaraba un 403 de verdad. Ahora se separa por contexto:
+     *   · `http403`     → 403 en una URI/host, o en un tag que NO es de la capa APE.
+     *   · `metadata403` → 403 dentro de la capa APE. NO suma en `total` (no es una anomalía).
      */
     function diagnose(model) {
         const out = {
             c2a: [],
             http403: [],
+            metadata403: [],
             extXError: [],
             malformedUrls: [],
             missingUrl: 0,
             total: 0
         };
         if (!model || !Array.isArray(model.items)) return out;
+
+        /* Nombre además de capa: cubre ítems construidos fuera de parseTagLine. */
+        const APE_TAG_RE = /^#(?:EXT-X-)?APE-|^#EXT-APE-/;
 
         for (let i = 0; i < model.items.length; i++) {
             const it = model.items[i];
@@ -2132,7 +2164,18 @@
                 out.c2a.push({ lineNo: lineNo, type: it.type || 'unknown', tag: it.tagUpper || '' });
             }
             if (/\b403\b/.test(raw)) {
-                out.http403.push({ lineNo: lineNo, type: it.type || 'unknown', tag: it.tagUpper || '' });
+                const entry = { lineNo: lineNo, type: it.type || 'unknown', tag: it.tagUpper || '' };
+                const apeMeta = it.type === 'tag' && (it.layer === LAYER.APE || APE_TAG_RE.test(it.tagUpper || ''));
+                if (apeMeta) {
+                    entry.kind = 'metadata';
+                    out.metadata403.push(entry);
+                } else if (it.type === 'uri') {
+                    entry.kind = 'uri';
+                    out.http403.push(entry);
+                } else if (it.type === 'tag') {
+                    entry.kind = 'tag';
+                    out.http403.push(entry);
+                }
             }
             if (it.type === 'tag' && /EXT-X-ERROR/i.test(it.tagUpper || '')) {
                 out.extXError.push({ lineNo: lineNo, tag: it.tagUpper || '' });

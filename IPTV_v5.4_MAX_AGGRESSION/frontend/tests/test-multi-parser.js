@@ -134,6 +134,7 @@ function buildRealCatalog(withStreamInf) {
         out.push('#EXT-X-APE-PROFILE:' + p);
         out.push('#EXT-X-APE-CONNECTION-BUDGET:1');
         out.push('#EXT-X-APE-INSTALLER:DECLARED=1');
+        out.push('#EXT-X-APE-CORTEX-ERROR-403:EVASION=true,UA-ROTATE=true');
         out.push('#EXT-X-CUSTOM-DESCONOCIDO:' + p);
         if (withStreamInf) {
             out.push('#EXT-X-STREAM-INF:BANDWIDTH=25000000,AVERAGE-BANDWIDTH=20000000,RESOLUTION=5760x3240,' +
@@ -425,6 +426,17 @@ function testRealCatalogShape() {
     const sidecars = Object.keys(bundle.files).filter(function (f) { return f.indexOf('sidecars/') === 0; });
     assert(sidecars.length >= 4, 'H-2 · el bundle genera sidecars (antes: 0)', sidecars.join(','));
 
+    /* ── F-05 · el catálogo real trae 12 tags APE-…-403: NO son respuestas HTTP ── */
+    const dReal = MP.diagnose(m);
+    assertEqual(dReal.http403.length, 0, 'F-05 · 0 http403 en el catálogo real (los 12 APE-403 son metadata)');
+    assertEqual(dReal.metadata403.length, 12, 'F-05 · 12 metadata403 reportados aparte');
+    const repReal = MP.buildReport(m, { dialects: [] });
+    assertEqual(repReal.anomalies.http403Count, 0, 'F-05 · reporte real: http403Count=0');
+    assertEqual(repReal.anomalies.metadata403Count, 12, 'F-05 · reporte real: metadata403Count=12');
+
+    /* ── F-03 · el manifiesto del bundle real lista N-1 (nunca se a sí mismo) ── */
+    assertEqual(man.files.length, Object.keys(bundle.files).length - 1, 'F-03 · manifiesto del bundle real lista N-1');
+
     /* ── variante sin STREAM-INF (modos A/B del generador): también 12 canales ── */
     const mf = MP.parse(REAL_CATALOG_FLAT, { sourceName: 'catalogo-12-sin-streaminf' });
     assertEqual(mf.kind, 'flat', 'catálogo sin STREAM-INF: tipo flat, no media', 'kind=' + mf.kind);
@@ -483,6 +495,27 @@ function testDiagnose() {
     assertEqual(bundle.report.anomalies.http403Count, d.http403.length, 'reporte incluye conteo 403');
     assertEqual(bundle.report.anomalies.extXErrorCount, d.extXError.length, 'reporte incluye conteo EXT-X-ERROR');
     assertNotIncludes(JSON.stringify(bundle.report), 'example.com', 'reporte de anomalías sin URLs');
+
+    /* ── F-05 · un 403 de METADATA APE no es una respuesta HTTP 403 ── */
+    const ape403 = MP.parse('#EXTM3U\n#EXTINF:-1,A\n#EXT-X-APE-CORTEX-ERROR-403:EVASION=true,UA-ROTATE=true\nhttp://example.com/1.m3u8\n');
+    const dApe = MP.diagnose(ape403);
+    assertEqual(dApe.http403.length, 0, 'F-05 · un tag #EXT-X-APE-*-403 NO cuenta como http403');
+    assertEqual(dApe.metadata403.length, 1, 'F-05 · se reporta aparte en metadata403');
+    assertEqual(dApe.metadata403[0].kind, 'metadata', 'F-05 · la entrada se etiqueta kind=metadata');
+    assertEqual(dApe.total, 0, 'F-05 · la metadata APE no infla el total de anomalías');
+
+    const uri403 = MP.parse('#EXTM3U\n#EXTINF:-1,A\nhttp://example.com/live/403/u/p/1.m3u8\n');
+    assertEqual(MP.diagnose(uri403).http403.length, 1, 'F-05 · un 403 REAL en la URI sigue contando como http403');
+    assertEqual(MP.diagnose(uri403).metadata403.length, 0, 'F-05 · sin metadata403 si no hay tags APE');
+
+    const err403 = MP.parse('#EXTM3U\n#EXT-X-ERROR:403\n#EXTINF:-1,A\nhttp://example.com/1.m3u8\n');
+    assertEqual(MP.diagnose(err403).http403.length, 1, 'F-05 · un 403 en un tag que NO es APE sigue contando');
+
+    const repApe = MP.buildReport(ape403, { dialects: [] });
+    assertEqual(repApe.anomalies.http403Count, 0, 'F-05 · reporte: http403Count=0 con sólo metadata');
+    assertEqual(repApe.anomalies.metadata403Count, 1, 'F-05 · reporte: metadata403Count=1, sin mezclar');
+    assert((repApe.limits || []).some(function (l) { return l.indexOf('metadata403Count') !== -1; }),
+        'F-05 · el reporte declara la separación en limits');
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -567,6 +600,24 @@ function testZip() {
     const manifest = JSON.parse(bundle.files['manifest.json']);
     assert(manifest.files.length >= 10, 'manifiesto lista archivos');
     assert(manifest.channels === 3, 'manifiesto declara 3 canales');
+
+    /* ── F-03 · contrato del manifiesto (VERIFICADO: no es defecto) ──
+     * Un manifiesto no puede declarar el CRC32/hash de sí mismo: el hash dependería de su
+     * propio contenido (dependencia circular). `renderBundle` escribe manifest.json DESPUÉS
+     * de evaluar buildManifest(files), así que el manifiesto ve todos los demás archivos.
+     * El contrato queda fijado: lista N-1 y declara el excluido con motivo. */
+    const bundleNames = Object.keys(bundle.files);
+    const missingFromManifest = bundleNames.filter(function (n) {
+        return !manifest.files.some(function (f) { return f.name === n; });
+    });
+    assertEqual(manifest.files.length, bundleNames.length - 1, 'F-03 · manifiesto lista N-1 archivos');
+    assertEqual(manifest.fileCount, manifest.files.length, 'F-03 · fileCount coincide con files');
+    assertEqual(missingFromManifest.length, 1, 'F-03 · un solo archivo no listado', missingFromManifest.join(','));
+    assertEqual(missingFromManifest[0], 'manifest.json', 'F-03 · el único no listado es manifest.json (no se pierde otro)');
+    assertEqual(manifest.excluded.length, 1, 'F-03 · declara 1 exclusión');
+    assertEqual(manifest.excluded[0].name, 'manifest.json', 'F-03 · exclusión declarada por nombre');
+    assert(!!manifest.excluded[0].reason && manifest.excluded[0].reason.indexOf('circular') !== -1,
+        'F-03 · la exclusión declara el motivo (dependencia circular)');
 
     const tmp = path.join(os.tmpdir(), 'ape-multiparser-test-' + process.pid + '.zip');
     fs.writeFileSync(tmp, Buffer.from(bundle.zip));
