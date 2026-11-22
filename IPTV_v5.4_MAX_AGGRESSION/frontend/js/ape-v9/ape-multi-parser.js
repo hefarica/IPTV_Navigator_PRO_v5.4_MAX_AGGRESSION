@@ -332,7 +332,13 @@
             }
         }
 
-        if (raw.indexOf('&') !== -1 || raw.indexOf('=') !== -1) {
+        // F-01: "Range: bytes=0-" lleva "=" pero es formato colon, no urlencoded.
+        // Si no hay "&" y el ":" va antes del primer "=", la rama correcta es colon.
+        const _cColon = raw.indexOf(':');
+        const _cEq = raw.indexOf('=');
+        const _colonFirst = _cColon > 0 && (_cEq === -1 || _cColon < _cEq);
+
+        if (!_colonFirst && (raw.indexOf('&') !== -1 || raw.indexOf('=') !== -1)) {
             const pairs = parseHeaderPairs(raw);
             const keys = Object.keys(pairs);
             if (keys.length) {
@@ -448,7 +454,11 @@
     const TOXIC_HEADER_RE = /^(range|if-none-match|if-modified-since|te|priority|upgrade-insecure-requests|connection|proxy-connection|transfer-encoding|content-length|host)$/i;
 
     function isToxicHeader(name) {
-        return TOXIC_HEADER_RE.test(toStr(name).trim());
+        // F-01: un nombre decorado ("Range: bytes") no debe sobrevivir. Se normaliza
+        // cortando en el primer ":" y en el primer separador antes de comparar.
+        const _raw = toStr(name);
+        const _cut = _raw.split(':')[0].split('=')[0];
+        return TOXIC_HEADER_RE.test(_raw.trim()) || TOXIC_HEADER_RE.test(_cut.trim());
     }
 
     function sanitizeHeaders(headers) {
