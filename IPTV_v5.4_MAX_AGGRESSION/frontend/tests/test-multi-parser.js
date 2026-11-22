@@ -434,6 +434,10 @@ function testRealCatalogShape() {
     assertEqual(repReal.anomalies.http403Count, 0, 'F-05 · reporte real: http403Count=0');
     assertEqual(repReal.anomalies.metadata403Count, 12, 'F-05 · reporte real: metadata403Count=12');
 
+    /* ── t15 · sin ruido nuevo de c2.a en el catálogo real ── */
+    assertEqual(dReal.c2a.length, 0, 't15 · 0 c2a en el catálogo real (sin ruido nuevo)');
+    assertEqual(repReal.anomalies.c2aCount, 0, 't15 · reporte real: c2aCount=0');
+
     /* ── F-03 · el manifiesto del bundle real lista N-1 (nunca se a sí mismo) ── */
     assertEqual(man.files.length, Object.keys(bundle.files).length - 1, 'F-03 · manifiesto del bundle real lista N-1');
 
@@ -516,6 +520,26 @@ function testDiagnose() {
     assertEqual(repApe.anomalies.metadata403Count, 1, 'F-05 · reporte: metadata403Count=1, sin mezclar');
     assert((repApe.limits || []).some(function (l) { return l.indexOf('metadata403Count') !== -1; }),
         'F-05 · el reporte declara la separación en limits');
+
+    /* ── t15 · SIMETRÍA de c2.a: mismo discriminante que F-05 ──
+     * c2.a cuenta como señal de reproducción sólo en URI, nombre visible de canal
+     * (línea #EXTINF) o tag que NO es APE. Dentro de metadata APE va a metadataC2A. */
+    const nameC2a = MP.parse('#EXTM3U\n#EXTINF:-1 tvg-name="Canal c2.a",Canal c2.a\nhttp://example.com/1.m3u8\n');
+    assertEqual(MP.diagnose(nameC2a).c2a.length, 1, 't15 · c2.a en el nombre del canal cuenta como c2a');
+
+    const uriC2a = MP.parse('#EXTM3U\n#EXTINF:-1,A\nhttp://example.com/c2.a/u/p/1.m3u8\n');
+    assertEqual(MP.diagnose(uriC2a).c2a.length, 1, 't15 · c2.a en la URI cuenta como c2a');
+
+    const apeC2a = MP.parse('#EXTM3U\n#EXTINF:-1,A\n#EXT-X-APE-CORTEX-ERROR:c2.a=DETECTED\nhttp://example.com/1.m3u8\n');
+    const dApeC2a = MP.diagnose(apeC2a);
+    assertEqual(dApeC2a.c2a.length, 0, 't15 · c2.a SOLO en un tag #EXT-X-APE-* NO cuenta como c2a');
+    assertEqual(dApeC2a.metadataC2A.length, 1, 't15 · se reporta aparte en metadataC2A');
+    assertEqual(dApeC2a.metadataC2A[0].kind, 'metadata', 't15 · la entrada se etiqueta kind=metadata');
+    assertEqual(dApeC2a.total, 0, 't15 · la metadata c2.a no infla el total de anomalías');
+
+    const repC2a = MP.buildReport(apeC2a, { dialects: [] });
+    assertEqual(repC2a.anomalies.c2aCount, 0, 't15 · reporte: c2aCount=0 con sólo metadata');
+    assertEqual(repC2a.anomalies.metadataC2aCount, 1, 't15 · reporte: metadataC2aCount=1, sin mezclar');
 }
 
 // ───────────────────────────────────────────────────────────────────────────

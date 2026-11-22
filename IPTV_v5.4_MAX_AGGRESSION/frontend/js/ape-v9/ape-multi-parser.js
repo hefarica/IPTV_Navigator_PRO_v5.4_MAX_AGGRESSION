@@ -1964,6 +1964,9 @@
             unknownTags: model.stats.unknownTags || [],
             anomalies: {
                 c2aCount: anomalies.c2a.length,
+                /* t15: metadata APE que menciona c2.a. Se publica al lado de c2aCount para no
+                 * perder el dato, pero NO se suma a c2aCount ni a las anomalías. */
+                metadataC2aCount: anomalies.metadataC2A.length,
                 http403Count: anomalies.http403.length,
                 /* F-05: metadata APE que menciona 403 (política de evasión). Se publica para no
                  * perder el dato, pero NO se suma a http403Count ni a las anomalías. */
@@ -1991,7 +1994,7 @@
                 'Las cabeceras tóxicas se eliminan por diseño.',
                 'Los tags desconocidos se conservan en universal.m3u8 y se listan aquí.',
                 'Apple/AVPlayer y ffmpeg reciben cabeceras por sidecar, no por M3U.',
-                'http403Count cuenta sólo 403 en URI/host o en tags que NO son #EXT-X-APE-*; los 403 dentro de metadata APE se publican aparte en metadata403Count y no son respuestas HTTP.',
+                'http403Count y c2aCount cuentan sólo señales en contexto de reproducción (URI, nombre visible o tags que NO son #EXT-X-APE-*); las que aparecen dentro de metadata APE se publican aparte en metadata403Count y metadataC2aCount y no son eventos de reproducción.',
                 'El manifiesto no se lista a sí mismo (manifest.json): un hash no puede depender de su propio contenido; la exclusión se declara en manifest.excluded.'
             ]
         };
@@ -2136,13 +2139,21 @@
      * F-05 — un `403` dentro de un tag `#EXT-X-APE-*` es METADATA, no una respuesta HTTP
      * (`#EXT-X-APE-CORTEX-ERROR-403:EVASION=true` es la POLÍTICA de evasión de 403 del
      * generador). Contarlo como `http403` daba 12 falsos positivos sobre el catálogo real y
-     * enmascaraba un 403 de verdad. Ahora se separa por contexto:
-     *   · `http403`     → 403 en una URI/host, o en un tag que NO es de la capa APE.
-     *   · `metadata403` → 403 dentro de la capa APE. NO suma en `total` (no es una anomalía).
+     * enmascaraba un 403 de verdad.
+     *
+     * t15 — `c2.a` sufre la MISMA clase de error y se corrige con el mismo discriminante:
+     * un `c2.a` dentro de metadata APE no es una señal de reproducción rota del player.
+     *
+     * Regla única para ambas señales (`recordFinding`):
+     *   · contexto de REPRODUCCIÓN (URI, nombre visible de canal = línea #EXTINF, o tag que
+     *     NO es de la capa APE) → lista de reproducción (`http403` / `c2a`).
+     *   · capa APE (layer === APE o prefijo `#(EXT-X-)?APE-` / `#EXT-APE-`) → lista aparte
+     *     (`metadata403` / `metadataC2A`) con `kind: 'metadata'`. NO suma en `total`.
      */
     function diagnose(model) {
         const out = {
             c2a: [],
+            metadataC2A: [],
             http403: [],
             metadata403: [],
             extXError: [],
@@ -2154,28 +2165,43 @@
 
         /* Nombre además de capa: cubre ítems construidos fuera de parseTagLine. */
         const APE_TAG_RE = /^#(?:EXT-X-)?APE-|^#EXT-APE-/;
+        function isApeMetadata(item) {
+            return item.type === 'tag' && (item.layer === LAYER.APE || APE_TAG_RE.test(item.tagUpper || ''));
+        }
+
+        /* Discriminante ÚNICO compartido por las dos señales (no duplicar la lógica).
+         * Devuelve true si el hallazgo se archivó como metadata. */
+        function recordFinding(playback, metadata, item, lineNo, apeMeta) {
+            const entry = { lineNo: lineNo, type: item.type || 'unknown', tag: item.tagUpper || '' };
+            if (apeMeta) {
+                entry.kind = 'metadata';
+                metadata.push(entry);
+                return true;
+            }
+            if (item.type === 'uri') {
+                entry.kind = 'uri';
+                playback.push(entry);
+                return false;
+            }
+            if (item.type === 'tag') {
+                entry.kind = 'tag';
+                playback.push(entry);
+                return false;
+            }
+            return false;
+        }
 
         for (let i = 0; i < model.items.length; i++) {
             const it = model.items[i];
             const raw = toStr(it.raw);
             const lineNo = it.lineNo || (i + 1);
+            const apeMeta = isApeMetadata(it);
 
             if (/c2\.a/i.test(raw)) {
-                out.c2a.push({ lineNo: lineNo, type: it.type || 'unknown', tag: it.tagUpper || '' });
+                recordFinding(out.c2a, out.metadataC2A, it, lineNo, apeMeta);
             }
             if (/\b403\b/.test(raw)) {
-                const entry = { lineNo: lineNo, type: it.type || 'unknown', tag: it.tagUpper || '' };
-                const apeMeta = it.type === 'tag' && (it.layer === LAYER.APE || APE_TAG_RE.test(it.tagUpper || ''));
-                if (apeMeta) {
-                    entry.kind = 'metadata';
-                    out.metadata403.push(entry);
-                } else if (it.type === 'uri') {
-                    entry.kind = 'uri';
-                    out.http403.push(entry);
-                } else if (it.type === 'tag') {
-                    entry.kind = 'tag';
-                    out.http403.push(entry);
-                }
+                recordFinding(out.http403, out.metadata403, it, lineNo, apeMeta);
             }
             if (it.type === 'tag' && /EXT-X-ERROR/i.test(it.tagUpper || '')) {
                 out.extXError.push({ lineNo: lineNo, tag: it.tagUpper || '' });
