@@ -9430,6 +9430,20 @@ ${__apeContinuityTags().join('\n')}
         return _apeB64Url(mask.concat(body));
     }
 
+    /* [2026-11-22 · DECISIÓN DEL OPERADOR: opción B] Tier base de un perfil.
+     * MEDIDO: las tres líneas que usaban `/^P[0-5]$/` mandaban cualquier perfil
+     * `.5` (P4.5 = 6K / 112 Mbps) a 'P3', es decir le aplicaban la intensidad VPP
+     * de SD y lo declaraban PROFILE=P3. Eso es degradación por metadato.
+     * NO se emite el token 'P4.5': el dominio del edge está fijado en P0..P5
+     * (ape_attr.lua espera índice 0..5 y hay 4+ Lua que coercionan ^P[0-5]$ a P2/P3).
+     * Regla: un `.5` cae a SU tier base (P4.5 → P4), nunca a P3. Sin números nuevos. */
+    function _apeTierOf(profile) {
+        const s = String(profile == null ? '' : profile);
+        if (/^P[0-5]$/.test(s)) return s;
+        const m = s.match(/^(P[0-5])[._]5$/);   // P4.5 y P4_5 (mismo patrón que pre-admission)
+        return m ? m[1] : 'P3';   // el resto conserva el fallback histórico
+    }
+
     function _apeIsTiviMateUa(ua) { return /TiviMate/i.test(String(ua == null ? '' : ua)); }
 
     // URL firmada por canal. Devuelve null (⇒ NO se emite línea) si falta la clave.
@@ -9440,7 +9454,7 @@ ${__apeContinuityTags().join('\n')}
         if (typeof key !== 'string' || key.length === 0) return null;   // sin clave ⇒ sin línea
         if (_apeIsTiviMateUa(ua)) return null;                          // TiviMate ignora el tag ⇒ no ensuciar
         const host = (typeof cfg.host === 'string' && cfg.host) ? cfg.host.replace(/\/+$/, '') : 'https://iptv-ape.duckdns.org';
-        const p = /^P[0-5]$/.test(String(profile || '')) ? String(profile) : 'P3';
+        const p = _apeTierOf(profile);
         const id = String((channel && (channel.id || channel.name)) || '');
         if (!id) return null;
         const c = _apeB64Url(_apeUtf8Bytes(id));
@@ -9478,7 +9492,7 @@ ${__apeContinuityTags().join('\n')}
             const ok = wl.some(hh => hh && (host === hh || host.endsWith('.' + hh)));
             if (!ok) return ua;                             // host no autorizado ⇒ UA intacto
         }
-        const p = /^P[0-5]$/.test(String(profile || '')) ? String(profile) : 'P3';
+        const p = _apeTierOf(profile);
         const dev = (String(cfg.devModel || 'generic').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 32)) || 'generic';
         const soc = (String(cfg.soc || 'unknown').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 32)) || 'unknown';
         return base + ' APE/1.0 dev=' + dev + ' soc=' + soc + ' p=' + p;
@@ -9498,8 +9512,15 @@ ${__apeContinuityTags().join('\n')}
     // Es METADATA para el daemon/ARA: la playlist no toca píxeles (PIXELS=0, SCOPE=DISPLAY).
     const _APE_CRYSTAL_VPP = { P0: 40, P1: 35, P2: 45, P3: 55, P4: 70, P5: 85 };
     function _apeCrystalVppLine(profile) {
-        const p = /^P[0-5]$/.test(String(profile || '')) ? String(profile) : 'P3';
-        const n = _APE_CRYSTAL_VPP[p];
+        const p = _apeTierOf(profile);
+        /* [2026-11-22 · NO QUITAR CALIDAD] Antes, TODO perfil `.5` caía a P3 y
+         * recibía VPP 55. Con el tier base, P0.5/P1.5/P2.5 heredarían 40/35/45 —
+         * MENOS ayuda que la que ya reciben. Regla: un `.5` nunca recibe menos que
+         * el fallback histórico; sólo puede subir (P4.5: 55→70, P5.5: 55→85).
+         * El token sigue siendo el tier BASE: el edge sólo entiende P0..P5. */
+        const _emulado = /^P[0-5][._]5$/.test(String(profile == null ? '' : profile));
+        const _base = _APE_CRYSTAL_VPP[p];
+        const n = (_emulado && _base < _APE_CRYSTAL_VPP.P3) ? _APE_CRYSTAL_VPP.P3 : _base;
         return '#EXT-X-APE-CRYSTAL-UHD:PROFILE=' + p + ';VPP_INTENSITY=' + n + ';SCOPE=DISPLAY;PIXELS=0';
     }
 
