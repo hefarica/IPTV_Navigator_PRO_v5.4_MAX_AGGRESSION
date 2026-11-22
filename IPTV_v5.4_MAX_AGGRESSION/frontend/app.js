@@ -12530,6 +12530,15 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             pass: activeServer.password || activeServer.pass || 'pass',
             includeStart: true,
             jwtExpiration: 365,
+            // 🛡️ Connection budget: evita que el player abra más conexiones que
+            // las que el proveedor permite (max_connections=1 → serial).
+            maxConnections: this.state.maxConnections
+                || parseInt(activeServer._maxConnections || activeServer.maxConnections || '0', 10)
+                || 0,
+            streamFormat: this.state.preferredStreamFormat
+                || activeServer._preferredStreamFormat
+                || activeServer.streamFormat
+                || 'm3u8',
             // V9.1: Per-channel credential resolver
             _resolveServer: (channel) => {
                 const chServerId = channel._source || channel.serverId || channel.server_id;

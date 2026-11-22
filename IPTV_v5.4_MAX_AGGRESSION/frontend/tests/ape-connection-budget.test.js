@@ -113,6 +113,8 @@ function load(file, extra) {
     check(app.includes('probe=SKIPPED (no consume slot)'), 'app.js declara el probe omitido');
     check(app.includes('window.SESSION_WARMUP_V9.setMaxConnections(maxConnections)'), 'app.js pasa el presupuesto al warmup');
     check(app.includes('this.state.maxConnections = maxConnections'), 'app.js guarda max_connections en state');
+    check(app.includes('maxConnections: this.state.maxConnections'), 'app.js PASA maxConnections al generador (sin esto el clamp es inerte)');
+    check(app.includes("streamFormat: this.state.preferredStreamFormat"), 'app.js pasa streamFormat al generador');
 
     /* ── 6 · generador World-Class: clamp SOLO si el panel declara límite ── */
     const wcCtx = sandbox({ Blob: global.Blob, TextEncoder, TextDecoder });
