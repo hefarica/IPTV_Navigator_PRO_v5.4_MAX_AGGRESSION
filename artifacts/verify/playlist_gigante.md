@@ -1,5 +1,27 @@
 # R14 — La "playlist" del menú pesa 734 MB: qué artefacto debe recibir el player
 
+> ## ⛔ RECOMENDACIÓN RETIRADA — DECISIÓN DEL OPERADOR (2026-11-22)
+>
+> **«PROHIBIDO Y BORRA DE TU CABEZA HACER ALGO ASÍ.»**
+>
+> La recomendación de §6 —sustituir el catálogo del menú por `/jit/playlist.m3u8` (3 574 997 B)—
+> queda **RETIRADA y SIN EFECTO**. No se sustituye el catálogo, no se recorta, no se re-apunta el
+> menú. El catálogo de 734 MB **se queda exactamente como está**.
+>
+> Motivo doctrinal medido, no interpretación: las ~1 044 líneas por canal que este informe contó como
+> "99 % metadata inútil" son el **bus de metadata URL-2** (`ape-url2-metadata-cartridge-arrays`), el
+> único canal con **100 % de alcance** al player —el manifest por canal solo alcanza ~81 % porque
+> ~18 % de los canales responden 302 a un destino sin `.m3u8` y se saltan el `body_filter`—. Y la
+> ley `iptv-omega-no-delete` prohíbe explícitamente recortar esas líneas: son funcionales.
+>
+> **Lo que este informe sigue valiendo:** el censo de bytes de §1–§5 (99,00 % directivas, 1,01 %
+> EXTINF+URL, 205× bytes, 247× parseo, primer canal en el byte 167 340) y la comparativa de coste.
+> **Lo que ya NO vale:** §6 (la recomendación) y el diff de §7, que la implementaba.
+>
+> Si un player concreto no puede cargar 734 MB (el límite de V8 `MAX_STRING_LENGTH` = 536 870 888
+> lo hace imposible para un WebView), eso es una **limitación de ese player** y se reporta como tal.
+> No es motivo para tocar el catálogo.
+
 Medido el **2026-11-21 22:0x–23:1x UTC** por `map-endpoint` (SSH **solo lectura** + `curl` desde Internet).
 No se cambió nginx, no se borró el alias, no se tocó el motor. Toda cifra sale de un comando ejecutado; los
 límites están en §8 como **NO COMPUTADO**.
