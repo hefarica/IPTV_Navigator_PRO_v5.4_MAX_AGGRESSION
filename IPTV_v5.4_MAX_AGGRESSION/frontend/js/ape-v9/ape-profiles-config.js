@@ -4899,8 +4899,11 @@
                 if (!obj || typeof obj !== 'object') throw new Error('Invalid data');
                 const imported = obj.profiles || obj;
                 if (!imported || typeof imported !== 'object') throw new Error('No profiles key found');
-                // Validar que tenga P0-P5 al menos
-                const pids = Object.keys(imported).filter(k => /^P[0-5]$/.test(k));
+                // Validar que tenga P0-P5 (y los .5 emulados: P0.5..P5.5)
+                // [2026-11-22 · MEDIDO] /^P[0-5]$/ descartaba los 6 perfiles .5 del LAB
+                // calibrado: se importaban 6 de 12 en silencio. Se usa el MISMO patron
+                // que ya rige en profile-manager-v9.js:5857 (precedente del repo).
+                const pids = Object.keys(imported).filter(k => /^P[0-5](?:[._]5)?$/.test(k));
                 if (pids.length === 0) throw new Error('No P0-P5 profiles found in JSON');
                 const hasREA = Object.prototype.hasOwnProperty.call(obj, 'rea_processing');
                 const importedREA = hasREA ? this._validatedREAProcessing(obj.rea_processing) : this.reaProcessing;
