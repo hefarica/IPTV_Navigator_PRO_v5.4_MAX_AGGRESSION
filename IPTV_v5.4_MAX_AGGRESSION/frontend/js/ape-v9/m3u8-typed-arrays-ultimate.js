@@ -3410,9 +3410,18 @@
             // role, fitness, solver_trace, optimized_timestamp, name.
             // Emitidos como atributos del tag por perfil para auditoría directa.
             const _esc = (v) => String(v ?? '').replace(/"/g, '\\"');
-            for (const pid of ['P0', 'P1', 'P2', 'P3', 'P4', 'P5']) {
-                const p = options.bulletproof_profiles[pid];
+            /* [2026-11-22 · t1] El loop estaba hardcodeado a P0..P5: los perfiles `.5`
+             * del LAB calibrado nunca emitían su provenance. Ahora se deriva del payload.
+             * El nombre del tag se sanea (P0.5 → P0_5) para no meter un punto en el
+             * namespace #EXT-X-* (RFC 8216 §4.1: nombre alfanumérico con guiones). */
+            const _bpMap = options.bulletproof_profiles || {};
+            const _bpIds = Object.keys(_bpMap)
+                .filter(k => /^P[0-5](?:[._]5)?$/.test(k))
+                .sort((a, b) => (parseFloat(String(a).slice(1)) || 0) - (parseFloat(String(b).slice(1)) || 0));
+            for (const pid of _bpIds) {
+                const p = _bpMap[pid];
                 if (!p) continue;
+                const _tagPid = String(pid).replace(/[._]/g, '_');
                 const attrs = [
                     `NAME="${_esc(p.name)}"`,
                     `ROLE="${_esc(p.role)}"`,
@@ -3420,14 +3429,14 @@
                     `SOLVER="${_esc(p.solver_trace)}"`,
                     `TIMESTAMP=${p.optimized_timestamp || 0}`
                 ];
-                coreHeader.push(`#EXT-X-APE-LAB-PROFILE-${pid}:${attrs.join(',')}`);
+                coreHeader.push(`#EXT-X-APE-LAB-PROFILE-${_tagPid}:${attrs.join(',')}`);
 
                 // Bounds del solver (rangos lo/hi por knob) — opcional pero auditable
                 if (p.bounds && typeof p.bounds === 'object') {
                     const boundEntries = Object.entries(p.bounds)
                         .map(([k, v]) => `${k}=${typeof v === 'object' ? JSON.stringify(v) : v}`)
                         .join(',');
-                    if (boundEntries) coreHeader.push(`#EXT-X-APE-LAB-BOUNDS-${pid}:${boundEntries}`);
+                    if (boundEntries) coreHeader.push(`#EXT-X-APE-LAB-BOUNDS-${_tagPid}:${boundEntries}`);
                 }
 
                 // Optimized knobs (resultado del solver: buffer_seconds, live_delay, etc.)
@@ -3435,7 +3444,7 @@
                     const knobEntries = Object.entries(p.optimized_knobs)
                         .map(([k, v]) => `${k}=${v}`)
                         .join(',');
-                    if (knobEntries) coreHeader.push(`#EXT-X-APE-LAB-KNOBS-${pid}:${knobEntries}`);
+                    if (knobEntries) coreHeader.push(`#EXT-X-APE-LAB-KNOBS-${_tagPid}:${knobEntries}`);
                 }
             }
 
