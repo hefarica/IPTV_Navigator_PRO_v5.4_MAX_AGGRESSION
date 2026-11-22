@@ -5732,7 +5732,20 @@ ${__apeContinuityTags().join('\n')}
         'X-Prefetch-Enabled', 'X-Prefetch-Adaptive', 'X-Prefetch-Segments',
         'X-Parallel-Segments', 'X-Concurrent-Downloads',
         // presupuesto de red declarado
-        'X-Expected-Bitrate', 'X-Max-Bitrate', 'X-Min-Bitrate', 'X-Buffer-Target'
+        'X-Expected-Bitrate', 'X-Max-Bitrate', 'X-Min-Bitrate', 'X-Buffer-Target',
+        // [2026-11-22 · MEDIDO — la calibración del LAB NO sobrevivía al cap de 200]
+        // El JSON calibrado reordena 12 cabeceras críticas al principio para que caigan dentro
+        // de los 8192 B... pero el recorte real del generador es 200 HEADERS, y su orden no es
+        // el del JSON: `_priorityOrderKeys` reserva primero esta lista y luego el resto. Medido
+        // emitiendo un canal real por perfil: 10 de 12 críticas NO llegaban (P0 con 7813 B, o
+        // sea sin siquiera tocar el techo de bytes: las mataba el cap de 200). Sólo sobrevivían
+        // X-Min-Bitrate (ya estaba en la lista) y, en algunos perfiles, CMCD-Request.
+        // Reservarlas aquí las hace inmunes al cap; el coste (~450 B) lo pagan extras de
+        // LCEVC/GPU/AI/VVC, que es exactamente el trade que documenta el informe.
+        'X-APE-BITRATE-FLOOR', 'X-Low-Latency-Mode', 'X-Segment-Duration', 'X-Segment-Duration-S',
+        'X-Live-Sync-Duration-Count', 'X-Live-Max-Latency-Count', 'X-Fragment-TTFB-Max-Ms',
+        'X-Fragment-Retry-Max', 'X-Stall-Detection-Ms', 'X-Nudge-Max-Retry',
+        'X-APE-BUFFER-STRATEGY', 'CMCD-Request'
     ];
 
     /** Devuelve las claves de `obj` con las prioritarias primero (orden estable). */
@@ -11264,6 +11277,24 @@ return lines.join('\n');
                     (channel && (channel.stream_id || channel.id)) || '');
             }
         } catch (_eRt) { /* aditivo: nunca rompe la generación */ }
+        // ═══ CA1 FINAL (2026-11-22 · MEDIDO) ═══════════════════════════════════════════
+        // El strip CA1 original sólo COMENTABA las claves del literal `_httpPayload`; lo que
+        // entra por `...(_exthttp_base.headers)` (build_exthttp) lo esquivaba por completo.
+        // Medido emitiendo un canal real por perfil: P5 mandaba al proveedor 26 cabeceras
+        // X-APE-* internas (X-APE-Codec-*, X-APE-HDR-*, X-APE-Bandwidth, X-APE-BUFFER-STRATEGY,
+        // X-APE-Follow-Redirects…) mientras los otros 11 perfiles mandaban sólo 2. Es
+        // fingerprint del engine en el upstream, y además inconsistente entre perfiles.
+        // Se aplica el filtro AL FINAL, tras todos los spreads, salvo las excepciones que la
+        // maquinaria VPS necesita de verdad (documentadas en este mismo archivo).
+        const _ca1Keep = new Set([
+            'X-APE-Profile', 'X-APE-Tier',          // maquinaria VPS profile-driven
+            'X-APE-Max-Quality', 'X-APE-Codec-Cascade', // MAX QUALITY OVERRIDE (ver bloque literal)
+            'X-APE-Channel-Id'                       // correlación QoE del observer server-side
+        ]);
+        for (const _k of Object.keys(_httpPayload)) {
+            if (/^X-APE-/i.test(_k) && !_ca1Keep.has(_k)) delete _httpPayload[_k];
+        }
+
         // ── CAP REAL #EXTHTTP: 200 headers / 8192 bytes ──────────────────────
         // build_exthttp() ya particiona, pero generateChannelEntry agrega headers
         // anabólicos/JWT/realtime DESPUÉS y podía superar el cap (auditoría real:
