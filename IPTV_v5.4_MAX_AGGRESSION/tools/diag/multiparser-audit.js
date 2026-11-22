@@ -48,34 +48,77 @@ const APE_PUBLIC = ['X-APE-Profile', 'X-APE-Tier', 'X-APE-Max-Quality', 'X-APE-C
 
 const P = (name) => ({ name, bad: [], notes: [], understood: 0 });
 
-/* ══════════ 1 · hls.js (AttrList) ══════════ */
+/* ══════════ 1 · hls.js 1.5.17 (M3U8Parser REAL) ══════════
+ * Semántica MEDIDA ejecutando el parser vendorizado (t8), no doctrina de memoria:
+ *  · isMediaPlaylist() = true si hay #EXT-X-TARGETDURATION / MEDIA-SEQUENCE / EXTINF en un
+ *    catálogo con STREAM-INF → hls.js usa el parser de MEDIA y TODOS los STREAM-INF quedan
+ *    inertes. Es la rotura más grave y no produce ningún error visible.
+ *  · #EXTINF con duración NO numérica (-1) → regex \d*(?:\.\d+)? no casa: duration=0 y el
+ *    RESTO de la línea se captura como URI.
+ *  · #EXT-X-SESSION-KEY:METHOD=NONE → warning real de hls.js (Keys).
+ *  · Tags de media playlist (SERVER-CONTROL, PART-INF, START) en el catálogo.
+ *  · hls.js 1.5.17 NO rechaza: FRAME-RATE en fracción, BANDWIDTH ausente, coma final, ni exige
+ *    #EXTM3U/orden de VERSION. Eso vive en el perfil RFC 8216 estricto, no aquí.
+ *  · Sí corrompe en silencio: CODECS sin comillas (pierde audioCodec y FRAME-RATE) y
+ *    RESOLUTION con espacios (width/height=null).
+ */
 function auditHlsjs(lines) {
-    const r = P('hls.js (AttrList)');
-    const isMaster = lines.some(l => l.startsWith('#EXT-X-STREAM-INF:'));
-    let versionSeen = false;
+    const r = P('hls.js 1.5.17 (real)');
+    const hasStreamInf = lines.some(l => l.startsWith('#EXT-X-STREAM-INF:'));
+    const hasTarget = lines.some(l => l.startsWith('#EXT-X-TARGETDURATION:'));
+    const hasMediaSeq = lines.some(l => l.startsWith('#EXT-X-MEDIA-SEQUENCE:'));
+    const hasExtinf = lines.some(l => l.startsWith('#EXTINF:'));
+
+    /* 1 · contaminación de tipo: el catálogo se parsea como MEDIA */
+    if (hasStreamInf && (hasTarget || hasMediaSeq)) {
+        const why = hasTarget ? '#EXT-X-TARGETDURATION' : '#EXT-X-MEDIA-SEQUENCE';
+        const ln = lines.findIndex(l => l.startsWith(hasTarget ? '#EXT-X-TARGETDURATION:' : '#EXT-X-MEDIA-SEQUENCE:')) + 1;
+        r.bad.push([ln, 'FATAL: ' + why + ' hace isMediaPlaylist()=true → hls.js parsea como MEDIA y los ' +
+            lines.filter(l => l.startsWith('#EXT-X-STREAM-INF:')).length + ' STREAM-INF quedan INERTES (sin error)', '']);
+    }
+
     for (let i = 0; i < lines.length; i++) {
-        const l = lines[i].trim();
-        if (l.startsWith('#EXT-X-VERSION:')) versionSeen = true;
+        const raw = lines[i], l = raw.trim();
+
+        /* 2 · EXTINF con duración no numérica */
+        if (l.startsWith('#EXTINF:')) {
+            r.understood++;
+            const durMatch = l.match(/^#EXTINF:(\d+(?:\.\d+)?)/);
+            const dur = durMatch ? durMatch[1] : '';
+            if (!durMatch) {
+                r.bad.push([i + 1, 'duración "' + dur + '" no parseable por hls.js (regex \\d*(?:\\.\\d+)?): duration=0 y el resto de la línea se toma como URI falso', l.slice(0, 80)]);
+            }
+        }
+
+        /* 3 · SESSION-KEY inválido */
+        if (l.startsWith('#EXT-X-SESSION-KEY:') && /METHOD=NONE/i.test(l)) {
+            r.bad.push([i + 1, 'warning real de hls.js: EXT-X-SESSION-KEY con METHOD=NONE se ignora', l.slice(0, 80)]);
+        }
+
+        /* 4 · tags de media playlist en el catálogo */
+        for (const tag of ['#EXT-X-SERVER-CONTROL:', '#EXT-X-PART-INF:', '#EXT-X-START:']) {
+            if (l.startsWith(tag) && (hasStreamInf || hasExtinf)) {
+                r.bad.push([i + 1, 'tag de MEDIA playlist (' + tag.slice(0, -1) + ') en un catálogo de canales', l.slice(0, 70)]);
+            }
+        }
+
+        /* 5 · corrupción silenciosa de atributos */
         if (l.startsWith('#EXT-X-STREAM-INF:')) {
             r.understood++;
             const attrs = l.slice('#EXT-X-STREAM-INF:'.length);
-            if (!/(^|,)\s*BANDWIDTH=\d+/.test(attrs)) r.bad.push([i + 1, 'STREAM-INF sin BANDWIDTH (hls.js descarta la rendition)', l]);
             const cm = attrs.match(/CODECS=([^,]*)/);
-            if (cm && !/^"/.test(cm[1])) r.bad.push([i + 1, 'CODECS sin comillas: la coma corta el atributo', l]);
+            if (cm && !/^"/.test(cm[1])) r.bad.push([i + 1, 'CODECS sin comillas: hls.js pierde audioCodec y FRAME-RATE (clave basura)', l.slice(0, 90)]);
             const rm = attrs.match(/RESOLUTION=([^,]*)/);
-            if (rm && !/^\d+x\d+$/.test(rm[1].trim())) r.bad.push([i + 1, 'RESOLUTION no es WxH literal', l]);
-            const fm = attrs.match(/FRAME-RATE=([^,]*)/);
-            if (fm && /^\d+\/\d+$/.test(fm[1].trim())) r.bad.push([i + 1, 'FRAME-RATE en fracción (hls.js espera decimal)', l]);
-            if (/,\s*$/.test(attrs)) r.bad.push([i + 1, 'coma final en la lista de atributos', l]);
+            if (rm && !/^\d+x\d+$/.test(rm[1].trim())) r.bad.push([i + 1, 'RESOLUTION no WxH literal: hls.js deja width/height=null', l.slice(0, 90)]);
+            if (!/(^|,)\s*BANDWIDTH=\d+/.test(attrs)) r.notes.push('STREAM-INF sin BANDWIDTH: hls.js NO la rechaza (bitrate=null, la variante sobrevive) — dato de t8');
         }
         if (l.startsWith('#EXT-X-MEDIA:')) {
             r.understood++;
-            if (!/TYPE=(AUDIO|VIDEO|SUBTITLES|CLOSED-CAPTIONS)/.test(l)) r.bad.push([i + 1, 'EXT-X-MEDIA sin TYPE válido', l]);
-            if (!/GROUP-ID="/.test(l)) r.bad.push([i + 1, 'EXT-X-MEDIA sin GROUP-ID entrecomillado', l]);
+            if (!/TYPE=(AUDIO|VIDEO|SUBTITLES|CLOSED-CAPTIONS)/.test(l)) r.bad.push([i + 1, 'EXT-X-MEDIA sin TYPE válido', l.slice(0, 80)]);
         }
     }
-    if (r.understood && !versionSeen) r.notes.push('hay tags de atributos y no se declara #EXT-X-VERSION');
-    r.notes.push('modo: ' + (isMaster ? 'master multivariante' : 'lista de canales/M3U Plus'));
+    r.notes.push('modo detectado por hls.js: ' + (hasStreamInf && !(hasTarget || hasMediaSeq) ? 'MASTER' : 'MEDIA'));
+    r.notes.push('medido con el parser real (t8): FRAME-RATE en fracción, coma final y BANDWIDTH ausente NO se rechazan');
     return r;
 }
 
@@ -95,6 +138,12 @@ function auditRfc8216(lines) {
     if (isMedia && !lines.some(l => l.startsWith('#EXT-X-TARGETDURATION:'))) {
         r.notes.push('sin #EXT-X-TARGETDURATION (propio de media playlist; aquí es catálogo M3U Plus)');
     }
+    /* coma final en lista de atributos: la prohibe el ABNF del RFC (hls.js la TOLERA: medido en t8) */
+    for (let i = 0; i < lines.length; i++) {
+        const l = lines[i].trim();
+        if (/^#EXT-X-[A-Z-]+:/.test(l) && /,$/.test(l)) r.bad.push([i + 1, 'coma final en la lista de atributos (ABNF RFC 8216); hls.js la tolera', l.slice(0, 70)]);
+    }
+
     let pending = false, sinUri = 0, uriSinExtinf = 0;
     for (let i = 0; i < lines.length; i++) {
         const l = lines[i].trim();
@@ -282,7 +331,7 @@ function runAll(text) {
 function selftest() {
     const base = [
         '#EXTM3U x-tvg-url="http://epg"',
-        '#EXTINF:-1 tvg-id="a" group-title="G",Canal A',
+        '#EXTINF:10 tvg-id="a" group-title="G",Canal A',
         '#EXT-X-STREAM-INF:BANDWIDTH=8000000,CODECS="hvc1.2.4.L153.B0",RESOLUTION=1920x1080',
         '#EXTHTTP:{"User-Agent":"VLC/3.0.20"}',
         '#EXTVLCOPT:network-caching=3000',
@@ -293,11 +342,14 @@ function selftest() {
     const cases = [
         { id: 'C1 CODECS sin comillas', mutate: (t) => t.replace('CODECS="hvc1.2.4.L153.B0"', 'CODECS=hvc1.2.4.L153.B0,mp4a.40.2'), expect: 'hls.js' },
         { id: 'C2 RESOLUTION con espacio', mutate: (t) => t.replace('RESOLUTION=1920x1080', 'RESOLUTION=1920 x 1080'), expect: 'hls.js' },
-        { id: 'C3 coma final de atributos', mutate: (t) => t.replace('RESOLUTION=1920x1080', 'RESOLUTION=1920x1080,'), expect: 'hls.js' },
+        { id: 'C3 coma final de atributos', mutate: (t) => t.replace('RESOLUTION=1920x1080', 'RESOLUTION=1920x1080,'), expect: 'RFC 8216' },
         { id: 'C4 EXTHTTP JSON inválido', mutate: (t) => t.replace('#EXTHTTP:{"User-Agent":"VLC/3.0.20"}', '#EXTHTTP:{User-Agent:VLC}'), expect: 'ExoPlayer' },
         { id: 'C5 EXTHTTP > 8192 B', mutate: (t) => t.replace('#EXTHTTP:{"User-Agent":"VLC/3.0.20"}', '#EXTHTTP:{"X":"' + 'A'.repeat(8250) + '"}'), expect: 'ExoPlayer' },
         { id: 'C6 BOM UTF-8', mutate: (t) => '\uFEFF' + t, expect: 'hostil' },
-        { id: 'C7 KODIPROP fuera de namespace', mutate: (t) => t.replace('#KODIPROP:inputstream.adaptive.manifest_type=hls', '#KODIPROP:manifest_type=hls'), expect: 'Kodi' }
+        { id: 'C7 KODIPROP fuera de namespace', mutate: (t) => t.replace('#KODIPROP:inputstream.adaptive.manifest_type=hls', '#KODIPROP:manifest_type=hls'), expect: 'Kodi' },
+        { id: 'C8 EXTINF con duracion -1', mutate: (t) => t.replace('#EXTINF:10', '#EXTINF:-1'), expect: 'hls.js' },
+        { id: 'C9 TARGETDURATION en catalogo (fuerza MEDIA)', mutate: (t) => t.replace('#EXTM3U x-tvg-url="http://epg"', '#EXTM3U x-tvg-url="http://epg"' + String.fromCharCode(10) + '#EXT-X-TARGETDURATION:2'), expect: 'hls.js' },
+        { id: 'C10 SESSION-KEY METHOD=NONE', mutate: (t) => t.replace('#EXT-X-STREAM-INF:', '#EXT-X-SESSION-KEY:METHOD=NONE' + String.fromCharCode(10) + '#EXT-X-STREAM-INF:'), expect: 'hls.js' }
     ];
 
     let ok = 0;
