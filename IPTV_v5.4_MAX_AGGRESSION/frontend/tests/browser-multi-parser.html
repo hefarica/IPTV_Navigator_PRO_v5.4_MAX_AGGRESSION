@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>APE MultiParser browser smoke</title>
+</head>
+<body>
+  <pre id="out">RUNNING</pre>
+  <script src="../js/ape-v9/ape-multi-parser.js"></script>
+  <script src="../js/ape-v9/ape-multi-export-ui.js"></script>
+  <script>
+    (function () {
+      var out = document.getElementById('out');
+      try {
+        var MP = window.APEMultiParser;
+        if (!MP) throw new Error('APEMultiParser no expuesto');
+        if (!window.APEMultiExport) throw new Error('APEMultiExport no expuesto');
+
+        var text = '#EXTM3U\n' +
+          '#EXTINF:-1 tvg-id="c1" tvg-name="Canal, Uno" group-title="Noticias",Canal, Uno\n' +
+          '#EXTVLCOPT:http-user-agent=BrowserUA\n' +
+          '#EXTHTTP:{"headers":{"Range":"bytes=0-1","User-Agent":"BrowserUA"}}\n' +
+          'http://example.com/live/u/p/1.m3u8\n';
+
+        var model = MP.parse(text);
+        var vlc = MP.render(model, 'vlc');
+        var kodi = MP.render(model, 'kodi');
+        var bundle = MP.buildBundleZip(model);
+        var fromApp = window.APEMultiExport.buildBundleFromChannels([{
+          id: 'c9',
+          name: 'Canal App',
+          group: 'General',
+          url: 'http://example.com/live/u/p/9.m3u8',
+          exthttp: { 'User-Agent': 'AppUA', 'Range': 'bytes=0-1' }
+        }]);
+
+        window.app = {
+          state: {
+            channels: [{
+              id: 'c10',
+              name: 'Canal Vista',
+              group: 'General',
+              url: 'http://example.com/live/u/p/10.m3u8',
+              exthttp: { 'User-Agent': 'ViewUA' }
+            }]
+          },
+          showToast: function () {}
+        };
+        var exported = window.APEMultiExport.exportCurrentView({ download: false });
+
+        var checks = [
+          ['kind=flat', model.kind === 'flat'],
+          ['channels=1', model.channels.length === 1],
+          ['vlc UA', vlc.indexOf('#EXTVLCOPT:http-user-agent=BrowserUA') !== -1],
+          ['kodi headers', kodi.indexOf('#KODIPROP:inputstream.adaptive.stream_headers=') !== -1],
+          ['sin Range', vlc.indexOf('Range') === -1 && kodi.indexOf('Range') === -1],
+          ['zip PK', bundle.zip[0] === 0x50 && bundle.zip[1] === 0x4B],
+          ['zip files', !!bundle.files['universal.m3u8'] && !!bundle.files['manifest.json']],
+          ['app builder', fromApp.bundle.files['vlc.m3u8'].indexOf('#EXTVLCOPT:http-user-agent=AppUA') !== -1],
+          ['export current view', !!exported && exported.channels === 1 && exported.dialects === 12]
+        ];
+
+        var failed = checks.filter(function (c) { return !c[1]; });
+        out.textContent = failed.length
+          ? 'FAIL ' + failed.map(function (c) { return c[0]; }).join(' | ')
+          : 'PASS ' + checks.length + ' checks';
+      } catch (e) {
+        out.textContent = 'ERROR ' + e.message;
+      }
+    })();
+  </script>
+</body>
+</html>

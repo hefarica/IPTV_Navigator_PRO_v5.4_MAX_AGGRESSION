@@ -2801,6 +2801,39 @@
                   <option value="diagnostic">Diagnostic (auditoría)</option>
                 </select></div>
             <script>window.APE_PUBLICATION_MODE = window.APE_PUBLICATION_MODE || 'balanced_95';</script>
+            <!-- 🧬 MULTIPARSER · TODOS LOS PLAYERS -->
+            <div id="apeMultiParserPanel" style="
+                margin-top: 14px;
+                padding: 16px;
+                border: 1px solid rgba(139, 92, 246, 0.35);
+                border-radius: 14px;
+                background: linear-gradient(135deg, rgba(139, 92, 246, 0.10), rgba(14, 165, 233, 0.05));
+            ">
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <span style="font-size:1.3rem;">🧬</span>
+                <strong style="font-size:0.95rem; color:#e2e8f0;">MULTIPARSER · TODOS LOS PLAYERS</strong>
+                <span style="font-size:0.72rem; color:#94a3b8;">VLC · Kodi · TiviMate · OTT Navigator · Smarters · ExoPlayer · Apple · ffmpeg · mpv · hls.js</span>
+              </div>
+              <p style="margin:8px 0 12px 0; font-size:0.78rem; color:var(--text-muted); line-height:1.5;">
+                Genera un ZIP con la misma lista traducida al dialecto de cada player, sin modificar la lista original.
+                Conserva tags desconocidos en <code>universal.m3u8</code>, elimina cabeceras tóxicas y documenta lo que cada player no soporta.
+              </p>
+              <div class="button-row">
+                <button id="btnMultiExportView" class="btn" type="button"
+                  onclick="window.APEMultiExport ? window.APEMultiExport.exportCurrentView() : alert('Multiparser cargando. Espera un segundo.')"
+                  style="background: linear-gradient(135deg,#8b5cf6,#6366f1); box-shadow: 0 10px 25px rgba(139,92,246,0.3);">
+                  <span class="icon">📦</span><span>Exportar vista actual (ZIP)</span>
+                </button>
+                <button id="btnMultiParseFile" class="btn secondary" type="button"
+                  onclick="window.APEMultiExport ? window.APEMultiExport.pickAndExport() : alert('Multiparser cargando. Espera un segundo.')"
+                  style="margin-left:10px;">
+                  <span class="icon">📂</span><span>Multiparsear archivo (ZIP)</span>
+                </button>
+              </div>
+              <div id="apeMultiParserStatus" style="margin-top:8px; font-size:0.74rem; color:#94a3b8;">
+                Listo. La exportación no altera la lista ni el generador.
+              </div>
+            </div>
             <p id="exportStatus" style="font-size:0.78rem; color:var(--text-muted); margin-top:8px;">Ninguna
               exportación
               realizada todavía.</p>
@@ -4396,6 +4429,9 @@
   <script src="js/ape-v9/parsers/ape-universal-parser-stack.js?v=1.0"></script>
   <!-- 🔌 APE PARSER GENERATION BRIDGE — connects 26-parser evidence to generation pipeline -->
   <script src="js/ape-v9/parsers/ape-parser-generation-bridge.js?v=1.0"></script>
+  <!-- 🧬 APE MULTI-PARSER — parseo sin pérdida + dialectos por player + ZIP -->
+  <script src="js/ape-v9/ape-multi-parser.js?v=1.0"></script>
+  <script src="js/ape-v9/ape-multi-export-ui.js?v=1.0"></script>
   <!-- 🛡️ APE MAX QUALITY FALLBACK RESOLVER — MAX IMAGE FIRST · COVERAGE ALWAYS · NO CHANNEL LOSS -->
   <!-- 🎯 APE HEVC CASCADE CSV SSOT — 12-tier Tier→Codec mapping (HFRC mandato 2026-05-20)
        MUST load BEFORE ape-fallback-resolver.js y m3u8-typed-arrays-ultimate.js -->
