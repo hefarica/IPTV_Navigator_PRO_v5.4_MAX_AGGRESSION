@@ -5243,7 +5243,10 @@ El servidor analizará 26,000+ canales en ~10 minutos.
 
             const userInfo = authResponse.data?.user_info || {};
             const serverInfo = authResponse.data?.server_info || {};
-            const allowedFormats = userInfo.allowed_output_formats || ['ts', 'm3u8'];
+            const rawAllowedFormats = userInfo.allowed_output_formats;
+            const allowedFormats = Array.isArray(rawAllowedFormats)
+                ? rawAllowedFormats
+                : String(rawAllowedFormats || 'ts,m3u8').split(',');
             console.log('📋 Formatos de salida permitidos:', allowedFormats);
             console.log('🖥️ Info del servidor:', serverInfo);
 
@@ -5266,56 +5269,58 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             }
 
             // ═══════════════════════════════════════════════════════════════
-            // 🛡️ FRONTCDN REDIRECT PROBE v1.0
-            // Detecta si el servidor usa redirect 302 a un dominio CDN diferente.
-            // Si lo hace, ExoPlayer no puede resolver segmentos HLS relativos
-            // → se marca _forceTS=true para que el generador use .ts directo.
+            // 🛡️ CONNECTION BUDGET + FORMAT DECISION v2.0
+            //
+            // El probe anterior hacía GET /live/{user}/{pass}/1.m3u8 con
+            // mode:'no-cors'. Eso abría un stream REAL, consumía el único slot
+            // de una cuenta max_connections=1 y dejaba al player con 403.
+            // Además, una respuesta no-cors es opaca: status=0 y Location vacío,
+            // así que el probe NUNCA podía detectar el redirect que decía detectar.
+            // Por eso el 403 era INTERMITENTE: dependía de si el slot quedaba
+            // tomado cuando el player pedía su primer segmento.
+            //
+            // Ahora la decisión se toma con datos que el API ya devolvió:
+            // allowed_output_formats + max_connections. Cero conexiones extra.
             // ═══════════════════════════════════════════════════════════════
-            try {
-                const probeUrl = `${baseUrl}/live/${u}/${p}/1.m3u8`;
-                console.log('🛡️ [FrontCDN Probe] Verificando redirect chain...');
-                // ANTI-CORS FIX: Use original fetch to bypass evasion engine
-                // The evasion engine intercepts /live/ URLs and injects custom headers
-                // that trigger CORS preflight failures. Use raw fetch instead.
-                const _rawFetch = window._APE_ORIGINAL_FETCH || fetch;
-                const probeResp = await _rawFetch(probeUrl, {
-                    method: 'GET',
-                    redirect: 'manual',
-                    mode: 'no-cors',
-                    signal: AbortSignal.timeout(3000)
-                });
-                
-                const isRedirect = probeResp.status >= 300 && probeResp.status < 400;
-                const redirectLocation = probeResp.headers.get('Location') || '';
-                const originalHost = new URL(baseUrl).hostname.toLowerCase();
-                let redirectHost = '';
-                let isCrossDomain = false;
-                
-                if (isRedirect && redirectLocation) {
-                    try {
-                        redirectHost = new URL(redirectLocation).hostname.toLowerCase();
-                        isCrossDomain = redirectHost !== originalHost && 
-                                       !redirectHost.match(/^\d+\.\d+\.\d+\.\d+$/);
-                    } catch(e) {}
-                }
-                
-                if (isCrossDomain) {
-                    console.warn(`🛡️ [FrontCDN DETECTADO] ${originalHost} → ${redirectHost}`);
-                    console.warn(`   ⚠️ Redirect cross-domain a CDN detectado. Forzando .ts`);
-                    this.state.currentServer._forceTS = true;
-                    this.state.currentServer._frontCDNHost = redirectHost;
-                    const activeSrv = this.state.activeServers?.find(s => s.id === this.state.currentServer?.id);
-                    if (activeSrv) {
-                        activeSrv._forceTS = true;
-                        activeSrv._frontCDNHost = redirectHost;
-                    }
-                } else {
-                    console.log(`🛡️ [FrontCDN Probe] Sin redirect cross-domain → .m3u8 seguro ✅`);
-                    this.state.currentServer._forceTS = false;
-                }
-            } catch (probeErr) {
-                console.warn('🛡️ [FrontCDN Probe] Error en probe (no crítico):', probeErr.message);
+            const rawMaxConnections = userInfo.max_connections;
+            const parsedMaxConnections = parseInt(rawMaxConnections, 10);
+            // Ausente → asumimos 1 (el caso que produce 403).
+            // 0 → el panel declara "sin límite"; no clampeamos.
+            const maxConnections = rawMaxConnections == null
+                ? 1
+                : (Number.isFinite(parsedMaxConnections) && parsedMaxConnections > 0 ? parsedMaxConnections : 0);
+            const m3u8Allowed = allowedFormats.some(f => String(f).trim().toLowerCase() === 'm3u8');
+            const tsAllowed = allowedFormats.some(f => String(f).trim().toLowerCase() === 'ts');
+            const preferredStreamFormat = m3u8Allowed ? 'm3u8' : (tsAllowed ? 'ts' : 'm3u8');
+            const forceTS = !m3u8Allowed;
+
+            this.state.maxConnections = maxConnections;
+            this.state.preferredStreamFormat = preferredStreamFormat;
+
+            if (this.state.currentServer) {
+                this.state.currentServer._maxConnections = maxConnections;
+                this.state.currentServer._preferredStreamFormat = preferredStreamFormat;
+                this.state.currentServer._forceTS = forceTS;
             }
+            const activeSrv = this.state.activeServers?.find(s => s.id === this.state.currentServer?.id);
+            if (activeSrv) {
+                activeSrv._maxConnections = maxConnections;
+                activeSrv._preferredStreamFormat = preferredStreamFormat;
+                activeSrv._forceTS = forceTS;
+            }
+
+            try {
+                if (window.SESSION_WARMUP_V9 && typeof window.SESSION_WARMUP_V9.setMaxConnections === 'function') {
+                    window.SESSION_WARMUP_V9.setMaxConnections(maxConnections);
+                }
+            } catch (warmupErr) {
+                console.warn('🛡️ [ConnectionBudget] Warmup no pudo ajustar su presupuesto:', warmupErr.message);
+            }
+
+            console.log(
+                `🛡️ [ConnectionBudget] max_connections=${maxConnections} · ` +
+                `format=${preferredStreamFormat} · probe=SKIPPED (no consume slot)`
+            );
 
             // 2️⃣ Obtener categorías para mapear ID → Nombre
             console.log('📂 Descargando categorías...');

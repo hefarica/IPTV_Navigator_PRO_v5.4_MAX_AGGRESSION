@@ -44,6 +44,9 @@
         // Máximo de warmups concurrentes
         MAX_CONCURRENT: 10,
 
+        // Con max_connections=1, un HEAD a /live/ puede ocupar el único slot.
+        SKIP_LIVE_ON_SINGLE_SLOT: true,
+
         // Cache de warmups exitosos (minutos)
         CACHE_TTL: 30
     };
@@ -119,6 +122,16 @@
             };
             this.queue = [];
             this.processing = false;
+            this.maxConnections = 0;
+            this.maxConcurrent = CONFIG.MAX_CONCURRENT;
+        }
+
+        setMaxConnections(n) {
+            this.maxConnections = Math.max(0, parseInt(n, 10) || 0);
+            this.maxConcurrent = this.maxConnections > 0
+                ? Math.max(1, Math.min(CONFIG.MAX_CONCURRENT, this.maxConnections))
+                : CONFIG.MAX_CONCURRENT;
+            return this.maxConcurrent;
         }
 
         /**
@@ -141,6 +154,12 @@
             if (level < CONFIG.MIN_LEVEL) {
                 this.stats.skipped++;
                 return { success: true, reason: 'level_too_low', cached: false };
+            }
+
+            // Con un solo slot, un HEAD a /live/ puede robarle la conexion al player.
+            if (this.maxConnections === 1 && CONFIG.SKIP_LIVE_ON_SINGLE_SLOT && /\/live\//i.test(url)) {
+                this.stats.skipped++;
+                return { success: false, reason: 'skipped_single_slot', cached: false };
             }
 
             // Verificar cache
@@ -251,10 +270,12 @@
                 return [];
             }
 
-            // Procesar en lotes para no saturar la red
+            // Procesar en lotes para no saturar la red.
+            // El tamano de lote respeta el presupuesto de conexiones.
             const results = [];
-            for (let i = 0; i < urls.length; i += CONFIG.MAX_CONCURRENT) {
-                const batch = urls.slice(i, i + CONFIG.MAX_CONCURRENT);
+            const concurrency = Math.max(1, this.maxConcurrent || CONFIG.MAX_CONCURRENT);
+            for (let i = 0; i < urls.length; i += concurrency) {
+                const batch = urls.slice(i, i + concurrency);
                 const promises = batch.map(item =>
                     this.execute(item.url, item.level, item.options || {})
                 );
