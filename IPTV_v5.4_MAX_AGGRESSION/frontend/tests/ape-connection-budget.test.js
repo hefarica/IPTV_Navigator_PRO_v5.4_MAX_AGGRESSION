@@ -114,6 +114,46 @@ function load(file, extra) {
     check(app.includes('window.SESSION_WARMUP_V9.setMaxConnections(maxConnections)'), 'app.js pasa el presupuesto al warmup');
     check(app.includes('this.state.maxConnections = maxConnections'), 'app.js guarda max_connections en state');
 
+    /* ── 6 · generador World-Class: clamp SOLO si el panel declara límite ── */
+    const wcCtx = sandbox({ Blob: global.Blob, TextEncoder, TextDecoder });
+    wcCtx.window.APE_PROFILES_CONFIG = {
+        labVersion: 'omega_v1', bulletproof: true, labExportedAt: '2026-11-22T00:00:00Z',
+        nivel1Directives: [], nivel3PerLayer: {},
+        profiles: {
+            P2: {
+                settings: { parallelFetches: 8, buffer_seconds: 30, bitrate: 10000 },
+                prefetch_config: { parallel_downloads: 8, prefetch_segments: 8, prefetch_parallel: 8, parallel_workers: 8, aggression_levels: '{"l1":{"parallel":2}}' },
+                headerOverrides: { 'X-Concurrent-Downloads': '10', 'X-Parallel-Segments': '10' },
+                hlsjs: { maxBufferLength: 30 }, vlcopt: {}, kodiprop: {}
+            }
+        }
+    };
+    vm.runInContext(fs.readFileSync(path.join(FE, 'js', 'm3u8-world-class-generator.js'), 'utf8'), wcCtx, { filename: 'wc.js' });
+    const wc = wcCtx.window.WorldClassM3U8Generator;
+    check(wc && typeof wc.generateWorldClassM3U8 === 'function', 'generador World-Class cargado');
+
+    const chan = { profile: 'P2', name: 'TEST', id: '1', url: 'http://example.test/live/1.ts' };
+    const emit = (mc) => { const r = wc.generateWorldClassM3U8([chan], { maxConnections: mc, includeStart: false }); return (r && r.content) || ''; };
+
+    const c1 = emit(1);
+    check(c1.includes('#EXT-X-APE-CONNECTION-BUDGET:1'), 'maxConnections=1 emite CONNECTION-BUDGET:1');
+    check(c1.includes('"parallelFetches":1'), 'maxConnections=1 clampa settings.parallelFetches a 1');
+    check(c1.includes('"parallel_downloads":1'), 'maxConnections=1 clampa parallel_downloads a 1');
+    check(c1.includes('"parallel_workers":1'), 'maxConnections=1 clampa parallel_workers a 1');
+    check(c1.includes('"X-Concurrent-Downloads":"1"'), 'maxConnections=1 clampa X-Concurrent-Downloads a 1');
+    check(c1.includes('"X-Parallel-Segments":"1"'), 'maxConnections=1 clampa X-Parallel-Segments a 1');
+
+    const c2 = emit(2);
+    check(c2.includes('#EXT-X-APE-CONNECTION-BUDGET:2') && c2.includes('"parallelFetches":2'),
+        'maxConnections=2 usa presupuesto 2 (no degrada cuentas con 2 slots)');
+
+    /* INVARIANTE DEL REPO: sin límite declarado NO se clampea (X-Concurrent-Downloads = 8/10) */
+    const c0 = emit(0);
+    check(!c0.includes('#EXT-X-APE-CONNECTION-BUDGET:'), 'maxConnections=0 NO emite tag de presupuesto');
+    check(c0.includes('"parallelFetches":8'), 'maxConnections=0 conserva parallelFetches=8 (sin clamp)');
+    check(c0.includes('"X-Concurrent-Downloads":"10"'), 'maxConnections=0 conserva X-Concurrent-Downloads=10 (sin clamp)');
+    check(!/undefined/.test(c1 + c2 + c0), 'el clamp no inyecta valores undefined');
+
     console.log('\n{"passed":' + pass + ',"failed":' + fail + ',"scope":"connection-budget","physical_playback_verified":false}');
     process.exit(fail === 0 ? 0 : 1);
 })();
