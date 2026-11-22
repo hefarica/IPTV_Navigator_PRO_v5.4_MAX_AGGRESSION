@@ -21,7 +21,8 @@ const path = require('path');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 
-const ROOT = 'C:/Users/HFRC/Desktop/IPTV_FASE2_STAGING/IPTV_v5.4_MAX_AGGRESSION/frontend';
+const ROOT = 'C:/Users/HFRC/Desktop/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION/IPTV_v5.4_MAX_AGGRESSION/frontend';
+const DRIVER = 'C:/Users/HFRC/Desktop/IPTV_FASE2_STAGING/IPTV_v5.4_MAX_AGGRESSION/frontend/_fase4_e2e_driver.js';
 const LAB = 'C:/Users/HFRC/AppData/Local/DSH_HERRAMIENTAS/DSH_BLUEGREEN_021/home/attachments/v1/files/8c/8c11e78148b64a3aa50fb08e5112e32182f77ef6002037a2a4072b9809284eab/APE_FUSION_PREMIUM_6K_4K_ZAPPING_ATOMICO (1).json';
 const ENTRADA = 'C:/Users/HFRC/APE_PRIVADO/entrada_3ch.m3u8';
 const OUTDIR = 'C:/Users/HFRC/APE_PRIVADO/fase8';
@@ -30,6 +31,7 @@ const TOKEN = crypto.randomBytes(24).toString('hex');
 const ORIGIN_OK = (o) => o === 'http://127.0.0.1' || (typeof o === 'string' && /^http:\/\/127\.0\.0\.1(:\d+)?$/.test(o));
 const T0 = Date.now();
 let RESULTADO_CB = null;
+let __muestra = null;
 const diag = [];
 function log(k, v) { diag.push({ t: Date.now() - T0, k: k, v: v }); }
 
@@ -94,6 +96,7 @@ const srv = http.createServer((req, res) => {
         req.on('end', () => { RESULTADO_CB = b; log('resultado_cb', { bytes: b.length }); responder(res, 200, 'application/json', '{}'); });
         return;
     }
+    if (u === '/_fase4_e2e_driver.js') { fs.readFile(DRIVER, (e, b) => { if (e) return responder(res, 404, 'text/plain', 'nf'); responder(res, 200, 'application/javascript', b); }); return; }
     if (u === '/guardar') {
         const p = String(req.headers['x-perfil'] || '');
         if (!IDS.has(p)) { log('guardar_rechazo', { p: p }); return responder(res, 400, 'application/json', JSON.stringify({ ok: false, err: 'id' })); }
@@ -129,6 +132,7 @@ const srv = http.createServer((req, res) => {
         const ext = path.extname(abs);
         const tipo = ext === '.js' ? 'application/javascript' : ext === '.json' ? 'application/json'
             : ext === '.css' ? 'text/css' : 'text/html; charset=utf-8';
+        if (abs.indexOf('index-v4.html') >= 0) { b = Buffer.from(b.toString('utf8').replace('</body>', '<script src="/js/ape-m3u-local-loader.js"></script><script src="/_fase4_e2e_driver.js"></script></body>')); }
         responder(res, 200, tipo, b);
     });
 });
@@ -188,7 +192,8 @@ srv.listen(0, '127.0.0.1', () => {
         let R = null, fallos = [];
         if (i < 0 || j < i) fallos.push('marcador ausente');
         if (RESULTADO_CB) log('fuente', { origen: 'callback' });
-        else { try { R = JSON.parse(src.slice(i + 4, j)); } catch (e) { fallos.push('json marcador: ' + e.message); } }
+        try { R = JSON.parse(FUENTE.slice(i + 4, j)); } catch (e) { fallos.push('json ilegible: ' + e.message); }
+        if (!R) { fallos.push('resultado nulo o ilegible'); __muestra = String(RESULTADO_CB || '').slice(0, 300); }
         if (R) {
             if (!Array.isArray(R.filas) || R.filas.length !== PERFILES.length) fallos.push('filas incompletas: ' + (R.filas || []).length + '/' + PERFILES.length);
             if (R.err && R.err.length) fallos.push('errores en pagina: ' + JSON.stringify(R.err));
@@ -223,7 +228,7 @@ srv.listen(0, '127.0.0.1', () => {
                 if (f.recuperacionExacta !== true) fallos.push(f.id + ': recuperacion no exacta');
             }
         }
-        const salida = { ok: fallos.length === 0, perfiles: PERFILES, fallos: fallos, diag: diag, resultado: R };
+        const salida = { ok: fallos.length === 0, perfiles: PERFILES, fallos: fallos, muestra: __muestra, diag: diag, resultado: R };
         console.log(JSON.stringify(salida));
         try { cp.kill('SIGKILL'); } catch (_) {}
         srv.close();

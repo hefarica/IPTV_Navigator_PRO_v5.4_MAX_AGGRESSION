@@ -48,8 +48,17 @@ function environment({ picker = false, gzip = false, format = 'm3u8', panelForma
         body: { appendChild() {}, removeChild() {} }
     };
     let networkRequests = 0;
+    // [2026-11-21 · t21] Se capturan las trazas del generador: la decisión de declarar el plano
+    // /cdn/ deja constancia del conteo REAL en el log (0 reescrituras → 'NO declarado'). Sin
+    // captura, esa constancia no sería verificable.
+    const logs = [];
+    const capture = value => (typeof value === 'string' ? value : JSON.stringify(value));
     const ctx = {
-        console: quiet, document, HTMLAnchorElement: Anchor, URL: TestURL, URLSearchParams,
+        console: Object.assign({}, quiet, {
+            log: (...args) => logs.push(args.map(capture).join(' ')),
+            warn: (...args) => logs.push('WARN ' + args.map(capture).join(' '))
+        }),
+        document, HTMLAnchorElement: Anchor, URL: TestURL, URLSearchParams,
         TextEncoder, TextDecoder, ReadableStream, WritableStream, TransformStream, CompressionStream,
         Blob, Response, AbortController, performance,
         btoa: s => Buffer.from(s, 'binary').toString('base64'), atob: s => Buffer.from(s, 'base64').toString('binary'),
@@ -98,7 +107,7 @@ function environment({ picker = false, gzip = false, format = 'm3u8', panelForma
     load('js/ape-v9/generation-output-panel.js');
     return { ctx, channels, downloads, fsTargets, elements, load,
         get generationCalls() { return generationCalls; }, get pickerCalls() { return pickerCalls; },
-        get networkRequests() { return networkRequests; } };
+        get networkRequests() { return networkRequests; }, logs };
 }
 
 async function fileBytes(env) {
@@ -280,12 +289,13 @@ async function main() {
         assert.ok(!text.includes('/pulse/'), 'ninguna línea /pulse/ cuando el canal no tiene id numérico');
     });
 
-    await test('_CDN declara el plano /cdn/ aunque no reescriba ninguna URL ya cableada', async () => {
-        // Estado real medido y fijado aquí: con canales cableables, la URI emitida es la del
-        // envoltorio y el rewrap CDN no toca NINGUNA línea de URL; sin embargo el controller
-        // declara #EXT-X-APE-CDN-PLANE/#EXT-X-APE-CDN-BASE en la cabecera de _CDN
-        // (generation-controller.js, _cdnPlaneBlock). Los dos planos no dicen lo mismo: la
-        // reconciliación queda como tarea propia (ver informe de t16), no como comentario.
+    await test('_CDN NO declara el plano /cdn/ cuando no reescribió ninguna URL (decisión del operador 2026-11-21)', async () => {
+        // [2026-11-21 · t21] El propietario decidió la OPCIÓN B: dejar de DECLARAR el plano /cdn/
+        // cuando no se ejerció. Misma clase de defecto que t1/t4/t16 (afirmar un hecho que no
+        // consta). Fundamento medido en t15/t18: los marcadores no tienen consumidor (0 en
+        // PHP/Lua) y en el catálogo entregado el plano no reescribe ninguna URL.
+        // Este caso ANTES exigía lo contrario ('declara el plano aunque no reescriba'); ahora
+        // exige su AUSENCIA, con el conteo REAL (stats.wrapped) visible en el log del generador.
         const env = environment();
         await env.ctx.APEGenerationController.prepublishAndGenerateDual({ dual: 'cdn', filename: 'cdnplane', hud: false });
         const cdnFile = (await fileBytes(env)).find(f => f.filename.indexOf('_CDN') >= 0);
@@ -298,22 +308,32 @@ async function main() {
         }
         const rewritten = uris.filter(uri => uri.indexOf('relay.invalid/cdn/') >= 0).length;
         assert.equal(rewritten, 0, 'NINGUNA línea de URL pasa por el plano /cdn/: ' + JSON.stringify(uris));
-        assert.ok(text.includes('#EXT-X-APE-CDN-PLANE:v4'),
-            'pero el plano se declara en la cabecera de _CDN');
-        assert.ok(text.includes('#EXT-X-APE-CDN-BASE:'),
-            'y declara su base, que es la única aparición de /cdn/ en el archivo');
-        // Complemento medido, para que la decisión sea explícita: el plano CDN SÍ reescribe los
-        // canales que el envoltorio no pudo cablear. No está muerto: cubre justo a esos.
+        assert.ok(!text.includes('#EXT-X-APE-CDN-PLANE'),
+            'con 0 reescrituras NO se declara el plano · _CDN empieza: ' + text.slice(0, 300));
+        assert.ok(!text.includes('#EXT-X-APE-CDN-BASE'), 'ni su base');
+        assert.ok(env.logs.some(line => line.indexOf('"plano_cdn":"NO declarado (0 URLs reescritas)"') >= 0),
+            'el conteo 0 queda visible en el log del generador · últimas trazas: ' +
+            JSON.stringify(env.logs.slice(-2)));
+        assert.ok(env.logs.some(line => line.indexOf('"cableadas":0') >= 0), 'y el conteo real dice 0');
+        // Complemento, para que el cambio sea CONDICIONAL y no un borrado: con un canal que el
+        // envoltorio no puede cablear, el plano SÍ reescribe y los marcadores vuelven a emitirse.
         const envNoId = withChannels(environment(), noIdChannel);
         envNoId.ctx.APE_PULSE_WRAP = true;
         await envNoId.ctx.APEGenerationController.prepublishAndGenerateDual({ dual: 'cdn', filename: 'cdnplane2', hud: false });
         const cdnNoId = (await fileBytes(envNoId)).find(f => f.filename.indexOf('_CDN') >= 0);
-        const urisNoId = textOf(cdnNoId).split(/\r?\n/).filter(line => /^https?:\/\//.test(line));
+        const textNoId = textOf(cdnNoId);
+        const urisNoId = textNoId.split(/\r?\n/).filter(line => /^https?:\/\//.test(line));
         assert.equal(urisNoId.length, 1, 'one URI per channel');
         assert.ok(urisNoId[0].indexOf('relay.invalid/cdn/') >= 0,
             'un canal sin id numérico SÍ lo reescribe el plano CDN: ' + urisNoId[0]);
         assert.ok(urisNoId[0].indexOf(noIdChannel[0].url.replace(/^https?:\/\//, '')) >= 0,
             'y conserva host, ruta y credenciales del origen: ' + urisNoId[0]);
+        assert.ok(textNoId.includes('#EXT-X-APE-CDN-PLANE:v4'),
+            'con 1 reescritura el marcador del plano vuelve a estar, igual que hoy');
+        assert.ok(textNoId.includes('#EXT-X-APE-CDN-BASE:'), 'con su base');
+        assert.ok(envNoId.logs.some(line => line.indexOf('"plano_cdn":"DECLARADO"') >= 0),
+            'y el log lo declara · últimas trazas: ' + JSON.stringify(envNoId.logs.slice(-2)));
+        assert.ok(envNoId.logs.some(line => line.indexOf('"cableadas":1') >= 0), 'con el conteo real 1');
     });
 
     for (const picker of [false, true]) for (const gzip of [false, true]) for (const mode of ['direct', 'cdn', 'both']) {
@@ -324,7 +344,10 @@ async function main() {
                 ? await env.ctx.APEGenerationController.prepublishAndGenerateDirect(opts)
                 : await env.ctx.APEGenerationController.prepublishAndGenerateDual({ ...opts, dual: mode });
             assert.equal(result.decision, 'generated_no_audit');
-            assert.equal(env.generationCalls, 1, 'single producer pass');
+            // [2026-11-21 · t21] cdn/both hacen DOS pasadas por diseño: la de conteo (sólo lectura,
+            // para decidir si el plano /cdn/ se declara) y la de escritura. direct sigue en 1.
+            assert.equal(env.generationCalls, mode === 'direct' ? 1 : 2,
+                'una generación para escritura (+ una de conteo en cdn/both)');
             const files = await fileBytes(env);
             assert.equal(files.length, mode === 'both' ? 2 : 1, 'actual delivered file count');
             for (const file of files) {
@@ -381,7 +404,8 @@ async function main() {
         await env.ctx.APE_OUTPUT_TEST_HOOKS.runBoth();
         const files = await fileBytes(env);
         assert.equal(files.length, 2);
-        assert.equal(env.generationCalls, 1);
+        // [2026-11-21 · t21] AMBAS = dual: conteo + escritura.
+        assert.equal(env.generationCalls, 2);
         assert.ok(files.some(f => f.filename.includes('_DIRECTA')));
         assert.ok(files.some(f => f.filename.includes('_CDN')));
     });

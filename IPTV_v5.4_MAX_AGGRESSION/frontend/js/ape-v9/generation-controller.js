@@ -708,6 +708,68 @@
         ].join('\n') + '\n';
     }
 
+    // ── PLANO CDN: DECLARARLO SÓLO SI SE EJERCIÓ (decisión del operador, 2026-11-21) ─────────
+    // Opción B, medida en t15/t18: los marcadores #EXT-X-APE-CDN-* no tienen consumidor (0 en
+    // PHP/Lua) y en el catálogo entregado el plano no reescribe NINGUNA URL (2753/2753 son
+    // resolve_quality.php en el host del VPS). Se deja de DECLARAR lo que no se ejerció; el
+    // mecanismo, el rewrap y el envoltorio /pulse/ NO se tocan.
+    //
+    // El conteo es el REAL (stats.wrapped: se incrementa en _apeCdnLineFn cuando apeCdnRewrap
+    // cambia la línea), no un criterio nuevo. Pero stats.wrapped sólo cierra al terminar la
+    // pasada y el bloque debe ir ANTES del primer #EXTINF (ape-line-transform.js:65-68), así que
+    // se cuenta antes en una pasada de SÓLO LECTURA con LA MISMA función de línea.
+    // Medido: el generador NO es determinista byte a byte (rota metadata #EXTHTTP entre
+    // corridas), pero las LÍNEAS DE URL sí son estables y la decisión del rewrap depende sólo de
+    // ellas; aun así, si los dos conteos divergen se avisa por consola (nunca se silencia).
+    function _apeCdnStats() {
+        return { lines: 0, urls: 0, wrapped: 0, skipped: 0 };
+    }
+
+    // UNA sola definición de la función de línea: la usan la pasada de conteo y la de escritura,
+    // así el criterio no puede divergir entre ambas.
+    function _apeCdnLineFn(stats) {
+        return function (line) {
+            stats.lines++;
+            var t = line.trim();
+            if (!/^https?:\/\//i.test(t)) return line;
+            stats.urls++;
+            var out = window.apeCdnRewrap(line);
+            if (out !== line) stats.wrapped++; else stats.skipped++;
+            return out;
+        };
+    }
+
+    // Cuerpo de línea como lo ve apeLineTransform: sin el terminador LF ni el CR.
+    function _apeLineBodyOf(piece) {
+        if (piece.charCodeAt(piece.length - 1) === 13) return piece.slice(0, -1);
+        return piece;
+    }
+
+    // Pasada de conteo: consume el stream y NO escribe nada. Corta en cuanto sabe que el plano
+    // reescribió al menos una URL (basta para decidir). Streaming puro: no materializa la lista.
+    async function _apeCountCdnRewritePass(source, lineFn, stats) {
+        var reader = source.getReader();
+        var dec = new TextDecoder();
+        var pending = '';
+        try {
+            while (true) {
+                var next = await reader.read();
+                if (next.done) break;
+                pending += dec.decode(next.value, { stream: true });
+                var start = 0, i;
+                while ((i = pending.indexOf('\n', start)) >= 0) {
+                    lineFn(_apeLineBodyOf(pending.slice(start, i)));
+                    start = i + 1;
+                }
+                pending = pending.slice(start);
+                if (stats.wrapped > 0) { await reader.cancel(); break; }
+            }
+            if (pending.length && stats.wrapped === 0) lineFn(_apeLineBodyOf(pending));
+        } finally {
+            try { reader.releaseLock(); } catch (_) { }
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // Destino de guardado con FALLBACK REAL (bug medido en producción):
     // `showSaveFilePicker` exige "user gesture". El pipeline hace antes el
@@ -900,26 +962,31 @@
         if (!target) target = await _apeSaveTarget(_apeOutputName(options.filename, 'CDN', spec), spec);
         if (target.kind === 'cancel') return { cancelled: true, mode: 'CDN_ONLY' };
 
-        var stats = { lines: 0, urls: 0, wrapped: 0, skipped: 0 };
-        var lineFn = function (line) {
-            stats.lines++;
-            var t = line.trim();
-            if (!/^https?:\/\//i.test(t)) return line;
-            stats.urls++;
-            var out = window.apeCdnRewrap(line);
-            if (out !== line) stats.wrapped++; else stats.skipped++;
-            return out;
-        };
+        var stats = _apeCdnStats();
+        var lineFn = _apeCdnLineFn(stats);
+
+        // Conteo previo (sólo lectura) para decidir si el plano se declara. Ver el bloque de
+        // comentario de _apeCdnStats/_apeCountCdnRewritePass: mismo lineFn, misma rewrap.
+        var countStats = _apeCdnStats();
+        await _apeCountCdnRewritePass(gen.generateStream(channels, merged), _apeCdnLineFn(countStats), countStats);
+        var declarePlane = countStats.wrapped > 0;
 
         var source = gen.generateStream(channels, merged);
         await _apePipeOutputs(source, [{ target: target,
-            transform: window.apeLineTransform(lineFn, { block: _cdnPlaneBlock() }) }], spec);
+            transform: window.apeLineTransform(lineFn, { block: declarePlane ? _cdnPlaneBlock() : '' }) }], spec);
         var saved = _apeCompleteTarget(target);
 
+        if (stats.wrapped !== countStats.wrapped) {
+            console.warn('[APE-CDN] conteo de cableado distinto entre la pasada de conteo y la de ' +
+                'escritura (decisión=' + countStats.wrapped + ', escrito=' + stats.wrapped + '): la ' +
+                'polimorfía del generador cambió las líneas de URL entre pasadas');
+        }
         console.log('%c[APE-CDN] lista MEJORADA generada', 'color:#22d3ee;font-weight:bold;', {
             archivo: saved.filename, modo: saved.mode,
             canales: channels.length,
-            urls: stats.urls, cableadas: stats.wrapped, sin_cablear: stats.skipped
+            urls: stats.urls, cableadas: stats.wrapped, sin_cablear: stats.skipped,
+            plano_cdn: declarePlane ? 'DECLARADO' : 'NO declarado (0 URLs reescritas)',
+            cableadas_conteo_previo: countStats.wrapped
         });
 
         return {
@@ -929,7 +996,8 @@
             gzip: spec.gzip,
             format: spec.format,
             channels: channels.length,
-            stats: stats
+            stats: stats,
+            cdnPlaneDeclared: declarePlane
         };
     }
 
@@ -953,32 +1021,36 @@
             return { cancelled: true, mode: 'DUAL' };
         }
 
-        // Una sola generación, con backpressure de AMBOS destinos.
+        // Pasada de conteo (sólo lectura) + pasada de escritura con backpressure de AMBOS
+        // destinos. [2026-11-21 · decisión del operador, opción B] El plano /cdn/ sólo se declara
+        // si reescribió alguna URL; el conteo previo usa la MISMA función de línea (ver
+        // _apeCdnStats/_apeCountCdnRewritePass). El coste es una generación extra para decidir.
+        var countStats = _apeCdnStats();
+        await _apeCountCdnRewritePass(gen.generateStream(channels, merged), _apeCdnLineFn(countStats), countStats);
+        var declarePlane = countStats.wrapped > 0;
+
         var source = gen.generateStream(channels, merged);
-
-        var stats = { lines: 0, urls: 0, wrapped: 0, skipped: 0 };
-
-        var lineFn = function (line) {
-            stats.lines++;
-            var t = line.trim();
-            if (!/^https?:\/\//i.test(t)) return line;
-            stats.urls++;
-            var out = window.apeCdnRewrap(line);
-            if (out !== line) stats.wrapped++; else stats.skipped++;
-            return out;
-        };
+        var stats = _apeCdnStats();
+        var lineFn = _apeCdnLineFn(stats);
 
         await _apePipeOutputs(source, [
             { target: targetA },
             { target: targetB, transform: typeof window.apeLineTransform === 'function'
-                ? window.apeLineTransform(lineFn, { block: _cdnPlaneBlock() }) : _makeLineTransform(lineFn) }
+                ? window.apeLineTransform(lineFn, { block: declarePlane ? _cdnPlaneBlock() : '' }) : _makeLineTransform(lineFn) }
         ], spec);
         _apeCompleteTarget(targetA);
         _apeCompleteTarget(targetB);
 
+        if (stats.wrapped !== countStats.wrapped) {
+            console.warn('[APE-DUAL] conteo de cableado distinto entre la pasada de conteo y la de ' +
+                'escritura (decisión=' + countStats.wrapped + ', escrito=' + stats.wrapped + '): la ' +
+                'polimorfía del generador cambió las líneas de URL entre pasadas');
+        }
         console.log('%c[APE-DUAL] listas generadas', 'color:#22d3ee;font-weight:bold;', {
             directa: targetA.name, cdn: targetB.name, canales: channels.length,
-            urls: stats.urls, cableadas: stats.wrapped, sin_cablear: stats.skipped
+            urls: stats.urls, cableadas: stats.wrapped, sin_cablear: stats.skipped,
+            plano_cdn: declarePlane ? 'DECLARADO' : 'NO declarado (0 URLs reescritas)',
+            cableadas_conteo_previo: countStats.wrapped
         });
 
         return {
@@ -990,7 +1062,9 @@
             gzip: spec.gzip,
             format: spec.format,
             channels: channels.length,
-            stats: stats
+            stats: stats,
+            // [2026-11-21 · decisión del operador (opción B)] se informa si el plano se declaró
+            cdnPlaneDeclared: declarePlane
         };
     }
 
