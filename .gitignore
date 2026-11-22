@@ -214,3 +214,10 @@ docs/audits/playlist_rea_v24_sample.m3u8
 # HLS de prueba generado localmente para aislar red vs player (no versionar binarios)
 hls_local/
 *.ts
+
+# [2026-11-22] Estado de equipos de agentes: runtime, no producto.
+.agent-teams/
+
+# [2026-11-22] Pre-imagenes de parche (backups de sesion, no producto).
+*.pre_verdict
+*.pre_lf
