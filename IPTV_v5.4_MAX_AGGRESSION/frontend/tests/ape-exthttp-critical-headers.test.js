@@ -83,7 +83,7 @@ const VIA_KODIPROP = 'X-Nudge-Max-Retry';
         let obj = null;
         try { obj = JSON.parse(body); } catch (e) { /* inválido */ }
         if (obj) jsonOk++;
-        if (Buffer.byteLength(body, 'utf8') <= 8300) sizeOk++;
+        if (Buffer.byteLength(body, 'utf8') <= 8192) sizeOk++;   // doctrina: nginx large_client_header_buffers=8K
         if (!obj) continue;
 
         /* 1 · el valor del LAB llega Y coincide */

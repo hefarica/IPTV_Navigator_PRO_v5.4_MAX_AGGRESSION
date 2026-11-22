@@ -11366,19 +11366,45 @@ return lines.join('\n');
                 _httpPayload['exo_tunneled_fallback'] = 'safe';   // si el SoC no soporta, el player sigue
             }
         } catch (_eTun) { /* nunca rompe la generacion */ }
-        let _exthttpJson = JSON.stringify(_httpPayload);
-        for (const [ph, val] of Object.entries(_phResolve)) {
-            if (typeof val !== 'string' && typeof val !== 'number') continue;
-            if (_exthttpJson.indexOf(ph) !== -1) {
-                _exthttpJson = _exthttpJson.split(ph).join(String(val));
+        /* ═══ BUDGET REAL DE #EXTHTTP (2026-11-22 · MEDIDO) ═══════════════════════════════
+         * El cap de arriba estima con `k.length + v.length + 6`, pero DESPUÉS se inyectan los
+         * 2 flags `exo_tunneled_*` y se resuelven placeholders, así que el JSON SERIALIZADO
+         * superaba 8192 bytes en 4 de 12 perfiles (+27 … +67 B): P1.5 8219 · P2.5 8259 ·
+         * P3.5 8242 · P4.5 8251. Eso viola el invariante I1 (nginx large_client_header_buffers=8K).
+         * Aquí se mide el tamaño REAL, con sustituciones incluidas, y se sueltan las ÚLTIMAS
+         * claves no críticas hasta entrar en presupuesto. Las de EXTHTTP_PRIORITY_KEYS y los dos
+         * flags exo NUNCA se sueltan; si aun así no cupiera, se deja como está (fail-open
+         * declarado, no silencioso: no se recorta a ciegas un header funcional).
+         */
+        const _critKeepExthttp = new Set(
+            EXTHTTP_PRIORITY_KEYS.concat(['exo_tunneled_playback', 'exo_tunneled_fallback'])
+        );
+        const _buildExthttpJson = () => {
+            let _j = JSON.stringify(_httpPayload);
+            for (const [ph, val] of Object.entries(_phResolve)) {
+                if (typeof val !== 'string' && typeof val !== 'number') continue;
+                if (_j.indexOf(ph) !== -1) _j = _j.split(ph).join(String(val));
             }
-        }
-        // ═══ CA7/C8 9TH DEFENSE LAYER: Parser Bridge post-emission sanitizer ═══
-        // If any toxic header survived the banned set + placeholder resolution, catch it here.
-        if (typeof window !== 'undefined' && window.APEParserGenerationBridge
-            && typeof window.APEParserGenerationBridge.runPostEmissionSanitizer === 'function') {
-            _exthttpJson = window.APEParserGenerationBridge.runPostEmissionSanitizer(_exthttpJson);
-        }
+            if (typeof window !== 'undefined' && window.APEParserGenerationBridge
+                && typeof window.APEParserGenerationBridge.runPostEmissionSanitizer === 'function') {
+                _j = window.APEParserGenerationBridge.runPostEmissionSanitizer(_j);
+            }
+            return _j;
+        };
+        let _exthttpJson = _buildExthttpJson();
+        try {
+            let _budgetGuard = 0;
+            while (_exthttpJson.length > 8192 && _budgetGuard++ < 400) {
+                const _keysNow = Object.keys(_httpPayload);
+                let _victim = null;
+                for (let _i = _keysNow.length - 1; _i >= 0; _i--) {
+                    if (!_critKeepExthttp.has(_keysNow[_i])) { _victim = _keysNow[_i]; break; }
+                }
+                if (!_victim) break;
+                delete _httpPayload[_victim];
+                _exthttpJson = _buildExthttpJson();
+            }
+        } catch (_eBudget) { /* nunca rompe la generación */ }
         lines.push(`#EXTHTTP:${_exthttpJson}`);
         if (_overflowKeys.length > 0) {
             lines.push(`#EXT-X-APE-OVERFLOW-HEADERS:${base64UrlEncode(JSON.stringify(_finalOverflow))}`);
