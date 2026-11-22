@@ -5913,9 +5913,20 @@
                         this.config.profiles = profilesData;
                         this.config.save();
                     }
+                    /* [2026-11-22 · foot-gun medido] `importProfiles` carga los 12 perfiles pero
+                     * NO abre el gate: el generation-controller abortaba después con "LAB JSON no
+                     * importado". La fecha sale del propio fichero; si no la declara, se avisa.
+                     * OJO: el JSON real declara `_meta.exported` (el normalizador lo renombra a
+                     * `exported_at`), así que se aceptan las dos formas y `exported_at` raíz. */
+                    const _exp = (data._meta && (data._meta.exported_at || data._meta.exported))
+                        || data.exported_at || null;
+                    if (typeof this.config.openLabGate === 'function') this.config.openLabGate(_exp);
                     this.render();
-                    console.log(`✅ ${pids.length} perfiles importados: ${pids.join(', ')}`);
-                    alert(`✅ ${pids.length} perfiles restaurados: ${pids.join(', ')}`);
+                    console.log(`✅ ${pids.length} perfiles importados: ${pids.join(', ')} · gate=` + (this.config.labExportedAt || 'CERRADO'));
+                    alert(`✅ ${pids.length} perfiles restaurados: ${pids.join(', ')}`
+                        + '\n\nGate LAB: ' + (this.config.labExportedAt
+                            ? 'abierto (exported_at=' + this.config.labExportedAt + ')'
+                            : 'CERRADO — el fichero no declara exported_at; el generador lo exigirá'));
                 } catch (err) {
                     console.error('❌ Error al importar todos los perfiles:', err);
                     alert(`❌ Error al leer la plantilla:\n${err.message}\n\nAsegúrate de que sea un JSON con perfiles P0-P5 válidos.`);
@@ -6169,11 +6180,21 @@
                         _ok = true;
                     }
                     if (!_ok) throw new Error('importProfiles reporto fallo');
+                    /* [2026-11-22 · foot-gun medido] Mismo agujero que en la plantilla: los 12
+                     * perfiles entran pero el gate queda CERRADO y el generador aborta. Se abre
+                     * con la fecha que declara ESTE fichero, no con una inventada. */
+                    const _expB = (data._meta && (data._meta.exported_at || data._meta.exported))
+                        || data.exported_at || null;
+                    if (typeof this.config.openLabGate === 'function') this.config.openLabGate(_expB);
                     this.render();
-                    console.log('[IMPORT] all_profiles via boton LAB: ' + _ids.length + ' perfiles -> ' + _ids.join(', '));
+                    console.log('[IMPORT] all_profiles via boton LAB: ' + _ids.length + ' perfiles -> ' + _ids.join(', ')
+                        + ' · gate=' + (this.config.labExportedAt || 'CERRADO'));
                     alert('✅ ' + _ids.length + ' perfiles importados: ' + _ids.join(', ')
                         + '\n\nFuente: ' + file.name
-                        + '\nSe conservan settings, quality_levels, headers, vlcopt y kodiprop.');
+                        + '\nSe conservan settings, quality_levels, headers, vlcopt y kodiprop.'
+                        + '\nGate LAB: ' + (this.config.labExportedAt
+                            ? 'abierto (exported_at=' + this.config.labExportedAt + ')'
+                            : 'CERRADO — el fichero no declara exported_at'));
                     return;
                 }
             }

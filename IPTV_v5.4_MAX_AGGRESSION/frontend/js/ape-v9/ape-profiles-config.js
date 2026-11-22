@@ -4943,6 +4943,31 @@
         }
 
         /**
+         * [2026-11-22 · foot-gun medido] Abre el gate de generación con la fecha de exportación
+         * que DECLARA el propio fichero importado.
+         *
+         * Por qué existe: `importProfiles()` (camino A, botón "Importar todos"/plantilla) carga
+         * los 12 perfiles pero deja `labExportedAt = null`. El `generation-controller` aborta
+         * entonces con "LAB JSON no importado": perfiles cargados + generación bloqueada, que es
+         * el peor mensaje posible. Medido: camino A → 12 perfiles, gate null; camino B → 12, gate
+         * con fecha.
+         *
+         * Regla: la fecha SALE DEL FICHERO. Si el payload no la declara, el gate NO se abre y el
+         * llamador lo dice en el aviso; no se fabrica una marca de tiempo para fingir un gate.
+         * Si ya estaba abierto no se pisa (el LAB vigente manda).
+         * @param {*} exportedAt valor de `_meta.exported_at` (o `exported_at`) del fichero
+         * @returns {boolean} true sólo si abrió el gate en esta llamada
+         */
+        openLabGate(exportedAt) {
+            const v = (exportedAt == null) ? '' : String(exportedAt).trim();
+            if (!v) return false;
+            if (this.labExportedAt) return false;
+            this.labExportedAt = v;
+            try { if (typeof this.save === 'function') this.save(); } catch (e) { /* persistencia best-effort */ }
+            return true;
+        }
+
+        /**
          * Importa perfiles desde un objeto JSON. Reemplaza los activos y persiste.
          * @param {Object|string} data - objeto o string JSON con { profiles, ... }
          * @returns {boolean} true si importó correctamente
