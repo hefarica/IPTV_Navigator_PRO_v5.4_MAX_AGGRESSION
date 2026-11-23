@@ -96,10 +96,12 @@ node tools/quality/validate_extshimott.js <salida.m3u8>
      "type": "php", "post": "none", "enabled": true }
    ```
 
-2. `ape-pulse-sync.sh` cachea por **su propia** constante `WRAPPER_VERSION=1.5.0`
-   + tamaño/mtime del origen. Para que las listas ya envueltas reciban el tag hay
-   que subir esa constante en el `.sh` (fuera de `tools/pulse/`) **o** correr
-   `ape-pulse-sync.sh --force`.
+2. `ape-pulse-sync.sh` cachea por **su propia** constante `WRAPPER_VERSION` — que va
+   **en par** con la del wrapper: ahora las dos son `1.7.0`. Si el `.js` sube de
+   versión y el `.sh` no, las listas ya envueltas **nunca** se re-envuelven (el
+   `.state` guarda `wrapper_version` y da `need=0`), así que no reciben los tags
+   nuevos. Al subir el wrapper hay que subir esa línea en el mismo cambio; si no,
+   queda `ape-pulse-sync.sh --force` para forzarlo una vez.
 3. `php -l` de los tres PHP. Este host Windows no tiene intérprete; se verificó
    por **stdin** contra el VPS (PHP 8.3.6, sin escribir ningún fichero allí):
    `ssh hetzner-iptv "php -l /dev/stdin" < ape-feedforward.php`. Repetirlo tras

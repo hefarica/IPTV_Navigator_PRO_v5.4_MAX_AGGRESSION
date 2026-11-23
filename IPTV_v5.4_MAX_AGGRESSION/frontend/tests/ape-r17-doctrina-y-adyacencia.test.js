@@ -48,6 +48,7 @@ const WRAP = path.join(REPO, 'tools', 'pulse', 'ape-pulse-wrap.js');
 const BUILDER = path.join(REPO, 'tools', 'url2', 'ape-url-builder.js');
 const VALIDATOR = path.join(REPO, 'tools', 'quality', 'validate_extshimott.js');
 const DOCTRINE = path.join(REPO, 'contracts', 'muestra-12p', 'DOCTRINA_EJECUCION_12P.md');
+const SYNC = path.join(REPO, 'IPTV_v5.4_MAX_AGGRESSION', 'vps', 'ape-pulse', 'ape-pulse-sync.sh');
 
 const read = (p) => fs.readFileSync(p, 'utf8');
 const count = (h, n) => h.split(n).length - 1;
@@ -142,6 +143,14 @@ const WRAP_SRC = read(WRAP);
 ok('B0 el envoltorio está y trae la bandera documentada',
     WRAP_SRC.indexOf("args['tag-before-stream-inf']") >= 0 && /RFC 8216 §4\.3\.4\.2/.test(WRAP_SRC));
 ok('B0b versión del envoltorio declarada', /const WRAPPER_VERSION = '1\.7\.0';/.test(WRAP_SRC), (WRAP_SRC.match(/WRAPPER_VERSION = '[^']+'/) || [''])[0]);
+/* B0c · la clave de caché del .sh va EN PAR con la del envoltorio. El .state guarda
+ * wrapper_version: si el .js sube y el .sh no, las listas ya envueltas dan need=0 y
+ * NUNCA reciben los tags nuevos (medido: sync se quedó en 1.5.0 con el .js en 1.7.0). */
+const wrapVer = (WRAP_SRC.match(/const WRAPPER_VERSION = '([^']+)'/) || [])[1];
+const syncSrc = read(SYNC);
+const syncVer = (syncSrc.match(/^WRAPPER_VERSION=([0-9][0-9.]*)/m) || [])[1];
+ok('B0c la versión del envoltorio y la clave de caché del .sh van EN PAR',
+    !!wrapVer && wrapVer === syncVer, 'wrapper=' + wrapVer + ' · sync=' + syncVer);
 
 const TMPROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'ape-r17-'));
 /* El sha256 del resultado incluye el nombre del fichero de salida, así que las

@@ -50,9 +50,11 @@ const { ApeUrlBuilder } = require(process.env.APE_URL_BUILDER || '/opt/ape-pulse
 const POLICY_VERSION = '1';
 // 1.5.0 -> 1.6.0: emite #EXTSHIMOTT por canal (cambio de comportamiento de la salida).
 // NOTA DE DESPLIEGUE: ape-pulse-sync.sh cachea por SU PROPIA constante WRAPPER_VERSION
-// (1.5.0) + tamaño/mtime del origen. Para re-envolver listas ya generadas hay que
-// bumpear esa constante en el .sh (fuera de este archivo) o correr `ape-pulse-sync.sh --force`.
-const WRAPPER_VERSION = '1.6.0';
+// + tamaño/mtime del origen; las dos constantes van EN PAR (hoy 1.7.0 y 1.7.0).
+// Si esta sube y la del .sh no, las listas ya envueltas no se re-envuelven (el .state
+// guarda wrapper_version y da need=0) y no reciben los tags nuevos: al subir esta,
+// subir también la del .sh, o correr `ape-pulse-sync.sh --force` una vez.
+const WRAPPER_VERSION = '1.7.0';
 const PULSE_BASE_DEFAULT = 'https://iptv-ape.duckdns.org/pulse';
 const ALREADY = /\/(pulse|url2)\//i;
 
@@ -77,6 +79,17 @@ const mode = (args.mode === 'redirect') ? 'redirect' : 'cartridge';
 const pulseBase = String(args.base || PULSE_BASE_DEFAULT).replace(/\/+$/, '');
 const policy = String(args.policy || POLICY_VERSION);
 const statePath = args.state || '';
+/* [RFC 8216 §4.3.4.2] `#EXT-X-STREAM-INF` sólo puede ir seguido de SU URI.
+ * Medido: hoy el envoltorio mete entre los dos las 9 declaraciones del
+ * propietario + el tag #EXTSHIMOTT (0 de 2 pares adyacentes en la fixture de
+ * prueba). Con esta bandera las etiquetas que AÑADE este fichero se emiten
+ * ANTES del STREAM-INF y el par queda adyacente.
+ * Por defecto APAGADA porque el contrato EXTSHIMOTT ver:1 exige que el tag sea
+ * la ÚLTIMA línea antes de la URI (tools/quality/validate_extshimott.js →
+ * E_TAG_NOT_LAST): con la bandera encendida ese validador devuelve ERROR. Son
+ * dos reglas incompatibles en un bloque que trae STREAM-INF: se elige una.
+ */
+const tagBeforeStreamInf = args['tag-before-stream-inf'] === true;
 // [LISTA] Nombre de la lista que se envuelve: viaja en l= para que el pulso diga
 // QUE LISTA se esta reproduciendo (antes solo habia canal, no lista).
 const listName = path.basename(inPath).replace(/\.gz$/i, '').replace(/\.(m3u8|m3u)$/i, '');
@@ -305,9 +318,42 @@ let cur = { name: '', group: '', id: '', logo: '' };
 const tmp = outPath + '.tmp';
 const out = fs.createWriteStream(tmp, { flags: 'w' });
 
-function write(line) {
+function raw(line) {
   sha.update(line, 'utf8');
   out.write(line);
+}
+
+/* [RFC 8216 §4.3.4.2] Con `--tag-before-stream-inf` la línea `#EXT-X-STREAM-INF`
+ * se RETIENE hasta ver la siguiente, para poder soltar delante las etiquetas
+ * que añade este envoltorio (`insertTag`) en vez de en medio del par
+ * STREAM-INF→URI. Con la bandera apagada `held` y `preUri` nunca se llenan:
+ * cada línea pasa por `raw()` en el mismo orden que antes (salida idéntica).
+ */
+let held = null;      // { text, nl } — línea STREAM-INF retenida
+let preUri = [];      // etiquetas a emitir ANTES del STREAM-INF retenido
+function flushHeld() {
+  if (!held) return;
+  const h = held; held = null;
+  raw(h.text);
+  if (h.nl) raw('\n');
+}
+function write(line) {
+  if (!tagBeforeStreamInf) { raw(line); return; }
+  if (held && line === '\n') { held.nl = true; return; }   // el salto del STREAM-INF se aplica al soltarlo
+  if (preUri.length) { const b = preUri; preUri = []; for (const l of b) raw(l); }
+  if (line.startsWith('#EXT-X-STREAM-INF:')) { flushHeld(); held = { text: line, nl: false }; return; }
+  flushHeld();
+  raw(line);
+}
+/* Línea que AÑADE el envoltorio (declaraciones del propietario, #EXTSHIMOTT). */
+function insertTag(line) {
+  if (tagBeforeStreamInf && held) { preUri.push(line); return; }
+  raw(line);
+}
+/* Fin de fichero: no dejar nada retenido (si no, se perdería una línea). */
+function flushTail() {
+  if (preUri.length) { const b = preUri; preUri = []; for (const l of b) raw(l); }
+  flushHeld();
 }
 
 /**
@@ -537,7 +583,7 @@ function onLine(line) {
     const clean = m ? m[2] : line.trim();
     if (m && m[3] && m[3].trim() !== '') { counters.sanitized = (counters.sanitized || 0) + 1; }
     // [OWNER OVERRIDE] declaraciones de mejora extrema, una vez por canal
-    if (!curHasDecl) { for (const _d of OWNER_DECLARATIONS) write(_d + '\n'); counters.declared = (counters.declared || 0) + 1; }
+    if (!curHasDecl) { for (const _d of OWNER_DECLARATIONS) insertTag(_d + '\n'); counters.declared = (counters.declared || 0) + 1; }
     const wrapped = transformUrl(clean);
     // [EXTSHIMOTT] UNA línea por canal, DESPUES de las APE/EXTHTTP y ANTES de la URI
     // (posición del contrato: última línea de tag, 0 líneas en blanco por medio).
@@ -546,7 +592,7 @@ function onLine(line) {
     if (!curHasShimott && counters.extinf > 0) {
       const tag = SHIMOTT_PREFIX + JSON.stringify(shimottPayload());
       if (tag.length <= SHIMOTT_MAX_LINE) {
-        write(tag + '\n');
+        insertTag(tag + '\n');
         counters.shimott = (counters.shimott || 0) + 1;
         curHasShimott = true;
       } else {
@@ -593,6 +639,7 @@ stream.on('error', (e) => { console.error('read-error:', e.message); try { out.e
 stream.on('end', () => {
   try { flushChunk(decoder.end()); } catch (e) { counters.errors++; }
   if (pending.length) onLine(pending);
+  flushTail();
   out.end(() => {
     try { fs.renameSync(tmp, outPath); } catch (e) { console.error('rename-error:', e.message); process.exit(1); }
     const result = {

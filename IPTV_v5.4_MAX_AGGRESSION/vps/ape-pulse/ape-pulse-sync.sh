@@ -23,7 +23,11 @@ BUILDER=/opt/ape-pulse/ape-url-builder.js
 LOG=/var/log/ara/pulse-sync.log
 LOCK=/run/ape-pulse-sync.lock
 POLICY_VERSION=1
-WRAPPER_VERSION=1.5.0   # 1.5.0: normaliza /cdn/ -> proveedor + .m3u8
+WRAPPER_VERSION=1.7.0   # 1.7.0: EN PAR con ape-pulse-wrap.js (const WRAPPER_VERSION)
+# Esta constante es la clave de caché: el .state guarda wrapper_version y, si coincide
+# con el origen, la lista NO se re-envuelve (need=0). Si el wrapper sube de versión y
+# esto no, las listas ya envueltas se quedan para siempre con el formato viejo (sin
+# #EXTSHIMOTT). Al subir el wrapper hay que subir esta línea en el mismo cambio.
 MODE="${APE_PULSE_MODE:-cartridge}"          # cartridge | redirect
 MAX_MB="${APE_PULSE_MAX_MB:-700}"
 MIN_FREE_MB="${APE_PULSE_MIN_FREE_MB:-1500}"
