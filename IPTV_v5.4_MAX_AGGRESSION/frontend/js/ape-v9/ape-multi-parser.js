@@ -992,10 +992,10 @@
             id: 'vlc',
             label: 'VLC / libVLC',
             file: 'vlc.m3u8',
-            description: 'Tags EXTVLCOPT nativos; cabeceras traducidas a http-header/http-user-agent/http-referrer.',
+            description: 'Tags EXTVLCOPT nativos; cabeceras traducidas a http-header/http-user-agent/http-referrer. Ademas emite #EXTHTTP (H-4) para que las cabeceras funcionen en los players que lo leen.',
             layers: [LAYER.HEADER, LAYER.EXTINF, LAYER.EXTGRP, LAYER.VLC],
-            flat: { header: 'safe', attrs: 'all', headerMode: 'vlc', keepExtGrp: true, keepVlc: true, keepKodi: false, keepApe: false, keepUnknown: false },
-            hls: { layers: [LAYER.HEADER, LAYER.EXTINF, LAYER.HLS, LAYER.VLC] }
+            flat: { header: 'safe', attrs: 'all', headerMode: 'vlc', keepExtGrp: true, keepVlc: true, keepKodi: false, keepApe: false, keepUnknown: false, exthttp: true },
+            hls: { layers: [LAYER.HEADER, LAYER.EXTINF, LAYER.HLS, LAYER.VLC, LAYER.HTTP] }
         },
         kodi: {
             id: 'kodi',
@@ -1145,6 +1145,11 @@
         });
     }
 
+    /* H-4 · dialecto vlc: no se elimina ninguna cabecera. Las que VLC sabe aplicar
+     * (user-agent, referrer, cookies, caching, continuo, reconexion, threads, skip
+     * frame/idct, deinterlace) van como #EXTVLCOPT; TODAS viajan ademas en #EXTHTTP,
+     * el transporte real de TiviMate/OTT/Smarters/ExoPlayer/Kodi. VLC ignora el tag
+     * y no le hace dano. Las cifras por dialecto van en renderAudit.extHttp. */
     function getCapabilities() {
         const out = { version: VERSION, dialects: [] };
         Object.keys(DIALECT_DEFS).forEach(function (id) {
@@ -1268,6 +1273,98 @@
             if (attrs[k]) parts.push(k + '="' + escapeAttr(attrs[k]) + '"');
         });
         return parts.join(' ');
+    }
+
+    /* ═══ H-4 ADITIVO — ORDEN DEL OPERADOR: NO SE ELIMINA NADA ═══════════════════
+     * El dialecto vlc conserva TODAS sus lineas y AÑADE lo que hace falta para que
+     * las cabeceras funciones de verdad:
+     *  (a) las opciones que VLC SI aplica, derivadas de X-PEVCE-* (registro real
+     *      vlc --longhelp): network-caching, live-caching, http-continuous (flag),
+     *      http-reconnect (flag), avcodec-threads, avcodec-skip-frame,
+     *      avcodec-skip-idct, deinterlace, y http-forward-cookies;
+     *  (b) el bloque #EXTHTTP con todas las cabeceras saneadas: transporte que SI
+     *      funciona en TiviMate/OTT/Smarters/ExoPlayer/Kodi. VLC ignora el tag.
+     * VLC no tiene ninguna opcion con 'header': no puede inyectar cabeceras
+     * arbitrarias por #EXTVLCOPT. Por eso viajan ademas por #EXTHTTP.
+     * ═══════════════════════════════════════════════════════════════════════════ */
+    const VLC_PEVCE_MAP = {
+        'x-pevce-network-caching': 'network-caching',
+        'x-pevce-live-caching': 'live-caching',
+        'x-pevce-http-continuous': 'http-continuous',
+        'x-pevce-http-reconnect': 'http-reconnect',
+        'x-pevce-hw-threads': 'avcodec-threads',
+        'x-pevce-skip-frame': 'avcodec-skip-frame',
+        'x-pevce-skip-idct': 'avcodec-skip-idct',
+        'x-pevce-deinterlace': 'deinterlace'
+    };
+
+    /* Opciones del registro que son FLAG (--x / --no-x), no valor. */
+    const VLC_FLAG_OPTIONS = { 'http-continuous': 1, 'http-reconnect': 1 };
+
+    function renderVlcRealOptions(headers) {
+        const out = [];
+        const vistos = Object.create(null);
+        const claves = Object.keys(headers || {});
+        for (let i = 0; i < claves.length; i++) {
+            const objetivo = VLC_PEVCE_MAP[String(claves[i]).toLowerCase()];
+            if (!objetivo) continue;
+            let v = toStr(headers[claves[i]]).trim();
+            if (!v) continue;
+            let linea;
+            if (VLC_FLAG_OPTIONS[objetivo]) {
+                const activo = !(v === '0' || v.toLowerCase() === 'false' || v.toLowerCase() === 'no');
+                linea = '#EXTVLCOPT:' + (activo ? objetivo : 'no-' + objetivo);
+            } else {
+                if (v === 'true') { v = '1'; } else if (v === 'false') { v = '0'; }
+                linea = '#EXTVLCOPT:' + objetivo + '=' + v;
+            }
+            if (!vistos[linea]) { vistos[linea] = 1; out.push(linea); }
+        }
+        const cookie = claves.filter(function (k) {
+            const lk = String(k).toLowerCase();
+            return lk === 'cookie' || lk.indexOf('pevce-forward-cookies') !== -1;
+        })[0];
+        if (cookie) {
+            const val = toStr(headers[cookie]).trim().toLowerCase();
+            const activo = !(val === '0' || val === 'false' || val === 'no');
+            const linea = '#EXTVLCOPT:' + (activo ? 'http-forward-cookies' : 'no-http-forward-cookies');
+            if (!vistos[linea]) { vistos[linea] = 1; out.push(linea); }
+        }
+        return out;
+    }
+
+    function renderVlcExthttp(headers) {
+        const safe = sanitizeHeaders(headers || {});
+        const todas = Object.keys(safe.headers);
+        if (!todas.length) return null;
+        const prio = EXTHTTP_PRIORITY_KEYS.map(function (k) { return String(k).toLowerCase(); });
+        const resto = todas.filter(function (k) { return prio.indexOf(String(k).toLowerCase()) === -1; });
+        const orden = prio
+            .map(function (pk) { return todas.filter(function (k) { return String(k).toLowerCase() === pk; })[0]; })
+            .filter(Boolean)
+            .concat(resto);
+        function byteLen(t) {
+            let n = 0;
+            for (let i = 0; i < t.length; i++) {
+                const c = t.charCodeAt(i);
+                n += c < 128 ? 1 : (c < 2048 ? 2 : 3);
+            }
+            return n;
+        }
+        const elegido = Object.create(null);
+        let cuenta = 0;
+        for (let i = 0; i < orden.length; i++) {
+            const k = orden[i];
+            if (cuenta + 1 > 200) break;
+            const tentativa = Object.create(null);
+            Object.keys(elegido).forEach(function (ek) { tentativa[ek] = elegido[ek]; });
+            tentativa[k] = safe.headers[k];
+            if (byteLen(JSON.stringify(tentativa)) > 8192) break;
+            elegido[k] = safe.headers[k];
+            cuenta++;
+        }
+        if (!cuenta) return null;
+        return '#EXTHTTP:' + JSON.stringify(elegido);
     }
 
     function renderVlcHeader(header) {
@@ -1583,6 +1680,15 @@
             Object.keys(headers).forEach(function (k) {
                 pushUnique(out, renderVlcHeader({ name: k, value: headers[k] }));
             });
+            /* H-4 ADITIVO: lo anterior queda intacto. Solo para el dialecto vlc (mpv
+             * comparte headerMode y NO debe heredar estas opciones) se añade lo que
+             * VLC si aplica y el #EXTHTTP que hace funcionar las demas cabeceras. */
+            if (dialect.id === 'vlc') {
+                const _vlcReal = renderVlcRealOptions(headers);
+                for (let _ri = 0; _ri < _vlcReal.length; _ri++) pushUnique(out, _vlcReal[_ri]);
+                const _vlcHttp = renderVlcExthttp(headers);
+                if (_vlcHttp) pushUnique(out, _vlcHttp);
+            }
         } else if (dialect.flat.headerMode === 'kodi') {
             pushUnique(out, renderKodiHeaders(headers, kodiSourceRaw));
         } else if (dialect.flat.headerMode === 'http') {
@@ -1653,10 +1759,15 @@
                  * exoplayer mientras capabilities.json declaraba exthttp:true. Los dialectos con
                  * headerMode 'none'/'vlc'/'kodi' siguen sin emitirlo, y ahora capabilities.json lo
                  * declara también en el lado HLS (getCapabilities). */
+                /* H-4: ademas de por headerMode, un dialecto lleva EXTHTTP si su tabla HLS
+                 * DECLARA la capa LAYER.HTTP (fuente de verdad unica). El dialecto vlc la
+                 * declara, asi que en produccion sus cabeceras llegan a los players que
+                 * leen #EXTHTTP. No se quita ninguna clausula anterior. */
                 const carriesHttp = dialect.id === 'universal' ||
                     dialect.flat.headerMode === 'http' ||
                     dialect.flat.headerMode === 'mixed' ||
-                    dialect.flat.headerMode === 'preserve';
+                    dialect.flat.headerMode === 'preserve' ||
+                    (dialect.hls && dialect.hls.layers && dialect.hls.layers.indexOf(LAYER.HTTP) !== -1);
                 if (!carriesHttp) continue;
                 const hline = renderHttpHeaders(parseExtHttp(item.body).headers, item.raw);
                 if (hline) out.push(hline);

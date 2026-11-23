@@ -198,7 +198,7 @@ function testDialects() {
     assertIncludes(vlc, '#EXTVLCOPT:http-referrer=http://example.com/', 'VLC usa http-referrer');
     assertIncludes(vlc, '#EXTVLCOPT:network-caching=3000', 'VLC conserva caching');
     assertNotIncludes(vlc, '#KODIPROP', 'VLC no emite KODIPROP');
-    assertNotIncludes(vlc, '#EXTHTTP', 'VLC no emite EXTHTTP');
+
     assertNotIncludes(vlc, '#EXT-X-APE', 'VLC no emite APE');
     assertNotIncludes(vlc, '#FOO', 'VLC no emite tags desconocidos');
 
@@ -402,7 +402,53 @@ function testRealCatalogShape() {
     assertIncludes(MP.render(m, 'smarters'), '#EXTHTTP:', 'H-2 · Smarters emite EXTHTTP');
     assertIncludes(MP.render(m, 'generic'), '#EXTHTTP:', 'H-2 · genérico emite EXTHTTP');
     assertNotIncludes(MP.render(m, 'hlsjs'), '#EXTHTTP', 'hls.js NO emite EXTHTTP (va en sidecar, y capabilities lo dice)');
-    assertNotIncludes(MP.render(m, 'vlc'), '#EXTHTTP', 'VLC NO emite EXTHTTP (usa EXTVLCOPT)');
+    /* ── H-4 (orden del operador: NO ELIMINES NADA, IMPLEMENTA LO QUE NECESITES) ──
+     * Fixture autonomo: un canal con cabeceras X-PEVCE-* (valor = knob real de VLC) y
+     * una cabecera arbitraria que VLC no puede inyectar. Se comprueba lo unico que
+     * importa: (a) nada se pierde, (b) las que VLC sabe aplicar se aplican de verdad,
+     * (c) las demas viajan en #EXTHTTP para los players que lo leen. */
+    const h4Headers = {
+        'User-Agent': 'TestUA',
+        'Referer': 'http://example.com/',
+        'X-Cabecera-Arbitraria': 'no-inyectable-por-vlc',
+        'X-PEVCE-Network-Caching': '3000',
+        'X-PEVCE-HTTP-Continuous': 'true',
+        'X-PEVCE-Deinterlace': '-1'
+    };
+    const h4Playlist = [
+        '#EXTM3U',
+        '#EXTINF:-1 tvg-id="h4",Canal H4',
+        '#EXTHTTP:' + JSON.stringify(h4Headers),
+        'http://example.com/live/u/p/1.m3u8'
+    ].join('\n');
+    const h4Model = MP.parse(h4Playlist);
+    const h4Vlc = MP.render(h4Model, 'vlc');
+
+    assertIncludes(h4Vlc, '#EXTVLCOPT:http-header=', 'H-4 · conserva la cabecera que VLC no puede inyectar');
+    assertIncludes(h4Vlc, 'X-Cabecera-Arbitraria', 'H-4 · el nombre de la cabecera sigue en la lista');
+    assertIncludes(h4Vlc, '#EXTVLCOPT:http-user-agent=TestUA', 'H-4 · User-Agent real');
+    assertIncludes(h4Vlc, '#EXTVLCOPT:http-referrer=http://example.com/', 'H-4 · Referer real');
+    assertIncludes(h4Vlc, '#EXTVLCOPT:network-caching=3000', 'H-4 · X-PEVCE-Network-Caching -> network-caching');
+    assertIncludes(h4Vlc, '#EXTVLCOPT:http-continuous', 'H-4 · flag http-continuous (sin =valor)');
+    assertIncludes(h4Vlc, '#EXTVLCOPT:deinterlace=-1', 'H-4 · X-PEVCE-Deinterlace -> deinterlace=-1');
+    assertIncludes(h4Vlc, '#EXTHTTP:', 'H-4 · ademas viaja en EXTHTTP (transporte real en otros players)');
+
+    const h4Bloques = h4Vlc.split('\n').filter(function (l) { return l.indexOf('#EXTHTTP:') === 0; });
+    assertEqual(h4Bloques.length, 1, 'H-4 · un bloque EXTHTTP por canal');
+    let h4Claves = -1, h4Bytes = -1;
+    if (h4Bloques.length) {
+        const cuerpo = h4Bloques[0].slice('#EXTHTTP:'.length);
+        h4Bytes = cuerpo.length;
+        try { h4Claves = Object.keys(JSON.parse(cuerpo)).length; } catch (e) { h4Claves = -1; }
+    }
+    assertIncludes(h4Claves > 0 ? 'ok' : 'no', 'ok', 'H-4 · EXTHTTP del dialecto vlc es JSON valido');
+    assertIncludes(h4Bytes > 0 && h4Bytes <= 8192 ? 'ok' : 'no', 'ok', 'H-4 · EXTHTTP <= 8192 B');
+    assertIncludes(h4Claves > 0 && h4Claves <= 200 ? 'ok' : 'no', 'ok', 'H-4 · EXTHTTP <= 200 claves');
+    assertIncludes(h4Bloques.length && h4Bloques[0].indexOf('X-Cabecera-Arbitraria') !== -1 ? 'ok' : 'no', 'ok',
+        'H-4 · la cabecera no inyectable TAMBIEN viaja en EXTHTTP');
+
+    const h4Mpv = MP.render(h4Model, 'mpv');
+    assertNotIncludes(h4Mpv, '#EXTHTTP', 'H-4 · mpv no hereda el EXTHTTP del dialecto vlc');
     assertIncludes(MP.render(m, 'vlc'), '#EXTVLCOPT:network-caching=8000', 'VLC conserva sus EXTVLCOPT');
 
     /* capabilities coherente en los dos caminos (no a medias) */
