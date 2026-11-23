@@ -54,10 +54,17 @@ srv.listen(0, '127.0.0.1', async () => {
   ok('todos usa el p10', llamadas[0] === 90);
 
   globalThis.APE_SPEEDMETER = Object.assign({}, meter, { measure: async () => fake(12) });
-  await bridge.apeAutoAdjustWithSpeedtest({ alcance: 'P1', urls: ['http://x/y'] });
+  const recibos = await bridge.apeAutoAdjustWithSpeedtest({ alcance: 'P1', urls: ['http://x/y'] });
   const esp = meter.derivar({ mbps: 12, mbps_p10: 10.8 });
   ok('perfil recibe buffer target', Number(p1.headerOverrides['X-Buffer-Target']) === esp.buffer_target_ms);
-  ok('perfil recibe bitrate', Number(p1.headerOverrides['X-APE-TARGET-BITRATE']) === esp.target_bitrate_kbps);
+  /* [LEY ANTI-DEGRADACION] X-APE-TARGET-BITRATE declara el bitrate del VIDEO, no la
+   * capacidad del enlace. Derivarlo del caudal medido recortaria imagen para tapar un
+   * sintoma de transporte (prohibido). El puente NO lo escribe y lo DECLARA en omitido. */
+  ok('NO escribe X-APE-TARGET-BITRATE (ley anti-degradacion)', p1.headerOverrides['X-APE-TARGET-BITRATE'] === undefined);
+  ok('la omision de bitrate queda DECLARADA', Array.isArray(recibos.omitido) && recibos.omitido.some(function (m) {
+    return /TARGET-BITRATE/.test(String(m)) && /anti-degradaci/i.test(String(m));
+  }));
+  ok('el enlace lento se corrige con buffer, no con bitrate', Number(p1.headerOverrides['X-Buffer-Target']) > 0);
   ok('perfil recibe caching', Number(p1.headerOverrides['X-Network-Caching']) === esp.network_caching_ms);
   ok('un perfil no aplica a todos', llamadas.length === 1);
 
