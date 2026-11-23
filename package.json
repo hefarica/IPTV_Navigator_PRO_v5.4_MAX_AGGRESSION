@@ -1,4 +1,9 @@
 {
+  "name": "iptv-navigator-pro",
+  "private": true,
+  "scripts": {
+    "test": "node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/test-generator-audit-fixes.js && node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ape-12p-lab-conformance.test.js && node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ape-12p-onpath-equivalence.test.js && node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ape-4k6k-intent-integration.test.js && node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ape-buf-input-demand.test.js && node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ape-muestra-12p-import.test.js && node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ape-universal-emit.test.js && node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ape-r17-doctrina-y-adyacencia.test.js && node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ape-r18-buffer-plan-panel.test.js && node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ape-r19-condicion-buffer-coherencia.test.js && node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ape-12p-reconciliation.test.js"
+  },
   "dependencies": {
     "php-parser": "^3.5.1",
     "puppeteer": "^24.40.0"

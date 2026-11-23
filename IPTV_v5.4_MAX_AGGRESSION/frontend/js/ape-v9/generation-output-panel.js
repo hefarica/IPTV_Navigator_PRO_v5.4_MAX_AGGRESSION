@@ -88,6 +88,11 @@
       // metadata JSON DENTRO del mismo .m3u8: un reproductor HLS lo ignora (RFC 8216) y un
       // consumidor DASH lee solo ese tag. Nada se pisa porque nadie lee lo mismo.
       o.hybrid = (selectedFormat() === 'hybrid');
+      // [2026-11-23 · INTEGRACIÓN 4K/6K EN LA LISTA] La intención declarada viaja con
+      // la generación, además del global window.APE_4K6K_AUDIT que consulta el emisor
+      // por canal. Así queda declarada en el mismo objeto de opciones que JIT y HDR, y
+      // una prueba puede pedirla sin depender del estado de la página.
+      o.intent4k6k = intentOn();
     }
     return o;
   }
@@ -102,6 +107,9 @@
       var parts = [];
       if (o.jit) parts.push('JIT');
       if (o.hdrMode && o.hdrMode !== 'auto') parts.push('HDR ' + String(o.hdrMode).toUpperCase());
+      // [2026-11-23 · INTEGRACIÓN 4K/6K] Si la casilla está encendida, la barra de estado
+      // lo dice: la lista llevará una línea #EXT-X-APE-4K6K-INTENT por canal.
+      if (intentOn()) parts.push('4K6K');
       return parts.length ? ' · ' + parts.join(' · ') : '';
     } catch (_) { return ''; }
   }
@@ -331,7 +339,13 @@
       guard: guard,
       checkGeneration: checkGeneration,
       sugerirAjuste: sugerirAjuste,
+      // [ronda 19] Expuestos para comprobar sin navegador que el aviso, la tabla y el badge de
+      // estado usan TODOS la misma cifra de enlace y el mismo suelo por perfil.
+      linkInfo: linkInfo,
+      floorDePerfil: floorDePerfil,
+      aplicarForzadoP5: aplicarForzadoP5,
       renderSugerencia: renderSugerencia,
+    renderBufferPlan: renderBufferPlan,
       mejorEscenario: mejorEscenario,
       aplicarEscenario: aplicarEscenario,
       getDeltaPct: function () { return DELTA_PCT; },
@@ -485,6 +499,7 @@
     if (di) di.value = String(v);
     guard();
     renderSugerencia();   // al cambiar el delta, la sugerencia se recalcula sola
+    renderBufferPlan();   // y la tabla por perfil se repinta con el delta nuevo
     if (notify) {
       status('Delta ' + v + '% aplicado; enviando al VPS…', '#38bdf8');
       sendDeltaToVps(v).then(function (res) {
@@ -644,10 +659,14 @@
   // Suelo del perfil, en Mbps. Es el mínimo con el que el perfil ARRANCA; `bitrate` es el techo de su
   // escalera, o sea la calidad máxima que puede alcanzar, no el requisito para emitir la lista.
   //
-  // El LAB lo declara en bps: P0=15M, P1=12M, P2=8M, P3=5M, P4=3M, P5=1.5M. La tabla repite esos
-  // valores como respaldo para cuando el perfil cargado no traiga el campo, que es el caso hoy en
-  // APE_PROFILES_CONFIG.
-  var FLOOR_MBPS = { P0: 15, P1: 12, P2: 8, P3: 5, P4: 3, P5: 1.5 };
+  // El suelo bueno es el que declara el catálogo cargado (`settings.bandwidth_floor`, en bps), que
+  // a su vez viene del JSON LAB CALIBRATED. La tabla de abajo es SOLO respaldo para cuando un perfil
+  // llegue sin ese campo; sus números son los del LAB medidos en esta ronda (perfil: bps -> Mbps):
+  //   P0 52 325 000 -> 52.325 | P1 24 700 000 -> 24.7  | P2 12 259 000 -> 12.259
+  //   P3  6 500 000 ->  6.5   | P4  1 345 500 ->  1.3455| P5  1 300 000 ->  1.3
+  // Antes decía 15 / 12 / 8 / 5 / 3 / 1.5, que no son los del LAB: daba un suelo falso en los seis
+  // perfiles si el catálogo no estaba cargado.
+  var FLOOR_MBPS = { P0: 52.325, P1: 24.7, P2: 12.259, P3: 6.5, P4: 1.3455, P5: 1.3 };
   function activeFloorMbps() {
     try {
       var cfg = window.APE_PROFILES_CONFIG;
@@ -655,19 +674,59 @@
       var p = cfg && cfg.profiles ? cfg.profiles[id] : null;
       var f = p && p.settings ? p.settings.bandwidth_floor : 0;
       if (Number(f) > 0) return Number(f) / 1e6;   // bps -> Mbps
-      return Number(FLOOR_MBPS[id]) || 5;
-    } catch (_) { return 5; }
-  }
-
-  function inputMbps() {
-    try {
-      var s = window.APE_BW && typeof window.APE_BW.snapshot === 'function' ? window.APE_BW.snapshot() : null;
-      return s && Number(s.mbps) > 0 ? Number(s.mbps) : 0;
+      return Number(FLOOR_MBPS[id]) || 0;
     } catch (_) { return 0; }
   }
 
+  // ── DE DÓNDE SALE LA CIFRA DE ENLACE (ronda 19) ─────────────────────────────────────────────
+  // El aviso trataba la SEMILLA del medidor como si fuera una medición. `APE_BW.snapshot()`
+  // devuelve `seed().mbps` mientras no haya muestras reales, y esa semilla es o
+  // `navigator.connection.downlink` (estimación del navegador, en escalones: 0,3 es uno de
+  // ellos) o los 10 Mbps del arranque. Pintar eso como «el enlace mide 0,3 Mbps» afirma una
+  // medición que nadie hizo, y además bloqueaba la generación por ella.
+  // Aquí se separa medición de estimación, y el valor escrito a mano en «Enlace medido» manda
+  // sobre todo lo demás: es el único número que alguien afirma.
+  // Compatibilidad: si el snapshot no declara NI fuente NI muestras (los arneses de prueba), se
+  // sigue aceptando como medición. Desconocido no es igual a semilla.
+  function manualLinkMbps() {
+    try {
+      var li = document.getElementById('ape-link-input');
+      var v = li ? parseFloat(li.value) : NaN;
+      if (isFinite(v) && v > 0) return v;
+    } catch (_) { }
+    return 0;
+  }
+
+  function linkInfo() {
+    var man = manualLinkMbps();
+    if (man > 0) {
+      return { mbps: man, kind: 'manual', source: 'escrito en Enlace medido', samples: null, confidence: 'declarado', measured: true };
+    }
+    var s = null;
+    try { s = window.APE_BW && typeof window.APE_BW.snapshot === 'function' ? window.APE_BW.snapshot() : null; } catch (_) { s = null; }
+    var mbps = s && Number(s.mbps) > 0 ? Number(s.mbps) : 0;
+    if (!(mbps > 0)) {
+      return { mbps: 0, kind: 'none', source: 'sin medidor de enlace', samples: 0, confidence: 'none', measured: false };
+    }
+    var src = String(s.source || '');
+    var conf = String(s.confidence || '');
+    var samples = (s.samples == null) ? null : Number(s.samples);
+    var esSemilla = src === 'startup-default' || src === 'connection.downlink' || conf === 'none' || samples === 0;
+    return {
+      mbps: mbps,
+      kind: esSemilla ? 'seed' : 'measured',
+      source: src || 'medidor',
+      samples: samples,
+      confidence: conf || 'sin declarar',
+      measured: !esSemilla
+    };
+  }
+
+  function inputMbps() { return linkInfo().mbps; }
+
   function guard() {
-    var inM = inputMbps(), outM = activeBitrate(), floorM = activeFloorMbps();
+    var L = linkInfo();
+    var inM = L.mbps, outM = activeBitrate(), floorM = activeFloorMbps();
     var has = inM > 0 && outM > 0;
     // Dos preguntas distintas, y hasta hoy solo se hacía la primera:
     //   ok       = ¿el enlace puede SOSTENER el techo de la escalera?  -> calidad máxima
@@ -678,10 +737,12 @@
     var canStart = has && inM >= floorM * (1 + DELTA_PCT / 100);
     var b = $('#ape-buf-state');
     if (b) {
-      b.textContent = has ? (ok ? 'BUFFER OK' : (canStart ? 'BUFFER RIESGO' : 'BUFFER INSUFICIENTE')) : 'SIN DATO';
-      b.style.color = has ? (ok ? '#22c55e' : (canStart ? '#f59e0b' : '#ef4444')) : '#f59e0b';
+      // Con una estimación del navegador no se puede afirmar que el buffer esté bien o mal: se dice
+      // que no hay medición, en vez de colgarle al operador una etiqueta que nadie midió.
+      b.textContent = !has ? 'SIN DATO' : (!L.measured ? 'SIN MEDICIÓN' : (ok ? 'BUFFER OK' : (canStart ? 'BUFFER RIESGO' : 'BUFFER INSUFICIENTE')));
+      b.style.color = !has ? '#f59e0b' : (!L.measured ? '#94a3b8' : (ok ? '#22c55e' : (canStart ? '#f59e0b' : '#ef4444')));
     }
-    return { inM: inM, outM: outM, floorM: floorM, has: has, ok: ok, canStart: canStart };
+    return { inM: inM, outM: outM, floorM: floorM, has: has, ok: ok, canStart: canStart, link: L, linkMeasured: L.measured, linkKind: L.kind };
   }
 
   // ── AUTO-AJUSTE TEÓRICO ────────────────────────────────────────────────────────────────────────
@@ -714,7 +775,11 @@
       // inM/outM/floorM viajan en el resultado: renderSugerencia los pinta y sin ellos el
       // render lanzaba "Cannot read properties of undefined (reading toFixed)". Lo detecto
       // la prueba ui-delta-autoajuste antes de que llegara a la interfaz.
-      inM: g.inM, outM: g.outM, floorM: g.floorM, ok: g.ok, canStart: g.canStart
+      inM: g.inM, outM: g.outM, floorM: g.floorM, ok: g.ok, canStart: g.canStart,
+      // ronda 19: de dónde sale inM y si eso es una medición de verdad
+      linkKind: g.linkKind, linkMeasured: g.linkMeasured, linkSource: g.link ? g.link.source : '',
+      linkSamples: g.link ? g.link.samples : null,
+      sinMedida: g.has && !g.linkMeasured
     };
     if (!g.has) return out;
 
@@ -733,9 +798,11 @@
     // delta máximo contra el TECHO (para saber si además sostendría la calidad máxima)
     out.deltaMaxTecho = g.outM > 0 ? (g.inM / g.outM - 1) * 100 : 0;
 
-    // perfiles alcanzables con el delta VIGENTE, de mejor a peor
+    // perfiles alcanzables con el delta VIGENTE, de mejor a peor.
+    // El catálogo manda: antes había aquí una lista fija de 6 ('P0'…'P5') y el catálogo tiene 12,
+    // así que medio catálogo (P0.5…P5.5) no se consideraba nunca.
     out.alcanzables = [];
-    var ids = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5'];
+    var ids = profileIds();
     for (var i = 0; i < ids.length; i++) {
       var f = floorDePerfil(ids[i]);
       if (f > 0 && g.inM >= f * (1 + DELTA_PCT / 100)) out.alcanzables.push({ id: ids[i], floor: f });
@@ -782,7 +849,8 @@
     var out = { hayMedicion: g.has, viable: null, minimo: null, porPerfil: {}, delta: DELTA_PCT };
     if (!g.has) return out;
 
-    var ids = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5'];
+    // El catálogo manda: la lista fija de 6 dejaba fuera P0.5…P5.5, o sea la mitad del catálogo.
+    var ids = profileIds();
     for (var i = 0; i < ids.length; i++) {
       var pid = ids[i];
       var floor = floorDePerfil(pid);
@@ -799,11 +867,17 @@
       if (out.porPerfil[ids[k]]) { out.viable = out.porPerfil[ids[k]]; break; }
     }
 
-    // mínimo imprescindible: el perfil más bajo al delta mínimo del input (1%)
-    var pisoBajo = floorDePerfil('P5');
-    if (pisoBajo > 0) {
+    // mínimo imprescindible: el perfil con el SUELO más bajo de todo el catálogo, a delta 1 %.
+    // Estaba clavado en 'P5': con 12 perfiles eso ignoraba P0.5…P5.5 y podía señalar como mínimo
+    // un perfil que no lo es. Se busca en el catálogo, no en una lista fija.
+    var pisoId = null, pisoBajo = 0;
+    for (var q = 0; q < ids.length; q++) {
+      var fq = floorDePerfil(ids[q]);
+      if (fq > 0 && (pisoId === null || fq < pisoBajo)) { pisoId = ids[q]; pisoBajo = fq; }
+    }
+    if (pisoId && pisoBajo > 0) {
       var req = pisoBajo * 1.01;
-      out.minimo = { perfil: 'P5', delta: 1, req: req, faltan: Math.max(0, req - g.inM) };
+      out.minimo = { perfil: pisoId, delta: 1, req: req, faltan: Math.max(0, req - g.inM), floor: pisoBajo };
     }
     return out;
   }
@@ -829,9 +903,18 @@
 
   // El botón FORZAR no solo autoriza: debe dejar el perfil, el delta, el array por
   // perfil, el contrato y el payload del VPS en el MISMO escenario que se aprueba.
-  function aplicarForzadoP5() {
+  function aplicarForzadoP5(perfilPedido) {
     var g0 = guard();
-    var profile = 'P5';
+    // El perfil forzado NO es fijo: se usa el que la matriz señala como mínimo imprescindible y, si
+    // no hay matriz, el de suelo más bajo del catálogo. Antes estaba clavado en 'P5': con 12
+    // perfiles podía forzar un perfil que no es el mínimo y anunciarlo como si lo fuera.
+    var profile = perfilPedido || (function () {
+      try {
+        var m = mejorEscenario();
+        if (m && m.minimo && m.minimo.perfil) return m.minimo.perfil;
+      } catch (_) { }
+      return 'P5';
+    })();
     // El delta NO es fijo: sale del campo. Hoy puede ser 1, 15 o 20.
     var delta = currentDelta();
 
@@ -892,6 +975,142 @@
   }
 
   // Pinta la sugerencia bajo la condición de buffer. Idempotente: se reescribe entera cada vez.
+  // ── RONDA 18 · tabla por perfil DENTRO de la tarjeta CONDICIÓN DE BUFFER ──────────────
+  // Los bitrates salen del catálogo del gestor de perfiles (window.APE_PROFILES_CONFIG, el
+  // que se rellena con el JSON LAB CALIBRATED) y la aritmética la pone buffer-input-demand.js
+  // (window.APE_BUF_DEMAND). Aquí no hay ni una cifra de perfil escrita a mano: si el catálogo
+  // no trae el bitrate de un perfil, se dice, no se rellena.
+  function renderBufferPlan() {
+    var box = document.getElementById('ape-buf-plan');
+    if (!box) return;
+    var D = window.APE_BUF_DEMAND;
+    if (!D || typeof D.plan !== 'function') {
+      box.innerHTML = '<div style="color:#fbbf24;">Aritmética no disponible (js/ape-v9/buffer-input-demand.js no cargado): tabla NO COMPUTADA.</div>';
+      return;
+    }
+    var profs = [];
+    try {
+      var cfg = window.APE_PROFILES_CONFIG;
+      var raw = null;
+      if (cfg && typeof cfg.getAllProfiles === 'function') raw = cfg.getAllProfiles();
+      else if (cfg && cfg.profiles) raw = cfg.profiles;
+      if (Array.isArray(raw)) {
+        raw.forEach(function (p) { if (p) profs.push({ id: p.id || p.profile || p.name, settings: p.settings || p }); });
+      } else if (raw && typeof raw === 'object') {
+        Object.keys(raw).forEach(function (k) {
+          var p = raw[k] || {};
+          profs.push({ id: p.id || k, settings: p.settings || p });
+        });
+      }
+    } catch (_) { profs = []; }
+
+    var delta = (typeof DELTA_PCT === 'number' && isFinite(DELTA_PCT)) ? DELTA_PCT : 10;
+    // La MISMA cifra de enlace que usa el aviso (y el mismo origen declarado). Antes la tabla leía
+    // sólo el campo a mano y el aviso leía sólo el medidor: dos verdades en la misma tarjeta.
+    var L = linkInfo();
+    var linkBps = (L.mbps > 0) ? Math.round(L.mbps * 1e6) : undefined;
+    var origen = (L.kind === 'manual')
+      ? 'escrito a mano en «Enlace medido»'
+      : (L.kind === 'measured'
+        ? 'medición del medidor de enlace' + (L.samples ? ' (' + L.samples + ' muestras)' : '')
+        : (L.kind === 'seed' ? 'estimación del navegador, NO una medición' : 'sin medidor de enlace'));
+
+    if (!profs.length) {
+      box.innerHTML = '<div style="color:#fbbf24;">Sin catálogo de perfiles cargado: no hay tabla que comparar (NO COMPUTADO).</div>';
+      return;
+    }
+
+    var plan;
+    try {
+      plan = window.APE_BUF_DEMAND.plan(profs, { deltaPct: delta, linkBps: linkBps, bufferMs: 15000 });
+    } catch (e) {
+      box.innerHTML = '<div style="color:#fca5a5;">La tabla no se pudo calcular: ' + String((e && e.message) || e) + '</div>';
+      return;
+    }
+
+    var mbps = function (bps) {
+      if (bps == null || !isFinite(bps)) return '—';
+      return (bps / 1e6).toFixed(3).replace(/0+$/, '').replace(/\.$/, '') + ' Mbps';
+    };
+
+    var rows = ['<div style="color:#86efac;font-weight:800;">Condición de buffer por perfil con delta ' + plan.delta_pct +
+      ' % · cifras del gestor de perfiles (suelo de arranque y techo de la escalera)</div>'];
+    if (plan.delta_pct !== delta) {
+      rows.push('<div style="margin-top:3px;color:#fbbf24;">La aritmética de buffer no acepta delta 0 (lo trata como no ' +
+        'especificado): ha calculado con ' + plan.delta_pct + ' %. Se declara aquí en vez de mentir en la tabla.</div>');
+    }
+    if (linkBps != null) {
+      rows.push('<div style="margin-top:3px;color:#94a3b8;font-style:italic;">Enlace ' + mbps(linkBps) +
+        ': ' + origen + '. Las dos columnas se miden contra ese mismo número.</div>');
+    }
+    var list = plan.profiles || [];
+    var nArranca = 0, nTecho = 0, nConDato = 0;
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i];
+      if (!r.output_known) {
+        rows.push('<div style="margin-top:3px;color:#fbbf24;">' + r.id + ' · sin bitrate declarado en el perfil: no se calcula</div>');
+        continue;
+      }
+      // SUELO: el mínimo con el que el perfil ARRANCA (el mismo campo que usa el aviso).
+      // TECHO: el bitrate que declara el perfil, que es otra pregunta distinta.
+      var sueloM = floorDePerfil(r.id);
+      var reqArranque = sueloM > 0 ? sueloM * (1 + plan.delta_pct / 100) : 0;
+      var arranca = (linkBps != null && reqArranque > 0) ? (linkBps >= Math.round(reqArranque * 1e6)) : null;
+      nConDato++;
+      if (arranca === true) nArranca++;
+      if (r.feasible === true) nTecho++;
+      var txt = r.id + ' · para arrancar pide ' + (sueloM > 0 ? sueloM + ' × ' + (1 + plan.delta_pct / 100).toFixed(2) +
+        ' = ' + reqArranque.toFixed(2) + ' Mbps' : '— (sin suelo declarado)') +
+        ' · techo ' + mbps(r.output_bps) + ' → ' + mbps(r.required_bps) + ' para sostenerlo';
+      var col = '#e2e8f0';
+      if (linkBps != null) {
+        var trozos = [];
+        if (arranca === true) trozos.push('arranca');
+        else if (arranca === false) trozos.push('NO arranca (faltan ' + (reqArranque - L.mbps).toFixed(2) + ' Mbps)');
+        if (r.feasible === true) trozos.push('sostiene el techo');
+        else trozos.push('no sostiene el techo (faltan ' + mbps(r.deficit_bps) + ')');
+        txt += ' · ' + trozos.join(' · ');
+        if (L.measured && arranca === true && r.feasible === true) col = '#86efac';
+        else if (arranca === true) col = '#fbbf24';
+        else col = '#fca5a5';
+      }
+      rows.push('<div style="margin-top:3px;color:' + col + ';">' + txt + '</div>');
+    }
+    if (linkBps != null) {
+      // Una sola frase de cierre y las dos cuentas, para que no pueda decir una cosa aquí y otra
+      // en el aviso de arriba: las dos usan el MISMO enlace y el MISMO suelo.
+      var etiqueta = L.measured ? '' : ' (estimación, no medición: no es un veredicto)';
+      rows.push('<div style="margin-top:5px;color:' + (L.measured ? '#86efac' : '#fbbf24') + ';">Con ' +
+        mbps(linkBps) + etiqueta + ': arrancan ' + nArranca + ' de ' + nConDato +
+        ' perfiles y sostienen su techo ' + nTecho + ' de ' + nConDato +
+        (plan.minimum_profile ? '. El que menos techo pide es ' + plan.minimum_profile +
+          ' (' + mbps(plan.minimum_required_bps) : '') + '.</div>');
+    } else {
+      rows.push('<div style="margin-top:5px;color:#94a3b8;">Sin cifra de enlace: ' + plan.output_known +
+        ' perfiles con bitrate declarado; no se puede decir cuántos arrancan ni cuántos sostienen el techo ' +
+        '(no comprobado, no inventado). Escribe el enlace medido para que la tabla decida.</div>');
+    }
+    box.innerHTML = rows.join('');
+  }
+
+  // Delegado: se engancha una vez y sigue funcionando aunque el panel se repinte.
+  // Cambiar el enlace a mano tiene que mover LAS DOS piezas: la tabla y el aviso. Si sólo se
+  // repintara la tabla, el aviso seguiría hablando del enlace anterior (ese era el defecto:
+  // «los avisos no responden a la realidad del momento»).
+  function refrescarCondicionBuffer() {
+    try { guard(); } catch (_) { }
+    try { renderBufferPlan(); } catch (_) { }
+    try { renderSugerencia(); } catch (_) { }
+  }
+  document.addEventListener('change', function (ev) {
+    var t = ev.target;
+    if (t && (t.id === 'ape-link-input' || t.id === 'ape-delta-input')) refrescarCondicionBuffer();
+  });
+  document.addEventListener('input', function (ev) {
+    var t = ev.target;
+    if (t && t.id === 'ape-link-input') refrescarCondicionBuffer();
+  });
+
   function renderSugerencia() {
     var el = document.getElementById('ape-buf-sugerencia');
     if (!el) return;
@@ -947,7 +1166,36 @@
       return;
     }
 
+    // ── SIN MEDICIÓN DE ENLACE (ronda 19) ────────────────────────────────────────────────────
+    // `APE_BW.snapshot()` devuelve una SEMILLA mientras no haya muestras: o los 10 Mbps del
+    // arranque, o `navigator.connection.downlink`, una estimación del navegador que va por
+    // escalones (0,3 es uno de ellos). Eso no es una medición. Antes se pintaba como «el enlace
+    // mide 0,3 Mbps» y encima bloqueaba la generación: el operador veía un bloqueo basado en un
+    // número que nadie midió. Aquí se dice de dónde sale la cifra y no se bloquea por ella.
+    var origenEnlace = (s.linkKind === 'manual')
+      ? 'escrito a mano en «Enlace medido»'
+      : (s.linkKind === 'measured'
+        ? 'medición del medidor de enlace' + (s.linkSamples ? ' con ' + s.linkSamples + ' muestras' : '')
+        : 'estimación del navegador, NO una medición');
+
+    if (s.sinMedida) {
+      el.innerHTML =
+        '<div style="' + linea + 'color:#fbbf24;"><b>Sin medición de enlace</b>: la única cifra ' +
+        'disponible es <b>' + s.inM.toFixed(2) + ' Mbps</b> y es una <b>' + origenEnlace +
+        '</b> (' + s.linkSource + '). No se bloquea la generación por un número que nadie midió.</div>' +
+        '<div style="' + linea + 'color:#94a3b8;">Para decidir con datos: escribe el enlace que ' +
+        'midas en <b>Enlace medido</b> (aquí arriba) o deja que el medidor tome muestras abriendo ' +
+        'una lista. En cuanto haya una cifra real, esta misma tarjeta vuelve a decidir.</div>' +
+        '<div style="' + linea + 'color:#c4b5fd;">Con esa estimación, el perfil <b>' + act +
+        '</b> pide <b>' + s.reqArranque.toFixed(2) + ' Mbps</b> para arrancar (suelo ' + s.floorM +
+        ' Mbps × ' + (1 + s.delta / 100).toFixed(2) + ') y <b>' + s.reqTecho.toFixed(2) +
+        ' Mbps</b> para sostener su techo de ' + s.outM + ' Mbps.</div>';
+      return;
+    }
+
     if (s.bloquea) {
+      html += '<div style="' + linea + 'color:#94a3b8;font-size:.75rem;font-style:italic;">Enlace ' +
+        s.inM.toFixed(2) + ' Mbps (' + origenEnlace + ').</div>';
       html += '<div style="' + linea + 'color:#fca5a5;">' +
         '<b>Bloqueado</b>: el perfil ' + act + ' necesita <b>' + s.reqArranque.toFixed(1) +
         ' Mbps</b> para arrancar (suelo ' + s.floorM + ' Mbps × ' + (1 + s.delta / 100).toFixed(2) +
@@ -1034,7 +1282,7 @@
       // Aprobación explícita de un escenario que NO cumple: queda marcado para esta sesión.
       window.__APE_SUG_FORZADO__ = true;
       window.__APE_SUG_DENEGADO__ = false;
-      var forced = aplicarForzadoP5();
+      var forced = aplicarForzadoP5(m.minimo ? m.minimo.perfil : null);
       status('FORZADO: perfil ' + forced.profile + ' · delta ' + forced.delta + ' % con ' +
              s.inM.toFixed(1) + ' Mbps (el mínimo pide ' +
              (m.minimo ? m.minimo.req.toFixed(2) : '?') + ' Mbps). Aprobado por el operador.', '#f59e0b');
@@ -1442,6 +1690,64 @@
     paint();
   }
 
+  /* ── [2026-11-23 · INTEGRACIÓN 4K/6K] INTENCIÓN DECLARADA POR CANAL ────────────
+   * Una sola fuente de verdad: window.APE_4K6K_AUDIT. Es el flag que ya lee el
+   * adaptador (ape-4k6k-audit-adapter.js:52, isEnabled()) y el que ahora consulta el
+   * emisor en cada canal (ape-4k6k-intent-emit.js → m3u8-typed-arrays-ultimate.js,
+   * una guarda junto a generateChannelEntry).
+   *
+   * Por qué el cableado vive AQUÍ y no en el HTML: el panel se construye en tiempo de
+   * ejecución (render() inyecta el <section> dentro de #tab-export). Un
+   * document.getElementById escrito en línea en el HTML se ejecuta ANTES de que el
+   * panel exista y devolvería null: la casilla se vería y no haría nada. El HTML
+   * tenía exactamente eso (index-v4.html, label suelto junto a "Modo DIRECTO"); ese
+   * label se ha quitado de allí para que no haya dos elementos con el mismo id.
+   *
+   * Persistencia: localStorage, por defecto APAGADA (lista byte a byte como antes).
+   */
+  var INTENT_KEY = 'ape_4k6k_intent_enabled';
+  function intentOn() { return window.APE_4K6K_AUDIT === true; }
+  function setIntent(on, silent) {
+    var v = (on === true);
+    window.APE_4K6K_AUDIT = v;
+    try { localStorage.setItem(INTENT_KEY, v ? '1' : '0'); } catch (_) { /* modo privado */ }
+    var cb = document.getElementById('ape4k6kIntentToggle');
+    if (cb) cb.checked = v;
+    var st = document.getElementById('ape4k6kIntentState');
+    if (st) {
+      st.textContent = v ? 'encendido · +1 línea por canal' : 'apagado · lista intacta';
+      st.style.color = v ? '#f0abfc' : '#94a3b8';
+    }
+    if (!silent) status(v ? 'Intención 4K/6K ENCENDIDA' : 'Intención 4K/6K apagada', v ? '#e879f9' : '#94a3b8');
+  }
+
+  /* ── [2026-11-23 · MODO UNIVERSAL] INTERRUPTOR DE LA LISTA UNIVERSAL ──────────
+   * Una sola fuente de verdad: window.APE_UNIVERSAL_MODE. Es lo que lee el emisor
+   * (js/ape-v9/ape-universal-emit.js → isOn) desde la guarda que el generador tiene
+   * junto a generateChannelEntry.
+   * Persistencia: localStorage, por defecto APAGADA (la lista sale byte a byte como
+   * antes). setUniversal() es el único sitio que escribe el flag: la casilla, el
+   * arranque de la página y cualquier prueba pasan por aquí, así que no puede haber
+   * dos verdades distintas.
+   */
+  var UNIVERSAL_KEY = 'ape_universal_intent_enabled';
+  function universalOn() { return window.APE_UNIVERSAL_MODE === true; }
+  function setUniversal(on, silent) {
+    var v = (on === true);
+    window.APE_UNIVERSAL_MODE = v;
+    try { localStorage.setItem(UNIVERSAL_KEY, v ? '1' : '0'); } catch (_) { /* modo privado */ }
+    var cb = document.getElementById('apeUniversalToggle');
+    if (cb) cb.checked = v;
+    var st = document.getElementById('apeUniversalState');
+    if (st) {
+      var em = window.APE_UNIVERSAL_EMIT;
+      var n = (em && em.DIALECTS && em.DIALECTS.length) ? em.DIALECTS.length : null;
+      st.textContent = v ? ('encendido · +1 línea por canal' + (n ? ' · ' + n + ' dialectos' : '')) : 'apagado · lista intacta';
+      st.style.color = v ? '#c4b5fd' : '#94a3b8';
+    }
+    if (!silent) status(v ? 'Lista universal ENCENDIDA' : 'Lista universal apagada', v ? '#8b5cf6' : '#94a3b8');
+  }
+
   function modeText() {
     var p = document.getElementById('publicationMode');
     var v = p ? p.value : (window.APE_PUBLICATION_MODE || 'balanced_95');
@@ -1490,6 +1796,36 @@
       '<label style="cursor:pointer;" title="Proyeccion LIGHT por perfil: ~1.037 lineas por canal recuperables desde 9 plantillas. El d= de cada URL /pulse sale del #EXT-X-APE-STREAM-TRUTH (resolucion real del canal). El &quot;Delta por perfil&quot; de abajo es otra cosa: el margen de buffer."><input type="checkbox" id="ape-out-light" style="accent-color:#e879f9;"> LIGHT</label>' +
       '<label style="cursor:pointer;" title="Modo HDR de salida">HDR <select id="ape-out-hdr" style="accent-color:#ef4444;background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:5px;padding:2px 4px;font-size:.78rem;">' +
       '<option value="auto">Auto</option><option value="pq">PQ</option><option value="sdr">SDR</option></select></label>' +
+      '</div>' +
+      // ══ [2026-11-23 · INTEGRACIÓN 4K/6K] ═══════════════════════════════════════
+      // El propietario trajo esta casilla SUELTA en el HTML (label + script en línea,
+      // junto a "Modo DIRECTO"). Medido: escribía window.APE_4K6K_AUDIT y NINGÚN punto
+      // del emisor leía ese flag (grep de 'insertIntentTag(' en frontend/js: sólo la
+      // definición y las pruebas), así que no añadía ni una línea a la lista.
+      // Ahora vive aquí, en la fila de opciones de salida, con su mismo id y su mismo
+      // texto, y SÍ manda: el generador llama al módulo de emisión por canal.
+      // Es METADATA declarada: no cambia el vídeo, el bitrate ni ninguna URL, y al
+      // apagarla la lista sale byte a byte igual que antes.
+      '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:8px;padding:8px 10px;border-radius:9px;background:rgba(2,6,23,.28);border:1px solid rgba(232,121,249,.30);font-size:.82rem;color:#cbd5e1;">' +
+      '<strong style="color:#f0abfc;">INTENCIÓN:</strong>' +
+      '<label id="ape4k6kIntentLabel" for="ape4k6kIntentToggle" title="Añade una línea #EXT-X-APE-4K6K-INTENT por canal con el perfil elegido y la resolución objetivo. No cambia el vídeo: es metadata declarada." style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-weight:700;color:#e2e8f0;">' +
+      '<input type="checkbox" id="ape4k6kIntentToggle" style="width:16px;height:16px;accent-color:#e879f9;cursor:pointer;">' +
+      '<span>INTENCIÓN 4K/6K EN LA LISTA</span></label>' +
+      '<span id="ape4k6kIntentState" style="color:#94a3b8;font-size:.74rem;font-weight:700;">apagado · lista intacta</span>' +
+      '<span style="font-size:.78rem;color:#64748b;flex-basis:100%;">Una línea declarativa por canal al generar la lista (perfil elegido + resolución objetivo). No cambia el vídeo, el bitrate ni las URLs. Vale para VPS, DIRECTO y AMBAS y para los tres formatos (HLS, DASH, HÍBRIDA); el JSON de metadatos no lleva lista que anotar.</span>' +
+      '</div>' +
+      // [2026-11-23 · MODO UNIVERSAL] Interruptor de la lista universal. Se pinta AQUÍ (no
+      // en el HTML) por lo mismo que la casilla 4K/6K: el panel se construye después del
+      // parseo, y un getElementById escrito en el HTML devolvería null. Manda de verdad: el
+      // generador llama a window.APE_UNIVERSAL_EMIT.apply() por canal (una guarda junto a
+      // generateChannelEntry), y ese módulo añade UNA línea declarativa por canal.
+      '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:8px;padding:8px 10px;border-radius:9px;background:rgba(2,6,23,.28);border:1px solid rgba(139,92,246,.34);font-size:.82rem;color:#cbd5e1;">' +
+      '<strong style="color:#c4b5fd;">UNIVERSAL:</strong>' +
+      '<label id="apeUniversalLabel" for="apeUniversalToggle" title="Añade una línea #EXT-X-APE-UNIVERSAL por canal: declara los dialectos de player que cubre la lista, que los tags desconocidos y los #EXT-X-APE-* se conservan, y la guía canónica 12P seguida. No cambia el vídeo, el bitrate ni las URLs." style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-weight:700;color:#e2e8f0;">' +
+      '<input type="checkbox" id="apeUniversalToggle" style="width:16px;height:16px;accent-color:#8b5cf6;cursor:pointer;">' +
+      '<span>LISTA UNIVERSAL · TODOS LOS PLAYERS</span></label>' +
+      '<span id="apeUniversalState" style="color:#94a3b8;font-size:.74rem;font-weight:700;">apagado · lista intacta</span>' +
+      '<span style="font-size:.78rem;color:#64748b;flex-basis:100%;">Una línea declarativa por canal al generar la lista: los dialectos que cubre, tags desconocidos conservados, cabeceras tóxicas limpiadas al exportar y la guía canónica 12P. El ZIP por player sigue saliendo de 🧬 MULTIPARSER aquí abajo y NO modifica la lista.</span>' +
       '</div>' +
       '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px;padding:8px 10px;border-radius:9px;background:rgba(2,6,23,.28);border:1px solid rgba(148,163,184,.22);font-size:.82rem;color:#cbd5e1;">' +
       '<strong style="color:#fbbf24;">FORMATO:</strong>' +
@@ -1579,7 +1915,17 @@
       '<span style="color:#86efac;border:1px solid rgba(34,197,94,.45);border-radius:999px;padding:3px 8px;">ENTRADA EXTRA · descarga / prefetch / buffer</span>' +
       '<span style="color:#fca5a5;border:1px solid rgba(239,68,68,.4);border-radius:999px;padding:3px 8px;">SALIDA INTACTA · imagen / bitrate del proveedor</span>' +
       '</div>' +
-      '<div style="font-size:.82rem;color:#94a3b8;margin-top:6px;">Entrada requerida ≥ salida solicitada × (1 + delta). La salida NO se reduce: es la que pide la reproducción/imagen; el margen se reserva en entrada.</div></div>' +
+      '<div style="font-size:.82rem;color:#94a3b8;margin-top:6px;">Entrada requerida ≥ salida solicitada × (1 + delta). La salida NO se reduce: es la que pide la reproducción/imagen; el margen se reserva en entrada.</div>' +
+      // RONDA 18 · el bloque suelto #ape-buf-demand-panel se integra AQUÍ dentro de la tarjeta:
+      // un solo dueño de los ids (ape-link-input, ape-buf-plan) y los valores por perfil salen
+      // del catálogo del gestor de perfiles (el que trae los bitrates del LAB), nunca escritos a mano.
+      '<div style="display:flex;align-items:center;gap:9px;font-size:.8rem;color:#94a3b8;margin-top:7px;flex-wrap:wrap;">' +
+      '<label for="ape-link-input" style="white-space:nowrap;">Enlace medido</label>' +
+      '<input id="ape-link-input" type="number" min="0" max="100000" step="0.01" placeholder="Mbps (opcional)" ' +
+      'style="width:120px;padding:4px 7px;border-radius:6px;background:#0f172a;color:#e2e8f0;border:1px solid #334155;">' +
+      '<span style="color:#64748b;">sin medida no se diagnostica déficit</span>' +
+      '</div>' +
+      '<div id="ape-buf-plan" style="margin-top:7px;font-size:.78rem;color:#94a3b8;">Cargando perfiles…</div></div>' +
       '<div id="ape-buf-sugerencia" style="margin-top:7px;"></div>' +
       '<div style="background:rgba(2,6,23,.38);border:1px solid rgba(148,163,184,.25);border-radius:10px;padding:10px;font-size:.8rem;color:#94a3b8;">' +
       '<div style="font-weight:800;color:#e2e8f0;">MODO</div>' +
@@ -1590,6 +1936,31 @@
       '</select><div id="ape-gen-mode" style="margin-top:3px;color:#c4b5fd;font-size:.82rem;">—</div></div>' +
       '</div>';
     tab.insertBefore(panel, tab.firstChild);
+    // RONDA 18: en cuanto la tarjeta CONDICIÓN DE BUFFER está en el DOM, se pinta la tabla
+    // por perfil con los bitrates del catálogo. Si el catálogo aún no está, dice NO COMPUTADO.
+    try { renderBufferPlan(); } catch (_) { }
+    // RONDA 19: el aviso se pinta en el mismo momento y con la misma cifra de enlace que la
+    // tabla. Antes sólo se recalculaba al aplicar un delta, así que podía quedarse con un
+    // veredicto de otro momento (o no aparecer hasta que el operador tocara algo).
+    try { renderSugerencia(); } catch (_) { }
+
+    // ══ [2026-11-23 · MULTIPARSER DENTRO DEL GENERADOR] ══════════════════════
+    // El propietario trajo el bloque #apeMultiParserPanel PEGADO en el HTML, como
+    // hermano de la tarjeta de exportación: fuera del panel que genera las listas.
+    // Aquí se MUEVE ese mismo nodo (no se copia) al final del panel del generador,
+    // para que la lista y sus traducciones por player se pidan desde el mismo sitio.
+    // Se mueve, no se clona, por tres razones medidas:
+    //   · los dos <button> llevan onclick EN LÍNEA (btnMultiExportView /
+    //     btnMultiParseFile): mover el nodo conserva el listener sin reescribirlo;
+    //   · clonar crearía DOS #apeMultiParserStatus y getElementById devolvería el
+    //     primero, así que los mensajes del exportador irían a un div que el
+    //     operador ya no ve;
+    //   · si el bloque no está en el DOM (alguien lo quitó), NO se inventa: el
+    //     panel sigue funcionando sin multiparser en vez de romperse.
+    try {
+      var mpPanel = document.getElementById('apeMultiParserPanel');
+      if (mpPanel && mpPanel.parentNode !== panel) panel.appendChild(mpPanel);
+    } catch (_mpErr) { /* DOM inesperado: el generador no depende del multiparser */ }
 
     var snapshotButton = document.getElementById('ape-mpd-snapshot');
     if (snapshotButton) snapshotButton.addEventListener('click', async function () {
@@ -1735,6 +2106,26 @@
       });
     });
     paintOutputs();
+    // [2026-11-23 · INTEGRACIÓN 4K/6K] Restaurar y enganchar la casilla de intención.
+    // Se hace AQUÍ porque el panel acaba de existir: antes, el elemento no está en el DOM.
+    // setIntent(saved, true) pinta la casilla y deja window.APE_4K6K_AUDIT como estaba
+    // guardado (por defecto apagado), sin escribir en la barra de estado.
+    var intentCb = document.getElementById('ape4k6kIntentToggle');
+    if (intentCb) {
+      var savedIntent = false;
+      try { savedIntent = (localStorage.getItem(INTENT_KEY) === '1'); } catch (_) { savedIntent = false; }
+      setIntent(savedIntent, true);
+      intentCb.addEventListener('change', function () { setIntent(intentCb.checked, false); });
+    }
+    // [2026-11-23 · MODO UNIVERSAL] Mismo patrón, y por la misma razón: el elemento acaba
+    // de existir ahora. Por defecto APAGADO (0 líneas añadidas a la lista).
+    var uniCb = document.getElementById('apeUniversalToggle');
+    if (uniCb) {
+      var savedUni = false;
+      try { savedUni = (localStorage.getItem(UNIVERSAL_KEY) === '1'); } catch (_) { savedUni = false; }
+      setUniversal(savedUni, true);
+      uniCb.addEventListener('change', function () { setUniversal(uniCb.checked, false); });
+    }
     // [2026-11-21 · t3] Read-back al pintar: si la ultima corrida dejo un fallback de JIT
     // registrado, se vuelve a mostrar aqui. Sin esta lectura, "consta en localStorage" era
     // una afirmacion que nadie comprobaba nunca.

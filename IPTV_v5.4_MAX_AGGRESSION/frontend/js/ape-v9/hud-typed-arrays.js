@@ -100,7 +100,7 @@
                             🚀 TYPED ARRAYS ULTIMATE v16.0.0
                         </h1>
                         <div style="color: #a78bfa; font-size: 12px; margin-top: 5px;">
-                            133 LÍNEAS/CANAL | SESSION: <span style="color: #06b6d4;">${sessionId.slice(0, 8)}</span>
+                            MÉTRICAS MEDIDAS | SESSION: <span style="color: #06b6d4;">${sessionId.slice(0, 8)}</span>
                         </div>
                     </div>
                     <div style="text-align: right;">
@@ -146,28 +146,28 @@
                             <span style="color: #a78bfa; font-size: 11px;">📺 EXTVLCOPT</span>
                             <span style="font-size: 18px; font-weight: bold; color: #c084fc;" id="ta-extvlcopt">0</span>
                         </div>
-                        <div style="font-size: 9px; color: #6b7280; margin-top: 2px;">63 líneas/canal</div>
+                        <div style="font-size: 9px; color: #6b7280; margin-top: 2px;">medido por canal</div>
                     </div>
                     <div class="typed-stat-box" style="background: rgba(236, 72, 153, 0.1); padding: 8px 12px; border: 1px solid rgba(236, 72, 153, 0.4); border-radius: 8px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span style="color: #f472b6; font-size: 11px;">🎬 KODIPROP</span>
                             <span style="font-size: 18px; font-weight: bold; color: #f472b6;" id="ta-kodiprop">0</span>
                         </div>
-                        <div style="font-size: 9px; color: #6b7280; margin-top: 2px;">38 líneas/canal</div>
+                        <div style="font-size: 9px; color: #6b7280; margin-top: 2px;">medido por canal</div>
                     </div>
                     <div class="typed-stat-box" style="background: rgba(6, 182, 212, 0.1); padding: 8px 12px; border: 1px solid rgba(6, 182, 212, 0.4); border-radius: 8px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span style="color: #22d3ee; font-size: 11px;">⚡ EXT-X-APE</span>
                             <span style="font-size: 18px; font-weight: bold; color: #22d3ee;" id="ta-extxape">0</span>
                         </div>
-                        <div style="font-size: 9px; color: #6b7280; margin-top: 2px;">29 líneas/canal</div>
+                        <div style="font-size: 9px; color: #6b7280; margin-top: 2px;">medido por canal</div>
                     </div>
                     <div class="typed-stat-box" style="background: rgba(34, 197, 94, 0.1); padding: 8px 12px; border: 1px solid rgba(34, 197, 94, 0.4); border-radius: 8px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span style="color: #4ade80; font-size: 11px;">📄 TOTAL LINES</span>
                             <span style="font-size: 18px; font-weight: bold; color: #4ade80;" id="ta-lines">0</span>
                         </div>
-                        <div style="font-size: 9px; color: #6b7280; margin-top: 2px;">~133 líneas/canal</div>
+                        <div style="font-size: 9px; color: #6b7280; margin-top: 2px;">medido por canal</div>
                     </div>
                 </div>
 
@@ -343,7 +343,7 @@
 
             this.log('🚀 TYPED ARRAYS HUD v16.0 Inicializado', '#8b5cf6');
             this.log(`📺 Procesando ${totalChannels.toLocaleString()} canales...`, '#06b6d4');
-            this.log(`🎯 Estructura: 63 EXTVLCOPT + 38 KODIPROP + 29 EXT-X-APE = 133 líneas/canal`, '#a78bfa');
+            this.log(`🎯 Estructura: EXTVLCOPT/KODIPROP/EXT-X-APE por canal — se miden, no se estiman`, '#a78bfa');
         },
 
         /**
@@ -379,7 +379,7 @@
          * Se llama THROTTLED cada 50 canales desde el generador.
          * NOTA: ya NO gestiona el contador de perfil — eso lo hace tickProfile() sin throttle.
          */
-        updateChannel(current, channelName = '', profile = 'P3') {
+        updateChannel(current, channelName = '', profile = 'P3', measured = null) {
             this.currentChannel = current;
             const pct = ((current / this.totalChannels) * 100).toFixed(1);
 
@@ -392,16 +392,20 @@
                 this.elements.counter.innerHTML = `<span style="color: #e879f9;">${current.toLocaleString()}</span> / ${this.totalChannels.toLocaleString()}`;
             }
 
-            // Lines
-            this.stats.extvlcopt = current * 63;
-            this.stats.kodiprop = current * 38;
-            this.stats.extxape = current * 29;
-            this.stats.linesTotal = current * 133;
+            // Lines — SOLO con medición real del generador. Sin medición se muestra
+            // “—” : el HUD ya no inventa (antes multiplicaba por 63 / 38 / 29 / 133).
+            const _m = (measured && typeof measured === 'object') ? measured : null;
+            this.stats.measured = !!_m;
+            this.stats.extvlcopt = _m ? (Number(_m.extvlcopt) || 0) : null;
+            this.stats.kodiprop = _m ? (Number(_m.kodiprop) || 0) : null;
+            this.stats.extxape = _m ? (Number(_m.extxape) || 0) : null;
+            this.stats.linesTotal = _m ? (Number(_m.lines) || 0) : null;
+            const _fmtCount = (v) => (v === null ? '—' : v.toLocaleString());
 
-            if (this.elements.extvlcopt) this.elements.extvlcopt.textContent = this.stats.extvlcopt.toLocaleString();
-            if (this.elements.kodiprop) this.elements.kodiprop.textContent = this.stats.kodiprop.toLocaleString();
-            if (this.elements.extxape) this.elements.extxape.textContent = this.stats.extxape.toLocaleString();
-            if (this.elements.lines) this.elements.lines.textContent = this.stats.linesTotal.toLocaleString();
+            if (this.elements.extvlcopt) this.elements.extvlcopt.textContent = _fmtCount(this.stats.extvlcopt);
+            if (this.elements.kodiprop) this.elements.kodiprop.textContent = _fmtCount(this.stats.kodiprop);
+            if (this.elements.extxape) this.elements.extxape.textContent = _fmtCount(this.stats.extxape);
+            if (this.elements.lines) this.elements.lines.textContent = _fmtCount(this.stats.linesTotal);
 
             // Speed & Time
             const elapsed = (Date.now() - this.startTime) / 1000;
@@ -427,7 +431,10 @@
 
             this.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, '#8b5cf6');
             this.log(`✅ GENERACIÓN COMPLETADA EN ${elapsed}s`, '#22c55e');
-            this.log(`📊 ${this.totalChannels.toLocaleString()} canales | ${this.stats.linesTotal.toLocaleString()} líneas totales`, '#06b6d4');
+            const _lt = (this.stats.linesTotal === null || this.stats.linesTotal === undefined)
+                ? '—'
+                : this.stats.linesTotal.toLocaleString();
+            this.log(`📊 ${this.totalChannels.toLocaleString()} canales | ${_lt} líneas totales (medidas)`, '#06b6d4');
             this.log(`📦 JWT: ${finalStats.jwt || 'N/A'} | File: ${finalStats.filesize || 'N/A'}`, '#a78bfa');
             this.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, '#8b5cf6');
 

@@ -1659,10 +1659,24 @@
         // ── Intento 1: APE_PROFILES_CONFIG (Profile Manager v9.0) ──
         try {
             if (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG && typeof window.APE_PROFILES_CONFIG.getProfile === 'function') {
-                const pmProfile = window.APE_PROFILES_CONFIG.getProfile(profileId);
+                let pmProfile = window.APE_PROFILES_CONFIG.getProfile(profileId);
+                // ── [R20 · reconciliación 12P] Perfiles .5 (6K) que el PM no tiene ──
+                // APE_PROFILES_CONFIG sólo declara P0…P5. Los seis .5 (P0.5…P5.5) que usa
+                // la capa 6K caían al rescate `hardcoded` (PROFILES['P3']) y emitían
+                // #KODIPROP max_bandwidth=8000000 para un stream de 112 Mbps. El puente
+                // APE_LAB_12P_RECONCILE entrega los valores del LAB con la misma forma que `settings`.
+                // SÓLO se usa cuando el Profile Manager no tiene ese perfil: si lo tiene,
+                // mandan los valores del usuario.
+                const _lab12pSettings = (typeof window !== 'undefined' && window.APE_LAB_12P_RECONCILE
+                    && typeof window.APE_LAB_12P_RECONCILE.settingsFor === 'function')
+                    ? window.APE_LAB_12P_RECONCILE.settingsFor(profileId) : null;
+                if (!pmProfile && _lab12pSettings) {
+                    // Perfil sintético: el resto del bloque lee pmProfile.name y pmProfile.settings
+                    pmProfile = { id: profileId, name: profileId, settings: _lab12pSettings, synthetic: 'APE_LAB_12P' };
+                }
                 if (pmProfile && pmProfile.settings) {
                     const s = pmProfile.settings;
-                    const pf = (typeof window.APE_PROFILES_CONFIG.getPrefetchConfig === 'function')
+                    const pf = (pmProfile && typeof window.APE_PROFILES_CONFIG.getPrefetchConfig === 'function')
                         ? window.APE_PROFILES_CONFIG.getPrefetchConfig(profileId) : null;
 
                     // SSOT BRIDGE v3.0 — TODOS los campos del LAB se propagan al generador.
@@ -2897,22 +2911,38 @@
                 const _known = _flags.filter(v => v === true || v === false);
                 const _dm = _known.length ? (_known[0] === true) : null;
                 const _cfgP = (typeof window !== 'undefined') ? window.APE_PROFILES_CONFIG : null;
+                // [R21] la lista ya emite el network-caching calibrado del LAB en los 12
+                // perfiles, así que la declaración tiene que decir la verdad y publicar
+                // también el valor calibrado (`LAB_NC`), no sólo los tres del config.
+                const _labBridge = (typeof window !== 'undefined') ? window.APE_LAB_12P_RECONCILE : null;
+                const _labEmitOf = (pid) => {
+                    try {
+                        if (!_labBridge) return null;
+                        const fn = (typeof _labBridge.networkCachingEmittedMs === 'function')
+                            ? _labBridge.networkCachingEmittedMs : null;
+                        if (!fn) return null;
+                        const v = Number(fn(pid));
+                        return isFinite(v) && v > 0 ? v : null;
+                    } catch (e) { return null; }
+                };
                 const _ids = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P0.5', 'P1.5', 'P2.5', 'P3.5', 'P4.5', 'P5.5'];
                 const _num = (v) => { const n = Number(v); return isFinite(n) && n > 0 ? n : null; };
                 for (const _pf of _ids) {
                     const _p = (_cfgP && typeof _cfgP.getProfile === 'function') ? _cfgP.getProfile(_pf) : null;
-                    if (!_p) continue;
-                    const _vlcopt = _num((_p.vlcopt || {})['network-caching']);
-                    const _l3 = _num((((_p.player_enslavement || {}).level_3_per_channel || {}).EXTVLCOPT || {})['network-caching']);
-                    const _actor = _num(((((_p.actor_injections || {}).player || {}).vlc) || {}).network_caching_ms);
-                    if (_vlcopt === null && _l3 === null && _actor === null) continue;
-                    const _emitted = _dm === null ? 'unknown' : (_dm ? 500 : (_vlcopt || _l3 || _actor));
+                    const _vlcopt = _p ? _num((_p.vlcopt || {})['network-caching']) : null;
+                    const _l3 = _p ? _num((((_p.player_enslavement || {}).level_3_per_channel || {}).EXTVLCOPT || {})['network-caching']) : null;
+                    const _actor = _p ? _num(((((_p.actor_injections || {}).player || {}).vlc) || {}).network_caching_ms) : null;
+                    const _labEmit = _labEmitOf(_pf);
+                    if (_vlcopt === null && _l3 === null && _actor === null && _labEmit === null) continue;
+                    const _emitted = _dm === null ? 'unknown'
+                        : (_dm ? 500 : (_labEmit !== null ? _labEmit : (_vlcopt || _l3 || _actor)));
                     _prec.push('#EXT-X-APE-CACHING-PRECEDENCE:PROFILE=' + _pf
                         + ';EMITTED=' + _emitted
+                        + ';LAB_NC=' + (_labEmit === null ? 'unknown' : _labEmit)
                         + ';LAB_VLCOPT=' + (_vlcopt === null ? 'unknown' : _vlcopt)
                         + ';LAB_L3=' + (_l3 === null ? 'unknown' : _l3)
                         + ';LAB_ACTOR=' + (_actor === null ? 'unknown' : _actor)
-                        + ';GOVERNED_BY=' + (_dm === null ? 'undetermined' : (_dm ? 'dictatorMode' : 'lab')));
+                        + ';GOVERNED_BY=' + (_dm === null ? 'undetermined' : (_dm ? 'dictatorMode' : (_labEmit !== null ? 'lab_12p' : 'lab'))));
                 }
                 // Invariante documentado en el codigo (linea 10494: "se fija a 8, 200 saturaba la red").
                 _prec.push('#EXT-X-APE-OVERRIDE:X-Concurrent-Downloads=8;LAB=ignored;REASON=invariante_200_saturaba;DECLARED=1');
@@ -3207,7 +3237,7 @@
             '#EXT-X-APE-AUDIO-NO-DAMAGE:true',
             '#KODIPROP:inputstream.adaptive.audio_codec_priority=eac3,ac3,aac,mp3',
             '#KODIPROP:inputstream.adaptive.audio_fallback=aac_lc_2ch',
-            '#EXT-X-KEY:METHOD=NONE',
+            '#EXT-X-APE-KEY:METHOD=NONE',
             '#EXT-X-APE-DRM-WIDEVINE:ENFORCE',
             '#KODIPROP:inputstream.adaptive.drm_widevine_enforce=true',
             '#EXT-X-APE-TELCHEMY-TVQM:ENABLED',
@@ -3756,7 +3786,7 @@ ${__apeContinuityTags().join('\n')}
 #EXT-X-DEFINE:NAME="OMEGA_EPOCH",VALUE="${_mqTs}"
 #EXT-X-DEFINE:NAME="OMEGA_COMPLIANCE",VALUE="HLS-RFC8216BIS+CMAF-LL+DV-P8+LCEVC-P4+ATMOS"
 #EXT-X-DATERANGE:ID="omega-live-maxq",X-OMEGA-TYPE="LIVE-CATCHUP",X-HDR-TYPE="DV-P8+HDR10+",X-HDR-MAX-CLL=10000
-#EXT-X-KEY:METHOD=NONE
+#EXT-X-APE-KEY:METHOD=NONE
 #EXT-X-SESSION-KEY:METHOD=NONE
 ${generateLabMetadataTag() || ''}`;
         }
@@ -3804,7 +3834,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.build",VALUE="v5.4-MAX-AGGRESSION"
 #EXT-X-DEFINE:NAME="OMEGA_EPOCH",VALUE="${timestamp}"
 #EXT-X-DEFINE:NAME="OMEGA_COMPLIANCE",VALUE="HLS-RFC8216BIS+CMAF-LL+HDR10+DV-P81-P10+LCEVC-P4"
-#EXT-X-KEY:METHOD=NONE
+#EXT-X-APE-KEY:METHOD=NONE
 #EXT-X-SESSION-KEY:METHOD=NONE
 #EXT-X-APE-DECLARED-I-FRAME-STREAM-INF:BANDWIDTH=450000,AVERAGE-BANDWIDTH=400000,CODECS="hvc1.2.4.L153.B0",RESOLUTION=1920x1080;STATUS=UNVERIFIED
 #EXT-X-DATERANGE:ID="omega-live-${timestamp}",START-DATE="${new Date().toISOString()}",DURATION=86400,X-OMEGA-TYPE="LIVE-CATCHUP",X-OMEGA-SCOPE="CHANNEL-SESSION",X-OMEGA-BUILD="v5.4-MAX-AGGRESSION"
@@ -10207,7 +10237,19 @@ return lines.join('\n');
                 tag = '#EXTSHIMOTT:' + JSON.stringify(payload);
             }
             if (tag.length > 4096 || tag.indexOf('\n') !== -1 || tag.indexOf('\r') !== -1) return src;
-            lines.splice(uriIdx, 0, tag);
+            // [2026-11-23] ORDEN RFC 8216 §4.3.4.2 — nada puede ir entre
+            // #EXT-X-STREAM-INF y la URI de su variante. El paso (3) mueve el
+            // STREAM-INF para que quede pegado a la URI, pero esta inserción caía
+            // justo en medio (uriIdx = última línea sin '#') y deshacía ese orden:
+            // un parser estricto ve la variante huérfana y aborta el canal
+            // ("Loaded playlist has unexpected type" en OTT Navigator). El resto
+            // de tags del generador ya se insertan ANTES del STREAM-INF; este hace
+            // lo mismo. Sin STREAM-INF en el bloque, sigue yendo antes de la URI.
+            let atTag = uriIdx;
+            for (let i = uriIdx - 1; i >= 0; i--) {
+                if (lines[i].indexOf('#EXT-X-STREAM-INF:') === 0) { atTag = i; break; }
+            }
+            lines.splice(atTag, 0, tag);
             return lines.join('\n');
         } catch (_eShim) {
             return String(text == null ? '' : text); // aditivo: nunca rompe la generación
@@ -10317,8 +10359,28 @@ return lines.join('\n');
             : 0;
         const _fallbackFloor = _resW796 >= 3840 ? 14000000 : (_resW796 >= 1920 ? 5000000 : 2000000);
         const _bitrateFloor = _labFloor || _fallbackFloor;
-        const _bw796 = Math.max(_bw796_raw, _bitrateFloor);
-        const _avgBw = Math.round(_bw796 * 0.85);
+        // ── [R20 · reconciliación 12P] TECHO Y MEDIA DEL LAB ────────────────────
+        // Declarar techo = bitrate deja el pico sin margen (el player recorta en el
+        // primer bache = el "corte por falta de megas"). El LAB da por perfil un
+        // bandwidth_max (1,25×–5× el bitrate) y un avgBitrateKbps medido. Si el puente
+        // APE_LAB_12P no está cargado, los dos quedan en 0 y no cambia nada.
+        const _lab12pBw = (function () {
+            try {
+                const api = (typeof window !== 'undefined') ? window.APE_LAB_12P_RECONCILE : null;
+                if (!api || typeof api.maxBps !== 'function') return { max: 0, avg: 0 };
+                const _pid = (cfg && cfg.id) ? String(cfg.id) : String(profile || '');
+                return {
+                    max: Number(api.maxBps(_pid)) || 0,
+                    target: (typeof api.targetBps === 'function' ? Number(api.targetBps(_pid)) || 0 : 0),
+                    avg: (cfg && cfg.avgBitrateKbps ? Number(cfg.avgBitrateKbps) * 1000 : 0)
+                };
+            } catch (e) { return { max: 0, target: 0, avg: 0 }; }
+        })();
+        const _bw796 = Math.max(_bw796_raw, _bitrateFloor, _lab12pBw.max);
+        const _avgBw = _lab12pBw.avg > 0 ? _lab12pBw.avg : Math.round(_bw796 * 0.85);
+        // Arranque: pedir el pico en el primer segmento es la otra forma de cortar. Se arranca
+        // en el objetivo del LAB (entre suelo y techo); sin puente, comportamiento de antes.
+        const _initBw796 = _lab12pBw.target > 0 ? _lab12pBw.target : _bw796;
         const _minBw796 = _bitrateFloor; // Floor exportado para VLC (adaptive-minbitrate) / KODI (min_bandwidth)
         // ═══ 🔥 SUELO FUSIBLE (FLOOR FUSE) — perfil ═══════════════════════════
         // design = suelo contractual (no se emite por debajo en operación normal)
@@ -10412,8 +10474,27 @@ return lines.join('\n');
         const _labBufMB = parseInt(_pmProfile796?.hlsjs?.maxBufferSize, 10);
         const _labBufSeg = parseInt(_pmProfile796?.prefetch_config?.prefetch_segments, 10);
 
-        const _buf796 = !Number.isNaN(_labBufMs) ? _labBufMs
-            : ((typeof CAPACITY_OVERDRIVE !== 'undefined') ? (CAPACITY_OVERDRIVE.buffer_ms || 60000) : 60000);
+        // ── [R21 · reconciliación 12P] network-caching del LAB para los 12 perfiles ──
+        // Los seis .5 (6K) no existen en APE_PROFILES_CONFIG y caían al rescate de 60000 ms.
+        // Y los seis base llevaban los 5000 ms fijos de la copia embebida, mientras el LAB
+        // calibra 19000 (P0), 12000 (P1), 10000 (P2/P4), 8000 (P3) y 5000 (P5). Ahora manda
+        // el LAB en los 12 (`networkCachingEmittedMs`, que ya recorta al buffer efectivo que
+        // el propio perfil aguanta). Sin el puente cargado, comportamiento idéntico al de antes.
+        const _labNc796 = (function () {
+            try {
+                if (typeof window === 'undefined' || !window.APE_LAB_12P_RECONCILE) return NaN;
+                const api = window.APE_LAB_12P_RECONCILE;
+                const fn = (typeof api.networkCachingEmittedMs === 'function')
+                    ? api.networkCachingEmittedMs
+                    : ((typeof api.networkCachingMs === 'function') ? api.networkCachingMs : null);
+                if (!fn) return NaN;
+                const _ncv = parseInt(fn(String(profile)), 10);
+                return Number.isNaN(_ncv) || _ncv <= 0 ? NaN : _ncv;
+            } catch (e) { return NaN; }
+        })();
+        const _buf796 = !Number.isNaN(_labNc796) ? _labNc796
+            : (!Number.isNaN(_labBufMs) ? _labBufMs
+            : ((typeof CAPACITY_OVERDRIVE !== 'undefined') ? (CAPACITY_OVERDRIVE.buffer_ms || 60000) : 60000));
         const _bufMB = !Number.isNaN(_labBufMB) ? Math.round(_labBufMB / (1024 * 1024))
             : ((typeof CAPACITY_OVERDRIVE !== 'undefined') ? (CAPACITY_OVERDRIVE.buffer_mb || 60) : 60);
         const _bufSeg = !Number.isNaN(_labBufSeg) ? _labBufSeg
@@ -10477,6 +10558,46 @@ return lines.join('\n');
         // Cableado desde: UAPhantomEngine, cfg (PROFILES), CAPACITY_OVERDRIVE
         // ════════════════════════════════════════════════════════════════════════
         lines.push(`#EXTVLCOPT:network-caching=${options.dictatorMode ? 500 : _buf796}`);
+        // ── CAPA 12P (ADITIVA, APAGADA POR DEFECTO) ───────────────────────────
+        // Ley 2/3 del prompt 12P: mientras APE_12P_MODE no esté encendido y el
+        // módulo no esté cargado, esta rama no añade ni un byte a la lista.
+        // Con el flag encendido añade UNA etiqueta con el buffer EFECTIVO del
+        // LAB (effective_target_s = min(declarado, techo por bitrate) + envelope);
+        // el valor declarado se conserva intacto en X-Buffer-Target (regla
+        // declared_retained del JSON). La matemática vive en el módulo, no aquí.
+        if (typeof window !== 'undefined' && window.APE_LAB_12P &&
+            typeof window.APE_LAB_12P.isOn === 'function' && window.APE_LAB_12P.isOn(window) &&
+            typeof window.APE_LAB_12P.bufferTag === 'function') {
+            try {
+                const _s12p = (_pmProfile796 && _pmProfile796.settings) || {};
+                const _mbps12p = Number(_s12p.bitrate);
+                lines.push(window.APE_LAB_12P.bufferTag({
+                    declaredMs: _buf796,
+                    bandwidthKbps: (isFinite(_mbps12p) && _mbps12p > 0) ? _mbps12p * 1000 : NaN
+                }));
+            } catch (_e12p) { /* la capa 12P nunca rompe la generación */ }
+        }
+        // ── CONDICIÓN DE BUFFER (ADITIVA, MISMO FLAG) ──────────────────────────
+        // Regla medida: entrada >= salida x (1 + delta). La salida es el bitrate
+        // que declara el proveedor y NO se reduce (es la imagen); el margen se
+        // reserva en la entrada. La aritmética entera vive en el módulo
+        // buffer-input-demand.js; aquí sólo se pide, por canal, con el delta del
+        // panel (window.APE_BUF_DELTA_PCT, por defecto 10 %).
+        if (typeof window !== 'undefined' && window.APE_BUF_DEMAND &&
+            typeof window.APE_BUF_DEMAND.isOn === 'function' && window.APE_BUF_DEMAND.isOn(window) &&
+            typeof window.APE_BUF_DEMAND.tag === 'function') {
+            try {
+                const _sBuf = (_pmProfile796 && _pmProfile796.settings) || {};
+                const _mbpsBuf = Number(_sBuf.bitrate);
+                if (isFinite(_mbpsBuf) && _mbpsBuf > 0) {
+                    lines.push(window.APE_BUF_DEMAND.tag({
+                        outputBps: Math.round(_mbpsBuf * 1e6),
+                        deltaPct: window.APE_BUF_DEMAND.deltaFromScope(window),
+                        bufferMs: _buf796
+                    }));
+                }
+            } catch (_eBuf) { /* la condición de buffer nunca rompe la generación */ }
+        }
         // AV-SYNC (2026-08-30, owner): clock-synchro=0 desactivaba el esclavizado al
         // master clock → deriva A/V progresiva con cadenas de filtro pesadas
         // (minterpolate 120fps). =1 re-esclaviza video al clock maestro.
@@ -10821,7 +10942,7 @@ return lines.join('\n');
         lines.push(`#EXTVLCOPT:adaptive-maxbitrate=${_bwPerfilBps796}`);
         lines.push(`#EXTVLCOPT:adaptive-minbitrate=${_floorPerfilBps796}`);
         lines.push(`#EXTVLCOPT:adaptive-use-access=true`);
-        lines.push(`#EXTVLCOPT:adaptive-initial-bandwidth=${_bwPerfilBps796}`);
+        lines.push(`#EXTVLCOPT:adaptive-initial-bandwidth=${_initBw796 || _bwPerfilBps796}`);
         lines.push(`#EXTVLCOPT:adaptive-bandwidth-factor=1.0`);
         lines.push(`#EXTVLCOPT:adaptive-lookahead-count=3`);
         lines.push(`#EXTVLCOPT:adaptive-segcount-factor=1.0`);
@@ -11422,7 +11543,7 @@ return lines.join('\n');
         lines.push(`#KODIPROP:inputstream.adaptive.stream_selection_type=${options.dictatorMode ? 'manual-osd' : 'adaptive'}`);
         lines.push(`#KODIPROP:inputstream.adaptive.max_bandwidth=${_bw796}`);
         lines.push(`#KODIPROP:inputstream.adaptive.min_bandwidth=${_minBw796}`);
-        lines.push(`#KODIPROP:inputstream.adaptive.initial_bandwidth=${_bw796}`);
+        lines.push(`#KODIPROP:inputstream.adaptive.initial_bandwidth=${_initBw796}`);
         lines.push(`#KODIPROP:inputstream.adaptive.bandwidth_factor=1.0`);
         // Kodi InputStream Adaptive Conviva-equivalent buffer policy (2026-05-19) —
         // mirrors EXT-X-SESSION-DATA com.ape.load_control buffer values for Kodi/IPTV
@@ -13902,6 +14023,9 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                     // initialization is internal upon first request
                 }
                 // PASO 2: STREAM cada canal
+                // Acumulador de medición real para el HUD: se cuenta lo que de verdad se
+                // emite por canal (antes el HUD multiplicaba por constantes ×63/38/29/133).
+                const _hudAcc = { channels: 0, lines: 0, extvlcopt: 0, kodiprop: 0, extxape: 0 };
                 for (let index = 0; index < channels.length; index++) {
                     if (reaStreamCancelled) return;
                     const channel = channels[index];
@@ -13914,17 +14038,52 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                     try {
                         // Detectar perfil
                         const profile = forceProfile || determineProfile(channel) || 'P3';
-                        const entry = generateChannelEntry(channel, profile, index, credentialsMap, options);
+                        const _entryBase = generateChannelEntry(channel, profile, index, credentialsMap, options);
+                        // [2026-11-23 · INTENCIÓN 4K/6K EN LA LISTA] Metadata DECLARADA, aditiva y
+                        // apagada por defecto. La enciende la casilla del panel
+                        // (#ape4k6kIntentToggle → window.APE_4K6K_AUDIT) o la opción
+                        // intent4k6k de ESTA generación. Sin flag, o sin el módulo cargado,
+                        // `entry` es EXACTAMENTE _entryBase y la lista sale idéntica.
+                        // El módulo decide dónde entra el tag (antes de la URI, o antes del
+                        // #EXT-X-STREAM-INF que la precede) para no romper la adyacencia
+                        // STREAM-INF→URI que exige RFC 8216 §4.3.4.2.
+                        const entry = ((typeof window !== 'undefined' && window.APE_4K6K_INTENT_EMIT &&
+                            typeof window.APE_4K6K_INTENT_EMIT.apply === 'function')
+                            ? window.APE_4K6K_INTENT_EMIT.apply(_entryBase, channel, profile,
+                                (options && options.intent4k6k === true) ? true : undefined)
+                            : _entryBase);
+                        // [2026-11-23 · MODO UNIVERSAL] Declaración aditiva por canal, APAGADA
+                        // por defecto. La enciende la casilla #apeUniversalToggle del panel
+                        // (window.APE_UNIVERSAL_MODE) o la opción universal de ESTA generación.
+                        // Sin flag, sin el módulo cargado o con un bloque ambiguo, _entryOut es
+                        // EXACTAMENTE entry y la lista sale byte a byte como antes.
+                        const _entryOut = ((typeof window !== 'undefined' && window.APE_UNIVERSAL_EMIT &&
+                            typeof window.APE_UNIVERSAL_EMIT.apply === 'function')
+                            ? window.APE_UNIVERSAL_EMIT.apply(entry, channel, profile,
+                                (options && options.universal === true) ? true : undefined)
+                            : entry);
+                        // Medición real por canal (coste O(líneas del entry), sin red).
+                        _hudAcc.channels++;
+                        {
+                            const _entryLines = entry.split('\n');
+                            _hudAcc.lines += _entryLines.length;
+                            for (let _li = 0; _li < _entryLines.length; _li++) {
+                                const _line = _entryLines[_li];
+                                if (_line.startsWith('#EXTVLCOPT:')) _hudAcc.extvlcopt++;
+                                else if (_line.startsWith('#KODIPROP:')) _hudAcc.kodiprop++;
+                                else if (_line.startsWith('#EXT-X-APE')) _hudAcc.extxape++;
+                            }
+                        }
                         // CA11: validar el channel entry ANTES de enqueue al stream
-                        _ca11ValidateEntry(entry, index);
-                        const chunk = entry + '\n\n';
+                        _ca11ValidateEntry(_entryOut, index);
+                        const chunk = _entryOut + '\n\n';
                         const encoded = encoder.encode(chunk);
                         totalBytes += encoded.byteLength;
                         yield encoded;
 
                         // Actualizar HUD
                         if (useHUD && (index % 50 === 0 || index === channels.length - 1)) {
-                            window.HUD_TYPED_ARRAYS.updateChannel(index + 1, channel.name, profile);
+                            window.HUD_TYPED_ARRAYS.updateChannel(index + 1, channel.name, profile, _hudAcc);
                         }
 
                         // Progress log cada 1000

@@ -2181,7 +2181,7 @@
                           <strong style="color:#4ade80; font-size: 0.75rem;">Anti-Freeze (Buffer/Reconexión)</strong>
                         </div>
                         <select id="antiFreezeLevel" class="input sm" style="width: 100%; font-size: 0.78rem;"
-                          onchange="if (window.app) { window.app.state.antiFreezeLevel = parseInt(this.value); } console.log('❄️ Anti-Freeze Level:', this.value);">
+                          onchange="if (window.app && window.app.state) { window.app.state.antiFreezeLevel = parseInt(this.value, 10); } console.log('❄️ Anti-Freeze Level:', this.value);">
                           <option value="1" title="Buffer mínimo, sin reconexión automática">L1 - Mínimo</option>
                           <option value="2" title="Buffer moderado, reconexión básica">L2 - Normal</option>
                           <option value="3" selected title="Buffer balanceado, reconexión automática">L3 - Balanceado ⭐
@@ -2772,24 +2772,34 @@
                 <span id="apeAutoAdjustOut" style="margin-left:10px; font-size:0.85rem; color:var(--text-muted);"></span>
                   <span>Modo DIRECTO (sin VPS)</span>
                 </label>
-                <label id="ape4k6kIntentLabel" for="ape4k6kIntentToggle"
-                  title="Añade una línea #EXT-X-APE-4K6K-INTENT por canal con el perfil elegido y la resolución objetivo. No cambia el vídeo: es metadata declarada."
-                  style="margin-left:14px; color:var(--text-muted); font-size:0.85rem; font-weight:bold; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
-                  <input type="checkbox" id="ape4k6kIntentToggle" style="width:16px; height:16px; cursor:pointer;">
-                  <span>INTENCIÓN 4K/6K EN LA LISTA</span>
-                </label>
                 <script>
+                /* [2026-11-23 · INTEGRACIÓN 4K/6K EN LA LISTA]
+                   La casilla vivia AQUI, suelta, y su script en linea escribia
+                   window.APE_4K6K_AUDIT, que nadie leia al emitir: no anadia ni una linea a la
+                   lista. Se ha movido DENTRO del panel de OPTIMIZACION Y SALIDAS
+                   (generation-output-panel.js, fila INTENCION:), que es quien la pinta, la
+                   engancha y guarda la preferencia. El panel se construye DESPUES del parseo, asi
+                   que un getElementById escrito aqui devolveria null y el cableado moriria en
+                   silencio. Este bloque solo restaura el flag al cargar la pagina, para que
+                   cualquier boton de generacion de fuera del panel tambien lo respete.
+                   Por defecto: APAGADO (la lista sale byte a byte como antes). */
                 (function () {
-                    var KEY = 'ape_4k6k_intent_enabled';
-                    var el = document.getElementById('ape4k6kIntentToggle');
-                    if (!el) return;
-                    try { el.checked = (localStorage.getItem(KEY) === '1'); } catch (e) { }
-                    function apply() { window.APE_4K6K_AUDIT = !!el.checked; }
-                    el.addEventListener('change', function () {
-                        try { localStorage.setItem(KEY, el.checked ? '1' : '0'); } catch (e) { }
-                        apply();
-                    });
-                    apply();
+                    var v = false;
+                    try { v = (localStorage.getItem('ape_4k6k_intent_enabled') === '1'); } catch (e) { v = false; }
+                    window.APE_4K6K_AUDIT = v;
+                })();
+                </script>
+                <script>
+                /* [2026-11-23 · MODO UNIVERSAL] Mismo reparto que la casilla 4K/6K: la casilla
+                   de verdad vive DENTRO del panel ⚙️ OPTIMIZACIÓN Y SALIDAS (fila UNIVERSAL:),
+                   que la pinta generation-output-panel.js con el resto del panel y es la que
+                   guarda la preferencia en localStorage. Aquí sólo se restaura el flag al
+                   cargar la página, para que cualquier botón de generación de fuera del panel
+                   lo respete. Por defecto: APAGADO (lista byte a byte como antes). */
+                (function () {
+                    var v = false;
+                    try { v = (localStorage.getItem('ape_universal_intent_enabled') === '1'); } catch (e) { v = false; }
+                    window.APE_UNIVERSAL_MODE = v;
                 })();
                 </script>
                 <label for="publicationMode" style="margin-left:14px; color:var(--text-muted); font-size:0.85rem; font-weight:bold;">Modo:</label>
@@ -4363,6 +4373,11 @@
   <!-- 🎚️ APE v9 PROFILE SYSTEM - MUST load BEFORE app.js -->
   <script src="js/ape-v9/lab-extra-headers.js?v=20261102-audio-safe-v1"></script>
 <script src="js/ape-v9/ape-lab-v8-profiles.js?v=chainfix-20261115"></script>
+<!-- 🔗 REA ronda 20 · PUENTE de los 12 perfiles del LAB. Corrige la copia embebida
+     (suelo/techo/bitrate por perfil) y entrega al generador los seis perfiles .5 de 6K
+     que APE_PROFILES_CONFIG no declara. Debe ir DESPUÉS de ape-lab-v8-profiles.js
+     (lo corrige en sitio) y ANTES de ape-profiles-config.js (que lo mezcla). -->
+<script src="js/ape-v9/ape-lab-12p-reconcile.js?v=1.2.0-lab12p"></script>
 <script src="js/ape-v9/rea-processing-policy.js?v=20261107-rea"></script>
 <script src="js/ape-v9/rea-export-finalizer.js?v=6kemul-20261115"></script>
 <script src="js/ape-v9/rea-catalog-export.js?v=20261107-rea"></script>
@@ -4454,11 +4469,33 @@
      generador. Es un snapshot con fecha: si el TTL paso, re-medir y regenerar. -->
 <script src="js/ape-v9/ape-server-profiles-data.js?v=20261106-ready"></script>
 
-<script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=b5773d21"></script>
+  <!-- 🧪 CAPA 12P (aditiva) — política de buffer/upscale del LAB importado.
+       Sin APE_12P_MODE encendido NO cambia ni un byte de las listas. -->
+  <script src="js/ape-v9/lab-12p-conformance.js?v=1.0.0-12p"></script>
+  <!-- 🎯 INTENCIÓN 4K/6K (aditiva) — una línea #EXT-X-APE-4K6K-INTENT por canal cuando
+       la casilla del panel (⚙️ OPTIMIZACIÓN Y SALIDAS → INTENCIÓN:) está encendida.
+       Carga ANTES del generador: el generador la llama por canal. Apagada = lista intacta. -->
+  <script src="js/ape-v9/ape-4k6k-intent-emit.js?v=19861e4b"></script>
+  <!-- 🧮 CONDICIÓN DE BUFFER (aditiva) — entrada >= salida x (1 + delta), por canal.
+       Carga ANTES del generador. Apagada (APE_12P_MODE sin encender) = lista byte a byte igual. -->
+  <script src="js/ape-v9/buffer-input-demand.js?v=1.0.0-buf"></script>
+  <!-- RONDA 18: aquí se cargaba buffer-input-demand-panel.js, que montaba un SEGUNDO bloque
+       de la CONDICIÓN DE BUFFER (fuera del panel) repitiendo los mismos TRES ids del panel.
+       getElementById devuelve el primero, así que el cuadro del panel se quedaba vacío y el
+       input duplicado no hacía nada. El bloque bueno es el del panel y allí vive ahora la
+       tabla por perfil (contenedor propio, id nuevo); este script ya no se carga. El módulo
+       sigue en disco y su aritmética (buffer-input-demand.js) sigue cargada justo arriba. -->
+  <!-- 🌐 MODO UNIVERSAL (aditivo) — una línea #EXT-X-APE-UNIVERSAL por canal cuando la
+       casilla del panel (⚙️ OPTIMIZACIÓN Y SALIDAS → UNIVERSAL:) está encendida: declara
+       los dialectos de player cubiertos, que los tags desconocidos y los #EXT-X-APE-* se
+       conservan, y la guía canónica 12P (muestra 12P + LAB v9.3) que se siguió. Carga
+       ANTES del generador. Apagada = lista byte a byte igual que siempre. -->
+  <script src="js/ape-v9/ape-universal-emit.js?v=1.0.0-uni"></script>
+<script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=a8d07a25"></script>
   <!-- 🪦 OMEGA SLOT REAPER — Pre-flight liberation of Xtream max_connections slots -->
   <script src="js/ape-v9/slot-reaper.js?v=1.0.0-omega-20260409"></script>
   <script src="js/ape-v9/m3u8-quality-upgrader-v2.js?v=2.0"></script>
-  <script src="js/ape-v9/hud-typed-arrays.js?v=16.1-tickprofile-20260417"></script>
+  <script src="js/ape-v9/hud-typed-arrays.js?v=16.2-medido-20261122"></script>
   <!-- 🩺 APE GENERATION CONTROLLER — engancha botón health-check + generateHealthyList -->
   <!-- 🗃️ APE MEASUREMENT LEDGER — memoria durable: toda medición y todo plan aplicado -->
   <script src="js/ape-v9/ape-measurement-ledger.js?v=20261121-preflight"></script>
@@ -5114,7 +5151,7 @@
   <!-- ZERO edits to existing files. Separate IndexedDB. Non-invasive overlay. -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <script src="js/ape-anle/anle-canonicalize.js?v=1.0.0-anle"></script>
-  <script src="js/ape-anle/anle-dictionary.js?v=1.0.0-anle"></script>
+  <script src="js/ape-anle/anle-dictionary.js?v=1.1.0-anle-lifecycle"></script>
   <script src="js/ape-anle/anle-seed-syncer.js?v=1.0.0-anle"></script>
   <script src="js/ape-anle/anle-booster.js?v=1.0.0-anle"></script>
   <script src="js/ape-anle/anle-fingerprint.js?v=1.0.0-anle"></script>
@@ -5193,6 +5230,12 @@
 
             prevBoosts = x.totalBoosts;
             prevAliases = x.aliases;
+          }).catch(function(e) {
+            // Un rechazo de IndexedDB (InvalidStateError / "connection is closing")
+            // no debe convertirse en "Uncaught (in promise)" cada 5 s.
+            s.innerHTML = '⚠️ ANLE: ' + (e && e.message ? e.message : 'IndexedDB no disponible');
+            act.textContent = '⏸️ reintentando';
+            act.style.color = '#f59e0b';
           });
         }
         setInterval(refresh, 5000);

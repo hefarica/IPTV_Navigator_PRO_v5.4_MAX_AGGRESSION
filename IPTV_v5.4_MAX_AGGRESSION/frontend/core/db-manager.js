@@ -9,7 +9,43 @@ class DatabaseManager {
         this.dbName = 'IPTVNavigatorDB';
         this.dbVersion = 1;
         this.db = null;
-        this.initPromise = this.openDB();
+        this._opening = null;
+        this.initPromise = this.openDB().catch(() => null);
+        // La apertura eager también es single-flight: si ready() llega antes de
+        // que el navegador responda, espera esta misma promesa en vez de abrir
+        // una segunda conexión (origen de los InvalidStateError).
+        this._opening = this.initPromise;
+    }
+
+    /**
+     * ¿Sigue usable la conexión? Si el navegador la cerró, `this.db` queda
+     * obsoleto y toda transacción lanza InvalidStateError.
+     */
+    _isAlive() {
+        if (!this.db) return false;
+        try {
+            this.db.transaction('channels', 'readonly');
+            return true;
+        } catch (_) {
+            this.db = null;
+            return false;
+        }
+    }
+
+    /**
+     * Suelta la conexión si otra pestaña pide upgrade o el navegador la cierra;
+     * la siguiente llamada a ready() la reabre.
+     */
+    _attachLifecycle(db) {
+        try {
+            db.onversionchange = () => {
+                try { db.close(); } catch (_) { }
+                if (this.db === db) this.db = null;
+            };
+            db.onclose = () => {
+                if (this.db === db) this.db = null;
+            };
+        } catch (_) { /* noop */ }
     }
 
     /**
@@ -20,6 +56,7 @@ class DatabaseManager {
             const request = indexedDB.open(this.dbName, this.dbVersion);
 
             request.onerror = (event) => {
+                this._opening = null;
                 console.error('DatabaseManager: Error al abrir BD', event.target.error);
                 reject(event.target.error);
             };
@@ -47,6 +84,8 @@ class DatabaseManager {
 
             request.onsuccess = (event) => {
                 this.db = event.target.result;
+                this._opening = null;
+                this._attachLifecycle(this.db);
                 console.log('✅ DatabaseManager: IndexedDB conectado');
                 resolve(this.db);
             };
@@ -57,7 +96,15 @@ class DatabaseManager {
      * Espera a que la BD esté lista
      */
     async ready() {
-        return this.initPromise;
+        if (this._isAlive()) return this.db;
+        if (this._opening) return this._opening;
+        // Si la conexión murió (upgrade en otra pestaña, cierre del navegador)
+        // reabrimos: antes ready() devolvía una promesa ya resuelta con db = null.
+        this._opening = this.openDB().catch((e) => {
+            this._opening = null;
+            throw e;
+        });
+        return this._opening;
     }
 
     // 🟢 FIX: Compatibilidad con llamadas legacy

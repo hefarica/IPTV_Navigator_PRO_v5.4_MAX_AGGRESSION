@@ -6248,6 +6248,16 @@ El servidor analizará 26,000+ canales en ~10 minutos.
     filterByServerAndQuality(serverId, quality) {
         console.log(`🔍 Filtrando Servidor: ${serverId}, Calidad: ${quality}`);
 
+        // [2026-11-23 · MEDIDO] Guardar la selección en el estado: antes sólo se cambiaba
+        // state.channels (la vista de la tabla) y cualquier generación/exportación posterior
+        // ignoraba el servidor elegido. Pulsar otra vez el TOTAL del mismo servidor quita el
+        // filtro, para poder volver a "todos los servidores" (no hay otro botón para eso).
+        if (quality === 'ALL' && this.state.filterServer === serverId) {
+            this.state.filterServer = null;
+        } else {
+            this.state.filterServer = serverId || null;
+        }
+
         // 1. Filtrar desde Master
         let filtered = this.state.channelsMaster.filter(ch => ch.serverId === serverId);
 
@@ -6294,6 +6304,9 @@ El servidor analizará 26,000+ canales en ~10 minutos.
     }
 
     async removeServer(serverId) {
+        // [2026-11-23 · MEDIDO] Si el servidor borrado era el filtrado, soltar el filtro:
+        // si no, getFilteredChannels() se quedaría devolviendo 0 canales para siempre.
+        if (this.state.filterServer === serverId) this.state.filterServer = null;
         this.state.activeServers = this.state.activeServers.filter(s => s.id !== serverId);
         const initialCount = this.state.channelsMaster.length;
         this.state.channelsMaster = this.state.channelsMaster.filter(ch => ch.serverId !== serverId);
@@ -8188,6 +8201,17 @@ El servidor analizará 26,000+ canales en ~10 minutos.
         let res = Array.isArray(this.state.channelsMaster)
             ? [...this.state.channelsMaster]
             : [];
+
+        // [2026-11-23 · MEDIDO] Filtro por servidor seleccionado.
+        // Sin esto, getFilteredChannels() partía SIEMPRE de channelsMaster y devolvía
+        // los canales de TODOS los servidores: al generar o exportar desde el servidor A
+        // y luego desde el B salía la misma cantidad (el total), que es justo lo que se
+        // reportó. Sólo se activa cuando hay una selección explícita (clic en el
+        // servidor), así que el comportamiento por defecto no cambia.
+        const srvSel = this.state.filterServer;
+        if (srvSel) {
+            res = res.filter(c => (c.serverId || c._serverId) === srvSel);
+        }
 
         // --- BÚSQUEDA LIBRE ---
         const q = (this.state.searchQuery || '').toString().toLowerCase().trim();

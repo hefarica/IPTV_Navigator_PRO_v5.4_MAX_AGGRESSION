@@ -65,6 +65,22 @@
     var REA_TAG = '#EXT-X-APE-REA:';
     var QOE_TAG = '#EXT-X-APE-QOE-CONTRACT:';
 
+    /* ── MODELO DE EJECUCIÓN (doctrina DOCTRINA_EJECUCION_12P.md) ────────────
+     * La doctrina nombra el estado de las capas HLS de los doce perfiles
+     * `execution.status = SIMULATED_EXECUTED`: el upscale/transcode NO es una
+     * fuente real, es una etapa simulada que el reproductor aplica con los
+     * filtros que la lista emite (mechanism = video_filters), y su calidad no
+     * se mide. Este adaptador NO ejecuta nada: declara. Por eso el campo
+     * `executed` sigue siendo `false` (es verdad: aquí no se ejecuta ni se
+     * verifica nada) y lo que se añade es el MODELO, con su alcance escrito:
+     *   executed        = false   → este adaptador no ejecutó nada
+     *   execution_model = SIMULATED_EXECUTED → nombre de la doctrina
+     *   quality_measured= false   → 0 mediciones de calidad (no se inventan)
+     * Nunca se pone `executed: true` ni `EXECUTED=1`: no hay nada observado.
+     */
+    var EXECUTION_MODEL = 'SIMULATED_EXECUTED';
+    var EXECUTION_MECHANISM = 'video_filters';
+
     /* §1.6: PROFILES = [f'P{i}{s}' for s in ('', '.5') for i in range(6)] */
     var PROFILE_IDS = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5',
                        'P0.5', 'P1.5', 'P2.5', 'P3.5', 'P4.5', 'P5.5'];
@@ -322,6 +338,17 @@
         var p = (cfg && isObj(cfg.profiles)) ? cfg.profiles[pid] : null;
         var res = p && ((p.settings && p.settings.resolution) || p.resolution);
         var m = (typeof res === 'string') ? res.match(/^(\d{2,5})x(\d{2,5})$/) : null;
+        /* [CUARTA INTEGRACION · 2026-11-23 · «LA .5 ES LA PREMIUM»] El catalogo
+         * cargado puede declarar SOLO las 6 bases (P0..P5): entonces la .5 no
+         * tiene resolucion propia. No se inventa una: se HEREDA la de su base
+         * (BASE_OF, L76), que es literalmente «el mismo perfil en modo 6K».
+         * Si el catalogo SI trae la .5, este camino no corre y manda el valor
+         * declarado por el catalogo. */
+        if (!m && has(BASE_OF, pid)) {
+            var pb = (cfg && isObj(cfg.profiles)) ? cfg.profiles[BASE_OF[pid]] : null;
+            var resb = pb && ((pb.settings && pb.settings.resolution) || pb.resolution);
+            m = (typeof resb === 'string') ? resb.match(/^(\d{2,5})x(\d{2,5})$/) : null;
+        }
         return m ? { w: parseInt(m[1], 10), h: parseInt(m[2], 10) } : null;
     }
 
@@ -769,8 +796,9 @@
             before: before,
             implementation_state: 'metadata_only_not_deployed',
             adapter: {
-                version: '1.0.0', flag: FLAG, flag_value: root ? root[FLAG] : undefined,
+                version: '1.1.0', flag: FLAG, flag_value: root ? root[FLAG] : undefined,
                 input_kind: 'channel_object_list', input_sha256: inputSha,
+                execution_model: EXECUTION_MODEL,
                 network_test_scope: before.network_test_scope
             },
             not_computed: notComputed
@@ -906,8 +934,8 @@
             before: before,
             implementation_state: 'metadata_only_not_deployed',
             adapter: {
-                version: '1.0.0', flag: FLAG, flag_value: root ? root[FLAG] : undefined,
-                input_kind: 'playlist_text',
+                version: '1.1.0', flag: FLAG, flag_value: root ? root[FLAG] : undefined,
+                input_kind: 'playlist_text', execution_model: EXECUTION_MODEL,
                 eol: hasCrlf && hasBareLf ? 'mixed' : (hasCrlf ? 'crlf' : (hasBareLf ? 'lf' : 'none'))
             },
             not_computed: notComputed
@@ -954,9 +982,33 @@
         lineas.splice(idx, 0, intentTag(ch));
         return lineas.join(eol);
     }
+    /* ── DECLARACIÓN DE EJECUCIÓN (una sola verdad, en un solo sitio) ────────
+     * Objeto NUEVO en cada llamada (nadie muta el del módulo) y sin estado
+     * global: se puede auditar sin encender la bandera. `executed` es y seguirá
+     * siendo false: este adaptador declara, no ejecuta ni verifica.
+     */
+    function executionDeclaration() {
+        return {
+            model: EXECUTION_MODEL,
+            mechanism: EXECUTION_MECHANISM,
+            simulated: true,
+            source_native: false,
+            quality_claimed: false,
+            quality_measured: false,
+            executed: false,
+            executed_by: 'player',
+            verified: false,
+            doctrine: 'contracts/muestra-12p/DOCTRINA_EJECUCION_12P.md',
+            note: 'SIMULATED_EXECUTED: la etapa la aplica el reproductor con los filtros emitidos; ' +
+                  'no hay fuente 4K/6K nativa ni medicion de calidad en esta app (NO COMPUTADO).'
+        };
+    }
     return {
-        version: '1.1.0',
+        version: '1.2.0',
         FLAG: FLAG,
+        EXECUTION_MODEL: EXECUTION_MODEL,
+        EXECUTION_MECHANISM: EXECUTION_MECHANISM,
+        executionDeclaration: executionDeclaration,
         SCHEMAS: {
             intent: SCHEMA_INTENT, extends: SCHEMA_EXTENDS,
             audit: SCHEMA_AUDIT, archive: SCHEMA_ARCHIVE
