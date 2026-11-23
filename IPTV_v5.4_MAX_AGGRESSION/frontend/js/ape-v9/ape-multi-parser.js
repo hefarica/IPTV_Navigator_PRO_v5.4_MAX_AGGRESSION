@@ -1937,6 +1937,40 @@
         return out;
     }
 
+    /* ── H-8 · DETERMINISMO: instante EXPLÍCITO ─────────────────────────────
+     * El bundle embebía `new Date()` en 5 sitios (4 sidecars/report/manifest) más
+     * `model.stats.parseTimeMs` y las fechas DOS del ZIP: dos generaciones del MISMO
+     * input daban sha256 distinto. Con `opts.generatedAt` (ISO/Date) o `opts.clock`
+     * (función que devuelve Date|ISO|epoch) el llamador fija el instante y la salida
+     * es byte-idéntica. Sin opción se conserva el comportamiento actual (reloj del
+     * sistema) y el reporte lo DECLARA en `limits`.
+     */
+    function resolveInstant(opts) {
+        const o = opts || {};
+        if (o.generatedAt !== undefined && o.generatedAt !== null) {
+            const d = (o.generatedAt instanceof Date) ? o.generatedAt : new Date(o.generatedAt);
+            if (isNaN(d.getTime())) throw new Error('generatedAt inválido: ' + String(o.generatedAt));
+            return d;
+        }
+        if (typeof o.clock === 'function') {
+            const v = o.clock();
+            const d = (v instanceof Date) ? v : new Date(v);
+            if (isNaN(d.getTime())) throw new Error('clock() devolvió un instante inválido: ' + String(v));
+            return d;
+        }
+        return new Date();
+    }
+
+    function isDeterministic(opts) {
+        const o = opts || {};
+        /* `_explicitInstant` lo fija renderBundle: distingue "el llamador pidió instante"
+           de "hemos rellenado con el reloj". Sin ese flag, el hijo vería generatedAt
+           siempre presente y declararía reproducible un bundle que no lo es. */
+        if (o._explicitInstant === true) return true;
+        if (o._explicitInstant === false) return false;
+        return (o.generatedAt !== undefined && o.generatedAt !== null) || typeof o.clock === 'function';
+    }
+
     function dosDateTime(date) {
         const d = date || new Date();
         const year = Math.max(1980, d.getFullYear());
@@ -2023,7 +2057,7 @@
     // BUNDLE, MANIFIESTO, REPORTE, README
     // ───────────────────────────────────────────────────────────────────────
 
-    function buildHeaderSidecar(model, dialectId) {
+    function buildHeaderSidecar(model, dialectId, opts) {
         const dialect = getDialect(dialectId);
         const rows = [];
         for (let i = 0; i < model.channels.length; i++) {
@@ -2042,7 +2076,7 @@
             version: VERSION,
             dialect: dialect.id,
             label: dialect.label,
-            generatedAt: new Date().toISOString(),
+            generatedAt: resolveInstant(opts).toISOString(),
             note: 'Cabeceras saneadas. Este sidecar existe porque el player de este dialecto no lee cabeceras desde el M3U. No incluye Range, If-None-Match, If-Modified-Since, TE, Priority ni Upgrade-Insecure-Requests. PRIVACIDAD: contiene URLs y cabeceras de tu lista; trátalo como privado.',
             channels: rows
         };
@@ -2108,7 +2142,7 @@
      * Para que la ausencia sea explícita y no parezca una pérdida, se declara en `excluded`. */
     const MANIFEST_SELF = 'manifest.json';
 
-    function buildManifest(model, files, report) {
+    function buildManifest(model, files, report, opts) {
         const src = isObj(files) ? files : {};
         const list = Object.keys(src).filter(function (name) {
             return name !== MANIFEST_SELF;
@@ -2119,7 +2153,7 @@
         return {
             generator: 'APE MultiParser',
             version: VERSION,
-            generatedAt: new Date().toISOString(),
+            generatedAt: resolveInstant(opts).toISOString(),
             kind: model.kind,
             channels: model.channels.length,
             variants: model.hls ? model.hls.variants.length : 0,
@@ -2159,7 +2193,7 @@
             u.headersPercentEncoded + ' valor(es) percent-encoded, ' + u.exthttpReserialized + ' bloque(s) EXTHTTP re-serializado(s).';
     }
 
-    function buildReport(model, bundle) {
+    function buildReport(model, bundle, opts) {
         const d = getDialectList();
         const tagInventory = model.stats ? model.stats.tags : {};
         const anomalies = diagnose(model);
@@ -2170,7 +2204,7 @@
         return {
             generator: 'APE MultiParser',
             version: VERSION,
-            generatedAt: new Date().toISOString(),
+            generatedAt: resolveInstant(opts).toISOString(),
             sourceHash: hash32(model.sourceName || 'input'),
             kind: model.kind,
             stats: {
@@ -2182,7 +2216,7 @@
                 headers: model.stats.headers,
                 quarantined: model.quarantine.length,
                 warnings: model.warnings.length,
-                parseTimeMs: model.stats.parseTimeMs
+                parseTimeMs: isDeterministic(opts) ? null : model.stats.parseTimeMs
             },
             tagInventory: tagInventory,
             unknownTags: model.stats.unknownTags || [],
@@ -2222,12 +2256,18 @@
                 'El manifiesto no se lista a sí mismo (manifest.json): un hash no puede depender de su propio contenido; la exclusión se declara en manifest.excluded.',
                 limitExtHttp(model),
                 limitUniversal(model)
-            ]
+            ].concat(isDeterministic(opts)
+                ? ['Bundle REPRODUCIBLE: instante explícito ' + resolveInstant(opts).toISOString() + ' (options.generatedAt/clock); parseTimeMs se publica null porque es una medición de reloj.']
+                : ['Sin instante explícito el bundle NO es reproducible: generatedAt y parseTimeMs usan el reloj del sistema. Pasa options.generatedAt (ISO) o options.clock para obtener bytes idénticos.'])
         };
     }
 
     function renderBundle(model, opts) {
         opts = opts || {};
+        /* H-8: UN solo instante por bundle; si no, dos generaciones del mismo input difieren. */
+        const explicitInstant = (opts.generatedAt !== undefined && opts.generatedAt !== null) || typeof opts.clock === 'function';
+        const instant = resolveInstant(opts);
+        const stampOpts = Object.assign({}, opts, { generatedAt: instant.toISOString(), _explicitInstant: explicitInstant });
         const ids = opts.dialects || DEFAULT_BUNDLE_DIALECTS;
         const files = Object.create(null);
         const dialects = [];
@@ -2261,7 +2301,7 @@
             const sidecarDialects = opts.sidecarDialects || ['apple', 'ffmpeg', 'exoplayer', 'hlsjs'];
             sidecarDialects.forEach(function (id) {
                 const dialect = getDialect(id);
-                const sidecar = buildHeaderSidecar(model, dialect.id);
+                const sidecar = buildHeaderSidecar(model, dialect.id, stampOpts);
                 if (sidecar.channels.length) {
                     files['sidecars/' + dialect.id + '-headers.json'] = JSON.stringify(sidecar, null, 2);
                 }
@@ -2269,7 +2309,7 @@
             const config = {
                 generator: 'APE MultiParser',
                 version: VERSION,
-                generatedAt: new Date().toISOString(),
+                generatedAt: resolveInstant(stampOpts).toISOString(),
                 note: 'hls.js no lee cabeceras desde el M3U. Aplica xhrSetup/fetchSetup por canal.',
                 channels: model.channels.filter(function (ch) {
                     return Object.keys(ch.safeHeaders || {}).length > 0;
@@ -2285,23 +2325,26 @@
             if (config.channels.length) files['sidecars/hlsjs-config.json'] = JSON.stringify(config, null, 2);
         }
 
-        const report = buildReport(model, { dialects: dialects });
+        const report = buildReport(model, { dialects: dialects }, stampOpts);
         files['reports/multiparser-report.json'] = JSON.stringify(report, null, 2);
         files['capabilities.json'] = JSON.stringify(getCapabilities(), null, 2);
         files['README.txt'] = buildReadme(model, { dialects: dialects });
-        files['manifest.json'] = JSON.stringify(buildManifest(model, files, report), null, 2);
+        files['manifest.json'] = JSON.stringify(buildManifest(model, files, report, stampOpts), null, 2);
 
         return {
             files: files,
             dialects: dialects,
             report: report,
+            generatedAt: instant.toISOString(),
             manifest: JSON.parse(files['manifest.json'])
         };
     }
 
     function buildBundleZip(model, opts) {
         const bundle = renderBundle(model, opts);
-        const zip = buildZip(bundle.files, opts && opts.date);
+        /* H-8: con instante explícito, las fechas DOS del ZIP salen del MISMO instante. */
+        const zipDate = (opts && opts.date) || (bundle.generatedAt ? new Date(bundle.generatedAt) : undefined);
+        const zip = buildZip(bundle.files, zipDate);
         return {
             zip: zip,
             files: bundle.files,
@@ -2448,6 +2491,445 @@
     }
 
     // ───────────────────────────────────────────────────────────────────────
+    // H-3 · SEMÁNTICAS POR FAMILIA DE PLAYER
+    //   understands → lo que la familia PARSEA de verdad
+    //   ignored     → lo que NO conoce y RFC 8216 §6.3.1 manda IGNORAR (legal, no defecto)
+    //   rejects     → lo que ROMPE: atributo mal formado, tag en el tipo de playlist
+    //                 equivocado, gramática incumplida. Con línea y motivo.
+    // La evidencia se declara por familia y por regla:
+    //   'measured'      → el repo lo EJECUTÓ (t8 hls.js real; t7 VLC/ISA real)
+    //   'repo-doctrine' → doctrina/checklists del repo, NO ejecutada aquí
+    //   'rfc'           → gramática RFC 8216 (conformidad, no comportamiento observado)
+    // ───────────────────────────────────────────────────────────────────────
+
+    const HLS_STANDARD_TAGS = [
+        '#EXTM3U', '#EXT-X-VERSION', '#EXT-X-STREAM-INF', '#EXT-X-I-FRAME-STREAM-INF',
+        '#EXT-X-MEDIA', '#EXTINF', '#EXT-X-TARGETDURATION', '#EXT-X-MEDIA-SEQUENCE',
+        '#EXT-X-DISCONTINUITY-SEQUENCE', '#EXT-X-DISCONTINUITY', '#EXT-X-ENDLIST',
+        '#EXT-X-PLAYLIST-TYPE', '#EXT-X-KEY', '#EXT-X-SESSION-KEY', '#EXT-X-MAP',
+        '#EXT-X-PROGRAM-DATE-TIME', '#EXT-X-BYTERANGE', '#EXT-X-GAP', '#EXT-X-DATERANGE',
+        '#EXT-X-START', '#EXT-X-SERVER-CONTROL', '#EXT-X-PART-INF', '#EXT-X-PART',
+        '#EXT-X-PRELOAD-HINT', '#EXT-X-RENDITION-REPORT', '#EXT-X-SKIP',
+        '#EXT-X-INDEPENDENT-SEGMENTS', '#EXT-X-SESSION-DATA', '#EXT-X-DEFINE',
+        '#EXT-X-CONTENT-STEERING'
+    ];
+    /* Tags que SOLO pertenecen a una Media Playlist. En un catálogo son ruido de tipo:
+     * para hls.js basta UNO de los de enrutado para cambiar de parser (medido t8). */
+    const MEDIA_ROUTING_TAGS = {
+        '#EXT-X-TARGETDURATION': 1, '#EXT-X-MEDIA-SEQUENCE': 1, '#EXT-X-DISCONTINUITY-SEQUENCE': 1,
+        '#EXT-X-PLAYLIST-TYPE': 1, '#EXT-X-ENDLIST': 1
+    };
+    const MEDIA_ONLY_TAGS = {
+        '#EXT-X-SERVER-CONTROL': 1, '#EXT-X-PART-INF': 1, '#EXT-X-PART': 1, '#EXT-X-PRELOAD-HINT': 1,
+        '#EXT-X-SKIP': 1, '#EXT-X-RENDITION-REPORT': 1, '#EXT-X-START': 1, '#EXT-X-MAP': 1, '#EXT-X-BYTERANGE': 1
+    };
+    /* t7 · medido sobre los binarios de VLC: estos módulos de video-filter existen. */
+    const VLC_FILTER_MODULES_MEASURED = { gradfun: 1, scale: 1, hqdn3d: 1 };
+    /* t7 · VLC rechaza estas opciones desde playlist por política de seguridad ("unsafe option"). */
+    const VLC_UNSAFE_OPTIONS = { 'video-filter': 1, 'avcodec-hw': 1 };
+    /* t7 · registro ISA medido (kodiprop_key_audit.js + wiki ISA Integration). */
+    const KODIPROP_VIGENTES = {
+        'inputstream': 1, 'inputstream.adaptive.manifest_config': 1, 'inputstream.adaptive.manifest_headers': 1,
+        'inputstream.adaptive.stream_headers': 1, 'inputstream.adaptive.stream_selection_type': 1
+    };
+    const KODIPROP_DEPRECADAS = {
+        'inputstream.adaptive.live_delay': 1, 'inputstream.adaptive.manifest_type': 1,
+        'inputstream.adaptive.manifest_update_parameter': 1, 'inputstream.adaptive.max_bandwidth': 1
+    };
+    const KODIPROP_NO_VERIFICADAS = { 'inputstream.adaptive.chooser_bandwidth_max': 1 };
+
+    const RS = function (sev, why, ev) { return { sev: sev, why: why, ev: ev || null }; };
+
+    const PLAYER_SEMANTICS = {
+        hlsjs: {
+            id: 'hlsjs',
+            label: 'hls.js 1.5.17',
+            evidence: 'measured',
+            source: 't8 — parser real vendorizado EJECUTADO (artifacts/parsers/conformidad_rfc_hlsjs.md, _hlsjs_real_parse.json)',
+            understands: HLS_STANDARD_TAGS.concat(['#EXT-X-ERROR']),
+            tolerates: [
+                'CODECS sin comillas: no rechaza, pero pierde audioCodec y FRAME-RATE',
+                'RESOLUTION no WxH: no rechaza, deja width/height=null',
+                'BANDWIDTH ausente: no rechaza, bitrate=null y la variante sobrevive',
+                'FRAME-RATE en fracción y coma final de atributos: toleradas (medido t8)'
+            ],
+            rules: {
+                media_routing_tag: RS('fatal', 'una sola línea hace isMediaPlaylist()=true: hls.js usa el parser de MEDIA y los STREAM-INF quedan INERTES (medido t8: 39/39 artefactos)'),
+                media_only_tag_in_catalog: RS('error', 'tag de Media Playlist dentro del catálogo; refuerza el enrutado al parser de media (medido t8 L53/L54/L56)'),
+                extinf_negative: RS('error', 'su regex es \\d*(?:\\.\\d+)?: -1 no casa, duration=0 y el resto de la línea se captura como URI falso (medido t8)'),
+                extinf_non_numeric: RS('error', 'duración no numérica: duration=0 y el resto de la línea como URI (medido t8)'),
+                session_key_none: RS('warning', 'hls.js lo rechaza con su propio warning [Keys] Ignoring invalid EXT-X-SESSION-KEY: "METHOD=NONE" (medido t8)'),
+                uri_without_owner: RS('error', 'URI sin EXTINF/STREAM-INF: se consume como nivel o fragmento sin atributos'),
+                extinf_without_uri: RS('error', 'EXTINF sin URI: el canal no tiene destino'),
+                codecs_unquoted: RS('warning', 'no rechaza, pero pierde audioCodec y FRAME-RATE (corrupción silenciosa, t8/t9)'),
+                resolution_not_wxh: RS('warning', 'no rechaza, pero deja width/height=null (t9)'),
+                bandwidth_missing: RS('warning', 'no rechaza: bitrate=null y la variante sobrevive (medido t8)'),
+                missing_extm3u: RS('error', 'RFC 8216 §4.3.1.1: la lista debe empezar por #EXTM3U', 'rfc')
+            }
+        },
+        exoplayer: {
+            id: 'exoplayer',
+            label: 'ExoPlayer / Media3',
+            evidence: 'repo-doctrine',
+            source: 'doctrina del repo (HLS tolerante + traps EXTHTTP); NO ejecutado aquí',
+            understands: HLS_STANDARD_TAGS.concat(['#EXT-X-ERROR']),
+            tolerates: [
+                'tags no-RFC (#EXT-X-APE-*, #EXTVLCOPT, #KODIPROP): desconocidos, ignorados por §6.3.1',
+                'coma final de atributos y FRAME-RATE en fracción: toleradas por doctrina'
+            ],
+            rules: {
+                missing_extm3u: RS('error', 'la lista debe empezar por #EXTM3U', 'rfc'),
+                extinf_negative: RS('error', 'duración negativa: el parser HLS no la acepta como decimal', 'rfc'),
+                extinf_non_numeric: RS('error', 'duración no numérica: EXTINF exige decimal', 'rfc'),
+                codecs_unquoted: RS('error', 'CODECS es quoted-string en RFC 8216 §4.3.4.2', 'rfc'),
+                resolution_not_wxh: RS('warning', 'RESOLUTION exige <width>x<height> en decimal', 'rfc'),
+                bandwidth_missing: RS('error', 'BANDWIDTH es OBLIGATORIO en EXT-X-STREAM-INF (§4.3.4.2)', 'rfc'),
+                uri_without_owner: RS('error', 'URI sin dueño: se pierde el canal o se duplica la entrada'),
+                extinf_without_uri: RS('error', 'EXTINF sin URI: el canal no tiene destino'),
+                exthttp_not_parsed: RS('error', 'OkHttp descarta TODAS las cabeceras si el EXTHTTP no es JSON válido'),
+                multi_value_single_header: RS('warning', 'cabecera de valor único con coma: OkHttp puede rechazarla'),
+                session_key_none: RS('warning', 'METHOD=NONE no define clave; se ignora'),
+                media_routing_tag: RS('warning', 'no hay medición de que cambie el enrutado fuera de hls.js; se declara como ruido de tipo'),
+                media_only_tag_in_catalog: RS('warning', 'tag de Media Playlist dentro de un catálogo', 'rfc')
+            }
+        },
+        tivimate: {
+            id: 'tivimate',
+            label: 'TiviMate',
+            evidence: 'repo-doctrine',
+            source: 'doctrina del repo (tivimate-single-value-headers-enforcer, iptv-exthttp-traps-checklist); NO ejecutado aquí',
+            understands: ['#EXTM3U', '#EXTINF', '#EXTGRP', '#EXTVLCOPT', '#EXTHTTP', '#EXT-X-STREAM-INF', '#EXT-X-MEDIA', '#EXT-X-KEY', '#EXT-X-MAP', '#EXT-X-VERSION', '#EXT-X-ENDLIST'],
+            tolerates: ['#KODIPROP y #EXT-X-APE-*: desconocidos, ignorados por §6.3.1', '#EXTINF:-1: convención M3U Plus para listas de canales'],
+            rules: {
+                missing_extm3u: RS('error', 'la lista debe empezar por #EXTM3U', 'rfc'),
+                extinf_missing_comma: RS('error', 'sin la coma de nombre el canal queda sin título visible'),
+                multi_value_single_header: RS('error', 'TiviMate parsea sólo el PRIMER valor: una cabecera con coma se trunca (doctrina del repo)'),
+                exthttp_not_parsed: RS('error', 'si el EXTHTTP no es JSON válido, pierde todas las cabeceras'),
+                uri_without_owner: RS('error', 'URI sin dueño: entrada fantasma duplicada'),
+                extinf_without_uri: RS('error', 'EXTINF sin URI: canal sin destino'),
+                attr_with_space_unquoted: RS('warning', 'atributo sin comillas con espacio: el parser ingenuo corta el valor'),
+                bandwidth_missing: RS('warning', 'BANDWIDTH ausente: no hay bitrate declarado para ABR'),
+                codecs_unquoted: RS('warning', 'CODECS sin comillas: se pierde el códec declarado', 'rfc')
+            }
+        },
+        ott: {
+            id: 'ott',
+            label: 'OTT Navigator',
+            evidence: 'repo-doctrine',
+            source: 'doctrina del repo; NO ejecutado aquí',
+            understands: ['#EXTM3U', '#EXTINF', '#EXTGRP', '#EXTVLCOPT', '#EXTHTTP', '#EXT-X-STREAM-INF', '#EXT-X-MEDIA', '#EXT-X-KEY', '#EXT-X-MAP', '#EXT-X-VERSION', '#EXT-X-ENDLIST'],
+            tolerates: ['#KODIPROP y #EXT-X-APE-*: ignorados por §6.3.1', '#EXTINF:-1: convención M3U Plus'],
+            rules: {
+                missing_extm3u: RS('error', 'la lista debe empezar por #EXTM3U', 'rfc'),
+                extinf_missing_comma: RS('error', 'sin la coma de nombre el canal queda sin título visible'),
+                exthttp_not_parsed: RS('error', 'si el EXTHTTP no es JSON válido, pierde todas las cabeceras'),
+                uri_without_owner: RS('error', 'URI sin dueño: entrada fantasma duplicada'),
+                extinf_without_uri: RS('error', 'EXTINF sin URI: canal sin destino'),
+                attr_with_space_unquoted: RS('warning', 'atributo sin comillas con espacio: el valor se corta'),
+                multi_value_single_header: RS('warning', 'cabecera de valor único con coma: puede truncarse'),
+                codecs_unquoted: RS('warning', 'CODECS sin comillas: se pierde el códec declarado', 'rfc')
+            }
+        },
+        smarters: {
+            id: 'smarters',
+            label: 'IPTV Smarters / XCIPTV',
+            evidence: 'repo-doctrine',
+            source: 'doctrina del repo; NO ejecutado aquí',
+            understands: ['#EXTM3U', '#EXTINF', '#EXTGRP', '#EXTVLCOPT', '#EXTHTTP', '#EXT-X-STREAM-INF', '#EXT-X-MEDIA', '#EXT-X-KEY', '#EXT-X-MAP', '#EXT-X-VERSION', '#EXT-X-ENDLIST'],
+            tolerates: ['#KODIPROP y #EXT-X-APE-*: ignorados por §6.3.1', '#EXTINF:-1: convención M3U Plus'],
+            rules: {
+                missing_extm3u: RS('error', 'la lista debe empezar por #EXTM3U', 'rfc'),
+                extinf_missing_comma: RS('error', 'sin la coma de nombre el canal queda sin título visible'),
+                exthttp_not_parsed: RS('error', 'si el EXTHTTP no es JSON válido, pierde todas las cabeceras'),
+                uri_without_owner: RS('error', 'URI sin dueño: entrada fantasma duplicada'),
+                extinf_without_uri: RS('error', 'EXTINF sin URI: canal sin destino'),
+                attr_with_space_unquoted: RS('warning', 'atributo sin comillas con espacio: el valor se corta'),
+                codecs_unquoted: RS('warning', 'CODECS sin comillas: se pierde el códec declarado', 'rfc')
+            }
+        },
+        vlc: {
+            id: 'vlc',
+            label: 'VLC / libVLC',
+            evidence: 'measured-partial',
+            source: 't7 — registro real de opciones (vlc_token_scan.json, 365 binarios) + doctrina; el resto NO ejecutado',
+            understands: HLS_STANDARD_TAGS.concat(['#EXTGRP', '#EXTVLCOPT']),
+            tolerates: ['#KODIPROP, #EXTHTTP y #EXT-X-APE-*: desconocidos, ignorados por §6.3.1', '#EXTINF:-1: convención M3U Plus'],
+            rules: {
+                vlc_unsafe_option: RS('warning', 'VLC la ignora desde playlist por política de seguridad: "unsafe option … ignored for security reasons" (medido t7)'),
+                vlc_module_missing: RS('warning', 'módulo de video-filter que NO existe en los binarios: "no video filter modules matched" + "Failed to create video filter"; el canal reproduce (medido t7)'),
+                missing_extm3u: RS('error', 'la lista debe empezar por #EXTM3U', 'rfc'),
+                extinf_without_uri: RS('error', 'EXTINF sin URI: canal sin destino'),
+                uri_without_owner: RS('warning', 'URI sin dueño: VLC la intenta abrir como elemento'),
+                media_routing_tag: RS('warning', 'no cambia el enrutado en VLC; ruido de tipo heredado', 'repo-doctrine')
+            }
+        },
+        kodi: {
+            id: 'kodi',
+            label: 'Kodi / inputstream.adaptive',
+            evidence: 'measured-partial',
+            source: 't7 — registro ISA (kodiprop_key_audit.js: 10 vigentes / 5 deprecadas) + doctrina',
+            understands: HLS_STANDARD_TAGS.concat(['#EXTGRP', '#KODIPROP']),
+            tolerates: ['#EXTVLCOPT, #EXTHTTP y #EXT-X-APE-*: desconocidos, ignorados por §6.3.1', '#EXTINF:-1: convención M3U Plus'],
+            rules: {
+                kodiprop_deprecated: RS('warning', 'clave ISA deprecada: funciona según la versión y Kodi 22 ya no la lee (medido t7)'),
+                kodiprop_non_namespace: RS('warning', 'clave fuera del registro ISA: ISA no la lee (medido t7)'),
+                kodiprop_unverified: RS('warning', 'familia chooser_* no verificada contra la wiki de ISA (t7)'),
+                missing_extm3u: RS('error', 'la lista debe empezar por #EXTM3U', 'rfc'),
+                extinf_without_uri: RS('error', 'EXTINF sin URI: canal sin destino'),
+                uri_without_owner: RS('warning', 'URI sin dueño: PVR IPTV Simple la descarta'),
+                media_routing_tag: RS('warning', 'no cambia el enrutado en Kodi; ruido de tipo heredado', 'repo-doctrine')
+            }
+        },
+        apple: {
+            id: 'apple',
+            label: 'Apple AVPlayer',
+            evidence: 'rfc',
+            source: 'RFC 8216 estricto (la rigurosidad de AVPlayer NO se ejecutó aquí)',
+            understands: HLS_STANDARD_TAGS,
+            tolerates: ['#EXTVLCOPT, #KODIPROP, #EXTHTTP y #EXT-X-APE-*: desconocidos, ignorados por §6.3.1 (las cabeceras van por sidecar)'],
+            rules: {
+                missing_extm3u: RS('error', 'la lista debe empezar por #EXTM3U (§4.3.1.1)'),
+                extinf_negative: RS('error', 'EXTINF exige decimal no negativo (§4.3.2.1)'),
+                extinf_non_numeric: RS('error', 'EXTINF exige decimal (§4.3.2.1)'),
+                codecs_unquoted: RS('error', 'CODECS es quoted-string (§4.3.4.2)'),
+                resolution_not_wxh: RS('error', 'RESOLUTION exige <width>x<height> (§4.3.4.2)'),
+                bandwidth_missing: RS('error', 'BANDWIDTH es OBLIGATORIO (§4.3.4.2)'),
+                media_routing_tag: RS('error', 'un catálogo no puede llevar tags de Media Playlist: mezcla de tipos'),
+                media_only_tag_in_catalog: RS('error', 'tag exclusivo de Media Playlist dentro de un catálogo'),
+                uri_without_owner: RS('error', 'URI sin EXTINF/STREAM-INF: rompe la secuencia'),
+                extinf_without_uri: RS('error', 'EXTINF sin URI: rompe la secuencia'),
+                trailing_comma_attrlist: RS('error', 'el ABNF del RFC no admite coma final en la lista de atributos')
+            }
+        }
+    };
+
+    const PLAYER_FAMILY_ALIASES = {
+        'hls.js': 'hlsjs', hls: 'hlsjs', libvlc: 'vlc', avplayer: 'apple', ios: 'apple',
+        'kodi-pvr': 'kodi', pvr: 'kodi', ottnavigator: 'ott', 'ott-navigator': 'ott',
+        xciptv: 'smarters', 'iptv-smarters': 'smarters', android: 'exoplayer', 'android-tv': 'exoplayer'
+    };
+
+    function getPlayerSemantics(familyId) {
+        const key = toStr(familyId || 'hlsjs').toLowerCase();
+        return PLAYER_SEMANTICS[PLAYER_FAMILY_ALIASES[key] || key] || PLAYER_SEMANTICS.hlsjs;
+    }
+
+    function listPlayerFamilies() {
+        return Object.keys(PLAYER_SEMANTICS).map(function (id) {
+            const f = PLAYER_SEMANTICS[id];
+            return {
+                id: f.id, label: f.label, evidence: f.evidence, source: f.source,
+                understands: f.understands.length,
+                ruleKinds: Object.keys(f.rules).length
+            };
+        });
+    }
+
+    /* Detectores. Se ejecutan UNA vez por modelo y devuelven hallazgos por tipo:
+     * cada familia decide DESPUÉS cuáles le duelen y con qué severidad. */
+    function collectAuditFindings(model) {
+        const F = Object.create(null);
+        function add(kind, line, detail) {
+            (F[kind] = F[kind] || []).push({ line: line || 0, detail: toStr(detail).slice(0, 120) });
+        }
+        if (!model || !Array.isArray(model.items)) return F;
+
+        const isHls = model.kind === 'hls_master' || model.kind === 'hls_media';
+        const isCatalog = model.kind === 'hls_master' || (model.channels && model.channels.length > 0);
+
+        const firstItem = model.items.filter(function (it) { return it.type !== 'blank'; })[0];
+        if (!firstItem || firstItem.tagUpper !== '#EXTM3U') {
+            add('missing_extm3u', firstItem ? firstItem.lineNo : 1, firstItem ? toStr(firstItem.raw).slice(0, 60) : 'lista vacía');
+        }
+
+        const headRe = /(?:^|\s)([\w-]+)=([^",]*?)(?=\s+[\w-]+=|\s*$)/g;
+
+        for (let i = 0; i < model.items.length; i++) {
+            const it = model.items[i];
+            if (it.type !== 'tag') continue;
+            const tag = it.tagUpper || '';
+            const ln = it.lineNo || (i + 1);
+            const raw = toStr(it.raw);
+            const body = toStr(it.body);
+
+            if (isCatalog && MEDIA_ROUTING_TAGS[tag]) add('media_routing_tag', ln, tag);
+            if (isCatalog && MEDIA_ONLY_TAGS[tag]) add('media_only_tag_in_catalog', ln, tag);
+
+            if (tag === '#EXTINF') {
+                const dm = /^\s*(-?\d+(?:\.\d+)?)\s*/.exec(body);
+                /* #EXTINF:-1 es CONVENCIÓN M3U Plus en listas de canales; sólo es defecto
+                 * cuando el documento se va a parsear como playlist HLS. */
+                if (isHls) {
+                    if (!dm) add('extinf_non_numeric', ln, body.slice(0, 60));
+                    else if (parseFloat(dm[1]) < 0) add('extinf_negative', ln, dm[1]);
+                }
+                const comma = findUnquoted(body, ',');
+                if (comma < 0) add('extinf_missing_comma', ln, body.slice(0, 60));
+                const head = comma >= 0 ? body.slice(0, comma) : '';
+                let hm;
+                headRe.lastIndex = 0;
+                while ((hm = headRe.exec(head)) !== null) {
+                    if (/\s/.test(toStr(hm[2]).trim())) add('attr_with_space_unquoted', ln, hm[1] + '=' + hm[2]);
+                }
+            }
+
+            if (tag === '#EXT-X-STREAM-INF') {
+                const cm = /(^|,)\s*CODECS=([^,]*)/.exec(body);
+                if (cm && toStr(cm[2]).trim().charAt(0) !== '"') add('codecs_unquoted', ln, cm[2]);
+                const rm = /(^|,)\s*RESOLUTION=([^,]*)/.exec(body);
+                if (rm && !/^\d+x\d+$/.test(toStr(rm[2]).trim())) add('resolution_not_wxh', ln, rm[2]);
+                if (!/(^|,)\s*BANDWIDTH=\d+/.test(body)) add('bandwidth_missing', ln, body.slice(0, 60));
+            }
+
+            if (tag === '#EXT-X-SESSION-KEY' && /METHOD\s*=\s*NONE/i.test(body)) add('session_key_none', ln, 'METHOD=NONE');
+
+            if (tag === '#EXTVLCOPT') {
+                const p = parseVlcOpt(it.body);
+                const key = toStr(p.key).toLowerCase();
+                if (VLC_UNSAFE_OPTIONS[key]) add('vlc_unsafe_option', ln, p.key);
+                if (key === 'video-filter') {
+                    const missing = [];
+                    toStr(p.value).split(',').forEach(function (seg) {
+                        const name = toStr(seg).split('=')[0].trim().toLowerCase();
+                        if (name && !VLC_FILTER_MODULES_MEASURED[name]) missing.push(name);
+                    });
+                    if (missing.length) add('vlc_module_missing', ln, missing.join(','));
+                }
+            }
+
+            if (tag === '#KODIPROP') {
+                const key = toStr(parseKodiProp(it.body).key);
+                if (KODIPROP_DEPRECADAS[key]) add('kodiprop_deprecated', ln, key);
+                else if (KODIPROP_NO_VERIFICADAS[key]) add('kodiprop_unverified', ln, key);
+                else if (!KODIPROP_VIGENTES[key]) add('kodiprop_non_namespace', ln, key);
+            }
+
+            if (tag === '#EXTHTTP' || tag === '#EXT-X-APE-HTTP-HEADERS') {
+                const p = parseExtHttp(it.body);
+                if (!Object.keys(p.headers).length) add('exthttp_not_parsed', ln, p.format);
+                Object.keys(p.headers).forEach(function (k) {
+                    if (/^(user-agent|referer|origin)$/i.test(k) && toStr(p.headers[k]).indexOf(',') !== -1) {
+                        add('multi_value_single_header', ln, k);
+                    }
+                });
+            }
+
+            if (/^#EXT-X-[A-Z0-9-]+:/.test(raw.trim()) && /,$/.test(raw.trim())) add('trailing_comma_attrlist', ln, tag);
+        }
+
+        (model.quarantine || []).forEach(function (q) {
+            if (!q) return;
+            if (q.type === 'uri') add('uri_without_owner', q.lineNo || 0, q.reason || 'URI sin EXTINF/STREAM-INF');
+            else if (toStr(q.reason).indexOf('sin URI') !== -1) add('extinf_without_uri', q.lineNo || 0, q.reason || '');
+        });
+
+        return F;
+    }
+
+    /**
+     * Audita un modelo contra la semántica de UNA familia de player.
+     * No usa coincidencias de texto: resuelve pertenencia contra `understands` y aplica
+     * la tabla de reglas de la familia sobre los hallazgos de los detectores.
+     * @param {Object} model
+     * @param {string} familyId  hlsjs|exoplayer|tivimate|ott|smarters|vlc|kodi|apple
+     * @returns {{family,label,evidence,source,kind,understood:Array,ignored:Array,rejected:Array,counts:Object,verdict:string}}
+     */
+    function auditFor(model, familyId) {
+        const fam = getPlayerSemantics(familyId);
+        const res = {
+            family: fam.id,
+            label: fam.label,
+            evidence: fam.evidence,
+            source: fam.source,
+            kind: model ? model.kind : 'unknown',
+            understood: [],
+            ignored: [],
+            rejected: [],
+            counts: { understoodTags: 0, understoodLines: 0, ignoredTags: 0, ignoredLines: 0, uriLines: 0, rejected: 0, fatal: 0, error: 0, warning: 0 },
+            verdict: 'FAIL'
+        };
+        if (!model || !Array.isArray(model.items)) return res;
+
+        const understands = Object.create(null);
+        fam.understands.forEach(function (t) { understands[String(t).toUpperCase()] = 1; });
+
+        const uMap = Object.create(null);
+        const iMap = Object.create(null);
+        let uriLines = 0;
+
+        for (let i = 0; i < model.items.length; i++) {
+            const it = model.items[i];
+            if (!it) continue;
+            if (it.type === 'uri') { uriLines++; continue; }
+            if (it.type !== 'tag') continue;
+            const tag = it.tagUpper || '';
+            const bucket = understands[tag] ? uMap : iMap;
+            const rec = bucket[tag] || (bucket[tag] = { tag: tag, count: 0, line: it.lineNo || 0 });
+            rec.count++;
+            if (!rec.line) rec.line = it.lineNo || 0;
+        }
+
+        function toSortedList(map) {
+            return Object.keys(map).map(function (k) { return map[k]; })
+                .sort(function (a, b) { return (b.count - a.count) || (a.tag < b.tag ? -1 : 1); });
+        }
+        res.understood = toSortedList(uMap);
+        res.ignored = toSortedList(iMap).map(function (r) {
+            return { tag: r.tag, count: r.count, line: r.line, basis: 'RFC 8216 §6.3.1: tag desconocido → ignorar (legal, no es defecto)' };
+        });
+
+        const findings = collectAuditFindings(model);
+        Object.keys(fam.rules).forEach(function (kind) {
+            const rule = fam.rules[kind];
+            const hits = findings[kind] || [];
+            for (let i = 0; i < hits.length; i++) {
+                res.rejected.push({
+                    line: hits[i].line,
+                    reason: rule.why,
+                    detail: hits[i].detail,
+                    kind: kind,
+                    severity: rule.sev,
+                    evidence: rule.ev || fam.evidence
+                });
+            }
+        });
+        res.rejected.sort(function (a, b) { return a.line - b.line; });
+
+        res.counts.understoodTags = res.understood.length;
+        res.counts.understoodLines = res.understood.reduce(function (a, r) { return a + r.count; }, 0) + uriLines;
+        res.counts.ignoredTags = res.ignored.length;
+        res.counts.ignoredLines = res.ignored.reduce(function (a, r) { return a + r.count; }, 0);
+        res.counts.uriLines = uriLines;
+        res.counts.rejected = res.rejected.length;
+        res.rejected.forEach(function (r) {
+            if (r.severity === 'fatal') res.counts.fatal++;
+            else if (r.severity === 'error') res.counts.error++;
+            else res.counts.warning++;
+        });
+        res.verdict = (res.counts.fatal + res.counts.error) > 0 ? 'FAIL' : 'PASS';
+        return res;
+    }
+
+    /** Audita el modelo contra TODAS las familias. Devuelve {families, summary}. */
+    function auditAll(model) {
+        const families = {};
+        const summary = {};
+        Object.keys(PLAYER_SEMANTICS).forEach(function (id) {
+            const r = auditFor(model, id);
+            families[id] = r;
+            summary[id] = {
+                verdict: r.verdict,
+                fatal: r.counts.fatal,
+                error: r.counts.error,
+                warning: r.counts.warning,
+                understoodLines: r.counts.understoodLines,
+                ignoredLines: r.counts.ignoredLines
+            };
+        });
+        return { families: families, summary: summary };
+    }
+
+    // ───────────────────────────────────────────────────────────────────────
     // API PÚBLICA
     // ───────────────────────────────────────────────────────────────────────
 
@@ -2498,6 +2980,12 @@
         validateModel: validateModel,
         compareModels: compareModels,
         diagnose: diagnose,
+        /* H-3 · semánticas por familia de player (understood / ignored §6.3.1 / rejected) */
+        PLAYER_SEMANTICS: PLAYER_SEMANTICS,
+        getPlayerSemantics: getPlayerSemantics,
+        listPlayerFamilies: listPlayerFamilies,
+        auditFor: auditFor,
+        auditAll: auditAll,
         hash32: hash32
     };
 

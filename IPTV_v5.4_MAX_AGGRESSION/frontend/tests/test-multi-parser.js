@@ -644,6 +644,121 @@ function testExtHttpBudget() {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
+// 7e · H-3 · 8 semánticas de player (understood / ignored §6.3.1 / rejected)
+// ───────────────────────────────────────────────────────────────────────────
+
+function testPlayerSemantics() {
+    console.log('\n── 7e · H-3 · 8 semánticas de player ────────────────────────');
+
+    /* (1) el mapa declara las 8 familias y CADA UNA declara su nivel de evidencia */
+    const fams = MP.listPlayerFamilies();
+    const ids = fams.map(function (f) { return f.id; });
+    ['hlsjs', 'exoplayer', 'tivimate', 'ott', 'smarters', 'vlc', 'kodi', 'apple'].forEach(function (id) {
+        assert(ids.indexOf(id) !== -1, 'H-3 · familia declarada: ' + id);
+    });
+    assertEqual(fams.length, 8, 'H-3 · el mapa tiene 8 familias');
+    assertEqual(MP.getPlayerSemantics('libvlc').id, 'vlc', 'H-3 · alias libvlc→vlc');
+    assertEqual(MP.getPlayerSemantics('hls.js').id, 'hlsjs', 'H-3 · alias hls.js→hlsjs');
+    assertEqual(MP.getPlayerSemantics('avplayer').id, 'apple', 'H-3 · alias avplayer→apple');
+    assertEqual(MP.getPlayerSemantics('hlsjs').evidence, 'measured', 'H-3 · hls.js declara evidencia MEDIDA (t8)');
+    assert(fams.filter(function (f) { return f.evidence === 'repo-doctrine'; }).length >= 3,
+        'H-3 · las familias no medidas se declaran doctrina, no medidas');
+    assert(fams.every(function (f) { return f.ruleKinds > 0 && f.understands > 0; }),
+        'H-3 · todas declaran tags entendidos y reglas de rechazo');
+
+    /* (2) sobre el catálogo de FORMA REAL cada familia da veredicto con números */
+    const m = MP.parse(REAL_CATALOG, { sourceName: 'catalogo-12' });
+    const all = MP.auditAll(m);
+    assertEqual(Object.keys(all.families).length, 8, 'H-3 · auditAll cubre las 8 familias');
+    Object.keys(all.families).forEach(function (id) {
+        const r = all.families[id];
+        assert(r.verdict === 'PASS' || r.verdict === 'FAIL', 'H-3 · ' + id + ' da veredicto');
+        assert(r.understood.length > 0, 'H-3 · ' + id + ' entiende tags (n=' + r.counts.understoodTags + ')');
+        assert(r.ignored.length > 0, 'H-3 · ' + id + ' ignora tags por §6.3.1 (n=' + r.counts.ignoredTags + ')');
+        assert(r.counts.understoodLines + r.counts.ignoredLines >= 12,
+            'H-3 · ' + id + ' contabiliza líneas (' + (r.counts.understoodLines + r.counts.ignoredLines) + ')');
+    });
+
+    /* hls.js: lo MEDIDO en t8 manda — la contaminación de tipo es FATAL */
+    const hls = all.families.hlsjs;
+    assertEqual(hls.verdict, 'FAIL', 'H-3 · hls.js FAIL sobre el catálogo real');
+    assertEqual(hls.counts.fatal, 1, 'H-3 · hls.js: 1 fatal (TARGETDURATION fuerza MEDIA)');
+    assert(hls.rejected.some(function (r) { return r.kind === 'media_routing_tag' && r.severity === 'fatal'; }),
+        'H-3 · el fatal es el enrutado de tipo (medido t8)');
+    assert(hls.rejected.some(function (r) { return r.kind === 'extinf_negative'; }),
+        'H-3 · hls.js declara EXTINF:-1 como rechazo (medido t8: duration=0 + URI falso)');
+    assert(hls.rejected.some(function (r) { return r.kind === 'session_key_none' && r.severity === 'warning'; }),
+        'H-3 · SESSION-KEY NONE es rechazo de severidad warning (medido t8)');
+
+    /* §6.3.1: los tags APE son IGNORADO-LEGAL, jamás un rechazo */
+    assert(hls.ignored.some(function (r) { return r.tag.indexOf('#EXT-X-APE-') === 0; }),
+        'H-3 · los tags #EXT-X-APE-* caen en IGNORADO (§6.3.1)');
+    assertEqual(hls.rejected.filter(function (r) { return r.detail && r.detail.indexOf('#EXT-X-APE-') === 0; }).length, 0,
+        'H-3 · ningún tag APE cuenta como rechazo');
+    /* lo que cada familia entiende de verdad: discriminación real, no un includes */
+    assert(MP.auditFor(m, 'kodi').ignored.some(function (r) { return r.tag === '#EXTVLCOPT'; }),
+        'H-3 · Kodi ignora #EXTVLCOPT (§6.3.1)');
+    assert(MP.auditFor(m, 'kodi').understood.some(function (r) { return r.tag === '#KODIPROP'; }),
+        'H-3 · Kodi entiende #KODIPROP');
+    assert(MP.auditFor(m, 'vlc').ignored.some(function (r) { return r.tag === '#KODIPROP'; }),
+        'H-3 · VLC ignora #KODIPROP (§6.3.1)');
+    assert(MP.auditFor(m, 'vlc').understood.some(function (r) { return r.tag === '#EXTVLCOPT'; }),
+        'H-3 · VLC entiende #EXTVLCOPT');
+    assert(MP.auditFor(m, 'hlsjs').ignored.some(function (r) { return r.tag === '#EXTHTTP'; }),
+        'H-3 · hls.js ignora #EXTHTTP (§6.3.1)');
+    /* familias tolerantes: PASS y dicen por qué */
+    assertEqual(all.families.vlc.verdict, 'PASS', 'H-3 · VLC PASS (tolera el ruido de tipo)');
+    assertEqual(all.families.kodi.verdict, 'PASS', 'H-3 · Kodi PASS');
+    assertEqual(all.families.ott.verdict, 'PASS', 'H-3 · OTT Navigator PASS');
+    assertEqual(all.families.smarters.verdict, 'PASS', 'H-3 · Smarters PASS');
+    assertEqual(all.families.apple.verdict, 'FAIL', 'H-3 · AVPlayer FAIL (RFC estricto)');
+    /* Discriminación REAL entre familias ante la MISMA cabecera: el UA con coma es lo que
+     * la emisión real trae ("…KHTML,like Gecko…"), y TiviMate parsea sólo el primer valor. */
+    const commaUa = MP.parse('#EXTM3U\n#EXTINF:10 tvg-id="a",A\n' +
+        '#EXTHTTP:{"User-Agent":"Mozilla/5.0 (X11; Linux) KHTML, like Gecko"}\n' +
+        '#EXT-X-STREAM-INF:BANDWIDTH=25000000,RESOLUTION=5760x3240,CODECS="hvc1.2.4.L183.B0"\n' +
+        'http://example.com/1.m3u8\n');
+    assertEqual(MP.auditFor(commaUa, 'tivimate').verdict, 'FAIL', 'H-3 · TiviMate FAIL con UA de valor único que lleva coma');
+    assert(MP.auditFor(commaUa, 'tivimate').rejected.some(function (r) { return r.kind === 'multi_value_single_header'; }),
+        'H-3 · el motivo declarado es multi_value_single_header');
+    assertEqual(MP.auditFor(commaUa, 'vlc').verdict, 'PASS', 'H-3 · VLC no sufre con la misma coma (no la lee como cabecera única)');
+    assertEqual(MP.auditFor(commaUa, 'exoplayer').verdict, 'PASS', 'H-3 · ExoPlayer la marca warning, no error');
+
+    /* (3) los 6 casos negativos plantados salen REJECTED CON SU LÍNEA */
+    const BODY = '#EXT-X-STREAM-INF:BANDWIDTH=25000000,RESOLUTION=5760x3240,CODECS="hvc1.2.4.L183.B0"';
+    const NEG = [
+        { id: 'N1 TARGETDURATION fuerza MEDIA', kind: 'media_routing_tag', line: 2, verdict: 'FAIL', sev: 'fatal',
+          text: '#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXTINF:10,A\n' + BODY + '\nhttp://example.com/1.m3u8\n' },
+        { id: 'N2 EXTINF -1', kind: 'extinf_negative', line: 2, verdict: 'FAIL', sev: 'error',
+          text: '#EXTM3U\n#EXTINF:-1,A\n' + BODY + '\nhttp://example.com/1.m3u8\n' },
+        { id: 'N3 SESSION-KEY NONE', kind: 'session_key_none', line: 2, verdict: 'PASS', sev: 'warning',
+          text: '#EXTM3U\n#EXT-X-SESSION-KEY:METHOD=NONE\n#EXTINF:10,A\n' + BODY + '\nhttp://example.com/1.m3u8\n' },
+        { id: 'N4 CODECS sin comillas', kind: 'codecs_unquoted', line: 3, verdict: 'PASS', sev: 'warning',
+          text: '#EXTM3U\n#EXTINF:10,A\n#EXT-X-STREAM-INF:BANDWIDTH=25000000,RESOLUTION=5760x3240,CODECS=hvc1.2.4.L183.B0,mp4a.40.2\nhttp://example.com/1.m3u8\n' },
+        { id: 'N5 dos URIs tras un EXTINF', kind: 'uri_without_owner', line: 5, verdict: 'FAIL', sev: 'error',
+          text: '#EXTM3U\n#EXTINF:10,A\n' + BODY + '\nhttp://example.com/1.m3u8\nhttp://example.com/2.m3u8\n' },
+        { id: 'N6 tag de media playlist en catálogo', kind: 'media_only_tag_in_catalog', line: 2, verdict: 'FAIL', sev: 'error',
+          text: '#EXTM3U\n#EXT-X-PART-INF:PART-TARGET=0.5\n#EXTINF:10,A\n' + BODY + '\nhttp://example.com/1.m3u8\n' }
+    ];
+    NEG.forEach(function (c) {
+        const mm = MP.parse(c.text, { sourceName: c.id });
+        const h = MP.auditFor(mm, 'hlsjs');
+        const hit = h.rejected.filter(function (r) { return r.kind === c.kind; });
+        assert(hit.length > 0, 'H-3 · ' + c.id + ' → REJECTED (' + c.kind + ')');
+        if (hit.length) {
+            assertEqual(hit[0].line, c.line, 'H-3 · ' + c.id + ' con su línea');
+            assertEqual(hit[0].severity, c.sev, 'H-3 · ' + c.id + ' con su severidad medida');
+        }
+        assertEqual(h.verdict, c.verdict, 'H-3 · ' + c.id + ' deja el veredicto en ' + c.verdict);
+    });
+
+    /* el caso limpio NO se inventa rechazos */
+    const clean = MP.parse('#EXTM3U\n#EXTINF:10,A\n' + BODY + '\nhttp://example.com/1.m3u8\n');
+    assertEqual(MP.auditFor(clean, 'hlsjs').verdict, 'PASS', 'H-3 · forma real sin defectos → hls.js PASS');
+    assertEqual(MP.auditFor(clean, 'hlsjs').counts.rejected, 0, 'H-3 · forma real sin defectos → 0 rechazos');
+}
+
+// ───────────────────────────────────────────────────────────────────────────
 // 8 · LISTA GRANDE
 // ───────────────────────────────────────────────────────────────────────────
 
@@ -823,6 +938,103 @@ function testEscapedAttrs() {
 // MAIN
 // ───────────────────────────────────────────────────────────────────────────
 
+// ───────────────────────────────────────────────────────────────────────────
+// 15 · H-8 · DETERMINISMO DEL BUNDLE (instante explícito)
+// ───────────────────────────────────────────────────────────────────────────
+/*
+ * H-8 medido (2026-11-22): el bundle embebía `new Date()` en el informe, el manifiesto,
+ * los 4 sidecars y las fechas DOS del ZIP, más `model.stats.parseTimeMs` (reloj).
+ * Dos generaciones del MISMO input daban sha256 distinto y `report.stats` distinto.
+ * Contrato que se fija aquí:
+ *   · mismo input + MISMO instante  -> ZIP byte-idéntico (sha256 igual);
+ *   · instantes DISTINTOS           -> sólo cambian los campos de tiempo declarados
+ *     (generatedAt, el crc32 derivado de esos ficheros y la línea de `limits`),
+ *     con IGUAL número de líneas no vacías, iguales `stats` y los 12 dialectos
+ *     byte-idénticos;
+ *   · sin instante                  -> comportamiento anterior, DECLARADO en limits.
+ */
+function testBundleDeterminism() {
+    const crypto = require('crypto');
+    const sha = function (b) { return crypto.createHash('sha256').update(Buffer.from(b)).digest('hex'); };
+    const ISO_A = '2026-11-22T00:00:00Z';
+    const ISO_B = '2026-11-22T06:30:00Z';
+    /* el módulo publica el instante CANÓNICO de Date#toISOString (…:00.000Z) */
+    const CANON_A = new Date(ISO_A).toISOString();
+    const textOf = function (v) { return typeof v === 'string' ? v : null; };
+    const nonEmpty = function (txt) { return txt.split('\n').filter(function (l) { return l.trim() !== ''; }).length; };
+
+    const model = MP.parse(REAL_CATALOG, { sourceName: 'h8-determinismo' });
+
+    const A = MP.buildBundleZip(model, { generatedAt: ISO_A });
+    const B = MP.buildBundleZip(model, { generatedAt: ISO_A });
+    const C = MP.buildBundleZip(model, { generatedAt: ISO_B });
+
+    /* 1 · mismo input + mismo instante => byte-idéntico */
+    assertEqual(sha(A.zip), sha(B.zip), 'H-8 · mismo input + mismo instante => ZIP byte-idéntico');
+    const names = Object.keys(A.files).sort();
+    const sameBytes = names.filter(function (n) {
+        const a = A.files[n], b = B.files[n];
+        return Buffer.compare(Buffer.from(a), Buffer.from(b)) === 0;
+    });
+    assertEqual(sameBytes.length, names.length, 'H-8 · los ' + names.length + ' ficheros del bundle son idénticos entre dos corridas con el mismo instante');
+
+    /* 2 · el instante declarado es el que se pidió (informe, manifiesto, sidecars) */
+    assertEqual(A.report.generatedAt, CANON_A, 'H-8 · report.generatedAt es el instante pedido');
+    assertEqual(A.manifest.generatedAt, CANON_A, 'H-8 · manifest.generatedAt es el instante pedido');
+    const sidecars = names.filter(function (n) { return n.indexOf('sidecars/') === 0; });
+    const sidecarsOk = sidecars.every(function (n) {
+        try { return JSON.parse(A.files[n]).generatedAt === CANON_A; } catch (e) { return false; }
+    });
+    assert(sidecarsOk && sidecars.length > 0, 'H-8 · los ' + sidecars.length + ' sidecars llevan el mismo instante', sidecars.join(','));
+
+    /* 3 · instante distinto => el ZIP cambia, pero NADA estructural */
+    assert(sha(A.zip) !== sha(C.zip), 'H-8 · instantes distintos => sha256 del ZIP distinto (el tiempo no se congela solo)');
+    const ALLOWED = /generatedAt|crc32|instante explícito/;
+    let diffLines = 0, diffNotAllowed = [], diffDialects = [], lineCountMismatch = [];
+    names.forEach(function (n) {
+        const ta = textOf(A.files[n]), tc = textOf(C.files[n]);
+        if (ta === null || tc === null) {
+            if (Buffer.compare(Buffer.from(A.files[n]), Buffer.from(C.files[n])) !== 0) diffNotAllowed.push(n + ':binario distinto');
+            return;
+        }
+        if (nonEmpty(ta) !== nonEmpty(tc)) lineCountMismatch.push(n);
+        const la = ta.split('\n'), lc = tc.split('\n');
+        const max = Math.max(la.length, lc.length);
+        let fileDiff = 0;
+        for (let i = 0; i < max; i++) {
+            if (la[i] === lc[i]) continue;
+            fileDiff++; diffLines++;
+            if (!ALLOWED.test(la[i] || '')) diffNotAllowed.push(n + ':' + (i + 1) + ' ' + String(la[i] || '(falta)').slice(0, 90));
+        }
+        if (/\.m3u8$/.test(n) && fileDiff > 0) diffDialects.push(n);
+    });
+    assert(diffLines > 0, 'H-8 · con instantes distintos hay líneas distintas que declarar', String(diffLines));
+    assertEqual(diffNotAllowed.length, 0, 'H-8 · sólo cambian campos de tiempo declarados (0 líneas estructurales distintas)', diffNotAllowed.slice(0, 3).join(' | '));
+    assertEqual(lineCountMismatch.length, 0, 'H-8 · mismo número de líneas no vacías por fichero entre instantes', lineCountMismatch.join(','));
+    assertEqual(diffDialects.length, 0, 'H-8 · los 12 dialectos son byte-idénticos entre instantes', diffDialects.join(','));
+
+    /* 4 · la estructura declarada no depende del tiempo */
+    assertEqual(JSON.stringify(A.report.stats), JSON.stringify(C.report.stats), 'H-8 · report.stats idéntico entre instantes (sin mediciones de reloj)');
+    assertEqual(A.report.stats.parseTimeMs, null, 'H-8 · con instante explícito parseTimeMs se publica null (no se miente con una medición)');
+    assertEqual(JSON.stringify(A.dialects), JSON.stringify(C.dialects), 'H-8 · bytes por dialecto idénticos entre instantes');
+
+    /* 5 · el contrato se declara, y sin instante se declara lo contrario */
+    const limitOk = A.report.limits.some(function (l) { return /REPRODUCIBLE: instante explícito/.test(l); });
+    assert(limitOk, 'H-8 · limits declara que el bundle es reproducible con instante explícito');
+    const ND = MP.buildBundleZip(model, {});
+    const limitNd = ND.report.limits.some(function (l) { return /NO es reproducible/.test(l); });
+    assert(limitNd, 'H-8 · sin instante, limits declara que el bundle NO es reproducible (no se promete lo que no hay)');
+
+    /* 6 · options.clock es equivalente a options.generatedAt */
+    const K = MP.buildBundleZip(model, { clock: function () { return ISO_A; } });
+    assertEqual(sha(K.zip), sha(A.zip), 'H-8 · options.clock() produce el mismo ZIP que options.generatedAt');
+
+    /* 7 · un instante inválido se rechaza en voz alta, no se ignora */
+    let threw = false;
+    try { MP.buildBundleZip(model, { generatedAt: 'no-es-una-fecha' }); } catch (e) { threw = true; }
+    assert(threw, 'H-8 · generatedAt inválido lanza (no cae al reloj del sistema en silencio)');
+}
+
 function main() {
     console.log('═══════════════════════════════════════════════════════════════');
     console.log(' APE MULTI-PARSER v' + MP.VERSION + ' — SUITE DE PRUEBAS');
@@ -839,12 +1051,14 @@ function main() {
     testDiagnose();
     testApeHttpHeaders();
     testExtHttpBudget();
+    testPlayerSemantics();
     testLargeList();
     testZip();
     testReportPrivacy();
     testModelFromChannels();
     testCapabilities();
     testEscapedAttrs();
+    testBundleDeterminism();
 
     console.log('\n═══════════════════════════════════════════════════════════════');
     console.log(' RESULTADO: ' + passed + ' PASS · ' + failed + ' FAIL');
