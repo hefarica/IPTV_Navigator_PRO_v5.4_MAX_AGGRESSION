@@ -73,10 +73,6 @@ jobs:
             script: anle-queue-browser.test.cjs
           - suite: tabs
             script: tabs-contract-browser.test.cjs
-    env:
-      APE_TABS_QA_DIR: ${{ runner.temp }}/ape-tab-regression
-      DB_MANAGER_QA_DIR: ${{ runner.temp }}/ape-tab-regression
-      ANLE_TEST_QA_DIR: ${{ runner.temp }}/ape-tab-regression
     steps:
       - uses: actions/checkout@v4
         with:
@@ -95,6 +91,10 @@ jobs:
         run: node -e 'require("node:fs").appendFileSync(process.env.GITHUB_ENV, "CHROMIUM_PATH=" + require("playwright").chromium.executablePath() + "\n")'
       - name: Run ${{ matrix.suite }} with native browser APIs
         shell: bash
+        env:
+          APE_TABS_QA_DIR: ${{ runner.temp }}/ape-tab-regression
+          DB_MANAGER_QA_DIR: ${{ runner.temp }}/ape-tab-regression
+          ANLE_TEST_QA_DIR: ${{ runner.temp }}/ape-tab-regression
         run: |
           mkdir -p "$RUNNER_TEMP/ape-tab-regression"
           node "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/${{ matrix.script }}" 2>&1 | tee "$RUNNER_TEMP/ape-tab-regression/console.log"
