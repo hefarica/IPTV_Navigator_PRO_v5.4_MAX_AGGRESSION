@@ -253,7 +253,16 @@ function checkPlaylist(text, channels, cdn) {
         }
         // 3) d= (payload del device) presente: sin él pulse.php responde 400 "falta u".
         assert.ok(queryParam(emitted, 'd'), 'd= device payload present: ' + emitted);
+        // 4) [HÍBRIDO APE CRYSTAL v9.4] TODO botón HLS (VPS, DIRECTO, AMBAS) emite
+        //    el cartucho max con p=P1 y el tag de ruta; el override upscala todo <8K.
+        assert.equal(queryParam(emitted, 'p'), 'P1',
+            'p=P1 del cartucho P1.5 en la URL /pulse/ (' + (cdn ? 'CDN' : 'DIRECTA') + '): ' + emitted);
     }
+    assert.equal((text.match(/#EXT-X-APE-HYBRID-PULSE:ROUTE=max;/g) || []).length, channels.length,
+        'un tag híbrido ROUTE=max por canal (' + (cdn ? 'CDN' : 'DIRECTA') + ')');
+    assert.ok(text.includes('CARTRIDGE=P1.5'), 'cartucho P1.5 declarado');
+    assert.ok(text.includes('MODE=SIMULATED') && text.includes('EXECUTED=0'),
+        'salida simulada y no ejecutada');
     assert.equal((text.match(/^#EXT-X-APE-REA:/gm) || []).length, channels.length, 'REA request on every channel');
     // 4) ATRIBUTOS NATIVOS DE OBJETIVO SIN PROBE (decisión del propietario, 2026-11-21 —
     //    docs/policies/OWNER_DECISION_2026-11-21_NATIVE_TARGET_ATTRIBUTES_WITHOUT_PROBE.md).

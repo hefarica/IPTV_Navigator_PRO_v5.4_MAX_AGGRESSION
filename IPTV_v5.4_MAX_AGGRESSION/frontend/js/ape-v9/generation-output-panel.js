@@ -1850,9 +1850,9 @@
       // VPS
       '<div style="background:rgba(2,6,23,.38);border:1px solid rgba(14,165,233,.45);border-radius:11px;padding:11px;">' +
       '<div style="font-weight:800;color:#7dd3fc;font-size:1.05rem;">VPS · Lista CDN</div>' +
-      '<div style="font-size:.8rem;color:#94a3b8;margin:4px 0 7px;">prepublishAndGenerateDual() · _CDN.m3u8</div>' +
+      '<div style="font-size:.8rem;color:#94a3b8;margin:4px 0 7px;">prepublishAndGenerateDual() · _CDN.m3u8 · HÍBRIDO P1.5/p=P1</div>' +
       '<button data-ape-run="vps" style="background:linear-gradient(135deg,#0ea5e9,#0284c7);color:#fff;border:0;border-radius:7px;padding:7px 12px;font-size:.82rem;font-weight:800;cursor:pointer;">Generar VPS</button>' +
-      '<span style="font-size:.84rem;color:#64748b;margin-left:7px;">VPS + metadata</span></div>' +
+      '<span style="font-size:.84rem;color:#64748b;margin-left:7px;">VPS + metadata + híbrido</span></div>' +
       // DIRECTO
       '<div style="background:rgba(2,6,23,.38);border:1px solid rgba(168,85,247,.45);border-radius:11px;padding:11px;">' +
       '<div style="font-weight:800;color:#c4b5fd;font-size:1.05rem;">DIRECTO · Lista limpia</div>' +
@@ -1867,22 +1867,22 @@
       //       envueltas/omitidas. Medido en rea-generation-dispatch.test.js: un canal sin id
       //       numerico sale directo al proveedor. Se declara INTENCION + ALCANCE, y el JIT
       //       (que no va por /pulse/) se nombra aparte: se sirve en /jit/.
-      '<div style="font-size:.8rem;color:#94a3b8;margin:4px 0 7px;">Un solo archivo · cableado solicitado por VPS (/pulse/); los canales sin id numérico quedan directos y el JIT se sirve en /jit/ (prepublishAndGenerateDirect)</div>' +
+      '<div style="font-size:.8rem;color:#94a3b8;margin:4px 0 7px;">Un solo archivo · cableado solicitado por VPS (/pulse/) · HÍBRIDO P1.5/p=P1 · JIT desactivado en híbrido (no va por /pulse/) · los canales sin id numérico quedan directos (prepublishAndGenerateDirect)</div>' +
       '<button data-ape-run="direct" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:0;border-radius:7px;padding:7px 12px;font-size:.82rem;font-weight:800;cursor:pointer;">Generar DIRECTO</button>' +
-      '<span style="font-size:.84rem;color:#64748b;margin-left:7px;">cableado solicitado por VPS</span></div>' +
+      '<span style="font-size:.84rem;color:#64748b;margin-left:7px;">híbrido · un archivo</span></div>' +
       // AMBAS
       '<div style="background:rgba(2,6,23,.38);border:1px solid rgba(34,211,238,.45);border-radius:11px;padding:11px;">' +
       '<div style="font-weight:800;color:#67e8f9;font-size:1.05rem;">AMBAS · dos listas</div>' +
-      '<div style="font-size:.8rem;color:#94a3b8;margin:4px 0 7px;">Un archivo DIRECTA y otro CDN, con los mismos canales</div>' +
+      '<div style="font-size:.8rem;color:#94a3b8;margin:4px 0 7px;">Un archivo DIRECTA y otro CDN, con los mismos canales · ambos HÍBRIDOS P1.5/p=P1</div>' +
       '<button data-ape-run="both" style="background:linear-gradient(135deg,#0891b2,#22d3ee);color:#06240f;border:0;border-radius:7px;padding:7px 12px;font-size:.82rem;font-weight:800;cursor:pointer;">Generar AMBAS</button>' +
-      '<span style="font-size:.84rem;color:#64748b;margin-left:7px;">dos archivos M3U</span></div>' +
+      '<span style="font-size:.84rem;color:#64748b;margin-left:7px;">dos archivos híbridos</span></div>' +
       // LIGHT
       '<div style="background:rgba(2,6,23,.38);border:1px solid rgba(232,121,249,.45);border-radius:11px;padding:11px;">' +
       '<div style="font-weight:800;color:#f0abfc;font-size:1.05rem;">LIGHT · proyección por perfil</div>' +
       // [2026-11-15] "d= desde STREAM-TRUTH" era ambiguo: hay DOS d=. El de la URL
       // (/pulse/<id>?…&d=<b64>) lo reescribe el envoltorio desde STREAM-TRUTH; el
       // "Delta por perfil" del panel NO. Se dice cual es cual y de donde sale cada uno.
-      '<div style="font-size:.8rem;color:#94a3b8;margin:4px 0 7px;">9 plantillas + índice · URL d= desde STREAM-TRUTH · delta de buffer desde el panel · valida antes de entregar · solo HLS (DASH no aplica)</div>' +
+      '<div style="font-size:.8rem;color:#94a3b8;margin:4px 0 7px;">9 plantillas + índice · hereda p=P1 de la base · proyección compacta (no replica el tag híbrido por canal) · solo HLS (DASH no aplica)</div>' +
       '<button data-ape-run="light" style="background:linear-gradient(135deg,#a21caf,#e879f9);color:#fff;border:0;border-radius:7px;padding:7px 12px;font-size:.82rem;font-weight:800;cursor:pointer;">Generar LIGHT</button>' +
       '<span id="ape-light-state" style="font-size:.84rem;color:#64748b;margin-left:7px;">sin validar</span></div>' +
       '</div>' +

@@ -624,8 +624,8 @@ async function main() {
             'declara el cableado como SOLICITADO: ' + card.slice(0, 240));
         assert.ok(card.includes('los canales sin id numérico quedan directos'),
             'y declara el alcance: los canales sin id numérico quedan directos');
-        assert.ok(card.includes('el JIT se sirve en /jit/'),
-            'y separa el plano JIT, que no va por /pulse/');
+        assert.ok(card.includes('JIT desactivado en híbrido (no va por /pulse/)'),
+            'y separa el plano JIT: en híbrido está desactivado y no va por /pulse/');
     });
 }
 
