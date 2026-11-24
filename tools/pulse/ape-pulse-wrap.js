@@ -46,6 +46,12 @@ const zlib = require('zlib');
 const crypto = require('crypto');
 const { StringDecoder } = require('string_decoder');
 const { ApeUrlBuilder } = require(process.env.APE_URL_BUILDER || '/opt/ape-pulse/ape-url-builder.js');
+// [HÍBRIDO APE CRYSTAL v9.4] Contrato + módulo del propietario. El JSON es la
+// fuente de rutas/cartuchos; `ape-crystal-hybrid-owner.cjs` aplica el override
+// del propietario (upscaling de TODAS las resoluciones, no gate por verificación).
+const HYBRID_CONFIG = JSON.parse(fs.readFileSync(
+    process.env.APE_HYBRID_CONFIG || path.join(__dirname, 'APE_FUSION_HIBRIDO_OPTIMO_12P.json'), 'utf8'));
+const { seleccionarHibridoOwner } = require('./ape-crystal-hybrid-owner.cjs');
 
 const POLICY_VERSION = '1';
 // 1.5.0 -> 1.6.0: emite #EXTSHIMOTT por canal (cambio de comportamiento de la salida).
@@ -57,6 +63,9 @@ const POLICY_VERSION = '1';
 const WRAPPER_VERSION = '1.7.0';
 const PULSE_BASE_DEFAULT = 'https://iptv-ape.duckdns.org/pulse';
 const ALREADY = /\/(pulse|url2)\//i;
+// [HÍBRIDO APE CRYSTAL] default ON. Rollback sin editar código:
+//   APE_HYBRID_PULSE=0 node tools/pulse/ape-pulse-wrap.js --in ... --out ...
+const APE_HYBRID_PULSE = process.env.APE_HYBRID_PULSE !== '0';
 
 function parseArgs(argv) {
   const a = {};
@@ -442,53 +451,122 @@ function rebuildDeviceData(url) {
   return out;
 }
 
+/**
+ * [HÍBRIDO APE CRYSTAL · 2026-11-24]
+ * `p=` de /pulse = perfil del CARTUCHO, no el perfil de metadata del canal.
+ * Se integra el contrato `ape.crystal.hybrid/1` (JSON + módulo), pero con el
+ * override del propietario: TODAS las resoluciones <8K se upscalan por video
+ * filters -> max (P1.5, p=P1). 8K se conserva en P0 (no se degrada).
+ * El `d=` existente NO se toca y las URLs firmadas (fp/sig/token) NO se reescriben.
+ */
+function hybridDecision() {
+    const t = (cur && cur.truth) || {};
+    const w = parseInt(t.w, 10);
+    const h = parseInt(t.h, 10);
+    const src = String(t.src || '').toLowerCase();
+    const verified = src === 'real' && Number.isInteger(w) && w > 0 && Number.isInteger(h) && h > 0;
+    const request4K = process.env.APE_HYBRID_REQUEST_4K !== '0';
+    const upscaleAll = process.env.APE_HYBRID_UPSCALE_ALL !== '0';
+    return seleccionarHibridoOwner(HYBRID_CONFIG, {
+        fuenteVerificada: verified, ancho: w, alto: h,
+        solicitar4K: request4K, upscaleAll,
+    });
+}
+
+function hybridTag(decision) {
+    const route = decision.ruta;
+    const cart = decision.cartucho || 'NATIVE';
+    const p = (decision.parametrosPulse || {}).p || 'NONE';
+    const src = decision.fuenteMedidaPx
+        ? decision.fuenteMedidaPx[0] + 'x' + decision.fuenteMedidaPx[1] : 'unknown';
+    const target = decision.lienzoObjetivoPx
+        ? decision.lienzoObjetivoPx[0] + 'x' + decision.lienzoObjetivoPx[1] : 'native';
+    const mode = (route === 'max8k' || route === 'native') ? 'NATIVE' : 'SIMULATED';
+    return '#EXT-X-APE-HYBRID-PULSE:ROUTE=' + route +
+        ';CARTRIDGE=' + cart + ';P=' + p + ';SOURCE_PX=' + src +
+        ';TARGET=' + target + ';MODE=' + mode + ';EXECUTED=0' +
+        ';POLICY=ape.crystal.hybrid/1;OWNER=ALL_RESOLUTIONS_UPSCALE';
+}
+
+function isSignedPulse(url) {
+    // generator_contract.do_not_rewrite_existing_signed_urls
+    return /\/pulse\//i.test(String(url || '')) &&
+        /[?&](fp|sig|signature|token)=/i.test(String(url || ''));
+}
+
 function transformUrl(url) {
-  url = normalizeUpstream(url);
-  url = rebuildDeviceData(url);
-  if (ALREADY.test(url)) { counters.already++; return url; }
-  if (!/^https?:\/\//i.test(url)) return url;
-  seq++;
-  // EXPLICITO manda; heuristica solo cuando la lista no declara perfil.
-  const explicit = cur.profile || null;
-  const heuristic = profileForChannel(cur.name, cur.group);
-  const prof = explicit || heuristic;
-  counters.profiles[prof] = (counters.profiles[prof] || 0) + 1;
-  if (explicit) {
-    counters.profileExplicit = (counters.profileExplicit || 0) + 1;
-    if (explicit !== heuristic) {
-      counters.profileOverrides = (counters.profileOverrides || 0) + 1;
-      if (!counters.profileOverrideSample || counters.profileOverrideSample.length < 8) {
-        counters.profileOverrideSample = counters.profileOverrideSample || [];
-        counters.profileOverrideSample.push(cur.name + ': heuristica=' + heuristic + ' declarado=' + explicit);
-      }
+    // La URL firmada se devuelve BYTE A BYTE antes de normalizar/rebuild/`p`.
+    if (isSignedPulse(url)) {
+        counters.hybridSkippedSigned = (counters.hybridSkippedSigned || 0) + 1;
+        counters.already++;
+        return url;
     }
-  } else {
-    counters.profileHeuristic = (counters.profileHeuristic || 0) + 1;
-  }
-  let idNum = parseInt(String(cur.id || '').replace(/[^0-9]/g, ''), 10);
-  if (!Number.isFinite(idNum) || idNum <= 0) idNum = seq;
-  let built;
-  try {
-    built = ApeUrlBuilder.build({
-      url,
-      channelName: cur.name || ('Canal ' + idNum),
-      channelId: idNum,
-      logo: cur.logo || '',
-      deviceType: 'generic',
-      profile: prof,
-      forceProfile: true,
-      endpoint: pulseBase + '/{id}.m3u8',
-    }).url;
-  } catch (e) {
-    counters.errors++;
-    return url;
-  }
-  counters.wrapped++;
-  // [MODO] Se pide cartridge, pero /pulse lo sirve SOLO a clientes capaces
-  // (VLC/Kodi/ExoPlayer/OTT/TiviMate/Smarters). Al resto le da 302 a la URL del
-  // proveedor: medido 2026-11-05 en Fire TV (UA Xtream-Codes/Dalvik), recibe el
-  // master y aborta con "Loaded playlist has unexpected type.".
-  return built + '&m=cartridge&l=' + encodeURIComponent(listName);
+    url = normalizeUpstream(url);
+    url = rebuildDeviceData(url);
+    const decision = hybridDecision();
+    if (ALREADY.test(url)) {
+        if (!APE_HYBRID_PULSE) { counters.already++; return url; }
+        if (isSignedPulse(url)) {
+            counters.hybridSkippedSigned = (counters.hybridSkippedSigned || 0) + 1;
+            counters.already++;
+            return url;
+        }
+        const p = (decision.parametrosPulse || {}).p || '';
+        const upgraded = p ? ApeUrlBuilder.setPulseProfile(url, p) : url;
+        if (upgraded !== url) counters.hybridUpgraded = (counters.hybridUpgraded || 0) + 1;
+        counters.already++;
+        return upgraded;
+    }
+    if (!/^https?:\/\//i.test(url)) return url;
+    seq++;
+    // EXPLICITO manda; heuristica solo cuando la lista no declara perfil.
+    const explicit = cur.profile || null;
+    const heuristic = profileForChannel(cur.name, cur.group);
+    const prof = explicit || heuristic;
+    counters.profiles[prof] = (counters.profiles[prof] || 0) + 1;
+    if (explicit) {
+        counters.profileExplicit = (counters.profileExplicit || 0) + 1;
+        if (explicit !== heuristic) {
+            counters.profileOverrides = (counters.profileOverrides || 0) + 1;
+            if (!counters.profileOverrideSample || counters.profileOverrideSample.length < 8) {
+                counters.profileOverrideSample = counters.profileOverrideSample || [];
+                counters.profileOverrideSample.push(cur.name + ': heuristica=' + heuristic + ' declarado=' + explicit);
+            }
+        }
+    } else {
+        counters.profileHeuristic = (counters.profileHeuristic || 0) + 1;
+    }
+    let idNum = parseInt(String(cur.id || '').replace(/[^0-9]/g, ''), 10);
+    if (!Number.isFinite(idNum) || idNum <= 0) idNum = seq;
+    let built;
+    try {
+        const pulseP = APE_HYBRID_PULSE ? ((decision.parametrosPulse || {}).p || '') : '';
+        built = ApeUrlBuilder.build({
+            url,
+            channelName: cur.name || ('Canal ' + idNum),
+            channelId: idNum,
+            logo: cur.logo || '',
+            deviceType: 'generic',
+            // [HÍBRIDO] p del cartucho: P1 (max, <8K) o P0 (8K). El perfil de
+            // metadata `prof` se conserva en contadores/bloque.
+            profile: pulseP || prof,
+            omitProfile: !pulseP,
+            forceProfile: true,
+            endpoint: pulseBase + '/{id}.m3u8',
+        }).url;
+    } catch (e) {
+        counters.errors++;
+        return url;
+    }
+    counters.wrapped++;
+    counters.hybrid = (counters.hybrid || 0) + 1;
+    counters.hybridRoutes = counters.hybridRoutes || {};
+    counters.hybridRoutes[decision.ruta] = (counters.hybridRoutes[decision.ruta] || 0) + 1;
+    // [MODO] Se pide cartridge, pero /pulse lo sirve SOLO a clientes capaces
+    // (VLC/Kodi/ExoPlayer/OTT/TiviMate/Smarters). Al resto le da 302 a la URL del
+    // proveedor: medido 2026-11-05 en Fire TV (UA Xtream-Codes/Dalvik), recibe el
+    // master y aborta con "Loaded playlist has unexpected type.".
+    return built + '&m=cartridge&l=' + encodeURIComponent(listName);
 }
 
 /**
@@ -514,8 +592,12 @@ const OWNER_DECLARATIONS = [
 
 let pending = '';
 let curHasDecl = false;
+let curHasHybridTag = false;
 function onLine(line) {
   counters.lines++;
+  // [HÍBRIDO] Idempotencia del tag: si la lista ya lo trae, no se duplica
+  // al re-envolver. El tag se cuenta como declaración, no como URI.
+  if (line.startsWith('#EXT-X-APE-HYBRID-PULSE')) { curHasHybridTag = true; }
   if (line.startsWith('#EXTINF')) {
     counters.extinf++; seq += 0; channelOrd++;
     cur = {
@@ -533,6 +615,7 @@ function onLine(line) {
       exthttp: null, truth: null, hasVlcOpt: false, hasKodiProp: false,
     };
     curHasShimott = false;
+    curHasHybridTag = false;
     write(line);
     return;
   }
@@ -584,6 +667,14 @@ function onLine(line) {
     if (m && m[3] && m[3].trim() !== '') { counters.sanitized = (counters.sanitized || 0) + 1; }
     // [OWNER OVERRIDE] declaraciones de mejora extrema, una vez por canal
     if (!curHasDecl) { for (const _d of OWNER_DECLARATIONS) insertTag(_d + '\n'); counters.declared = (counters.declared || 0) + 1; }
+    // [HÍBRIDO APE CRYSTAL] metadata honesta del perfil de cartucho pedido:
+    // P1 = 4K simulado para fuentes <=4K; P0 = 8K real. Inerte para el APK.
+    if (APE_HYBRID_PULSE && !curHasHybridTag && counters.extinf > 0) {
+      const hy = hybridDecision();
+      insertTag(hybridTag(hy) + '\n');
+      curHasHybridTag = true;
+      counters.hybridTag = (counters.hybridTag || 0) + 1;
+    }
     const wrapped = transformUrl(clean);
     // [EXTSHIMOTT] UNA línea por canal, DESPUES de las APE/EXTHTTP y ANTES de la URI
     // (posición del contrato: última línea de tag, 0 líneas en blanco por medio).
@@ -649,6 +740,14 @@ stream.on('end', () => {
       bytes: fs.statSync(outPath).size,
       channels: counters.extinf, urls: counters.urls,
       wrapped: counters.wrapped, already: counters.already, sanitized: counters.sanitized || 0,
+      hybrid: counters.hybrid || 0,
+      hybrid_upgraded: counters.hybridUpgraded || 0,
+      hybrid_tag: counters.hybridTag || 0,
+      hybrid_skipped_signed: counters.hybridSkippedSigned || 0,
+      hybrid_routes: counters.hybridRoutes || {},
+      hybrid_enabled: APE_HYBRID_PULSE,
+      hybrid_policy: 'ape.crystal.hybrid/1+OWNER_ALL_RESOLUTIONS_UPSCALE',
+      hybrid_config_version: HYBRID_CONFIG && HYBRID_CONFIG._meta ? HYBRID_CONFIG._meta.version : null,
       dropped_iframe: counters.dropped_iframe || 0,
       shimott: counters.shimott || 0,
       shimott_present: counters.shimottPresent || 0,

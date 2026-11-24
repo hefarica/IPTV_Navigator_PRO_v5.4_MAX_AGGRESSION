@@ -85,6 +85,7 @@ jobs:
       # El mismo inventario gobierna sintaxis, backup, instalación y hash HTTP.
       FICHEROS: >-
         js/ape-v9/m3u8-typed-arrays-ultimate.js js/ape-v9/generation-output-panel.js
+        js/ape-v9/ape-crystal-hybrid.js js/ape-v9/ape-lab-12p-reconcile.js
         js/ape-v9/ape-profiles-config.js js/ape-v9/profile-manager-v9.js
         js/ape-v9/ape-image-recipes-bundle.js js/ape-v9/generation-controller.js
         js/ape-v9/ape-server-profile.js js/ape-v9/ape-server-profiles-data.js

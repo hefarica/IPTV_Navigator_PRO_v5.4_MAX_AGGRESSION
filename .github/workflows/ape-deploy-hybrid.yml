@@ -1,0 +1,401 @@
+name: ape-deploy-hybrid
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Despliegue CI/CD del híbrido APE Crystal v9.4.
+#
+# ALCANCE (deliberadamente estrecho):
+#   · frontend: index-v4 + generador + panel + profile-manager + módulo híbrido
+#     + puente LAB v9.4.
+#   · /opt/ape-pulse: envoltorio, builder, contrato JSON, módulo y override.
+# NO toca: listas .m3u8, DB, PHP, configuración de nginx, JIT ni APK.
+#
+# SEGURIDAD:
+#   · mode=verify-only por defecto: solo lectura.
+#   · mode=apply exige la confirmación literal.
+#   · backup por stamp, verificación de sha, sintaxis remota, HTTP real y
+#     rollback automático ante cualquier fallo.
+#   · nginx -t + reload (no restart); jamás se recarga si nginx -t falla.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Rama/tag a desplegar'
+        required: true
+        default: 'feat/local-build-integrated-20261124'
+        type: string
+      mode:
+        description: 'verify-only = solo lectura; apply = instala con backup/rollback'
+        required: true
+        default: 'verify-only'
+        type: choice
+        options: [verify-only, apply]
+      confirm:
+        description: 'Para apply escribe exactamente: DESPLIEGO HÍBRIDO AL VPS'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ape-deploy-hybrid
+  cancel-in-progress: false
+
+env:
+  DEPLOY_REF: ${{ inputs.ref }}
+  DEPLOY_MODE: ${{ inputs.mode }}
+  APE_HYBRID_CONFIRM: ${{ inputs.confirm }}
+
+jobs:
+  validate:
+    name: Validar híbrido (sin VPS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout del ref a desplegar
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Sintaxis de los archivos que se despliegan
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in \
+            IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-crystal-hybrid.js \
+            IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js \
+            IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/generation-output-panel.js \
+            IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/profile-manager-v9.js \
+            IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-lab-12p-reconcile.js \
+            tools/pulse/ape-pulse-wrap.js \
+            tools/pulse/ape-crystal-hybrid.cjs \
+            tools/pulse/ape-crystal-hybrid-owner.cjs \
+            tools/url2/ape-url-builder.js; do
+            node --check "$f"
+            echo "node --check OK $f"
+          done
+
+      - name: Contrato híbrido y tests de no regresión
+        shell: bash
+        run: |
+          set -euo pipefail
+          node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ape-crystal-hybrid-owner.test.js
+          node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/rea-generation-dispatch.test.js
+          node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/gen-output-panel-format.test.js
+          node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ape-r17-doctrina-y-adyacencia.test.js
+          node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ape-load-fast-and-pulse.test.js
+          node tools/url2/test_ape_url_builder.js
+
+      - name: JSON del contrato parsea y conserva la versión
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('fs');
+          const p = 'tools/pulse/APE_FUSION_HIBRIDO_OPTIMO_12P.json';
+          const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+          if (j._meta.version !== 'APE_v9.4_CRYSTAL_HYBRID_12P') throw new Error('versión inesperada: ' + j._meta.version);
+          if (j._meta.crystal_hybrid.schema !== 'ape.crystal.hybrid/1') throw new Error('schema inesperado');
+          console.log('contrato OK', j._meta.version, j._meta.crystal_hybrid.schema);
+          NODE
+
+  verify:
+    name: Verificar estado actual (solo lectura)
+    if: inputs.mode == 'verify-only'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Preparar SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n  ControlMaster auto\n  ControlPath ~/.ssh/cm-%%r@%%h:%%p\n  ControlPersist 300s\n  ServerAliveInterval 15\n  ServerAliveCountMax 4\n  ConnectTimeout 20\n  TCPKeepAlive yes\n' > ~/.ssh/config
+          echo "TARGET=${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" >> "$GITHUB_ENV"
+
+      - name: Estado remoto y HTTP (sin escribir)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '--- dirs y node ---'
+          ssh "$TARGET" 'sudo -n true; test -d /var/www/html && echo /var/www/html OK; test -d /opt/ape-pulse && echo /opt/ape-pulse OK; node --version'
+          echo '--- archivos críticos ---'
+          for f in \
+            index-v4.html \
+            js/ape-v9/ape-crystal-hybrid.js \
+            js/ape-v9/m3u8-typed-arrays-ultimate.js \
+            js/ape-v9/generation-output-panel.js \
+            js/ape-v9/profile-manager-v9.js \
+            js/ape-v9/ape-lab-12p-reconcile.js; do
+            ssh "$TARGET" "sudo -n stat -c '%n %s bytes %y' '/var/www/html/$f' 2>&1 || echo AUSENTE" || true
+            ssh "$TARGET" "sudo -n sha256sum '/var/www/html/$f' 2>&1 || true" || true
+          done
+          for f in ape-pulse-wrap.js ape-crystal-hybrid.cjs ape-crystal-hybrid-owner.cjs APE_FUSION_HIBRIDO_OPTIMO_12P.json ape-url-builder.js; do
+            ssh "$TARGET" "sudo -n sha256sum '/opt/ape-pulse/$f' 2>&1 || echo AUSENTE" || true
+          done
+          echo '--- HTTP ---'
+          for p in index-v4.html js/ape-v9/ape-crystal-hybrid.js js/ape-v9/m3u8-typed-arrays-ultimate.js; do
+            code=$(curl -sS -o /tmp/ape-verify-$$ -w '%{http_code}' --max-time 25 "https://iptv-ape.duckdns.org/$p" || true)
+            echo "$p HTTP=$code bytes=$(wc -c </tmp/ape-verify-$$ 2>/dev/null || echo 0)"
+          done
+
+  deploy:
+    name: Desplegar con backup y rollback
+    if: inputs.mode == 'apply'
+    needs: validate
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SRC_DIR: IPTV_v5.4_MAX_AGGRESSION/frontend
+      DEST_DIR: /var/www/html
+      PULSE_DIR: /opt/ape-pulse
+      FRONTEND_FILES: >-
+        index-v4.html
+        js/ape-v9/ape-crystal-hybrid.js
+        js/ape-v9/m3u8-typed-arrays-ultimate.js
+        js/ape-v9/generation-output-panel.js
+        js/ape-v9/profile-manager-v9.js
+        js/ape-v9/ape-lab-12p-reconcile.js
+      TOOLS_FILES: >-
+        tools/pulse/ape-pulse-wrap.js
+        tools/pulse/ape-crystal-hybrid.cjs
+        tools/pulse/ape-crystal-hybrid-owner.cjs
+        tools/pulse/APE_FUSION_HIBRIDO_OPTIMO_12P.json
+        tools/url2/ape-url-builder.js
+
+    steps:
+      - name: Checkout del ref a desplegar
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Preparar SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n  ControlMaster auto\n  ControlPath ~/.ssh/cm-%%r@%%h:%%p\n  ControlPersist 300s\n  ServerAliveInterval 15\n  ServerAliveCountMax 4\n  ConnectTimeout 20\n  TCPKeepAlive yes\n' > ~/.ssh/config
+          echo "TARGET=${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" >> "$GITHUB_ENV"
+
+      - name: Preflight (sin escribir)
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ "$APE_HYBRID_CONFIRM" = "DESPLIEGO HÍBRIDO AL VPS" ] || {
+            echo '::error::confirmación literal incorrecta. No se toca el VPS.'
+            exit 1
+          }
+          for f in $FRONTEND_FILES; do
+            test -f "$SRC_DIR/$f" || { echo "::error::falta $SRC_DIR/$f"; exit 1; }
+          done
+          for f in $TOOLS_FILES; do
+            test -f "$f" || { echo "::error::falta $f"; exit 1; }
+          done
+          ssh "$TARGET" 'sudo -n true'
+          ssh "$TARGET" "sudo -n test -d '$DEST_DIR' && sudo -n test -d '$PULSE_DIR'"
+          ssh "$TARGET" 'node --version'
+          echo '--- espacio ---'
+          ssh "$TARGET" "df -Pk '$PULSE_DIR' | tail -1"
+          echo '--- estado previo ---'
+          for f in $FRONTEND_FILES; do
+            ssh "$TARGET" "sudo -n sha256sum '$DEST_DIR/$f' 2>&1 || echo AUSENTE $f" || true
+          done
+          for f in $TOOLS_FILES; do
+            case "$f" in
+              tools/url2/ape-url-builder.js) D="$PULSE_DIR/ape-url-builder.js" ;;
+              *) D="$PULSE_DIR/$(basename "$f")" ;;
+            esac
+            ssh "$TARGET" "sudo -n sha256sum '$D' 2>&1 || echo AUSENTE $D" || true
+          done
+
+      - name: Instalar con backup, verificar y rollback automático
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          STAGE="/tmp/ape-hybrid-$STAMP"
+          BACKUP="/var/backups/ape-hybrid/$STAMP"
+          echo "STAMP=$STAMP" >> "$GITHUB_ENV"
+          echo "deploy stamp=$STAMP stage=$STAGE backup=$BACKUP"
+
+          rollback() {
+            rc=$?
+            set +e
+            echo '::error::fallo en el despliegue. Iniciando ROLLBACK.'
+            for f in $FRONTEND_FILES; do
+              DEST="$DEST_DIR/$f"
+              BAK="$BACKUP/frontend/$f"
+              if ssh "$TARGET" "sudo -n test -f '$BAK'"; then
+                ssh "$TARGET" "sudo -n cp -a '$BAK' '$DEST'" && echo "  restaurado $f"
+              else
+                ssh "$TARGET" "sudo -n rm -f '$DEST'" && echo "  borrado $f (era nuevo)"
+              fi
+              if ssh "$TARGET" "sudo -n test -f '$BAK.gz'"; then
+                ssh "$TARGET" "sudo -n cp -a '$BAK.gz' '$DEST.gz'" && echo "  restaurado $f.gz"
+              else
+                ssh "$TARGET" "sudo -n rm -f '$DEST.gz'" >/dev/null 2>&1 || true
+              fi
+            done
+            for f in $TOOLS_FILES; do
+              case "$f" in
+                tools/url2/ape-url-builder.js) D="$PULSE_DIR/ape-url-builder.js" ;;
+                *) D="$PULSE_DIR/$(basename "$f")" ;;
+              esac
+              BAK="$BACKUP/tools/$(basename "$f")"
+              if ssh "$TARGET" "sudo -n test -f '$BAK'"; then
+                ssh "$TARGET" "sudo -n cp -a '$BAK' '$D'" && echo "  restaurado $D"
+              else
+                ssh "$TARGET" "sudo -n rm -f '$D'" && echo "  borrado $D (era nuevo)"
+              fi
+            done
+            # Restaurar descriptores de nginx si la config sigue válida.
+            if ssh "$TARGET" 'sudo -n nginx -t' >/dev/null 2>&1; then
+              ssh "$TARGET" 'sudo -n nginx -s reload' >/dev/null 2>&1 || true
+            fi
+            echo "ROLLBACK completado; backup conservado en $BACKUP"
+            exit "$rc"
+          }
+          trap rollback ERR
+
+          # 1) Backup ANTES de tocar nada.
+          ssh "$TARGET" "sudo -n mkdir -p '$BACKUP/frontend' '$BACKUP/tools'"
+          for f in $FRONTEND_FILES; do
+            DEST="$DEST_DIR/$f"
+            BAK="$BACKUP/frontend/$f"
+            ssh "$TARGET" "sudo -n mkdir -p \"\$(dirname '$BAK')\""
+            if ssh "$TARGET" "sudo -n test -f '$DEST'"; then
+              ssh "$TARGET" "sudo -n cp -a '$DEST' '$BAK'"
+              echo "backup $f"
+            else
+              echo "nuevo $f (sin backup)"
+            fi
+            if ssh "$TARGET" "sudo -n test -f '$DEST.gz'"; then
+              ssh "$TARGET" "sudo -n cp -a '$DEST.gz' '$BAK.gz'"
+              echo "backup $f.gz"
+            fi
+          done
+          for f in $TOOLS_FILES; do
+            case "$f" in
+              tools/url2/ape-url-builder.js) D="$PULSE_DIR/ape-url-builder.js" ;;
+              *) D="$PULSE_DIR/$(basename "$f")" ;;
+            esac
+            BAK="$BACKUP/tools/$(basename "$f")"
+            if ssh "$TARGET" "sudo -n test -f '$D'"; then
+              ssh "$TARGET" "sudo -n cp -a '$D' '$BAK'"
+              echo "backup $D"
+            else
+              echo "nuevo $D (sin backup)"
+            fi
+          done
+
+          # 2) Subir staging y verificar hashes ANTES de instalar.
+          mkdir -p "$STAGE"
+          TAR="/tmp/ape-hybrid-$STAMP.tgz"
+          PATHS=()
+          for f in $FRONTEND_FILES; do PATHS+=("$SRC_DIR/$f"); done
+          for f in $TOOLS_FILES; do PATHS+=("$f"); done
+          tar -czf "$TAR" -C "$GITHUB_WORKSPACE" "${PATHS[@]}"
+          scp -q "$TAR" "$TARGET:$TAR"
+          ssh "$TARGET" "mkdir -p '$STAGE' && tar -xzf '$TAR' -C '$STAGE'"
+          for f in $FRONTEND_FILES; do
+            ssh "$TARGET" "test -f '$STAGE/$SRC_DIR/$f'"
+            L=$(sha256sum "$SRC_DIR/$f" | cut -d' ' -f1)
+            R=$(ssh "$TARGET" "sha256sum '$STAGE/$SRC_DIR/$f' | cut -d' ' -f1")
+            [ "$L" = "$R" ] || { echo "::error::hash staging distinto para $f"; false; }
+          done
+          for f in $TOOLS_FILES; do
+            ssh "$TARGET" "test -f '$STAGE/$f'"
+            L=$(sha256sum "$f" | cut -d' ' -f1)
+            R=$(ssh "$TARGET" "sha256sum '$STAGE/$f' | cut -d' ' -f1")
+            [ "$L" = "$R" ] || { echo "::error::hash staging distinto para $f"; false; }
+          done
+
+          # 3) Instalar frontend y regenerar .gz si ya existía (gzip_static manda).
+          for f in $FRONTEND_FILES; do
+            DEST="$DEST_DIR/$f"
+            SRC="$STAGE/$SRC_DIR/$f"
+            ssh "$TARGET" "sudo -n install -m 0644 -o www-data -g www-data '$SRC' '$DEST'"
+            L=$(sha256sum "$SRC_DIR/$f" | cut -d' ' -f1)
+            R=$(ssh "$TARGET" "sudo -n sha256sum '$DEST' | cut -d' ' -f1")
+            [ "$L" = "$R" ] || { echo "::error::sha instalado distinto para $f"; false; }
+            if ssh "$TARGET" "sudo -n test -f '$DEST.gz'"; then
+              ssh "$TARGET" "sudo -n sh -c 'T=\$(mktemp /tmp/ape-gz.XXXXXX) && gzip -9 -c \"$DEST\" > \$T && chown www-data:www-data \$T && install -m 0644 -o www-data -g www-data \$T \"$DEST.gz\" && rm -f \$T'"
+              G=$(ssh "$TARGET" "sudo -n sh -c 'zcat \"$DEST.gz\" | sha256sum | head -c 64'")
+              [ "$L" = "$G" ] || { echo "::error::$f.gz no descomprime al mismo contenido"; false; }
+            fi
+            echo "frontend OK $f"
+          done
+
+          # 4) Instalar runtime /opt/ape-pulse.
+          install_tool() {
+            local src="$1" dst="$2"
+            ssh "$TARGET" "sudo -n install -m 0644 -o root -g root '$src' '$dst'"
+            local l r
+            l=$(sha256sum "$src" | cut -d' ' -f1)
+            r=$(ssh "$TARGET" "sudo -n sha256sum '$dst' | cut -d' ' -f1")
+            [ "$l" = "$r" ] || { echo "::error::sha instalado distinto para $dst"; false; }
+            echo "tool OK $(basename "$dst")"
+          }
+          install_tool "$STAGE/tools/pulse/ape-pulse-wrap.js" "$PULSE_DIR/ape-pulse-wrap.js"
+          ssh "$TARGET" "sudo -n chmod 0755 '$PULSE_DIR/ape-pulse-wrap.js'"
+          install_tool "$STAGE/tools/pulse/ape-crystal-hybrid.cjs" "$PULSE_DIR/ape-crystal-hybrid.cjs"
+          install_tool "$STAGE/tools/pulse/ape-crystal-hybrid-owner.cjs" "$PULSE_DIR/ape-crystal-hybrid-owner.cjs"
+          install_tool "$STAGE/tools/pulse/APE_FUSION_HIBRIDO_OPTIMO_12P.json" "$PULSE_DIR/APE_FUSION_HIBRIDO_OPTIMO_12P.json"
+          install_tool "$STAGE/tools/url2/ape-url-builder.js" "$PULSE_DIR/ape-url-builder.js"
+
+          # 5) GATES remotos: sintaxis, contrato y decisión real.
+          ssh "$TARGET" "node --check '$PULSE_DIR/ape-pulse-wrap.js'"
+          ssh "$TARGET" "node --check '$PULSE_DIR/ape-crystal-hybrid.cjs'"
+          ssh "$TARGET" "node --check '$PULSE_DIR/ape-crystal-hybrid-owner.cjs'"
+          ssh "$TARGET" "node --check '$PULSE_DIR/ape-url-builder.js'"
+          ssh "$TARGET" "node -e \"const fs=require('fs');const j=JSON.parse(fs.readFileSync('$PULSE_DIR/APE_FUSION_HIBRIDO_OPTIMO_12P.json','utf8'));if(j._meta.crystal_hybrid.schema!=='ape.crystal.hybrid/1')process.exit(1);console.log('json OK')\""
+          ssh "$TARGET" "node -e \"const {seleccionarHibridoOwner}=require('$PULSE_DIR/ape-crystal-hybrid-owner.cjs');const cfg=require('$PULSE_DIR/APE_FUSION_HIBRIDO_OPTIMO_12P.json');const a=seleccionarHibridoOwner(cfg,{fuenteVerificada:true,ancho:1920,alto:1080,solicitar4K:true,upscaleAll:true});const b=seleccionarHibridoOwner(cfg,{fuenteVerificada:true,ancho:7680,alto:4320,solicitar4K:true,upscaleAll:true});if(a.ruta!=='max'||a.parametrosPulse.p!=='P1')process.exit(2);if(b.ruta!=='max8k'||b.parametrosPulse.p!=='P0')process.exit(3);console.log('owner OK',a.ruta,a.parametrosPulse.p,b.ruta,b.parametrosPulse.p)\""
+          ssh "$TARGET" "node -e \"const {ApeUrlBuilder}=require('$PULSE_DIR/ape-url-builder.js');const b=new ApeUrlBuilder();const u=b.build({url:'https://provider.invalid/live/u/p/1.m3u8',channelName:'T',channelId:1,deviceType:'generic',profile:'P3.5',omitProfile:true,forceProfile:true,endpoint:'https://iptv-ape.duckdns.org/pulse/{id}.m3u8'}).url;if(/[?&]p=/.test(u))process.exit(2);console.log('builder omitProfile OK')\""
+          ssh "$TARGET" "grep -q 'ape.crystal.hybrid/1' '$PULSE_DIR/ape-pulse-wrap.js'"
+          ssh "$TARGET" "grep -q 'seleccionarHibridoOwner' '$PULSE_DIR/ape-pulse-wrap.js'"
+
+          # 6) nginx -t + reload (nunca restart). Si -t falla, el trap restaura.
+          ssh "$TARGET" 'sudo -n nginx -t'
+          ssh "$TARGET" 'sudo -n nginx -s reload'
+          sleep 3
+
+          # 7) HTTP real: el contenido servido debe ser el nuevo.
+          for spec in \
+            'index-v4.html|ape-crystal-hybrid.js' \
+            'index-v4.html|v=9.4-owner' \
+            'js/ape-v9/ape-crystal-hybrid.js|seleccionarHibridoOwner' \
+            'js/ape-v9/m3u8-typed-arrays-ultimate.js|seleccionarHibridoOwner' \
+            'js/ape-v9/m3u8-typed-arrays-ultimate.js|HYBRID-PULSE' \
+            'js/ape-v9/generation-output-panel.js|HÍBRIDO P1.5/p=P1' \
+            'js/ape-v9/ape-lab-12p-reconcile.js|APE_FUSION_HIBRIDO_OPTIMO_12P'; do
+            P="${spec%%|*}"; NEEDLE="${spec#*|}"
+            code=$(curl -sS --compressed -o "/tmp/ape-http-$$" -w '%{http_code}' --max-time 30 "https://iptv-ape.duckdns.org/$P")
+            [ "$code" = "200" ] || { echo "::error::HTTP $code para $P"; false; }
+            grep -q -- "$NEEDLE" "/tmp/ape-http-$$" || { echo "::error::$P no contiene '$NEEDLE'"; false; }
+            echo "HTTP OK $P ($NEEDLE)"
+          done
+
+          trap - ERR
+          ssh "$TARGET" "sudo -n sh -c 'printf \"%s\\n\" \"ref=$DEPLOY_REF commit=${GITHUB_SHA} stamp=$STAMP mode=apply\" > \"$BACKUP/receipt.txt\"; chmod 0644 \"$BACKUP/receipt.txt\"'"
+          echo "DEPLOY HÍBRIDO OK stamp=$STAMP ref=$DEPLOY_REF commit=${GITHUB_SHA}"
