@@ -759,10 +759,10 @@ check('A10.5 db-manager: replaceChannels existe y es una sola transacción (no b
 });
 
 check('A10.6 db-manager: saveChannels ya no aborta por una ficha sin clave', () => {
-  const b = methodBody(dbmSrc, '    async saveChannels(list) {');
+  const b = methodBody(dbmSrc, '    async saveChannels(list, serverUrl) {');
   if (!b) return 'no se pudo leer saveChannels()';
-  if (b.indexOf('generateChannelId') === -1) return 'no recompone la clave que falta';
-  return b.indexOf('sin clave') !== -1 || 'no avisa de las fichas que descarta';
+  if (b.indexOf('this._persistRow(') === -1) return 'no recompone la clave que falta (debería delegar en _persistRow)';
+  return b.indexOf('skipped') !== -1 || 'no cuenta las fichas que descarta';
 });
 
 check('A10.7 db-manager: un aborto de transacción no pasa en silencio', () => {
@@ -890,9 +890,10 @@ async function lateChecks() {
     await dm.saveChannels([ch]);
     await dm.saveChannelsBulk([ch], HOST_A10);
     if (ix.map.size !== 1) return 'la misma ficha ocupa ' + ix.map.size + ' filas (antes 2: una completa y otra sin datos)';
-    const got = ix.map.get('tvg:1');
+    const got = ix.map.get('srv_A::tvg:1');
     if (!got || !got.url) return 'la ficha guardada no lleva url: al recargar no se puede ni reproducir';
     if (got.serverId !== 'srv_A') return 'la ficha guardada pierde serverId: al recargar cuenta como huérfana';
+    if (got._channelId !== 'tvg:1') return 'la fila no conserva el id original en _channelId: no se puede devolver al leer';
     await dm.saveChannelsBulk([{ name: 'SIN ID', url: HOST_A10 + '/live/u/p/7.ts' }], HOST_A10);
     return ix.map.size === 2 || 'una ficha sin id no se guardó (debería componer la clave)';
   });
@@ -901,8 +902,12 @@ async function lateChecks() {
     const b = methodBody(dbmSrc, '    async saveChannelsBulk(channels, serverUrl) {');
     if (!b) return 'no se pudo leer saveChannelsBulk()';
     if (b.indexOf('const entry = {') !== -1) return 'sigue montando un resumen aparte, sin url ni serverId (era el origen de las 28.640 fichas mudas)';
-    if (b.indexOf('Object.assign({}, ch') === -1) return 'no guarda el canal entero';
-    return b.indexOf('this.generateChannelId(ch)') !== -1 || 'no compone la clave cuando el canal no la trae';
+    if (b.indexOf('this._persistRow(ch') === -1) return 'no guarda el canal entero (debería delegar en _persistRow)';
+    const p = methodBody(dbmSrc, '    _persistRow(channel, serverUrl, now) {');
+    if (!p) return 'no se pudo leer _persistRow()';
+    if (p.indexOf('Object.assign({}, channel)') === -1) return '_persistRow no copia el canal entero';
+    if (p.indexOf('row._channelId = id') === -1) return '_persistRow no conserva el id original';
+    return p.indexOf('this.generateChannelId(channel)') !== -1 || 'no compone la clave cuando el canal no la trae';
   });
 
   await checkAsync('A10.14 app: las fichas sin dirección se descartan ANTES de deduplicar', async () => {
@@ -927,7 +932,7 @@ async function lateChecks() {
     if (appSrcA9.indexOf('const confirmReconnect = auto ? true : confirm(') === -1) {
       return 'la reconexión automática seguiría pidiendo confirmación (se quedaría esperando a una persona que no está)';
     }
-    return appSrcA9.indexOf('await this.connectFromLibrary(targetId, { auto: true })') !== -1
+    return /await this\.connectFromLibrary\((targetId|target\.id), \{ auto: true \}\)/.test(appSrcA9)
       || 'nadie llama a connectFromLibrary en modo automático';
   });
 
@@ -939,11 +944,12 @@ async function lateChecks() {
     const mk = (over) => Object.assign({
       state: { channelsMaster: [], activeServers: [] },
       snapShots: 0, connects: [],
+      _ensureServerInLibrary: function () { return true; },
       loadGeneratorSnapshot: async function () { this.snapShots++; },
       connectFromLibrary: async function (id, o) { this.connects.push([id, o]); this.state.channelsMaster = [chanA10(1, true)]; },
       showNotification: function () { }
     }, over || {});
-    const lleno = mk({ state: { channelsMaster: [chanA10(1, true)], activeServers: [{ id: 'srv_A' }] } });
+    const lleno = mk({ state: { channelsMaster: [chanA10(1, true)], activeServers: [{ id: 'srv_A', baseUrl: 'http://a', username: 'u', password: 'p' }] } });
     if ((await fn.call(lleno)) !== true) return 'con canales no devolvió true';
     if (lleno.snapShots !== 0 || lleno.connects.length !== 0) return 'con canales ya guardados hace trabajo de más (snapshot o reconexión)';
     const conSnap = mk({
@@ -960,11 +966,13 @@ async function lateChecks() {
     const mk = (over) => Object.assign({
       state: { channelsMaster: [], activeServers: [] },
       snapShots: 0, connects: [],
+      _ensureServerInLibrary: function () { return true; },
       loadGeneratorSnapshot: async function () { this.snapShots++; },
       connectFromLibrary: async function (id, o) { this.connects.push([id, o]); this.state.channelsMaster = [chanA10(1, true)]; },
       showNotification: function () { }
     }, over || {});
-    const conServidor = mk({ state: { channelsMaster: [], activeServers: [{ id: 'srv_A' }, { id: 'srv_B' }] } });
+    const srv = (id) => ({ id: id, baseUrl: 'http://' + id, username: 'u', password: 'p' });
+    const conServidor = mk({ state: { channelsMaster: [], activeServers: [srv('srv_A'), srv('srv_B')] } });
     if ((await fn.call(conServidor)) !== true) return 'no recuperó el catálogo reconectando';
     if (conServidor.connects.length !== 1) return 'reconectó ' + conServidor.connects.length + ' veces (debe ser exactamente 1)';
     const [id, opts] = conServidor.connects[0];
@@ -974,6 +982,42 @@ async function lateChecks() {
     const r = await fn.call(vacio);
     if (r !== false) return 'sin canales y sin servidores no devolvió false';
     return vacio.connects.length === 0 || 'se puso a reconectar sin ningún servidor guardado';
+  });
+  await checkAsync('A11 el motor de tiempo real entiende los 12 perfiles LAB (P4.5 no cae a P3)', async () => {
+    const src = read(F_GEN);
+    const a = src.indexOf('const _APE_RT_ALIAS_SEEN');
+    const b = src.indexOf('// SECCIÓN 3: API PÚBLICA');
+    if (a < 0 || b < 0 || b < a) return 'no existe el resolvedor _apeRealtimeResolveProfile';
+    const snippet = src.slice(a, b);
+    const matrix = { P0: {}, P1: {}, P2: {}, P3: {}, P4: {}, P5: {} };
+    const logs = { warn: [], log: [] };
+    const fakeConsole = {
+      warn: (m) => logs.warn.push(String(m)),
+      log: (m) => logs.log.push(String(m))
+    };
+    const resolve = new Function('APE_PROFILE_MATRIX', 'console', snippet + '\nreturn _apeRealtimeResolveProfile;')(matrix, fakeConsole);
+    // las 6 variantes premium que LAB y el Gestor de Perfiles sí ofrecen
+    for (const base of ['P0', 'P1', 'P2', 'P3', 'P4', 'P5']) {
+        const got = resolve(base + '.5');
+        if (got !== base) return base + '.5 se resolvió como ' + got + ' (debería usar su tier base ' + base + ')';
+        if (resolve(base + ',5') !== base) return base + ',5 (coma) no se reconoce';
+        if (resolve(base) !== base) return base + ' dejó de resolverse';
+    }
+    if (logs.warn.length !== 0) return 'los 12 perfiles siguen generando avisos de "desconocido": ' + logs.warn.length;
+    if (resolve('P4.5') !== 'P4') return 'la segunda llamada a P4.5 ya no resuelve';
+    // un id que no existe sí cae a P3, pero avisa UNA vez, no 3.349
+    if (resolve('PX9') !== 'P3') return 'un perfil inexistente debe caer a P3';
+    resolve('PX9'); resolve('PX9');
+    if (logs.warn.length !== 1) return 'el fallback a P3 avisa ' + logs.warn.length + ' veces (debe ser 1 por id)';
+    // el resolvedor se usa en todos los puntos de entrada del motor
+    const uses = count(src, '_apeRealtimeResolveProfile(');
+    if (uses < 5) return 'sólo ' + uses + ' usos: quedan entradas del motor sin resolver (volverían a caer a P3)';
+    // pero getProfile() NO debe servir la base para un .5: es la tabla que
+    // sobrescribe el network-caching calibrado del LAB en los 12 perfiles.
+    const gp = src.indexOf('getProfile(profileId) {');
+    const gpBody = gp >= 0 ? src.slice(gp, gp + 600) : '';
+    return gpBody.indexOf('return APE_PROFILE_MATRIX[profileId] || null;') !== -1
+        || 'getProfile() resuelve el .5 a su base: pisaría el network-caching calibrado del LAB';
   });
 }
 

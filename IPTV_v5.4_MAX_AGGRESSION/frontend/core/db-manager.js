@@ -56,8 +56,13 @@ class DatabaseManager {
     _restoreRow(row) {
         if (!row || typeof row !== 'object') return row;
         if (row._channelId !== undefined && row._channelId !== null) {
-            row.id = row._channelId;
-            delete row._channelId;
+            // Copia, no mutación: devolver el MISMO objeto que guardó el store
+            // reescribía `id` en el original y la siguiente lectura por esa
+            // clave ya no lo encontraba (medido en catalog-persistence).
+            const out = Object.assign({}, row);
+            out.id = row._channelId;
+            delete out._channelId;
+            return out;
         }
         return row;
     }
@@ -99,14 +104,31 @@ class DatabaseManager {
     openDB() {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(this.dbName, this.dbVersion);
-
-            request.onerror = (event) => {
+            let settled = false;
+            const fail = (error) => {
+                if (settled) return;
+                settled = true;
                 this._opening = null;
-                console.error('DatabaseManager: Error al abrir BD', event.target.error);
-                reject(event.target.error);
+                console.error('DatabaseManager: Error al abrir BD', error);
+                reject(error);
+            };
+
+            request.onerror = (event) => fail(event.target.error);
+
+            request.onblocked = () => {
+                fail(new DOMException(
+                    'La base de datos está bloqueada por otra pestaña. Cierra esa pestaña y vuelve a intentar.',
+                    'InvalidStateError'
+                ));
             };
 
             request.onupgradeneeded = (event) => {
+                // Una apertura bloqueada ya se notificó al llamador. No completar
+                // una actualización tardía después de haber rechazado ready().
+                if (settled) {
+                    event.target.transaction.abort();
+                    return;
+                }
                 const db = event.target.result;
 
                 // Store: Canales Enriquecidos (Caché masivo)
@@ -128,6 +150,11 @@ class DatabaseManager {
             };
 
             request.onsuccess = (event) => {
+                if (settled) {
+                    event.target.result.close();
+                    return;
+                }
+                settled = true;
                 this.db = event.target.result;
                 this._opening = null;
                 this._attachLifecycle(this.db);
@@ -177,26 +204,37 @@ class DatabaseManager {
             const tx = this.db.transaction('channels', 'readwrite');
             const store = tx.objectStore('channels');
             let skipped = 0;
-            (Array.isArray(list) ? list : []).forEach(item => {
-                if (!item || typeof item !== 'object') { skipped++; return; }
-                // V4.32: UNA ficha sin clave abortaba la transacción entera (DataError)
-                // y el store se quedaba como estaba: vacío si antes se había limpiado.
-                // V4.34: la clave física es serverId::id (ver _persistRow), así que
-                // un canal sin `id` recibe uno derivado y dos servidores no se pisan.
-                // `serverUrl` explícito evita que un guardado parcial borre el origen
-                // que ya tenía la fila (y que clearChannelsByServer() busca por índice).
-                const row = this._persistRow(item, serverUrl !== undefined ? serverUrl : item.serverUrl);
-                if (!row) { skipped++; return; }
-                store.put(row);
-            });
+            try {
+                (Array.isArray(list) ? list : []).forEach(item => {
+                    if (!item || typeof item !== 'object') { skipped++; return; }
+                    // V4.32: UNA ficha sin clave abortaba la transacción entera (DataError)
+                    // y el store se quedaba como estaba: vacío si antes se había limpiado.
+                    // V4.34: la clave física es serverId::id (ver _persistRow), así que
+                    // un canal sin `id` recibe uno derivado y dos servidores no se pisan.
+                    // `serverUrl` explícito evita que un guardado parcial borre el origen
+                    // que ya tenía la fila (y que clearChannelsByServer() busca por índice).
+                    const row = this._persistRow(item, serverUrl !== undefined ? serverUrl : item.serverUrl);
+                    if (!row) { skipped++; return; }
+                    store.put(row);
+                });
+            } catch (error) {
+                // Un put que lanza (DataCloneError) no puede dejar la transacción
+                // abierta ni confirmar las filas anteriores como guardado parcial.
+                try { tx.abort(); } catch (_) { /* Puede haberse abortado ya. */ }
+                throw error;
+            }
             if (skipped > 0) console.warn(`⚠️ saveChannels: ${skipped} canales sin clave descartados`);
             return new Promise((resolve, reject) => {
                 tx.oncomplete = () => resolve(true);
-                tx.onerror = () => reject(tx.error || new Error('saveChannels: transacción fallida'));
-                tx.onabort = () => reject(tx.error || new Error('saveChannels: transacción abortada'));
+                tx.onerror = (event) => {
+                    const error = tx.error || (event && event.target && event.target.error);
+                    reject(error || new DOMException('saveChannels: transacción fallida', 'AbortError'));
+                };
+                tx.onabort = () => reject(new DOMException('saveChannels: transacción abortada', 'AbortError'));
             });
         } catch (e) {
             console.error("saveChannels error", e);
+            throw e;
         }
     }
 
@@ -232,7 +270,11 @@ class DatabaseManager {
             const store = transaction.objectStore('channels');
 
             transaction.oncomplete = () => resolve();
-            transaction.onerror = (event) => reject(event.target.error);
+            transaction.onerror = (event) => {
+                const error = transaction.error || (event && event.target && event.target.error);
+                reject(error || new DOMException('Guardado de metadatos abortado', 'AbortError'));
+            };
+            transaction.onabort = () => reject(new DOMException('Guardado de metadatos abortado', 'AbortError'));
 
             const now = Date.now();
 
@@ -243,15 +285,20 @@ class DatabaseManager {
             // quedaba DOS veces (57.310 filas para 28.655 canales) y la copia
             // resumida aparecia al recargar como "28.640 canales sin serverId
             // (0 inferidos)": sin `url` no hay forma de atribuirla a un servidor.
-            (Array.isArray(channels) ? channels : []).forEach(ch => {
-                if (!ch || typeof ch !== 'object') return;
-                // V4.34: clave compuesta serverId::id. El canal se guarda entero
-                // (url, serverId, group...) y sólo se fuerzan la clave, el origen
-                // y la marca de tiempo. El id original vive en `_channelId`.
-                const row = this._persistRow(ch, serverUrl, now);
-                if (!row) return;
-                store.put(row);
-            });
+            try {
+                (Array.isArray(channels) ? channels : []).forEach(ch => {
+                    if (!ch || typeof ch !== 'object') return;
+                    // V4.34: clave compuesta serverId::id. El canal se guarda entero
+                    // (url, serverId, group...) y sólo se fuerzan la clave, el origen
+                    // y la marca de tiempo. El id original vive en `_channelId`.
+                    const row = this._persistRow(ch, serverUrl, now);
+                    if (!row) return;
+                    store.put(row);
+                });
+            } catch (error) {
+                try { transaction.abort(); } catch (_) { /* Puede haberse abortado ya. */ }
+                reject(error);
+            }
         });
     }
 
@@ -292,7 +339,7 @@ class DatabaseManager {
         let _ids = null;
         if (_want && _want.length) {
             try {
-                const set = new Set();
+                const set = new Map();
                 for (let i = 0; i < _want.length; i++) {
                     const ch = _want[i];
                     if (!ch) continue;
@@ -302,7 +349,7 @@ class DatabaseManager {
                     if (!id) continue;
                     const sId = (ch.serverId && String(ch.serverId))
                         || (serverId && String(serverId)) || '';
-                    set.add(sId ? `${sId}::${id}` : id);
+                    set.set(sId ? `${sId}::${id}` : id, id);
                 }
                 // Umbral: por debajo compensa; por encima el cursor gana.
                 if (set.size > 0 && set.size < 20000) _ids = set;
@@ -315,11 +362,12 @@ class DatabaseManager {
                     const store = transaction.objectStore('channels');
                     const resultMap = new Map();
                     transaction.oncomplete = () => resolve(resultMap);
-                    transaction.onerror = (event) => reject(event.target.error);
-                    _ids.forEach((plainId, id) => {
-                        const req = store.get(id);
+                    transaction.onerror = (event) => reject(transaction.error || event.target.error);
+                    transaction.onabort = () => reject(transaction.error || new DOMException('Lectura de metadatos abortada', 'AbortError'));
+                    _ids.forEach((plainId, key) => {
+                        const req = store.get(key);
                         req.onsuccess = () => {
-                            if (!req.result) return this._legacyLookup(store, resultMap, plainId, id);
+                            if (!req.result) return this._legacyLookup(store, resultMap, plainId, key);
                             const row = this._restoreRow(req.result);
                             // Clave del mapa = id lógico del canal (no la física).
                             resultMap.set(String(row.id), row);
@@ -332,6 +380,9 @@ class DatabaseManager {
             const transaction = this.db.transaction(['channels'], 'readonly');
             const store = transaction.objectStore('channels');
             const resultMap = new Map();
+            transaction.oncomplete = () => resolve(resultMap);
+            transaction.onerror = (event) => reject(transaction.error || event.target.error);
+            transaction.onabort = () => reject(transaction.error || new DOMException('Lectura de metadatos abortada', 'AbortError'));
 
             // Estrategia de respaldo: cursor completo sobre el store.
             const request = store.openCursor();
@@ -342,8 +393,6 @@ class DatabaseManager {
                     const row = this._restoreRow(cursor.value);
                     resultMap.set(String(row.id), row);
                     cursor.continue();
-                } else {
-                    resolve(resultMap);
                 }
             };
 
@@ -356,10 +405,17 @@ class DatabaseManager {
      */
     async saveAppState(key, value) {
         await this.ready();
-        const tx = this.db.transaction(['app_state'], 'readwrite');
-        tx.objectStore('app_state').put({ key, value });
-        return new Promise(resolve => {
+        return new Promise((resolve, reject) => {
+            const tx = this.db.transaction(['app_state'], 'readwrite');
             tx.oncomplete = () => resolve();
+            tx.onerror = (event) => reject(tx.error || event.target.error);
+            tx.onabort = () => reject(tx.error || new DOMException('Guardado del estado abortado', 'AbortError'));
+            try {
+                tx.objectStore('app_state').put({ key, value });
+            } catch (error) {
+                try { tx.abort(); } catch (_) { /* Puede haberse abortado ya. */ }
+                reject(error);
+            }
         });
     }
 
@@ -368,10 +424,15 @@ class DatabaseManager {
      */
     async getAppState(key) {
         await this.ready();
-        return new Promise((resolve) => {
-            const req = this.db.transaction(['app_state']).objectStore('app_state').get(key);
-            req.onsuccess = () => resolve(req.result ? req.result.value : null);
-            req.onerror = () => resolve(null);
+        return new Promise((resolve, reject) => {
+            const tx = this.db.transaction(['app_state'], 'readonly');
+            let value = null;
+            tx.oncomplete = () => resolve(value);
+            tx.onerror = (event) => reject(tx.error || event.target.error);
+            tx.onabort = () => reject(tx.error || new DOMException('Lectura del estado abortada', 'AbortError'));
+            const req = tx.objectStore('app_state').get(key);
+            req.onsuccess = () => { value = req.result ? req.result.value : null; };
+            req.onerror = () => reject(req.error);
         });
     }
 
@@ -380,11 +441,15 @@ class DatabaseManager {
      */
     async clearAll() {
         await this.ready();
-        const tx = this.db.transaction(['channels', 'servers', 'app_state'], 'readwrite');
-        tx.objectStore('channels').clear();
-        tx.objectStore('servers').clear();
-        tx.objectStore('app_state').clear();
-        return new Promise(resolve => tx.oncomplete = () => resolve());
+        return new Promise((resolve, reject) => {
+            const tx = this.db.transaction(['channels', 'servers', 'app_state'], 'readwrite');
+            tx.oncomplete = () => resolve();
+            tx.onerror = (event) => reject(tx.error || event.target.error);
+            tx.onabort = () => reject(tx.error || new DOMException('Limpieza de la base abortada', 'AbortError'));
+            tx.objectStore('channels').clear();
+            tx.objectStore('servers').clear();
+            tx.objectStore('app_state').clear();
+        });
     }
 
     /**
@@ -399,7 +464,8 @@ class DatabaseManager {
                 console.log('🗑️ IndexedDB: Canales limpiados');
                 resolve();
             };
-            tx.onerror = (e) => reject(e.target.error);
+            tx.onerror = (e) => reject(tx.error || e.target.error);
+            tx.onabort = () => reject(tx.error || new DOMException('Limpieza de canales abortada', 'AbortError'));
         });
     }
 
@@ -450,32 +516,105 @@ class DatabaseManager {
     }
 
     /**
-     * V4.8.3: Limpia canales de un servidor específico
-     * @param {string} serverUrl - URL del servidor a limpiar
+     * V4.34F: reemplaza el catálogo de UN servidor en una sola transacción.
+     *
+     * Medido 2026-11-24: al reconectar, `mergeServerChannels()` retiraba de
+     * memoria el canal retirado pero su fila seguía en IndexedDB; en la recarga
+     * reaparecía (canal 001 del fixture A). Limpiar y guardar en dos llamadas
+     * deja una ventana en la que la base puede quedar a medias; aquí las filas
+     * nuevas y el borrado de las retiradas comparten transacción.
+     */
+    async replaceChannelsForServer(serverUrl, list) {
+        await this.ready();
+        const normalizeServer = value => typeof value === 'string'
+            ? value.replace(/\/+$/, '').replace(/\/player_api\.php$/i, '').replace(/\/+$/, '')
+            : '';
+        const target = normalizeServer(serverUrl);
+        if (!target) throw new DOMException('Se requiere la URL del servidor', 'DataError');
+
+        const byId = new Map();
+        let skipped = 0;
+        (Array.isArray(list) ? list : []).forEach(item => {
+            if (!item || typeof item !== 'object') { skipped++; return; }
+            const row = this._persistRow(item, serverUrl);
+            if (!row) { skipped++; return; }
+            byId.set(row.id, row);
+        });
+        const result = await new Promise((resolve, reject) => {
+            let tx;
+            try {
+                tx = this.db.transaction(['channels'], 'readwrite');
+            } catch (e) {
+                reject(e);
+                return;
+            }
+            const store = tx.objectStore('channels');
+            byId.forEach(obj => store.put(obj));
+            const cursorReq = store.openCursor();
+            cursorReq.onsuccess = (e) => {
+                const cur = e.target.result;
+                if (!cur) return;
+                if (!byId.has(cur.primaryKey) && normalizeServer(cur.value.serverUrl) === target) {
+                    store.delete(cur.primaryKey);
+                }
+                cur.continue();
+            };
+            tx.oncomplete = () => resolve(byId.size);
+            tx.onerror = () => {
+                const error = tx.error || new Error('replaceChannelsForServer: transacción fallida');
+                reject(error);
+            };
+            tx.onabort = () => reject(tx.error || new DOMException('replaceChannelsForServer: transacción abortada', 'AbortError'));
+        });
+        if (skipped > 0) console.warn(`⚠️ replaceChannelsForServer: ${skipped} canales sin clave descartados`);
+        return result;
+    }
+
+    /**
+     * V4.8.3: Limpia canales de un servidor específico.
+     *
+     * V4.34F (medido 2026-11-24): la URL se compara NORMALIZADA. Había filas
+     * guardadas con `http://host/player_api.php` (o con barra final) y la app
+     * limpiaba con `http://host`; el índice `serverUrl` no las encontraba, la
+     * fila retirada sobrevivía y reaparecía al recargar (canal 001 del fixture
+     * A tras reconectar). Se recorre el store y se normaliza cada fila con la
+     * misma regla que usa la app; los paths distintos del mismo host siguen
+     * siendo servidores distintos.
      */
     async clearChannelsByServer(serverUrl) {
         await this.ready();
         return new Promise((resolve, reject) => {
             const tx = this.db.transaction(['channels'], 'readwrite');
             const store = tx.objectStore('channels');
-            const index = store.index('serverUrl');
-            const request = index.openCursor(IDBKeyRange.only(serverUrl));
+            const normalizeServer = value => typeof value === 'string'
+                ? value.replace(/\/+$/, '').replace(/\/player_api\.php$/i, '').replace(/\/+$/, '')
+                : '';
+            const target = normalizeServer(serverUrl);
+            if (!target) {
+                try { tx.abort(); } catch (_) { /* Puede haberse abortado ya. */ }
+                reject(new DOMException('Se requiere la URL del servidor', 'DataError'));
+                return;
+            }
 
             let deleted = 0;
-            request.onsuccess = (event) => {
-                const cursor = event.target.result;
-                if (cursor) {
-                    store.delete(cursor.primaryKey);
-                    deleted++;
-                    cursor.continue();
-                }
-            };
-
             tx.oncomplete = () => {
-                console.log(`🗑️ IndexedDB: ${deleted} canales de ${serverUrl} eliminados`);
+                console.log(`🗑️ IndexedDB: ${deleted} canales del servidor eliminados`);
                 resolve(deleted);
             };
-            tx.onerror = (e) => reject(e.target.error);
+            tx.onerror = (e) => reject(tx.error || e.target.error);
+            tx.onabort = () => reject(tx.error || new DOMException('Limpieza del servidor abortada', 'AbortError'));
+
+            const request = store.openCursor();
+            request.onsuccess = (event) => {
+                const cursor = event.target.result;
+                if (!cursor) return;
+                if (normalizeServer(cursor.value.serverUrl) === target) {
+                    cursor.delete();
+                    deleted++;
+                }
+                cursor.continue();
+            };
+            request.onerror = () => reject(request.error);
         });
     }
 }

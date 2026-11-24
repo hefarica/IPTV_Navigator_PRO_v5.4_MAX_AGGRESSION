@@ -15477,12 +15477,47 @@ function _buildPlayerConfigHeaders(profileId) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 2b: RESOLUCIÓN DE PERFIL (LAB 12 perfiles → 6 tiers del motor)
+// El Gestor de Perfiles y LAB trabajan con P0…P5 y sus variantes "premium"
+// P0.5…P5.5 (12 en total). Este motor sólo tiene las 6 bases, así que un `.5`
+// se servía como "desconocido" y caía a P3: la lista se generaba con el perfil
+// equivocado y salían miles de avisos iguales. Aquí un `.5` usa la entrada de
+// su tier base (misma política, más capacidad declarada), y sólo un id que no
+// es ni base ni `.5` cae a P3, avisando UNA vez por id.
+const _APE_RT_ALIAS_SEEN = Object.create(null);
+
+function _apeRealtimeResolveProfile(profileId) {
+  const id = (profileId === null || profileId === undefined) ? '' : String(profileId).trim();
+  if (id && APE_PROFILE_MATRIX[id]) return id;
+  // P4.5 → P4 ; p4.5 → P4 ; P4,5 → P4
+  const m = /^([Pp]\d)\s*[.,]5$/.exec(id);
+  if (m) {
+    const base = m[1].toUpperCase();
+    if (APE_PROFILE_MATRIX[base]) {
+      if (!_APE_RT_ALIAS_SEEN[base]) {
+        _APE_RT_ALIAS_SEEN[base] = true;
+        console.log(`[APE Realtime Engine] Perfil ${id} → ${base} (variante premium del mismo tier).`);
+      }
+      return base;
+    }
+  }
+  if (!_APE_RT_ALIAS_SEEN['!' + id]) {
+    _APE_RT_ALIAS_SEEN['!' + id] = true;
+    console.warn(`[APE Realtime Engine] Perfil desconocido: ${id || '(vacío)'}. Usando P3 como fallback (aviso único).`);
+  }
+  return 'P3';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SECCIÓN 3: API PÚBLICA — ApeRealtimeEngine
 // ─────────────────────────────────────────────────────────────────────────────
 
 window.ApeRealtimeEngine = {
 
   VERSION: '10.0.0-REALTIME-ENGINE',
+
+  // Resolución pública de perfil: P0…P5 y sus variantes .5 → tier base.
+  resolveProfileId(profileId) { return _apeRealtimeResolveProfile(profileId); },
 
   /**
    * Inicializa el motor. Llamar una vez al arrancar el generador.
@@ -15497,6 +15532,9 @@ window.ApeRealtimeEngine = {
    * @returns {Object|null}
    */
   getProfile(profileId) {
+    // Sólo las 6 bases: un id "premium" (P4.5) NO se sirve como P4 aquí, porque
+    // esta tabla es la que sobrescribe el network-caching calibrado del LAB en
+    // los 12 perfiles (t63). Devolver null deja que mande la calibración.
     return APE_PROFILE_MATRIX[profileId] || null;
   },
 
@@ -15510,10 +15548,7 @@ window.ApeRealtimeEngine = {
    * @returns {Object} El mismo objeto httpHeadersObj, enriquecido
    */
   injectHeaders(httpHeadersObj, profileId, channelId) {
-    if (!APE_PROFILE_MATRIX[profileId]) {
-      console.warn(`[APE Realtime Engine] Perfil desconocido: ${profileId}. Usando P3 como fallback.`);
-      profileId = 'P3';
-    }
+    profileId = _apeRealtimeResolveProfile(profileId);
 
     const cmcd = _buildCmcdHeaders(profileId, channelId);
     const qoe = _buildQoeHeaders(profileId);
@@ -15534,7 +15569,7 @@ window.ApeRealtimeEngine = {
    * @returns {string[]} El mismo linesArray, enriquecido
    */
   injectVlcopt(linesArray, profileId) {
-    if (!APE_PROFILE_MATRIX[profileId]) profileId = 'P3';
+    profileId = _apeRealtimeResolveProfile(profileId);
 
     const opts = APE_PROFILE_MATRIX[profileId].vlcopt;
     for (const [key, value] of Object.entries(opts)) {
@@ -15555,7 +15590,7 @@ window.ApeRealtimeEngine = {
    * @returns {Object}
    */
   getAllHeaders(profileId, channelId) {
-    if (!APE_PROFILE_MATRIX[profileId]) profileId = 'P3';
+    profileId = _apeRealtimeResolveProfile(profileId);
     return {
       ..._buildCmcdHeaders(profileId, channelId),
       ..._buildQoeHeaders(profileId),
@@ -15569,8 +15604,7 @@ window.ApeRealtimeEngine = {
    * @returns {Array<{bitrate: number, resolution: string, fps: number}>}
    */
   getBitrateLadder(profileId) {
-    const p = APE_PROFILE_MATRIX[profileId];
-    if (!p) return [];
+    const p = APE_PROFILE_MATRIX[_apeRealtimeResolveProfile(profileId)];    if (!p) return [];
     return p.bitrateLadder.split(',').map(entry => {
       const [br, res] = entry.split('@');
       const [w, h, fps] = res.split('x');

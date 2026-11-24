@@ -30,6 +30,17 @@
     let initComplete = false;
     let _appRef = null;
 
+    // Share the existing serial, 500-channel batch policy with the enrichment
+    // hook. Enqueue references first; only the consumer starts dictionary work.
+    // WeakMap identity keeps providers/rows separate while joining concurrent
+    // requests for the same channel from the hook, poll and public API.
+    const BATCH_SIZE = 500;
+    const augmentationQueue = [];
+    const augmentationJobs = new WeakMap();
+    let augmentationHead = 0;
+    let augmentationRunning = false;
+    let augmentationScheduled = false;
+
     ANLE.core = {
         _registered: false,
         _wrapped: false,
@@ -87,8 +98,10 @@
                 app.enrichmentModule.enrichChannel = (ch) => {
                     const out = orig(ch);
                     if (toggleEnabled) {
-                        // Async augmentation — fire-and-forget to not block enrichment
-                        this.augment(ch).catch(e => console.error('[ANLE] augment error:', e));
+                        // Async augmentation — fire-and-forget to not block enrichment.
+                        // The shared consumer limits dictionary queries; the hook
+                        // does not allocate one active Promise chain per channel.
+                        this._enqueueAugment(ch);
                     }
                     return out;
                 };
@@ -184,7 +197,6 @@
 
             // 2. Augment ALL channels — non-blocking microbatches of 500
             //    Yields to event loop every batch to keep UI responsive
-            const BATCH_SIZE = 500;
             let augmented = 0;
             let skipped = 0;
 
@@ -194,8 +206,7 @@
                     // Skip already-augmented channels (deduplication)
                     if (ch._anleProcessed) { skipped++; continue; }
                     await this.augment(ch);
-                    ch._anleProcessed = true;
-                    augmented++;
+                    if (ch._anleProcessed) augmented++;
                 }
                 // Yield to event loop every 500 channels
                 if (i + BATCH_SIZE < channels.length) {
@@ -214,14 +225,87 @@
         },
 
         /**
+         * Queue a channel without starting dictionary work on the caller's turn.
+         * Completion Promises are allocated only for callers that await them.
+         */
+        _enqueueAugment(ch, waitForCompletion = false) {
+            if (!ch || typeof ch !== 'object') {
+                return waitForCompletion ? Promise.resolve() : undefined;
+            }
+
+            let job = augmentationJobs.get(ch);
+            if (!job) {
+                job = { channel: ch, promise: null, resolve: null };
+                augmentationJobs.set(ch, job);
+                augmentationQueue.push(job);
+                this._scheduleAugmentQueue();
+            }
+
+            if (waitForCompletion && !job.promise) {
+                job.promise = new Promise(resolve => { job.resolve = resolve; });
+            }
+            return job.promise;
+        },
+
+        _scheduleAugmentQueue() {
+            if (augmentationRunning || augmentationScheduled ||
+                augmentationHead >= augmentationQueue.length) return;
+
+            augmentationScheduled = true;
+            setTimeout(() => {
+                augmentationScheduled = false;
+                this._drainAugmentQueue().catch(e => console.error('[ANLE] queue error:', e));
+            }, 0);
+        },
+
+        async _drainAugmentQueue() {
+            if (augmentationRunning) return;
+            augmentationRunning = true;
+            let completed = 0;
+
+            try {
+                // The toggle stops new automatic work at its entry points. Work
+                // already accepted still settles, as it did before queuing; an
+                // awaiting batch/public caller must not hang when ANLE is disabled.
+                while (augmentationHead < augmentationQueue.length) {
+                    const job = augmentationQueue[augmentationHead];
+                    augmentationQueue[augmentationHead++] = null;
+                    try {
+                        await this._augmentNow(job.channel);
+                    } finally {
+                        augmentationJobs.delete(job.channel);
+                        if (job.resolve) job.resolve();
+                    }
+                    completed++;
+
+                    // IndexedDB yields naturally; this also bounds a turn when
+                    // channels have no searchable tokens or a memory-only source.
+                    if (completed % BATCH_SIZE === 0 &&
+                        augmentationHead < augmentationQueue.length) {
+                        await new Promise(resolve => setTimeout(resolve, 0));
+                    }
+                }
+            } finally {
+                augmentationRunning = false;
+                if (augmentationHead === augmentationQueue.length) {
+                    augmentationQueue.length = 0;
+                    augmentationHead = 0;
+                }
+                this._scheduleAugmentQueue();
+            }
+        },
+
+        /**
          * Augment a single channel with ANLE data.
-         * Writes ONLY to ch.anle and ch.anleMediaType — never touches existing fields.
+         * Adds ANLE overlay/completion fields and preserves channel source fields.
          *
          * @param {Object} ch - Channel object
          */
         async augment(ch) {
-            if (!ch) return;
+            await this._enqueueAugment(ch, true);
+        },
 
+        async _augmentNow(ch) {
             try {
                 // Boost from dictionary
                 const boost = await ANLE.booster.computeBoost(ch);
@@ -233,11 +317,14 @@
                 // Media type detection
                 ch.anleMediaType = ANLE.detection.detectMediaType(ch);
 
+                // Both entry points share this success marker. A failed optional
+                // lookup remains retryable and is never counted as completed.
+                ch._anleProcessed = true;
                 totalBoosts++;
             } catch (e) {
                 // Silent fail — ANLE is non-critical
                 if (totalBoosts === 0) {
-                    console.warn('🧬 [ANLE] First augment error (subsequent suppressed):', e.message);
+                    console.warn('🧬 [ANLE] First augment error (subsequent suppressed):', e?.message || String(e));
                 }
             }
         },
@@ -257,7 +344,11 @@
                 lastSeedSync,
                 toggleEnabled,
                 wrapped: this._wrapped,
-                initComplete
+                initComplete,
+                augmentationQueue: {
+                    pending: augmentationQueue.length - augmentationHead,
+                    running: augmentationRunning
+                }
             };
         },
 

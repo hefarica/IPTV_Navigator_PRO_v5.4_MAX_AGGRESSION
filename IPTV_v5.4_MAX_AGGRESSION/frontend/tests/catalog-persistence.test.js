@@ -172,8 +172,8 @@ check(/meta\.enriched === true/.test(launcher) && /source !== 'after_server_load
  * ───────────────────────────────────────────────────────────────────────── */
 check(/getCachedMetadata\(cascaded \|\| normalized, serverObj && serverObj\.id\)/.test(appSrc),
     'F · processChannels pasa el serverId a getCachedMetadata');
-const lookupStart = appSrc.indexOf('cascaded.forEach(ch => {', appSrc.indexOf('processChannels(rawChannels'));
-const lookupSrc = lookupStart >= 0 ? appSrc.slice(lookupStart, lookupStart + 900) : '';
+const lookupStart = appSrc.indexOf('for (const ch of cascaded)', appSrc.indexOf('processChannels(rawChannels'));
+const lookupSrc = lookupStart >= 0 ? appSrc.slice(lookupStart, lookupStart + 1600) : '';
 check(/String\(ch\.id\)/.test(lookupSrc) && /cachedMap\.get\(String\(id\)\)/.test(lookupSrc),
     'F · la caché se consulta por el id canónico del canal (antes: generateChannelId → nunca acertaba)');
 check(/_persistRow/.test(dbSrc) && /store\.put\(row\)/.test(dbSrc) && count(dbSrc, '_persistRow(') >= 4,

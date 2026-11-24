@@ -189,7 +189,7 @@ function loadDbManager() {
 }
 function fakeDb(records) {
     const stats = { gets: 0, cursors: 0, puts: 0 };
-    const map = new Map(records.map((r) => [r.id, r]));
+    const map = new Map(records.map((r) => [(r.serverId ? r.serverId + '::' : '') + r.id, r]));
     const store = {
         get(id) {
             stats.gets++;
@@ -247,7 +247,7 @@ async function probar(dm, db, arg) {
 
     // 1 · con la lista delante: sólo se piden SUS ids
     const f1 = fakeDb(cache);
-    const listB = recB.map((r) => ({ tvg_id: r.id.slice(4) }));   // 200 canales sin `id`
+    const listB = recB.map((r) => ({ tvg_id: r.id.slice(4), serverId: r.serverId }));   // 200 canales sin `id`
     const got1 = await probar(dm, f1.db, listB);
     eq('B1 con lista: el resultado trae los 200 del servidor B', got1.size, 200);
     eq('B2 con lista: NO se recorre el store con cursor', f1.stats.cursors, 0);
@@ -310,9 +310,9 @@ async function probar(dm, db, arg) {
     // 7 · el código que quedó en los ficheros (lo que de verdad se ejecuta)
     const appSrc = fs.readFileSync(APP, 'utf8');
     ok('B15 app.js pasa la lista a getCachedMetadata (no recorre el store entero)',
-        /getCachedMetadata\(cascaded \|\| normalized\)/.test(appSrc));
+        /getCachedMetadata\(cascaded \|\| normalized(, [^)]+)?\)/.test(appSrc));
     ok('B16 app.js guarda sólo los canales de esta conexión',
-        /saveChannelsList\(\{ only: enriched \}\)/.test(appSrc));
+        /saveChannelsList\(\{ only: enriched[^)]*\}\)/.test(appSrc));
     ok('B17 saveChannelsList acepta opts.only y sin él guarda todo igual',
         /saveChannelsList\(opts\)/.test(appSrc) && /Array\.isArray\(opts\.only\)\) \? opts\.only : this\.state\.channelsMaster/.test(appSrc));
     ok('B18 renderServerList ya no filtra el array entero por servidor',
@@ -320,7 +320,7 @@ async function probar(dm, db, arg) {
     ok('B19 renderServerList cuenta en una pasada (_countsByServer)', /_countsByServer\.get\(srv\.id\)/.test(appSrc));
     const dbSrc = fs.readFileSync(DB, 'utf8');
     ok('B20 db-manager conserva el cursor como camino por defecto', /store\.openCursor\(\)/.test(dbSrc));
-    ok('B21 db-manager tiene el atajo por clave con umbral', /set\.size < 20000/.test(dbSrc) && /store\.get\(id\)/.test(dbSrc));
+    ok('B21 db-manager tiene el atajo por clave con umbral', /set\.size < 20000/.test(dbSrc) && /store\.get\(/.test(dbSrc));
 
     console.log('\nRESUMEN PASS=' + PASS + ' FAIL=' + FAIL);
     process.exit(FAIL === 0 ? 0 : 1);

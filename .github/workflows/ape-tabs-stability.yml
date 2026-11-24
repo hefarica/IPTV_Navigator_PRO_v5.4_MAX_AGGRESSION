@@ -1,0 +1,108 @@
+name: Connection, Analysis and Filters stability
+
+on:
+  push:
+    branches:
+      - fix/preserve-connection-analysis-filter-20261124
+    paths:
+      - 'IPTV_v5.4_MAX_AGGRESSION/frontend/**'
+      - '.github/workflows/ape-tabs-stability.yml'
+  pull_request:
+    paths:
+      - 'IPTV_v5.4_MAX_AGGRESSION/frontend/**'
+      - '.github/workflows/ape-tabs-stability.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tabs-stability-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  APE_TABS_BASELINE_REF: 0342f3af3d27fcee5b9fd29c5eb1f27ee4086a2f
+  ANLE_TEST_BASE_REF: 0342f3af3d27fcee5b9fd29c5eb1f27ee4086a2f
+
+jobs:
+  source-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate syntax and source policies
+        shell: bash
+        run: |
+          git diff --check "$APE_TABS_BASELINE_REF" HEAD
+          for file in \
+            app.js \
+            core/db-manager.js \
+            js/ape-anle/ape-anle-core.js \
+            js/ape-v9/m3u8-typed-arrays-ultimate.js \
+            js/ape-v9/ape-fallback-resolver.js \
+            js/ape-v9/ape-quality-prober.js \
+            tests/db-manager-indexeddb-browser.test.cjs \
+            tests/db-manager-indexeddb-browser.cases.js \
+            tests/anle-queue-browser.test.cjs \
+            tests/tabs-contract-browser.test.cjs; do
+            node --check "IPTV_v5.4_MAX_AGGRESSION/frontend/$file"
+          done
+          node tools/check_anti_degradation_policy.js
+          node tools/check_crystal_4k_law.js
+          node tools/check_crystal_6k_law.js
+      - name: Verify unchanged tab markup
+        run: node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/tabs-contract-browser.test.cjs --preflight
+
+  browser-regression:
+    needs: source-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: indexeddb
+            script: db-manager-indexeddb-browser.test.cjs
+          - suite: anle
+            script: anle-queue-browser.test.cjs
+          - suite: tabs
+            script: tabs-contract-browser.test.cjs
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install isolated browser test tools
+        shell: bash
+        run: |
+          npm install --prefix "$RUNNER_TEMP/ape-tabs-tools" --no-package-lock --ignore-scripts playwright@1.62.1
+          echo "NODE_PATH=$RUNNER_TEMP/ape-tabs-tools/node_modules" >> "$GITHUB_ENV"
+          "$RUNNER_TEMP/ape-tabs-tools/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Select installed Chromium
+        run: node -e 'require("node:fs").appendFileSync(process.env.GITHUB_ENV, "CHROMIUM_PATH=" + require("playwright").chromium.executablePath() + "\n")'
+      - name: Run ${{ matrix.suite }} with native browser APIs
+        shell: bash
+        env:
+          APE_TABS_QA_DIR: ${{ runner.temp }}/ape-tab-regression
+          DB_MANAGER_QA_DIR: ${{ runner.temp }}/ape-tab-regression
+          ANLE_TEST_QA_DIR: ${{ runner.temp }}/ape-tab-regression
+        run: |
+          mkdir -p "$RUNNER_TEMP/ape-tab-regression"
+          node "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/${{ matrix.script }}" 2>&1 | tee "$RUNNER_TEMP/ape-tab-regression/console.log"
+      - name: Preserve test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tab-stability-${{ matrix.suite }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/ape-tab-regression
+          if-no-files-found: warn
+          retention-days: 14
