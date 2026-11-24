@@ -241,7 +241,10 @@
             this.containerId = containerId;
             this.container = null;
             this.config = null;
-            this.activeProfileId = 'P3'; // Default
+            // [HÍBRIDO APE CRYSTAL · 2026-11-24] Perfil por defecto P1 (4K UHD Pro)
+            // para que toda lista nueva nazca con el LAB de 27 chunks y el híbrido
+            // p=P1 del cartucho. El operador puede cambiarlo; P1 es el target.
+            this.activeProfileId = 'P1'; // Default híbrido APE Crystal
             this.expandedCategories = new Set(['identity']); // Default expanded
             this.isOpen = false;
 
@@ -283,6 +286,18 @@
             if (saved && this.config.getProfile(saved)) {
                 this.activeProfileId = saved;
             }
+
+            // [HÍBRIDO APE CRYSTAL · 2026-11-24] El objetivo es máxima resolución
+            // posible: P1 (4K UHD Pro) es el perfil del híbrido. Un P2/P3/P4/P5
+            // guardado de una sesión anterior se eleva a P1; P0 (8K real) se respeta.
+            // Se puede desactivar con window.APE_HYBRID_CRYSTAL = false.
+            try {
+                if (typeof window !== 'undefined' && window.APE_HYBRID_CRYSTAL !== false
+                    && (!saved || ['P2', 'P3', 'P4', 'P5'].indexOf(saved) >= 0)) {
+                    this.activeProfileId = 'P1';
+                    localStorage.setItem('ape_active_profile', 'P1');
+                }
+            } catch (_eHybrid) { /* localStorage no disponible */ }
 
             console.log('%c🎚️ Profile Manager v9.0 Inicializado', 'color: #10b981; font-weight: bold;');
             console.log(`   Perfil activo: ${this.activeProfileId}`);

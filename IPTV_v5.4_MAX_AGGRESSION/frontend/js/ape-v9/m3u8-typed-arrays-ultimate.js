@@ -13707,12 +13707,69 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                 return _APE_PULSE_DEV_GENERIC;   // fail-open: el d= de siempre
             }
         };
+        // ═══ [HÍBRIDO APE CRYSTAL v9.4 · 2026-11-24] ══════════════════════════
+        // Contrato `ape.crystal.hybrid/1` (JSON v9.4) + override del propietario:
+        // TODAS las resoluciones <8K se upscalan por video filters -> max
+        // (cartucho P1.5, p=P1, 4K simulado + 6K emulado). 8K se conserva en P0
+        // (no se degrada). No se gatea por "fuente verificada": el propietario
+        // rechazó ese gate. El `p=` manda en el cartucho; el `d=` no se toca.
+        // Rollback: window.APE_HYBRID_CRYSTAL = false.
+        const _apeHybridOn = !(typeof window !== 'undefined' && window.APE_HYBRID_CRYSTAL === false);
+        const _apeHybridDecision = (() => {
+            // `_streamTruth` puede no existir en el camino de un canal sin id/probe;
+            // la lectura va protegida para que el generador NUNCA aborte por el híbrido.
+            let t = {};
+            try { t = _streamTruth || {}; } catch (_eT) { t = {}; }
+            const w = parseInt(t.w, 10);
+            const h = parseInt(t.h, 10);
+            const verified = String(t.source || t.src || '').toLowerCase() === 'real' && w > 0 && h > 0;
+            const mod = (typeof window !== 'undefined') ? window.APECrystalHybrid : null;
+            try {
+                if (mod && typeof mod.seleccionarHibridoOwner === 'function') {
+                    return mod.seleccionarHibridoOwner(mod.CONFIG, {
+                        fuenteVerificada: verified, ancho: w, alto: h,
+                        solicitar4K: true, upscaleAll: true,
+                    });
+                }
+            } catch (_eH) { /* fallback */ }
+            const p = (Number.isInteger(h) && h >= 4320) ? 'P0' : 'P1';
+            return {
+                ruta: p === 'P0' ? 'max8k' : 'max',
+                cartucho: p === 'P0' ? 'P0' : 'P1.5',
+                parametrosPulse: { p },
+                lienzoObjetivoPx: p === 'P0' ? [7680, 4320] : [3840, 2160],
+                fuenteMedidaPx: (w > 0 && h > 0) ? [w, h] : null,
+            };
+        })();
+        const _apePulseP = ((_apeHybridDecision.parametrosPulse) || {}).p || '';
+        const _apeHybridTagLine = (() => {
+            const route = _apeHybridDecision.ruta;
+            const cart = _apeHybridDecision.cartucho || 'NATIVE';
+            const src = _apeHybridDecision.fuenteMedidaPx
+                ? _apeHybridDecision.fuenteMedidaPx[0] + 'x' + _apeHybridDecision.fuenteMedidaPx[1] : 'unknown';
+            const target = _apeHybridDecision.lienzoObjetivoPx
+                ? _apeHybridDecision.lienzoObjetivoPx[0] + 'x' + _apeHybridDecision.lienzoObjetivoPx[1] : 'native';
+            const mode = route === 'max8k' ? 'NATIVE' : 'SIMULATED';
+            return `#EXT-X-APE-HYBRID-PULSE:ROUTE=${route};CARTRIDGE=${cart};P=${_apePulseP || 'NONE'};SOURCE_PX=${src};TARGET=${target};MODE=${mode};EXECUTED=0;POLICY=ape.crystal.hybrid/1;OWNER=ALL_RESOLUTIONS_UPSCALE`;
+        })();
+        const _apeSetPulseP = (u) => {
+            try {
+                // generator_contract: no reescribir URLs firmadas.
+                if (/[?&](fp|sig|signature|token)=/i.test(u)) return u;
+                if (!_apePulseP) return u;
+                const x = new URL(u);
+                x.searchParams.set('p', _apePulseP);
+                return x.toString();
+            } catch (_eP) { return u; }
+        };
         const _apePulseWrap = (rawUrl) => {
             try {
                 if (typeof window !== 'undefined' && window.APE_PULSE_WRAP === false) return rawUrl;
                 let u = String(rawUrl == null ? '' : rawUrl).trim();
                 if (!/^https?:\/\//i.test(u)) return rawUrl;
-                if (u.indexOf('/pulse/') !== -1) return u;   // idempotente
+                if (u.indexOf('/pulse/') !== -1) {
+                    return _apeHybridOn ? _apeSetPulseP(u) : u;   // idempotente + p híbrido
+                }
                 const base = (typeof window !== 'undefined' && window.APE_PULSE_BASE)
                     ? String(window.APE_PULSE_BASE).replace(/\/+$/, '')
                     : 'https://iptv-ape.duckdns.org';
@@ -13726,11 +13783,13 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                 if (!m) return rawUrl;   // sin id no se puede cablear: se deja como estaba
                 const id = m[1];
                 const dev = _apePulseDeviceB64(channel, profile, _probeData);
-                return `${base}/pulse/${id}.m3u8?u=${encodeURIComponent(u)}&d=${dev}`;
+                const pPart = (_apeHybridOn && _apePulseP) ? `&p=${_apePulseP}` : '';
+                return `${base}/pulse/${id}.m3u8?u=${encodeURIComponent(u)}&d=${dev}${pPart}`;
             } catch (_eWrap) {
                 return rawUrl;   // fail-open: si algo falla, la lista sale como antes
             }
         };
+        if (_apeHybridOn) lines.push(_apeHybridTagLine);
         lines.push(`${_apePulseWrap(finalUrl)}`);
 
         // ── PLACEHOLDER RESOLVER FINAL (global, sobre TODA la salida) ─────────

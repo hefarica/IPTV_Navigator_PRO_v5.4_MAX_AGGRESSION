@@ -56,7 +56,13 @@
     var ohdr = document.getElementById('ape-out-hdr');
     var hdr = ohdr ? String(ohdr.value).toLowerCase() : 'auto';
     if (hdr !== 'pq' && hdr !== 'sdr') hdr = 'auto';
-    return { jit: !!(oj && oj.checked), hdrMode: hdr };
+    // [HÍBRIDO APE CRYSTAL · 2026-11-24] El JIT queda fuera del camino híbrido:
+    // en la ventana medida devolvió 503 PROVIDER_SLOT_BUSY y no trae fallback.
+    // Todo va por /pulse con p=P1 (P0 para 8K). Sólo se fuerza cuando la App
+    // declara el flag explícitamente; el arnés Node (sin flag) conserva su JIT.
+    // Rollback: window.APE_HYBRID_CRYSTAL=false.
+    var hybrid = (typeof window !== 'undefined' && window.APE_HYBRID_CRYSTAL === true);
+    return { jit: hybrid ? false : !!(oj && oj.checked), hdrMode: hdr };
   }
 
   // [2026-11-15] OPCIONES COMUNES DE GENERACION, para que las selecciones valgan
@@ -1782,7 +1788,7 @@
       '<label style="cursor:pointer;"><input type="checkbox" id="ape-out-hls" checked style="accent-color:#22c55e;"> HLS</label>' +
       '<label style="cursor:pointer;"><input type="checkbox" id="ape-out-dash" style="accent-color:#38bdf8;"> DASH</label>' +
       '<label style="cursor:pointer;"><input type="checkbox" id="ape-out-hybrid" style="accent-color:#a855f7;"> HÍBRIDA HLS+DASH</label>' +
-      '<label style="cursor:pointer;" title="Usar rutas /jit/live/ del catálogo JIT"><input type="checkbox" id="ape-out-jit" style="accent-color:#f59e0b;"> JIT</label>' +
+      '<label style="cursor:pointer;opacity:.55;" title="Desactivado por Híbrido APE Crystal: el JIT devolvió 503 PROVIDER_SLOT_BUSY y no trae fallback; todo va por /pulse con p=P1 (P0 para 8K)."><input type="checkbox" id="ape-out-jit" disabled style="accent-color:#f59e0b;"> JIT</label>' +
       // [LIGHT 2026-11-15] Cuarta salida: proyeccion por perfil. NO la produce ninguna
       // de las tres tarjetas existentes: nace de la CABLEADA y la transforma
       //  1) ape-pulse-wrap.js reescribe el d= DE LA URL desde #EXT-X-APE-STREAM-TRUTH

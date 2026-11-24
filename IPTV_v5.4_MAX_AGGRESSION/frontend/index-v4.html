@@ -2437,31 +2437,36 @@
                   </p>
 
                   <!-- Quick Profile Selector -->
+                  <div id="ape-hybrid-crystal-banner" style="margin:0 0 10px 0;padding:10px 12px;border-radius:9px;border:1px solid rgba(168,85,247,.45);background:linear-gradient(135deg,rgba(168,85,247,.18),rgba(56,189,248,.10));font-size:.72rem;line-height:1.35;color:#e9d5ff;">
+                    <strong style="color:#f0abfc;">🚀 HÍBRIDO APE CRYSTAL v9.4 · TODAS LAS RESOLUCIONES</strong><br>
+                    <strong>Upscaling por video filters</strong>: 480p / 544p / 720p / 1080p / 4K → <strong>P1.5</strong> (4K simulado + 6K emulado, <code>p=P1</code>). 8K → <strong>P0</strong> nativo (no se degrada). El VPS declara <code>MODE=SIMULATED</code> y <code>EXECUTED=0</code>: no es una fuente 4K real. Fuente de verdad: <code>ape.crystal.hybrid/1</code> + override del propietario.
+                  </div>
+
                   <div style="display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap;">
                     <button class="btn-profile" data-profile="P0"
                       onclick="if(window.ProfileManagerV9) { window.ProfileManagerV9.selectProfile('P0'); window.ProfileManagerV9.render(); }"
                       style="padding: 6px 10px; font-size: 11px; background: rgba(220,38,38,0.15); border: 1px solid rgba(220,38,38,0.4); color: #fca5a5; border-radius: 6px; cursor: pointer;">P0
-                      ULTRA</button>
-                    <button class="btn-profile" data-profile="P1"
+                      8K MASTER</button>
+                    <button class="btn-profile active" data-profile="P1"
                       onclick="if(window.ProfileManagerV9) { window.ProfileManagerV9.selectProfile('P1'); window.ProfileManagerV9.render(); }"
-                      style="padding: 6px 10px; font-size: 11px; background: rgba(234,88,12,0.15); border: 1px solid rgba(234,88,12,0.4); color: #fdba74; border-radius: 6px; cursor: pointer;">P1
-                      8K</button>
-                    <button class="btn-profile active" data-profile="P2"
+                      style="padding: 6px 10px; font-size: 11px; background: rgba(234,88,12,0.22); border: 1px solid rgba(234,88,12,0.55); color: #fdba74; border-radius: 6px; cursor: pointer;">P1
+                      4K UHD PRO</button>
+                    <button class="btn-profile" data-profile="P2"
                       onclick="if(window.ProfileManagerV9) { window.ProfileManagerV9.selectProfile('P2'); window.ProfileManagerV9.render(); }"
                       style="padding: 6px 10px; font-size: 11px; background: rgba(202,138,4,0.15); border: 1px solid rgba(202,138,4,0.4); color: #fde047; border-radius: 6px; cursor: pointer;">P2
-                      4K</button>
+                      4K BAL</button>
                     <button class="btn-profile" data-profile="P3"
                       onclick="if(window.ProfileManagerV9) { window.ProfileManagerV9.selectProfile('P3'); window.ProfileManagerV9.render(); }"
                       style="padding: 6px 10px; font-size: 11px; background: rgba(22,163,74,0.25); border: 1px solid rgba(22,163,74,0.5); color: #86efac; border-radius: 6px; cursor: pointer;">P3
-                      FHD</button>
+                      1080p</button>
                     <button class="btn-profile" data-profile="P4"
                       onclick="if(window.ProfileManagerV9) { window.ProfileManagerV9.selectProfile('P4'); window.ProfileManagerV9.render(); }"
                       style="padding: 6px 10px; font-size: 11px; background: rgba(8,145,178,0.15); border: 1px solid rgba(8,145,178,0.4); color: #67e8f9; border-radius: 6px; cursor: pointer;">P4
-                      HD</button>
+                      720p</button>
                     <button class="btn-profile" data-profile="P5"
                       onclick="if(window.ProfileManagerV9) { window.ProfileManagerV9.selectProfile('P5'); window.ProfileManagerV9.render(); }"
                       style="padding: 6px 10px; font-size: 11px; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.4); color: #a5b4fc; border-radius: 6px; cursor: pointer;">P5
-                      SD</button>
+                      480p</button>
                   </div>
 
                   <button class="btn" style="width: 100%; background: linear-gradient(135deg, #10b981, #059669);"
@@ -4078,6 +4083,15 @@
   <!-- Librerías externas (xlsx deferred to end for faster initial render) -->
   <script src="xlsx.full.min.js" defer></script>
   <script src="qrcode.min.js"></script>
+  <!-- HÍBRIDO APE CRYSTAL (2026-11-24): P1 + p=P1 para sub-4K simulado.
+       Rollback sin tocar código: window.APE_HYBRID_CRYSTAL = false. -->
+  <script>
+    window.APE_HYBRID_CRYSTAL = true;
+    window.APE_HYBRID_POLICY = 'ape.crystal.hybrid/1+OWNER_ALL_RESOLUTIONS_UPSCALE';
+    window.APE_HYBRID_UPSCALE_ALL = true;
+    // El JIT queda fuera del camino híbrido: 503 PROVIDER_SLOT_BUSY medido.
+    window.APE_USE_JIT = false;
+  </script>
   <!-- ⚠️ VPS_CONFIG PRIMERO - Centraliza IP/dominio ANTES de que otros módulos carguen -->
   <script src="js/vps-config.js"></script>
   <!-- 🚀 VPS Adapter v1.0.0 - Reemplaza Cloudflare con VPS propio (Hetzner) -->
@@ -4511,7 +4525,11 @@
        conservan, y la guía canónica 12P (muestra 12P + LAB v9.3) que se siguió. Carga
        ANTES del generador. Apagada = lista byte a byte igual que siempre. -->
   <script src="js/ape-v9/ape-universal-emit.js?v=1.0.0-uni"></script>
-<script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=606dc1cc"></script>
+  <!-- HÍBRIDO APE CRYSTAL v9.4: contrato ape.crystal.hybrid/1 + override del
+       propietario (upscaling de TODAS las resoluciones <8K por video filters).
+       Carga ANTES del generador. Rollback: window.APE_HYBRID_CRYSTAL=false. -->
+  <script src="js/ape-v9/ape-crystal-hybrid.js?v=9.4-owner"></script>
+<script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20261124-hybrid"></script>
   <!-- 🪦 OMEGA SLOT REAPER — Pre-flight liberation of Xtream max_connections slots -->
   <script src="js/ape-v9/slot-reaper.js?v=1.0.0-omega-20260409"></script>
   <script src="js/ape-v9/m3u8-quality-upgrader-v2.js?v=2.0"></script>
@@ -5277,7 +5295,7 @@
        Additive: el script crea su propio DOM y se pliega en un <details>; NO sustituye
        ninguna vista ni toca el generador. Endpoints: cablear.php / cablear-estado.php.
        Contrato: contracts/list_cablear_panel_v1.json -->
-  <script src="js/ape-v9/list-cablear-panel.js?v=20261120-cablear" defer></script>
+  <script src="js/ape-v9/list-cablear-panel.js?v=5a875317" defer></script>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <!-- 🧪 TESTS - Proxy Auth & User Agent (Dev Mode Only)                     -->
