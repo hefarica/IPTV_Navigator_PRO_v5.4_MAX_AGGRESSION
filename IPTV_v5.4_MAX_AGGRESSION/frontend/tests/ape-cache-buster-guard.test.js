@@ -13,7 +13,15 @@
  * REGLA: para los archivos bajo nuestra custodia el token `?v=` ES el sha256[:8] de su
  * contenido. Cualquier edición cambia el hash → este test falla hasta que se bumpea el token
  * en el <script> de index-v4.html. Determinista y sin listas que mantener a mano más allá de
- * estos 5 nombres.
+ * estos nombres.
+ *
+ * 2026-11-24 · AÑADIDOS `core/db-manager.js` y `app.js`:
+ *   El log del operador ejecutó `db-manager.js:322 🗑️ IndexedDB: Canales limpiados`
+ *   mientras en disco ya estaba la versión V4.33 que NO borra. El HTML seguía
+ *   pidiendo `core/db-manager.js?v=9aff69b4`, así que el navegador servía la
+ *   versión cacheada y destructiva: 28.655 canales a cero y a reconectar en
+ *   cada F5. Estos dos archivos son el corazón de la persistencia y ahora
+ *   están bajo custodia: cualquier cambio sin bumpear el token rompe el test.
  */
 const fs = require('fs');
 const crypto = require('crypto');
@@ -26,7 +34,9 @@ const CUSTODY = [
     'js/ape-v9/m3u8-typed-arrays-ultimate.js',
     'js/ape-v9/profile-manager-v9.js',
     'js/ape-v9/prefetch-min-bw.js',
-    'js/ape-lab-normalize.js'
+    'js/ape-lab-normalize.js',
+    'core/db-manager.js',
+    'app.js'
 ];
 
 let pass = 0, fail = 0;

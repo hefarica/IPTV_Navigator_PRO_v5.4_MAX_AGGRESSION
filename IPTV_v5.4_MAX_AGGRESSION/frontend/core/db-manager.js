@@ -18,6 +18,51 @@ class DatabaseManager {
     }
 
     /**
+     * V4.34: CLAVE FÍSICA DEL STORE = `serverId::id`.
+     *
+     * `id` es el id canónico del canal (el `stream_id` de Xtream) y NO es único
+     * entre servidores: dos proveedores pueden usar el mismo `stream_id`. El
+     * store tiene keyPath `id`, así que al guardar por `id` el canal de un
+     * servidor SOBRESCRIBÍA al de otro (misma primary key) y al refrescar
+     * faltaban canales: la app "cargaba mal" aunque el servidor estuviera
+     * conectado. Se persiste la fila con la clave compuesta y el id original en
+     * `_channelId`; `_restoreRow()` lo devuelve al leer, de modo que el resto de
+     * la app sigue viendo exactamente el mismo canal (mismo `id`).
+     */
+    _persistRow(channel, serverUrl, now) {
+        if (!channel || typeof channel !== 'object') return null;
+        const row = Object.assign({}, channel);
+        let id = (channel.id === undefined || channel.id === null || channel.id === '')
+            ? ''
+            : String(channel.id);
+        if (!id) id = this.generateChannelId(channel);
+        if (!id) return null;
+        const serverId = (channel.serverId && String(channel.serverId))
+            || (channel._serverId && String(channel._serverId))
+            || '';
+        row._channelId = id;
+        row.id = serverId ? `${serverId}::${id}` : id;
+        if (serverUrl !== undefined && serverUrl !== null) row.serverUrl = serverUrl;
+        else if (row.serverUrl === undefined) row.serverUrl = '';
+        row.updatedAt = now || channel.updatedAt || Date.now();
+        return row;
+    }
+
+    /**
+     * V4.34: deshace `_persistRow()` al leer. Las filas antiguas (guardadas por
+     * `id` a secas, sin `_channelId`) se devuelven intactas: son legibles y la
+     * migración las reescribe con la clave compuesta.
+     */
+    _restoreRow(row) {
+        if (!row || typeof row !== 'object') return row;
+        if (row._channelId !== undefined && row._channelId !== null) {
+            row.id = row._channelId;
+            delete row._channelId;
+        }
+        return row;
+    }
+
+    /**
      * ¿Sigue usable la conexión? Si el navegador la cerró, `this.db` queda
      * obsoleto y toda transacción lanza InvalidStateError.
      */
@@ -115,7 +160,9 @@ class DatabaseManager {
             const store = tx.objectStore('channels');
             return await new Promise((resolve, reject) => {
                 const req = store.getAll();
-                req.onsuccess = () => resolve(req.result || []);
+                // V4.34: la fila física puede tener clave `serverId::id`; el
+                // canal que consume la app conserva su `id` original.
+                req.onsuccess = () => resolve((req.result || []).map((row) => this._restoreRow(row)));
                 req.onerror = () => reject(req.error);
             });
         } catch (e) {
@@ -124,15 +171,29 @@ class DatabaseManager {
         }
     }
 
-    async saveChannels(list) {
+    async saveChannels(list, serverUrl) {
         try {
             await this.ready();
             const tx = this.db.transaction('channels', 'readwrite');
             const store = tx.objectStore('channels');
-            list.forEach(item => store.put(item));
+            let skipped = 0;
+            (Array.isArray(list) ? list : []).forEach(item => {
+                if (!item || typeof item !== 'object') { skipped++; return; }
+                // V4.32: UNA ficha sin clave abortaba la transacción entera (DataError)
+                // y el store se quedaba como estaba: vacío si antes se había limpiado.
+                // V4.34: la clave física es serverId::id (ver _persistRow), así que
+                // un canal sin `id` recibe uno derivado y dos servidores no se pisan.
+                // `serverUrl` explícito evita que un guardado parcial borre el origen
+                // que ya tenía la fila (y que clearChannelsByServer() busca por índice).
+                const row = this._persistRow(item, serverUrl !== undefined ? serverUrl : item.serverUrl);
+                if (!row) { skipped++; return; }
+                store.put(row);
+            });
+            if (skipped > 0) console.warn(`⚠️ saveChannels: ${skipped} canales sin clave descartados`);
             return new Promise((resolve, reject) => {
                 tx.oncomplete = () => resolve(true);
-                tx.onerror = () => reject(tx.error);
+                tx.onerror = () => reject(tx.error || new Error('saveChannels: transacción fallida'));
+                tx.onabort = () => reject(tx.error || new Error('saveChannels: transacción abortada'));
             });
         } catch (e) {
             console.error("saveChannels error", e);
@@ -175,27 +236,21 @@ class DatabaseManager {
 
             const now = Date.now();
 
-            channels.forEach(ch => {
-                const id = this.generateChannelId(ch);
-                // Solo guardamos metadatos esenciales para cache
-                const entry = {
-                    id: id,
-                    serverUrl: serverUrl,
-                    updatedAt: now,
-
-                    // Datos enriquecidos a cachear
-                    qualityTags: ch.qualityTags,
-                    transportFormatCode: ch.transportFormatCode,
-                    codecFamily: ch.codecFamily,
-                    avgBitrateKbps: ch.avgBitrateKbps,
-                    bitrateTierCode: ch.bitrateTierCode,
-
-                    // Metadata base
-                    tvg_id: ch.tvg_id,
-                    name: ch.name,
-                    logo: ch.logo
-                };
-                store.put(entry);
+            // V4.33: UNA ficha por canal y COMPLETA.
+            // Antes se guardaba un resumen (sin `url` ni `serverId`) con la clave
+            // `tvg:...`/`hash:...`, distinta de la clave que usa saveChannels() (el
+            // `id` del canal). Resultado medido en el log de la app: el mismo canal
+            // quedaba DOS veces (57.310 filas para 28.655 canales) y la copia
+            // resumida aparecia al recargar como "28.640 canales sin serverId
+            // (0 inferidos)": sin `url` no hay forma de atribuirla a un servidor.
+            (Array.isArray(channels) ? channels : []).forEach(ch => {
+                if (!ch || typeof ch !== 'object') return;
+                // V4.34: clave compuesta serverId::id. El canal se guarda entero
+                // (url, serverId, group...) y sólo se fuerzan la clave, el origen
+                // y la marca de tiempo. El id original vive en `_channelId`.
+                const row = this._persistRow(ch, serverUrl, now);
+                if (!row) return;
+                store.put(row);
             });
         });
     }
@@ -205,27 +260,87 @@ class DatabaseManager {
      * @param {Array} rawChannels 
      * @returns {Promise<Map>} Map con ID -> Datos Cacheados
      */
-    async getCachedMetadata(rawChannels) {
+    /**
+     * V4.34: respaldo de clave antigua. Las filas que escribieron las versiones
+     * anteriores están en la base por `id` a secas (todavía sin la clave
+     * `serverId::id`); si la clave compuesta no encuentra nada, se prueba esa
+     * antes de dar el canal por perdido: sin esto el catálogo guardado se veía
+     * "vacío" al recargar y la app volvía a descargarlo entero.
+     */
+    _legacyLookup(store, resultMap, plainId, requestedKey) {
+        if (!plainId || plainId === requestedKey) return;
+        const req = store.get(plainId);
+        req.onsuccess = () => {
+            if (!req.result) return;
+            const row = this._restoreRow(req.result);
+            resultMap.set(String(row.id), row);
+        };
+    }
+
+    async getCachedMetadata(rawChannels, serverId) {
         await this.ready();
+        // ── ATAJO POR CLAVE: si me dan la lista, sólo leo SUS ids ──────────
+        // Antes esta función ignoraba el argumento y recorría el store ENTERO
+        // con un cursor en CADA conexión de servidor: con S servidores y M
+        // canales cacheados costaba S×M lecturas. Con la lista delante cuesta
+        // sólo los canales de esta lista (store.get por clave primaria, una
+        // sola transacción). Sin lista, o con una lista casi tan grande como
+        // el store, se recorre con el cursor de siempre: igual que antes.
+        // V4.34: la clave física es `serverId::id`; se consulta esa y, cuando
+        // el canal no trae serverId, la clave antigua `id`.
+        const _want = Array.isArray(rawChannels) ? rawChannels : null;
+        let _ids = null;
+        if (_want && _want.length) {
+            try {
+                const set = new Set();
+                for (let i = 0; i < _want.length; i++) {
+                    const ch = _want[i];
+                    if (!ch) continue;
+                    const id = (ch.id !== undefined && ch.id !== null && ch.id !== '')
+                        ? String(ch.id)
+                        : this.generateChannelId(ch);
+                    if (!id) continue;
+                    const sId = (ch.serverId && String(ch.serverId))
+                        || (serverId && String(serverId)) || '';
+                    set.add(sId ? `${sId}::${id}` : id);
+                }
+                // Umbral: por debajo compensa; por encima el cursor gana.
+                if (set.size > 0 && set.size < 20000) _ids = set;
+            } catch (_eIds) { _ids = null; }
+        }
+        if (_ids) {
+            return new Promise((resolve, reject) => {
+                try {
+                    const transaction = this.db.transaction(['channels'], 'readonly');
+                    const store = transaction.objectStore('channels');
+                    const resultMap = new Map();
+                    transaction.oncomplete = () => resolve(resultMap);
+                    transaction.onerror = (event) => reject(event.target.error);
+                    _ids.forEach((plainId, id) => {
+                        const req = store.get(id);
+                        req.onsuccess = () => {
+                            if (!req.result) return this._legacyLookup(store, resultMap, plainId, id);
+                            const row = this._restoreRow(req.result);
+                            // Clave del mapa = id lógico del canal (no la física).
+                            resultMap.set(String(row.id), row);
+                        };
+                    });
+                } catch (e) { reject(e); }
+            });
+        }
         return new Promise((resolve, reject) => {
             const transaction = this.db.transaction(['channels'], 'readonly');
             const store = transaction.objectStore('channels');
             const resultMap = new Map();
 
-            // Optimización: Si son muchos, mejor abrir cursor o usar getAll si es posible.
-            // Dado que IndexedDB no tiene "getMany", y necesitamos IDs específicos,
-            // haremos una estrategia de "best effort" parallel gets para bloques o un cursor total si son muchos.
-
-            // Estrategia simplificada para demo:
-            // Si hay muchos canales, es más rápido leer todo el store en memoria si no es gigante,
-            // o iterar. Para 10k canales, un cursor es mejor.
-
+            // Estrategia de respaldo: cursor completo sobre el store.
             const request = store.openCursor();
 
             request.onsuccess = (event) => {
                 const cursor = event.target.result;
                 if (cursor) {
-                    resultMap.set(cursor.value.id, cursor.value);
+                    const row = this._restoreRow(cursor.value);
+                    resultMap.set(String(row.id), row);
                     cursor.continue();
                 } else {
                     resolve(resultMap);
@@ -286,6 +401,52 @@ class DatabaseManager {
             };
             tx.onerror = (e) => reject(e.target.error);
         });
+    }
+
+    /**
+     * V4.32: Reemplaza el catálogo en UNA sola transacción (todo o nada).
+     * Antes se hacía clearChannels() y después saveChannels(): si la escritura
+     * fallaba, o la página se recargaba entre las dos, IndexedDB quedaba VACÍA
+     * y la app tenía que volver a descargar el catálogo entero.
+     * @param {Array} list - catálogo completo tal y como debe quedar.
+     * @returns {Promise<number>} cuántos canales quedaron guardados.
+     */
+    async replaceChannels(list) {
+        await this.ready();
+        const byId = new Map();
+        let skipped = 0;
+        (Array.isArray(list) ? list : []).forEach(item => {
+            if (!item || typeof item !== 'object') { skipped++; return; }
+            // V4.34: se escribe con la clave física serverId::id; el mapa se
+            // indexa por esa misma clave para saber qué filas sobran.
+            const row = this._persistRow(item, item.serverUrl);
+            if (!row) { skipped++; return; }
+            byId.set(row.id, row);
+        });
+        const result = await new Promise((resolve, reject) => {
+            let tx;
+            try {
+                tx = this.db.transaction(['channels'], 'readwrite');
+            } catch (e) {
+                reject(e);
+                return;
+            }
+            const store = tx.objectStore('channels');
+            byId.forEach(obj => store.put(obj));
+            // Borrar lo que ya no está, dentro de la MISMA transacción.
+            const cursorReq = store.openCursor();
+            cursorReq.onsuccess = (e) => {
+                const cur = e.target.result;
+                if (!cur) return;
+                if (!byId.has(cur.primaryKey)) store.delete(cur.primaryKey);
+                cur.continue();
+            };
+            tx.oncomplete = () => resolve(byId.size);
+            tx.onerror = () => reject(tx.error || new Error('replaceChannels: transacción fallida'));
+            tx.onabort = () => reject(tx.error || new Error('replaceChannels: transacción abortada'));
+        });
+        if (skipped > 0) console.warn(`⚠️ replaceChannels: ${skipped} canales sin clave descartados`);
+        return result;
     }
 
     /**

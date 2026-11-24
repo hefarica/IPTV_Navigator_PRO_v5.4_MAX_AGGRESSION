@@ -52,6 +52,10 @@ const ADAPTER_4K6K = path.join(REPO, 'IPTV_v5.4_MAX_AGGRESSION', 'frontend', 'js
 const EMIT_4K6K = path.join(REPO, 'IPTV_v5.4_MAX_AGGRESSION', 'frontend', 'js', 'ape-v9', 'ape-4k6k-intent-emit.js');
 // Modo universal (aditivo, OFF por defecto): sólo se carga en el sandbox si se pide con --universal.
 const EMIT_UNIVERSAL = path.join(REPO, 'IPTV_v5.4_MAX_AGGRESSION', 'frontend', 'js', 'ape-v9', 'ape-universal-emit.js');
+// Matriz de salidas (aditiva, OFF por defecto): la MISMA tabla que usa el panel
+// `#ape-output-matrix` para probar las 8 salidas. Con --matrix on el generador
+// declara `#EXT-X-APE-OUTPUT-MATRIX` por canal; sin él no se carga ni se enciende.
+const MOD_MATRIX = path.join(REPO, 'IPTV_v5.4_MAX_AGGRESSION', 'frontend', 'js', 'ape-v9', 'ape-output-matrix.js');
 // Config de perfiles que la página carga SIEMPRE (index-v4.html L4370): sin ella el
 // emisor usa su fallback de buffer, así que para medir "de verdad" hay que cargarla.
 const PROFILES_CFG = path.join(REPO, 'IPTV_v5.4_MAX_AGGRESSION', 'frontend', 'js', 'ape-v9', 'ape-profiles-config.js');
@@ -64,7 +68,7 @@ const RECONCILE_12P = path.join(REPO, 'IPTV_v5.4_MAX_AGGRESSION', 'frontend', 'j
 // ── CLI ────────────────────────────────────────────────────────────────────
 function parseArgs(argv) {
     const a = argv.slice(2);
-    const o = { inputs: [], mode: 'both', out: null, deterministic: false, determinismCheck: false, mode12p: null, mode4k6k: null, modeUniversal: null };
+    const o = { inputs: [], mode: 'both', out: null, deterministic: false, determinismCheck: false, mode12p: null, mode4k6k: null, modeUniversal: null, modeMatrix: null };
     for (let i = 0; i < a.length; i++) {
         const t = a[i];
         if (t === '--mode') o.mode = a[++i];
@@ -82,6 +86,10 @@ function parseArgs(argv) {
         else if (t === '--universal') {
             const nx2 = a[i + 1];
             if (nx2 && /^(on|off|1|true|0)$/.test(nx2)) { o.modeUniversal = nx2; i++; } else o.modeUniversal = 'on';
+        }
+        else if (t === '--matrix') {
+            const nx3 = a[i + 1];
+            if (nx3 && /^(on|off|1|true|0)$/.test(nx3)) { o.modeMatrix = nx3; i++; } else o.modeMatrix = 'on';
         }
         else if (t === '--profiles') o.profiles = true;
         else if (t === '-h' || t === '--help') o.help = true;
@@ -264,7 +272,7 @@ function mergeInheritance(text, channels, modeOverride) {
     // al heredar del archivo: 0 de 6), y en modo passthrough el merge solo deja pasar
     // las declaraciones de esta lista; sin esto la medicion mentiria: el navegador la
     // tendria y la comprobacion diria que no.
-    const DECL_RE = /^#EXT-X-(STREAM-INF|APE-UPSCALE|APE-STREAM-TRUTH|APE-FPS-SOURCE|APE-CODEC-SOURCE|APE-CODEC-FALLBACK-CHAIN|APE-PERCEPTUAL-4K|APE-4K6K-INTENT|APE-AI-SR-ENABLED|APE-UNIVERSAL)/;
+    const DECL_RE = /^#EXT-X-(STREAM-INF|APE-UPSCALE|APE-STREAM-TRUTH|APE-FPS-SOURCE|APE-CODEC-SOURCE|APE-CODEC-FALLBACK-CHAIN|APE-PERCEPTUAL-4K|APE-4K6K-INTENT|APE-AI-SR-ENABLED|APE-UNIVERSAL|APE-OUTPUT-MATRIX)/;
     for (let bi = 0; bi < starts.length; bi++) {
         const s = starts[bi];
         const e = (bi + 1 < starts.length) ? starts[bi + 1] : lines.length;
@@ -533,7 +541,7 @@ function makeSandbox(mode, deterministic) {
 }
 
 // ── Cargar el emisor (lee; NO modifica) ────────────────────────────────────
-function loadEmitter(mode, deterministic, mode12p, withProfiles, mode4k6k, modeUniversal) {
+function loadEmitter(mode, deterministic, mode12p, withProfiles, mode4k6k, modeUniversal, modeMatrix) {
     const raw = fs.readFileSync(EMITTER);
     const before = sha256(raw);
     const src = raw.toString('utf8')
@@ -627,6 +635,19 @@ function loadEmitter(mode, deterministic, mode12p, withProfiles, mode4k6k, modeU
             layerUniversal = 'ERROR: ' + String((e && e.message) || e);
         }
     }
+    // ── MATRIZ DE SALIDAS (aditiva): la tabla del panel, cargada en el sandbox ──
+    // El generador NO la necesita: sólo llama a `APE_OUTPUT_MATRIX.tagFor` cuando el
+    // flag está encendido y el módulo existe. OFF = sandbox idéntico al de antes.
+    let layerMatrix = null;
+    if (modeMatrix && modeMatrix !== 'off' && fs.existsSync(MOD_MATRIX)) {
+        try {
+            vm.runInContext(fs.readFileSync(MOD_MATRIX, 'utf8'), ctx, { filename: 'ape-output-matrix.js', timeout: 60000 });
+            vm.runInContext('APE_OUTPUT_MATRIX_TAGS = true;', ctx, { filename: 'matrix-flag.js', timeout: 5000 });
+            layerMatrix = (sandbox.APE_OUTPUT_MATRIX && sandbox.APE_OUTPUT_MATRIX.VERSION) || 'cargada';
+        } catch (e) {
+            layerMatrix = 'ERROR: ' + String((e && e.message) || e);
+        }
+    }
     let loadError = null;    try {
         vm.runInContext(src, ctx, { filename: 'm3u8-typed-arrays-ultimate.js', timeout: 120000 });
 
@@ -636,6 +657,7 @@ function loadEmitter(mode, deterministic, mode12p, withProfiles, mode4k6k, modeU
     console.log('   [12p] flag=' + (mode12p || 'apagada') + ' · modulo=' + (layer12p || 'no cargado') + ' · configPerfiles=' + (profilesCfg || 'no cargada') + ' · puente12p=' + (reconcile12p || 'no cargado'));
     if (mode4k6k) console.log('   [4k6k] flag=' + mode4k6k + ' · modulo=' + (layer4k6k || 'no cargado'));
     if (modeUniversal) console.log('   [universal] flag=' + modeUniversal + ' · modulo=' + (layerUniversal || 'no cargado'));
+    if (modeMatrix) console.log('   [matrix] flag=' + modeMatrix + ' · modulo=' + (layerMatrix || 'no cargado'));
     if (layerBuf) console.log('   [buf] condicion de buffer=' + layerBuf + ' · delta=' + ((sandbox.APE_BUF_DEMAND && sandbox.APE_BUF_DEMAND.deltaFromScope(sandbox)) || '?') + ' %');
     const after = sha256(fs.readFileSync(EMITTER));
     return {
@@ -655,6 +677,7 @@ function loadEmitter(mode, deterministic, mode12p, withProfiles, mode4k6k, modeU
         layer12p: layer12p,
         layer4k6k: layer4k6k,
         layerUniversal: layerUniversal,
+        layerMatrix: layerMatrix,
         layerBuf: layerBuf,
         stats4k6k: stats4k6k,
         emitterHash: before,
@@ -877,7 +900,7 @@ async function main() {
         for (const label of MODES[opt.mode]) {
             const modeTag = MODE_TAG[label];
             const gen = async () => {
-                const r = loadEmitter(modeTag, opt.deterministic, opt.mode12p, opt.profiles, opt.mode4k6k, opt.modeUniversal);
+                const r = loadEmitter(modeTag, opt.deterministic, opt.mode12p, opt.profiles, opt.mode4k6k, opt.modeUniversal, opt.modeMatrix);
                 const run = { label, modeTag, emitterUnchanged: r.emitterUnchanged, loadError: r.loadError, exportErr: r.exportErr, exportAvailable: typeof r.fn === 'function' };
                 if (typeof r.fn !== 'function') return { run, text: null };
                 let out;

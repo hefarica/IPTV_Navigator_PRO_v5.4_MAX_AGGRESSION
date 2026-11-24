@@ -2802,6 +2802,25 @@
                     window.APE_UNIVERSAL_MODE = v;
                 })();
                 </script>
+                <script>
+                /* [2026-11-23 · d= DEL ENVOLTORIO PULSE] El generador envuelve cada URL al
+                   endpoint /pulse y le pone un `d=` que describe al reproductor. Ese `d=` era
+                   UNA CONSTANTE para todos los canales: {t:generic,s:unknown,r:2048,w:1920,
+                   h:1080,f:30}, así que la URL del canal decía 1080p SDR mientras su
+                   #EXTSHIMOTT declaraba otra franja/resolución y la URL no decía el perfil.
+                   Aquí se enciende el `d=` COHERENTE (mismo dato que el tag: hdr de la fuente
+                   y p = perfil del canal), sólo para las listas que genera el panel. Los seis
+                   campos del dispositivo (t/s/r/w/h/f) no cambian.
+                   APAGADO ≠ roto: se apaga con localStorage['ape_pulse_device_meta'] = '0'
+                   (o window.APE_PULSE_DEVICE_META = false) y la lista vuelve a salir byte a
+                   byte como antes. El arnés headless no lo enciende: sus referencias medidas
+                   siguen intactas. */
+                (function () {
+                    var on = true;
+                    try { if (localStorage.getItem('ape_pulse_device_meta') === '0') on = false; } catch (e) { on = true; }
+                    window.APE_PULSE_DEVICE_META = on;
+                })();
+                </script>
                 <label for="publicationMode" style="margin-left:14px; color:var(--text-muted); font-size:0.85rem; font-weight:bold;">Modo:</label>
                 <select id="publicationMode"
                   onchange="window.APE_PUBLICATION_MODE=this.value; console.log('%c[PUB-MODE] '+this.value,'color:#0ea5e9;font-weight:bold;');"
@@ -4082,7 +4101,7 @@
   <script src="axios.min.js"></script>
 
   <!-- Core Modules -->
-  <script src="core/db-manager.js"></script>
+  <script src="core/db-manager.js?v=00cab317"></script>
   <script src="core/field-discovery.js"></script>
 
   <!-- Enriquecimiento incremental / Fuentes (DELTA System) -->
@@ -4475,7 +4494,7 @@
   <!-- 🎯 INTENCIÓN 4K/6K (aditiva) — una línea #EXT-X-APE-4K6K-INTENT por canal cuando
        la casilla del panel (⚙️ OPTIMIZACIÓN Y SALIDAS → INTENCIÓN:) está encendida.
        Carga ANTES del generador: el generador la llama por canal. Apagada = lista intacta. -->
-  <script src="js/ape-v9/ape-4k6k-intent-emit.js?v=19861e4b"></script>
+  <script src="js/ape-v9/ape-4k6k-intent-emit.js?v=d70dbadb"></script>
   <!-- 🧮 CONDICIÓN DE BUFFER (aditiva) — entrada >= salida x (1 + delta), por canal.
        Carga ANTES del generador. Apagada (APE_12P_MODE sin encender) = lista byte a byte igual. -->
   <script src="js/ape-v9/buffer-input-demand.js?v=1.0.0-buf"></script>
@@ -4491,14 +4510,14 @@
        conservan, y la guía canónica 12P (muestra 12P + LAB v9.3) que se siguió. Carga
        ANTES del generador. Apagada = lista byte a byte igual que siempre. -->
   <script src="js/ape-v9/ape-universal-emit.js?v=1.0.0-uni"></script>
-<script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=a8d07a25"></script>
+<script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=dcf5a9b2"></script>
   <!-- 🪦 OMEGA SLOT REAPER — Pre-flight liberation of Xtream max_connections slots -->
   <script src="js/ape-v9/slot-reaper.js?v=1.0.0-omega-20260409"></script>
   <script src="js/ape-v9/m3u8-quality-upgrader-v2.js?v=2.0"></script>
   <script src="js/ape-v9/hud-typed-arrays.js?v=16.2-medido-20261122"></script>
   <!-- 🩺 APE GENERATION CONTROLLER — engancha botón health-check + generateHealthyList -->
   <!-- 🗃️ APE MEASUREMENT LEDGER — memoria durable: toda medición y todo plan aplicado -->
-  <script src="js/ape-v9/ape-measurement-ledger.js?v=20261121-preflight"></script>
+  <!-- 🗃️ MEASUREMENT LEDGER: el fichero js/ape-v9/ape-measurement-ledger.js NO EXISTE en disco (0 ficheros con ese nombre en todo frontend/), así que su etiqueta sólo dejaba un error de carga en la consola. Se repone cuando el módulo exista. -->
   <script src="js/ape-v9/ape-speed-meter-v9.js?v=20261121-preflight"></script>
   <script src="js/ape-v9/ape-speedmeter-bridge.js?v=20261121-preflight"></script>
   <script src="js/ape-v9/generation-controller.js?v=20261121-preflight"></script>
@@ -4538,7 +4557,7 @@
      IndexedDB por ape-lab-import-helper.js. Debe cargar ANTES de app.js. -->
 <script src="js/ape-ui-persistence.js?v=20261106-persist2"></script>
 
-<script src="app.js?v=20261119-noprobe"></script>
+<script src="app.js?v=312f5055"></script>
   <script src="js/ape-headers-preview-fix.js?v=1.0"></script>
 
   <!-- 🔒 PERSISTENCIA: mantiene la biblioteca de servidores sincronizada
@@ -4787,7 +4806,7 @@
   <script src="js/ape-v9/vpn-integration-supremo.js"></script>
   <!-- Latency Rayo Supremo v1.0 (23 metadatos por canal) -->
   <script src="js/ape-v9/latency-rayo-supremo.js"></script>
-  <script src="js/ape-v9/streaming/sufficiency-law-v1.js?v=20261108"></script>
+  <script src="js/ape-v9/streaming/sufficiency-law-v1.js?v=68746e85"></script>
   <!-- Productor de medicion que la ley de suficiencia exige: bins de 1 s sobre
        ventana de 5-10 s desde Resource Timing. Sin el, el panel no puede pasar
        de NO_MEASUREMENT y muestra UNSTABLE/79.97% sin dato real. -->
@@ -5245,7 +5264,8 @@
   </script>
 
   <script src="js/ape-v9/generation-output-panel.js?v=hybrid1file-20261115" defer></script>
-<script src="js/ape-v9/output-status-panel.js?v=20261119-local2" defer></script>
+<script src="js/ape-v9/ape-output-matrix.js?v=1.0.0"></script>
+<script src="js/ape-v9/output-status-panel.js?v=20261124-matrix2" defer></script>
 
   <!-- 🎛️ MÓDULO DE IMAGEN — el panel vive DENTRO de la pestaña Telemetría.
        El script se carga aquí (una sola vez, global) y el div está en

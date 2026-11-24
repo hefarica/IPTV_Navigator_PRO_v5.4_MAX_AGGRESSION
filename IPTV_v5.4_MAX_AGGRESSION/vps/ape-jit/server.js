@@ -4444,7 +4444,7 @@ const MIME = {
 function log(...a) { console.log(new Date().toISOString(), ...a); }
 function redactUpstreamUrls(message) { return String(message).replace(/https?:\/\/[^\s"'<>]+/gi, '[upstream-url]'); }
 
-function setBaseHeaders(res) {
+function setBaseHeaders(res, req) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   /* POST y DELETE estaban fuera de la lista, asi que el navegador rechazaba
    * con preflight CORS TODOS los botones del panel: declarar, auto, guardar
@@ -4452,7 +4452,21 @@ function setBaseHeaders(res) {
    * El panel vive en otro origen (127.0.0.1:5500 en local, el VPS en prod). */
   res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Max-Age', '600');
-  res.setHeader('Access-Control-Allow-Headers', 'Range, Origin, X-Requested-With, Content-Type, Accept, Accept-Encoding');
+  /* [2026-11-24 · MEDIDO] El panel vive en OTRO origen (127.0.0.1:5500 en local)
+   * y estas rutas son /jit/live/…: si el cliente añade UNA cabecera propia, el
+   * navegador manda un OPTIONS previo. Esta lista sólo admitía las de siempre,
+   * así que el preflight se rechazaba y el navegador no dejaba leer la
+   * respuesta — consola real del operador:
+   *   "Request header field x-playback-session-id is not allowed by
+   *    Access-Control-Allow-Headers in preflight response".
+   * Con Allow-Origin '*' no viajan credenciales, así que reflejar lo pedido no
+   * amplía nada que el '*' no permitiera ya. La lista fija queda de respaldo. */
+  res.setHeader('Access-Control-Allow-Headers', 'Range, Origin, X-Requested-With, Content-Type, Accept, Accept-Encoding, x-playback-session-id, x-playback-rate, x-request-id');
+  if (req && req.headers && req.headers['access-control-request-headers']) {
+    res.setHeader('Access-Control-Allow-Headers',
+      'Range, Origin, X-Requested-With, Content-Type, Accept, Accept-Encoding, ' +
+      String(req.headers['access-control-request-headers']));
+  }
   res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Accept-Ranges, Content-Length, ETag, Server-Timing');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   res.setHeader('Timing-Allow-Origin', '*');
@@ -6453,7 +6467,7 @@ const CAPACITY_MIN_RATIO = 0.30;   // y ademas, al menos 30% del fps de la fuent
 
 const server = http.createServer((req, res) => {
   installTiming(req, res);
-  setBaseHeaders(res);
+  setBaseHeaders(res, req);
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
     return res.end();

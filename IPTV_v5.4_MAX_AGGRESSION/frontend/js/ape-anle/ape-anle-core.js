@@ -136,10 +136,20 @@
 
                     lastProcessedHash = currentHash;
                     lastCount = master.length;
-                    processingInFlight = true;
 
-                    console.log(`🧬 [ANLE-Core] Detected ${master.length} channels — processing ALL`);
-                    this.processChannelBatch(master).finally(() => {
+                    // 🚀 [2026-11-24 · MEDIDO] Antes se mandaba el catálogo ENTERO a
+                    // processChannelBatch en cada cambio, y el batch saltaba uno a uno los ya
+                    // procesados: 1606 ms medidos con 28 655 canales y 0 aumentados. Ahora se
+                    // filtra aquí: si no queda ninguno pendiente, no hay pasada que hacer.
+                    const pendientes = master.filter(ch => ch && ch._anleProcessed !== true);
+                    if (pendientes.length === 0) {
+                        console.log(`🧬 [ANLE-Core] ${master.length} canales ya procesados — nada que hacer`);
+                        return;
+                    }
+
+                    processingInFlight = true;
+                    console.log(`🧬 [ANLE-Core] Detected ${master.length} channels — ${pendientes.length} pendientes`);
+                    this.processChannelBatch(pendientes).finally(() => {
                         processingInFlight = false;
                     });
                 }, 5000);

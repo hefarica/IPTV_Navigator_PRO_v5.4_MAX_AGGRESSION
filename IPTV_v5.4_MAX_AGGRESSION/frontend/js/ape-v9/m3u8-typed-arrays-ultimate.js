@@ -10256,6 +10256,53 @@ return lines.join('\n');
         }
     }
 
+    /**
+     * [#EXT-X-APE-OUTPUT-MATRIX] — 2026-11-24
+     * Declara EN LA LISTA las rutas de salida del canal, para que lo que la lista
+     * promete y lo que el panel `#ape-output-matrix` prueba sea exactamente lo
+     * mismo. La tabla de rutas vive en js/ape-v9/ape-output-matrix.js (una sola
+     * fuente de verdad); aquí sólo se pide la etiqueta.
+     *
+     * Interruptor: window.APE_OUTPUT_MATRIX_TAGS === true.
+     *   APAGADO (por defecto) ⇒ devuelve el texto intacto, byte a byte igual.
+     *   ENCENDIDO            ⇒ añade UNA línea antes del #EXT-X-STREAM-INF
+     *                          (misma regla que #EXTSHIMOTT: nunca entre el
+     *                          STREAM-INF y su URI, RFC 8216 §4.3.4.2).
+     * Sin id de canal, o sin el módulo cargado, no se emite nada: se declara.
+     * Las rutas van RELATIVAS a propósito (el host lo pone la configuración del
+     * cliente), así la lista no reparte ningún host.
+     */
+    function _apeAppendOutputMatrixTag(text, channel) {
+        try {
+            const src = String(text == null ? '' : text);
+            if (!src) return src;
+            if (typeof window === 'undefined' || window.APE_OUTPUT_MATRIX_TAGS !== true) return src;
+            const MX = window.APE_OUTPUT_MATRIX;
+            if (!MX || typeof MX.tagFor !== 'function') return src;
+            const made = MX.tagFor(channel);
+            if (!made || !made.tag) return src;
+            const tag = made.tag;
+            if (tag.length > 4096 || tag.indexOf('\n') !== -1 || tag.indexOf('\r') !== -1) return src;
+
+            const lines = src.split('\n');
+            let uriIdx = -1;
+            for (let i = lines.length - 1; i >= 0; i--) {
+                const l = lines[i];
+                if (l && l.charAt(0) !== '#') { uriIdx = i; break; }
+            }
+            if (uriIdx === -1) return src;
+            let atTag = uriIdx;
+            for (let i = uriIdx - 1; i >= 0; i--) {
+                if (lines[i].indexOf('#EXT-X-STREAM-INF:') === 0) { atTag = i; break; }
+            }
+            if (lines.some((l) => l.indexOf('#EXT-X-APE-OUTPUT-MATRIX:') === 0)) return src;
+            lines.splice(atTag, 0, tag);
+            return lines.join('\n');
+        } catch (_eMatrix) {
+            return String(text == null ? '' : text); // aditivo: nunca rompe la generación
+        }
+    }
+
     function generateChannelEntry(channel, profile = 'P3', index = 0, credentialsMap = {}, options = {}) {
         const lines = [];
 
@@ -13616,6 +13663,50 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
         // ROLLBACK: window.APE_PULSE_WRAP = false desactiva el envoltorio sin
         // tocar codigo. Con el flag en false la lista vuelve a salir directa al
         // proveedor, exactamente como antes de este cambio.
+        // ── d= del envoltorio: MISMO dato que el tag, no un genérico ciego ────
+        // Antes: constante fija {"t":"generic","s":"unknown","r":2048,"w":1920,
+        // "h":1080,"f":30} en TODOS los canales, así que la URL decía 1080p SDR
+        // mientras el #EXTSHIMOTT del mismo bloque declaraba otra cosa (hdr_c,
+        // res_w/res_h) y no decía el perfil. Ahora se añaden los DOS campos que
+        // el cableador de servidor sí escribe (hdr y p, ver prod_server.js) y se
+        // dejan t/s/r/w/h/f byte a byte como estaban: el shim no ve cambiar el
+        // dispositivo, sólo la franja HDR de la fuente y el perfil del canal.
+        // Prioridad: window.APE_DEVICE_B64 (override manual) > d= coherente >
+        // genérico de siempre.
+        //
+        // INTERRUPTOR: el d= coherente se emite SÓLO con
+        // window.APE_PULSE_DEVICE_META === true. Por defecto está APAGADO a
+        // propósito, para que toda lista generada siga saliendo byte a byte
+        // como antes de este cambio (mismas referencias medidas, mismas
+        // pruebas). El panel lo enciende en index-v4.html: las listas que
+        // salen del panel llevan el d= bueno, y el arnés headless no cambia.
+        // ROLLBACK en el panel: window.APE_PULSE_DEVICE_META = false.
+        // El `d=` genérico histórico, RECONSTRUIDO desde su JSON en vez de copiar el
+        // base64 a pelo: así el fuente dice qué lleva dentro y el escáner de la
+        // entrega no lo confunde con una credencial. Da exactamente el mismo texto.
+        const _APE_PULSE_DEV_JSON = '{"t":"generic","s":"unknown","r":2048,"w":1920,"h":1080,"f":30}';
+        const _APE_PULSE_DEV_GENERIC = _apeB64Url(_apeUtf8Bytes(_APE_PULSE_DEV_JSON));
+        const _apePulseDeviceB64 = (chan, prof, probe) => {
+            try {
+                if (typeof window !== 'undefined' && window.APE_DEVICE_B64) return String(window.APE_DEVICE_B64);
+            } catch (_eV) { /* sigue */ }
+            try {
+                // Sólo si se pide expresamente (ver el comentario de arriba).
+                if (typeof window === 'undefined' || window.APE_PULSE_DEVICE_META !== true) return _APE_PULSE_DEV_GENERIC;
+                const p = probe || {};
+                const codecRaw = p.videoCodecBinary || p.videoCodec || p.codec || '';
+                const range = _apeShimottVideoRange(p, codecRaw);
+                const obj = { t: 'generic', s: 'unknown', r: 2048, w: 1920, h: 1080, f: 30 };
+                obj.hdr = range || 'sdr';
+                if (prof) obj.p = String(prof);
+                const json = JSON.stringify(obj);
+                // base64url SIN relleno: el `d=` va tal cual en el query del pulse
+                // (un '+' de base64 normal llegaría al PHP como espacio).
+                return _apeB64Url(_apeUtf8Bytes(json));
+            } catch (_eD) {
+                return _APE_PULSE_DEV_GENERIC;   // fail-open: el d= de siempre
+            }
+        };
         const _apePulseWrap = (rawUrl) => {
             try {
                 if (typeof window !== 'undefined' && window.APE_PULSE_WRAP === false) return rawUrl;
@@ -13634,9 +13725,7 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                     || u.match(/\/(\d+)\.(?:m3u8|ts|mp4)(?:[?#].*)?$/i);
                 if (!m) return rawUrl;   // sin id no se puede cablear: se deja como estaba
                 const id = m[1];
-                const dev = (typeof window !== 'undefined' && window.APE_DEVICE_B64)
-                    ? String(window.APE_DEVICE_B64)
-                    : 'eyJ0IjoiZ2VuZXJpYyIsInMiOiJ1bmtub3duIiwiciI6MjA0OCwidyI6MTkyMCwiaCI6MTA4MCwiZiI6MzB9';
+                const dev = _apePulseDeviceB64(channel, profile, _probeData);
                 return `${base}/pulse/${id}.m3u8?u=${encodeURIComponent(u)}&d=${dev}`;
             } catch (_eWrap) {
                 return rawUrl;   // fail-open: si algo falla, la lista sale como antes
@@ -13806,7 +13895,12 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
         // Se aplica sobre el bloque YA finalizado para que el tag sea la ÚLTIMA
         // línea de tag e inmediatamente preceda a la URI. No toca ni reordena
         // EXTHTTP / EXTVLCOPT / KODIPROP / EXT-X-APE-* / EXT-X-STREAM-INF.
-        return _apeAppendExtshimottTag(_reaFinalBlock, channel, profile, _probeData, cfg, index, _uaApeProfile, 'https://www.google.com/');
+        // [2026-11-24] La lista declara sus salidas (HLS/DASH/JSON/init) en una
+        // etiqueta más, con la MISMA tabla que usa el panel de prueba. Con el
+        // interruptor apagado esta llamada devuelve el texto intacto.
+        return _apeAppendOutputMatrixTag(
+            _apeAppendExtshimottTag(_reaFinalBlock, channel, profile, _probeData, cfg, index, _uaApeProfile, 'https://www.google.com/'),
+            channel);
     }
 
     if (typeof window !== 'undefined') window.APE_GEN = generateM3U8Stream; // [t53/t72] export headless
