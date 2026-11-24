@@ -153,6 +153,14 @@
                 return true;
             }
 
+            // ⛔ 2026-11-24: PROHIBIDO borrar listas del operador desde un upload.
+            // Un fallo de espacio no autoriza a decidir qué catálogo sobra
+            // (no-delete / zero channel loss). Sólo se purgan chunks huérfanos;
+            // si aun así falta disco, se falla con mensaje claro y decide el humano.
+            console.warn('[TURBO] Borrado automático de listas DESACTIVADO por seguridad. ' +
+                         'Libera espacio manualmente en el VPS si hace falta.');
+            return false;
+
             // Step 3: Get list of files, delete old ones (keep latest only)
             const listResp = await fetch(TURBO_CONFIG.api_base + TURBO_CONFIG.list_endpoint, {
                 signal: AbortSignal.timeout(10000)
@@ -421,6 +429,14 @@
     // ═══════════════════════════════════════════════
 
     async function turboUpload() {
+        // ✅ 2026-11-24: un solo pipeline confiable (chunks SHA-256 + placeholder streaming).
+        // El camino antiguo recomprimía un .gz (gzip-de-gzip) y llamaba a un finalize que
+        // añadía .m3u8 al nombre => publicaba corrupto. APEPublisher lo sustituye.
+        if (window.APEPublisher && window.gatewayManager) {
+            console.log('%c[TURBO] delegando a APEPublisher (PHP chunks + placeholder streaming)',
+                        'color:#38bdf8;font-weight:bold;');
+            return window.gatewayManager.upload();
+        }
         let file = (window.UPLOAD_STATE && window.UPLOAD_STATE.file)
                    || document.getElementById('gateway-file-input')?.files?.[0];
 
