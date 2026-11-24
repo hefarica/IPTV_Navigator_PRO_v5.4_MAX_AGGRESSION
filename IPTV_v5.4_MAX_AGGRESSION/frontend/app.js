@@ -4910,77 +4910,81 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             return;
         }
 
+        const previousCurrentServer = this.state.currentServer;
+        let catalogProcessingStarted = false;
         // ✅ V4.27.3: Establecer flag de bloqueo INMEDIATAMENTE después de validar campos
         this._connectionInProgress = true;
         console.log('🔒 [V4.27.3] Conexión bloqueada - procesando...');
 
-        // ✅ Usamos el normalizador: "line.ultra-8k.xyz" -> "http://line.ultra-8k.xyz"
-        const baseHost = this.normalizeXtreamBase(rawUrl);
-
-        if (!baseHost) {
-            alert('URL de servidor inválida');
-            this._connectionInProgress = false;  // ✅ V4.27.3: Liberar flag
-            return;
-        }
-
-        const endpoint = `${baseHost}/player_api.php`;
-
-        // ✅ V4.27.4: DETECCIÓN SIMPLE DE DUPLICADOS - SOLO POR URL BASE
-        const normalizedHost = baseHost.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
-        const existingServer = (this.state.activeServers || []).find(srv => {
-            const srvHost = (srv.baseUrl || '').replace(/^https?:\/\//, '').replace(/\/player_api\.php$/, '').replace(/\/$/, '').toLowerCase();
-            return srvHost === normalizedHost;
-        });
-
-        // ✅ V4.27.4 FIX: Verificación correcta (puede ser undefined)
-        let isReconnect = !!existingServer;
-        let sId;
-
-        if (isReconnect && existingServer) {
-            // ✅ URL YA EXISTE - usar servidor existente, sobrescribir canales
-            console.log(`🔄 [V4.27.4] Servidor "${existingServer.name || 'existente'}" - ACTUALIZANDO canales`);
-            this.showNotification(`🔄 Actualizando canales...`);
-            sId = existingServer.id;
-        } else {
-            // ✅ Servidor nuevo
-            sId = 'srv_' + Date.now();
-            isReconnect = false;
-        }
-        this.state.currentServer = {
-            id: sId,
-            name: document.getElementById('serverName')?.value.trim() || existingServer?.name || rawUrl,
-            baseUrl: endpoint,   // IMPORTANTE: con /player_api.php para internal use
-            username: user,
-            password: pass
-        };
-
-        // PhD-AUDIT FIX F3: Register provider host globally so Cortex
-        // permanently whitelists it (not just 10s user-initiated window).
+        // La preparación y la persistencia también pueden fallar: todo el
+        // recorrido que posee el bloqueo debe pasar por el mismo finally.
         try {
-            if (!Array.isArray(window.APE_USER_PROVIDER_HOSTS)) window.APE_USER_PROVIDER_HOSTS = [];
-            const hostOnly = baseHost.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-            if (hostOnly && !window.APE_USER_PROVIDER_HOSTS.includes(hostOnly)) {
-                window.APE_USER_PROVIDER_HOSTS.push(hostOnly);
+            // ✅ Usamos el normalizador: "line.ultra-8k.xyz" -> "http://line.ultra-8k.xyz"
+            const baseHost = this.normalizeXtreamBase(rawUrl);
+
+            if (!baseHost) {
+                alert('URL de servidor inválida');
+                this._connectionInProgress = false;  // ✅ V4.27.3: Liberar flag
+                return;
             }
-        } catch (_) { /* noop */ }
 
-        // Persistir config inmediata
-        await this.saveActiveServers();
+            const endpoint = `${baseHost}/player_api.php`;
 
-        this.setLoading(true);
-        if (apiLabel) apiLabel.textContent = 'Player API (Xtream)';
+            // ✅ V4.27.4: DETECCIÓN SIMPLE DE DUPLICADOS - SOLO POR URL BASE
+            const normalizedHost = baseHost.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
+            const existingServer = (this.state.activeServers || []).find(srv => {
+                const srvHost = (srv.baseUrl || '').replace(/^https?:\/\//, '').replace(/\/player_api\.php$/, '').replace(/\/$/, '').toLowerCase();
+                return srvHost === normalizedHost;
+            });
 
-        // ✅ V4.27.3: Flag ya establecido arriba (antes de verificaciones)
+            // ✅ V4.27.4 FIX: Verificación correcta (puede ser undefined)
+            let isReconnect = !!existingServer;
+            let sId;
 
-        // ✅ V4.10: Iniciar barra de progreso
-        this.updateMiniProgress({
-            pct: 0,
-            status: "Conectando al servidor...",
-            state: "active"
-        });
-        this.appendEnrichLog("Iniciando conexión...");
+            if (isReconnect && existingServer) {
+                // ✅ URL YA EXISTE - usar servidor existente, sobrescribir canales
+                console.log(`🔄 [V4.27.4] Servidor "${existingServer.name || 'existente'}" - ACTUALIZANDO canales`);
+                this.showNotification(`🔄 Actualizando canales...`);
+                sId = existingServer.id;
+            } else {
+                // ✅ Servidor nuevo
+                sId = 'srv_' + Date.now();
+                isReconnect = false;
+            }
+            this.state.currentServer = {
+                id: sId,
+                name: document.getElementById('serverName')?.value.trim() || existingServer?.name || rawUrl,
+                baseUrl: endpoint,   // IMPORTANTE: con /player_api.php para internal use
+                username: user,
+                password: pass
+            };
 
-        try {
+            // PhD-AUDIT FIX F3: Register provider host globally so Cortex
+            // permanently whitelists it (not just 10s user-initiated window).
+            try {
+                if (!Array.isArray(window.APE_USER_PROVIDER_HOSTS)) window.APE_USER_PROVIDER_HOSTS = [];
+                const hostOnly = baseHost.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+                if (hostOnly && !window.APE_USER_PROVIDER_HOSTS.includes(hostOnly)) {
+                    window.APE_USER_PROVIDER_HOSTS.push(hostOnly);
+                }
+            } catch (_) { /* noop */ }
+
+            // Persistir config inmediata
+            await this.saveActiveServers();
+
+            this.setLoading(true);
+            if (apiLabel) apiLabel.textContent = 'Player API (Xtream)';
+
+            // ✅ V4.27.3: Flag ya establecido arriba (antes de verificaciones)
+
+            // ✅ V4.10: Iniciar barra de progreso
+            this.updateMiniProgress({
+                pct: 0,
+                status: "Conectando al servidor...",
+                state: "active"
+            });
+            this.appendEnrichLog("Iniciando conexión...");
+
             // ✅ USAMOS MOTOR AVANZADO (Live + VOD + Series en paralelo)
             console.log('⚡ Conectando a Xtream usando', baseHost);
             console.log(isReconnect ? '🔄 [Reconexión] Servidor existente, aplicando merge...' : '➕ [Nueva conexión] Agregando servidor...');
@@ -5034,6 +5038,7 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             });
             this.appendEnrichLog("Normalizando datos...");
 
+            catalogProcessingStarted = true;
             if (isReconnect && !append) {
                 // Merge: update existing, add new, remove old
                 const mergeResult = this.mergeServerChannels(rawChannels, this.state.currentServer);
@@ -5108,6 +5113,8 @@ El servidor analizará 26,000+ canales en ~10 minutos.
                 this.updateMiniProgress({ state: "hidden" });
             }, 2000);
 
+            // Igual que la conexión desde biblioteca: liberar antes de navegar.
+            this._connectionInProgress = false;
             this.showTab('analysis');
             const total = this.state.channelsMaster.length;
             const msg = isReconnect
@@ -5140,6 +5147,7 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             }
 
         } catch (err) {
+            if (!catalogProcessingStarted) this.state.currentServer = previousCurrentServer;
             console.error(err);
             // ✅ V4.10: Mostrar error en barra
             this.updateMiniProgress({
@@ -5152,9 +5160,9 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             this.setConnectionStatus(false, 'Error de conexión');
             alert(`❌ Error de conexión: ${err.message}`);
         } finally {
-            this.setLoading(false);
             // ✅ V4.10: Desbloquear cambio de tabs
             this._connectionInProgress = false;
+            this.setLoading(false);
         }
     }
 
@@ -5565,25 +5573,47 @@ El servidor analizará 26,000+ canales en ~10 minutos.
 
         let cachedMap = new Map();
         if (this.db) {
-            try { cachedMap = await this.db.getCachedMetadata(); } catch (e) { }
+            console.time('Metadata cache');
+            try {
+                cachedMap = await this.db.getCachedMetadata();
+            } catch (e) {
+                console.warn('⚠️ Caché de metadatos no disponible; se conserva el catálogo recibido:', e);
+            } finally {
+                console.timeEnd('Metadata cache');
+            }
         }
 
         const enriched = [];
         const toSave = [];
+        const normalizeMetadataSource = value => typeof value === 'string'
+            ? value.replace(/\/+$/, '').replace(/\/player_api\.php$/i, '').replace(/\/+$/, '') : '';
+        const metadataSource = normalizeMetadataSource(serverObj.baseUrl);
 
         // ✅ Usar cascaded (con fuentes combinadas) en lugar de normalized
-        cascaded.forEach(ch => {
+        // Ceder al navegador entre tramos mantiene el progreso y los controles
+        // receptivos sin omitir canales ni cambiar su orden o sus heurísticas.
+        let lastEnrichmentYield = performance.now();
+        for (const ch of cascaded) {
             const id = this.db ? this.db.generateChannelId(ch) : null;
-            const cached = id ? cachedMap.get(id) : null;
+            const candidate = id ? cachedMap.get(id) : null;
+            // Un TVG-ID puede existir en varios proveedores con metadatos
+            // distintos. Reutilizar sólo la caché cuyo origen es este servidor.
+            const cached = candidate && metadataSource &&
+                normalizeMetadataSource(candidate.serverUrl) === metadataSource ? candidate : null;
 
             if (cached) {
-                enriched.push({ ...ch, ...cached, url: ch.url, _fromCache: true });
+                enriched.push({ ...ch, ...cached, id: ch.id, serverId: ch.serverId,
+                    _serverId: ch._serverId, serverName: ch.serverName, url: ch.url, _fromCache: true });
             } else {
                 const processed = this.enrichChannel(ch);
                 enriched.push(processed);
                 toSave.push(processed);
             }
-        });
+            if (performance.now() - lastEnrichmentYield >= 16) {
+                await new Promise(resolve => setTimeout(resolve, 0));
+                lastEnrichmentYield = performance.now();
+            }
+        }
 
         // V4.5.1: Asignación secuencial de números (Critico Fase 4)
         enriched.forEach((ch, idx) => {
@@ -5597,7 +5627,10 @@ El servidor analizará 26,000+ canales en ~10 minutos.
         });
 
         if (this.db && toSave.length > 0) {
-            this.db.saveChannelsBulk(toSave, this.state.currentServer.baseUrl).catch(e => console.error(e));
+            // El origen pertenece a esta operación, no al servidor antes seleccionado.
+            await this.db.saveChannelsBulk(toSave, serverObj.baseUrl).catch(e =>
+                console.warn('⚠️ No se pudo actualizar la caché de metadatos:', e)
+            );
         }
 
         // --- Active Servers Management ---
@@ -5704,13 +5737,9 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             // 🔒 V4.18.3: FIX CRÍTICO - Usar upsert en lugar de overwrite
             this.upsertServer(newServerEntry);
 
-            // ✅ V4.27: Limpiar solo canales de ESTE servidor en IndexedDB (no todos)
-            if (this.db && typeof this.db.clearChannelsByServer === 'function') {
-                const serverUrl = (serverObj.baseUrl || '').replace(/\/player_api\.php$/, '');
-                this.db.clearChannelsByServer(serverUrl).catch(e =>
-                    console.warn('⚠️ No se pudo limpiar canales del servidor en IndexedDB:', e)
-                );
-            }
+            // La caché se actualiza por upsert arriba. Una limpieza asíncrona aquí
+            // podía borrar las escrituras recién hechas; el catálogo vigente se
+            // deduplica por servidor y se persiste completo a continuación.
         }
 
         // Reset current view to master
@@ -8304,7 +8333,12 @@ El servidor analizará 26,000+ canales en ~10 minutos.
                 if (dot) dot.style.background = '#38bdf8';
                 if (text) text.textContent = 'Conectando al servidor…';
             } else {
-                if (this.state.channels.length === 0) {
+                // Una vista filtrada vacía no equivale a una conexión vacía.
+                // Conservar también el resultado explícito de éxito/error.
+                if (text && text.textContent === 'Conectando al servidor…' &&
+                    (this.state.channelsMaster || []).length > 0) {
+                    this.setConnectionStatus(true, `Conectado · ${this.state.channelsMaster.length} ítems cargados`);
+                } else if (text && text.textContent === 'Conectando al servidor…') {
                     statusChip.style.borderColor = 'rgba(148,163,184,0.45)';
                     if (dot) dot.style.background = '#38bdf8';
                     if (text) text.textContent = 'Esperando conexión…';
@@ -8582,6 +8616,11 @@ El servidor analizará 26,000+ canales en ~10 minutos.
         this.state.filterLanguage = 'ALL';
 
         // 2. Actualizar UI
+        for (const [id, value] of Object.entries({ searchQuery: '', filterTier: 'ALL',
+            filterCodec: 'ALL', filterLanguage: 'ALL' })) {
+            const control = document.getElementById(id);
+            if (control) control.value = value;
+        }
         this.renderFilterBuilder();
         this.state.channels = [...this.state.channelsMaster];
         this.renderTable();
@@ -11609,10 +11648,25 @@ El servidor analizará 26,000+ canales en ~10 minutos.
 
         console.log(`🔌 Conectando: ${server.name}`);
         this.showNotification(`🔌 ${isReconnect ? 'Actualizando' : 'Conectando'} ${server.name}...`, false);
-        this.setLoading(true);
+        const previousCurrentServer = this.state.currentServer;
+        let catalogProcessingStarted = false;
         this._connectionInProgress = true;
 
         try {
+            this.setLoading(true);
+            // Crear el contexto antes de descargar: la API y la persistencia
+            // deben usar la misma identidad, también al reconectar un alias.
+            const serverObj = {
+                ...server,
+                id: targetServerId,
+                name: server.name,
+                baseUrl: baseHost + '/player_api.php',
+                username: user,
+                password: pass,
+                active: true
+            };
+            this.state.currentServer = serverObj;
+
             // 📥 Cargar canales
             const rawChannels = await this.connectXuiApi(baseHost, user, pass);
 
@@ -11626,11 +11680,11 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             this.initServerProgress(server, rawChannels.length);
 
             // 🏷️ Asignar serverId a cada canal
-            console.log(`🏷️ [TELEMETRÍA] Asignando serverId=${server.id} a ${rawChannels.length} canales`);
+            console.log(`🏷️ [TELEMETRÍA] Asignando serverId=${targetServerId} a ${rawChannels.length} canales`);
             rawChannels.forEach((ch, idx) => {
-                ch.serverId = server.id;
+                ch.serverId = targetServerId;
                 ch.serverName = server.name;
-                if (!ch.id) ch.id = ch.stream_id || `${server.id}_${idx}`;
+                if (!ch.id) ch.id = ch.stream_id || `${targetServerId}_${idx}`;
 
                 // Actualizar progreso cada 1000 canales
                 if (idx % 1000 === 0) {
@@ -11660,15 +11714,7 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             // ✅ V4.27.5: USAR processChannels PARA APLICAR 4 CAPAS
             console.log(`🔧 [V4.27.5] Procesando canales con pipeline completo...`);
 
-            // Crear objeto servidor para processChannels
-            const serverObj = {
-                id: targetServerId,
-                name: server.name,
-                baseUrl: baseHost + '/player_api.php',
-                username: user,
-                password: pass,
-                active: true
-            };
+            // El objeto servidor de processChannels es el contexto creado arriba.
 
             // ✅ V4.27.5: processChannels aplica automáticamente:
             // - normalizeChannel (4 capas: base, heuristics, tech, meta)
@@ -11678,6 +11724,7 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             // - Actualización de activeServers (upsert)
             // - Renderizado de UI
             const appendMode = isReconnect; // Si reconecta, merge; si nuevo, reemplaza
+            catalogProcessingStarted = true;
             await this.processChannels(rawChannels, serverObj, appendMode);
 
             console.log(`✅ [V4.27.5] Pipeline completado: ${rawChannels.length} canales procesados`);
@@ -11693,13 +11740,7 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             // - Renderizó UI (renderTable, renderServerList)
 
             // Solo actualizar currentServer
-            this.state.currentServer = {
-                id: targetServerId,
-                name: server.name,
-                baseUrl: baseHost + '/player_api.php',
-                username: user,
-                password: pass
-            };
+            this.state.currentServer = serverObj;
 
             // Cambiar a pestaña análisis y mostrar éxito
             // [2026-11-22 · MEDIDO] El flag se libera ANTES de showTab: la propia
@@ -11707,17 +11748,22 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             // nunca aterrizaba en Análisis tras conectar (6× "Tab switch blocked").
             this._connectionInProgress = false;
             this.showTab('analysis');
+            this.setConnectionStatus(true, `Conectado · ${this.state.channelsMaster.length} ítems cargados`);
             this.showNotification(`✅ ${server.name}: ${rawChannels.length} canales cargados`, false);
 
             console.log(`✅ [V4.27.5] Conectado: ${server.name} (${rawChannels.length} canales)`);
 
         } catch (err) {
+            if (!catalogProcessingStarted) {
+                this.state.currentServer = previousCurrentServer;
+            }
             console.error('❌ Error:', err);
+            this.setConnectionStatus(false, 'Error de conexión');
             this.showNotification(`❌ ${err.message}`, true);
         } finally {
-            this.setLoading(false);
             // 🔒 V4.18.2: Liberar flag de conexión en progreso
             this._connectionInProgress = false;
+            this.setLoading(false);
             console.log('🔓 [connectFromLibrary] _connectionInProgress = false');
             console.groupEnd();
         }
@@ -11795,19 +11841,26 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             return;
         }
 
-        // Limpiar canales previos de este servidor si existen (por seguridad)
-        const existingChannels = (this.state.channelsMaster || []).filter(ch => ch.serverId === server.id);
-        if (existingChannels.length > 0) {
-            console.log(`🧹 Limpiando ${existingChannels.length} canales previos`);
-            this.state.channelsMaster = this.state.channelsMaster.filter(ch => ch.serverId !== server.id);
-        }
+        // Conservar el catálogo previo hasta recibir uno válido. processChannels
+        // sustituye los canales de este servidor después de una descarga correcta.
 
         console.log(`➕ Agregando: ${server.name}`);
         this.showNotification(`➕ Agregando ${server.name}...`, false);
-        this.setLoading(true);
+        const previousCurrentServer = this.state.currentServer;
+        let catalogProcessingStarted = false;
         this._connectionInProgress = true;  // ✅ V4.27.4: Bloquear
 
         try {
+            this.setLoading(true);
+            const serverObj = {
+                ...server,
+                id: server.id,
+                name: server.name,
+                baseUrl: baseHost + '/player_api.php',
+                username: user,
+                password: pass
+            };
+            this.state.currentServer = serverObj;
             const rawChannels = await this.connectXuiApi(baseHost, user, pass);
 
             if (!Array.isArray(rawChannels) || rawChannels.length === 0) {
@@ -11816,14 +11869,7 @@ El servidor analizará 26,000+ canales en ~10 minutos.
 
             console.log(`📥 ${rawChannels.length} canales recibidos`);
 
-            // ✅ V4.27.2: Crear serverObj para processChannels
-            const serverObj = {
-                id: server.id,
-                name: server.name,
-                baseUrl: baseHost + '/player_api.php',
-                username: user,
-                password: pass
-            };
+            // ✅ V4.27.2: Usar el mismo serverObj para descarga y processChannels.
 
             // ✅ V4.27.2: Usar processChannels con append=true
             // Esto asegura:
@@ -11831,19 +11877,25 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             // - Canales enriquecidos con heurísticas
             // - Canales guardados en IndexedDB
             // - Canales de otros servidores NO se sobrescriben
+            catalogProcessingStarted = true;
             await this.processChannels(rawChannels, serverObj, true);  // append=true
 
             console.log(`📊 Total servidores activos: ${this.state.activeServers?.length || 0}`);
             console.log(`📊 Total canales (channelsMaster): ${this.state.channelsMaster?.length || 0}`);
 
+            this.setConnectionStatus(true, `Agregado · Total ${this.state.channelsMaster.length} ítems`);
             this.showNotification(`✅ ${server.name} agregado (${rawChannels.length} canales)`, false);
 
         } catch (e) {
+            if (!catalogProcessingStarted) {
+                this.state.currentServer = previousCurrentServer;
+            }
             console.error('Error en addServerToConnections:', e);
+            this.setConnectionStatus(false, 'Error de conexión');
             this.showNotification(`❌ Error: ${e.message}`, true);
         } finally {
-            this.setLoading(false);
             this._connectionInProgress = false;  // ✅ V4.27.4: Liberar
+            this.setLoading(false);
             console.groupEnd();
         }
     }
