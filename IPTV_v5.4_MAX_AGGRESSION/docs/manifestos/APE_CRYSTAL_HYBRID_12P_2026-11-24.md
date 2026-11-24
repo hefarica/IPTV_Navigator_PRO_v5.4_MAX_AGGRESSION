@@ -37,6 +37,7 @@ No se declara que el bitstream de entrada sea 4K: el tag emite
 | `tools/pulse/ape-crystal-hybrid-owner.cjs` | Override: todo `<8K` → `max`; 8K → `max8k`; `upscaleAll=false` recupera el contrato |
 | `IPTV_v5.4_MAX_AGGRESSION/contracts/lab/APE_FUSION_HIBRIDO_OPTIMO_12P.json` | Copia versionada en el repo |
 | `IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-crystal-hybrid.js` | Política de navegador (mismo contrato + owner); carga antes del generador |
+| `IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-lab-12p-reconcile.js` | Fuente v9.4 `439e2844…`; perfiles idénticos a v9.3 + `crystal_hybrid_ref` |
 | `tools/pulse/ape-pulse-wrap.js` | Carga JSON+módulo; `p` según ruta; tag `#EXT-X-APE-HYBRID-PULSE`; **no reescribe URLs firmadas** (`fp`/`sig`/`token`) |
 | `tools/url2/ape-url-builder.js` | `setPulseProfile`, `omitProfile` para rutas sin `p` |
 | `IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js` | Usa `APECrystalHybrid.seleccionarHibridoOwner`; `p` + tag; fallback si el módulo no carga |
@@ -89,7 +90,7 @@ Entrada `/pulse/9.m3u8?u=…&d=abc&fp=deadbeef`:
 | Test | Resultado |
 |---|---|
 | `tools/url2/test_ape_url_builder.js` | **25 PASS / 0 FAIL** |
-| `frontend/tests/rea-generation-dispatch.test.js` | **39 PASS / 0 FAIL** |
+| `frontend/tests/rea-generation-dispatch.test.js` | **39 PASS / 0 FAIL** (incluye `p=P1` + tag `ROUTE=max` por canal en el generador principal) |
 | `frontend/tests/ape-load-fast-and-pulse.test.js` | **44 PASS / 0 FAIL** |
 | `frontend/tests/gen-output-panel-format.test.js` | **36 PASS / 0 FAIL** |
 | `frontend/tests/ape-r17-doctrina-y-adyacencia.test.js` | **46 PASS / 0 FAIL** |

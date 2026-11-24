@@ -20,8 +20,11 @@
  *   cabía en 8 Mbps y cortaba por falta de megas.
  *
  * PROCEDENCIA (no se inventa ningún número)
- *   contracts/lab/APE_FUSION_PREMIUM_6K_4K_LAB_CALIBRATED_BULLETPROOF_v9.3.json
- *   1907351 B · sha256 dd194e042a106d6a9ae417110493dbe11a5a7d087ff1e5e8c2d544952eb9b8d8
+ *   contracts/lab/APE_FUSION_HIBRIDO_OPTIMO_12P.json
+ *   1913242 B · sha256 439e28447371cff6c849eef08989a5eed5403dd6ad001488527e9db3ada58c49
+ *   v9.4 = v9.3 + `_meta.crystal_hybrid` y `profiles.*.crystal_hybrid_ref`.
+ *   Los 12 payloads de perfil son idénticos a v9.3 (mismos bitrates/resolución/buffer);
+ *   el contrato híbrido se consume en frontend/js/ape-v9/ape-crystal-hybrid.js.
  *   Extraído con el generador de hechos del proyecto (script auxiliar, fuera del árbol).
  *   bitrate_bps = bitrate_mbps × 1e6 ; bitrate_floor_mbps = bandwidth_floor_bps / 1e6.
  *
@@ -31,10 +34,10 @@
 (function () {
     'use strict';
 
-    var SOURCE = "contracts/lab/APE_FUSION_PREMIUM_6K_4K_LAB_CALIBRATED_BULLETPROOF_v9.3.json";
-    var SOURCE_BYTES = 1907351;
-    var SOURCE_SHA256 = "dd194e042a106d6a9ae417110493dbe11a5a7d087ff1e5e8c2d544952eb9b8d8";
-    var VERSION = '1.2.0';
+    var SOURCE = "contracts/lab/APE_FUSION_HIBRIDO_OPTIMO_12P.json";
+    var SOURCE_BYTES = 1913242;
+    var SOURCE_SHA256 = "439e28447371cff6c849eef08989a5eed5403dd6ad001488527e9db3ada58c49";
+    var VERSION = '1.2.1-v94';
 
     // ── Los 12 perfiles, tal cual los declara el LAB ────────────────────────
     var PROFILES = {

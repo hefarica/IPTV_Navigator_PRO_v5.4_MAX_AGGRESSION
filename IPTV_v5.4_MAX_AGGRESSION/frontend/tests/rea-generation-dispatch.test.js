@@ -305,7 +305,16 @@ async function main() {
         assert.equal(uris.length, env.channels.length, 'one URI per channel');
         for (const uri of uris) {
             assert.ok(uri.startsWith(PULSE_BASE + '/pulse/'), 'la URL emitida es la envuelta: ' + uri);
+            // [HÍBRIDO APE CRYSTAL v9.4] El generador principal debe pedir el
+            // cartucho P1.5 con p=P1 para toda fuente <8K (owner override).
+            assert.ok(/[?&]p=P1(?:&|$)/.test(uri),
+                'la URL /pulse/ lleva p=P1 del híbrido: ' + uri);
         }
+        assert.equal((text.match(/#EXT-X-APE-HYBRID-PULSE:ROUTE=max;/g) || []).length,
+            env.channels.length, 'un tag híbrido ROUTE=max por canal');
+        assert.ok(text.includes('CARTRIDGE=P1.5'), 'el tag declara el cartucho P1.5');
+        assert.ok(text.includes('MODE=SIMULATED'), 'el tag declara salida simulada');
+        assert.ok(text.includes('EXECUTED=0'), 'el tag no afirma ejecución');
         const rewritten = uris.filter(uri => uri.indexOf('relay.invalid/cdn/') >= 0).length;
         assert.equal(rewritten, 0, 'NINGUNA línea de URL pasa por el plano /cdn/: ' + JSON.stringify(uris));
         assert.ok(!text.includes('#EXT-X-APE-CDN-PLANE'),

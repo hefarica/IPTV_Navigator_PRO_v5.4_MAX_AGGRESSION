@@ -90,6 +90,7 @@ Los doce perfiles declaran `execution.status=SIMULATED_EXECUTED`,
 | `IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-crystal-hybrid.js` | Política de navegador (contrato + override), carga antes del generador |
 | `tools/url2/ape-url-builder.js` | Plumbing `setPulseProfile`/`HYBRID_POLICY`; no decide la política |
 | `tools/pulse/ape-pulse-wrap.js` | Carga JSON+módulo; `p` de la ruta (max P1 / max8k P0); tag con ROUTE/CARTRIDGE/P/SOURCE/TARGET; no reescribe URLs firmadas |
+| `IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-lab-12p-reconcile.js` | Fuente actualizada a v9.4 (`439e2844…`); los 12 payloads de perfil son idénticos a v9.3 (solo añade `crystal_hybrid_ref`) |
 | `IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js` | Usa `APECrystalHybrid.seleccionarHibridoOwner`; `p` + tag en el cableado `/pulse`; fallback si el módulo no carga |
 | `IPTV_v5.4_MAX_AGGRESSION/generate_m3u8_v54_max_aggression.py` | `hybrid_pulse_url`/`hybrid_tag`; P1.5/P1 (P0 para 8K), sin gate por verificación |
 | `IPTV_v5.4_MAX_AGGRESSION/scripts/generate_m3u8_pep_v5.py` | Igual para el generador PEP |
