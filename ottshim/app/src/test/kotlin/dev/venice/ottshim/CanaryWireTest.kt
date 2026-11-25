@@ -46,6 +46,20 @@ class CanaryWireTest {
         assertTrue(out.contains("/canary/resource?id=opaque"))
     }
 
+    @Test fun processedHlsIsAcceptedAndBinResourcesAreProxied() {
+        val processedBase = "https://canary.invalid/lists/rea/index.m3u8".toHttpUrl()
+        val processedCatalog = catalog.replace(
+            Regex("https://canary\\.invalid/pulse/[a-z0-9]+\\.m3u8\\?m=proxy"),
+            "https://canary.invalid/lists/rea/index.m3u8"
+        )
+        val catalogOut = CanaryWire.catalog(processedCatalog, processedBase) { id, _ -> "/canary/media.m3u8?id=$id" }
+        assertEquals(3, catalogOut.lineSequence().count { it.startsWith("/canary/media.m3u8") })
+        val mediaOut = CanaryWire.media("#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXTINF:2,\nseg_000.bin\n#EXT-X-ENDLIST\n", processedBase) {
+            "/canary/resource?id=opaque"
+        }
+        assertTrue(mediaOut.contains("/canary/resource?id=opaque"))
+    }
+
     @Test fun rejectsBypassMasterAndNonHls() {
         val variants = listOf(media.replace(resource, "https://other.invalid$resource"),
             media.replace(resource, "/seg/raw123"), media + "#EXT-X-STREAM-INF:BANDWIDTH=42\n",

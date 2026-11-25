@@ -12,6 +12,9 @@ internal object CanaryWire {
     // Acepta el token firmado v2 y el token v1 que /pulse usa sin single-slot.
     private val resourcePath = Regex("/seg/(?:v2\\.[A-Za-z0-9_-]+\\.[a-f0-9]{64}|[A-Za-z0-9_-]{16,})")
     private val pulse = Regex("/pulse/[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\\.m3u8")
+    // HLS ya procesado por el ejecutor REA (recursos .bin), servido desde el mismo VPS.
+    private val processed = Regex("/lists/[A-Za-z0-9_.-]+/index\\.m3u8")
+    private val processedResource = Regex("/lists/[A-Za-z0-9_.-]+/seg_[0-9]+\\.bin")
     private val uriAttribute = Regex("(?:[:,])URI=\"([^\"]+)\"")
     private val resourceTags = setOf("#EXT-X-KEY", "#EXT-X-MAP")
     private val unsupported = setOf("#EXT-X-STREAM-INF", "#EXT-X-MEDIA", "#EXT-X-I-FRAME-STREAM-INF",
@@ -71,7 +74,10 @@ internal object CanaryWire {
                         "ott" in json.getString("tgt").split('|') && ids.add(id))
                     require(line.startsWith("https://") && '|' !in line)
                     val u = sameVps(base, line)
-                    require(pulse.matches(u.encodedPath) && u.queryParameterValues("m") == listOf("proxy"))
+                    val isPulse = pulse.matches(u.encodedPath) &&
+                        u.queryParameterValues("m") == listOf("proxy")
+                    val isProcessed = processed.matches(u.encodedPath) && u.query == null
+                    require(isPulse || isProcessed)
                     // Canonical output: no catchup, external player, nested playlists or origin headers.
                     val name = channelLine.substring(sep + 1).trim().ifEmpty { id }
                     out.append("#EXTINF:-1 tvg-id=\"").append(id).append("\",").append(name).append('\n')
@@ -111,6 +117,7 @@ internal object CanaryWire {
     }
 
     private fun proxyResource(base: HttpUrl, value: String): HttpUrl = sameVps(base, value).also {
-        require(resourcePath.matches(it.encodedPath) && it.query == null)
+        require((resourcePath.matches(it.encodedPath) || processedResource.matches(it.encodedPath)) &&
+            it.query == null)
     }
 }
