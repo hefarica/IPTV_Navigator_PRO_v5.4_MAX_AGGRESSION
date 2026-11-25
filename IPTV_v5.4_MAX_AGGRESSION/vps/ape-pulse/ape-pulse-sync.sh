@@ -23,7 +23,7 @@ BUILDER=/opt/ape-pulse/ape-url-builder.js
 LOG=/var/log/ara/pulse-sync.log
 LOCK=/run/ape-pulse-sync.lock
 POLICY_VERSION=1
-WRAPPER_VERSION=1.7.0   # 1.7.0: EN PAR con ape-pulse-wrap.js (const WRAPPER_VERSION)
+WRAPPER_VERSION=1.8.0   # 1.8.0: EN PAR con ape-pulse-wrap.js / ape-pulse-list.cjs
 # Esta constante es la clave de caché: el .state guarda wrapper_version y, si coincide
 # con el origen, la lista NO se re-envuelve (need=0). Si el wrapper sube de versión y
 # esto no, las listas ya envueltas se quedan para siempre con el formato viejo (sin

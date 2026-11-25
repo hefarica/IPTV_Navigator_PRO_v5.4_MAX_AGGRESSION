@@ -45,6 +45,7 @@ const FRONT = path.resolve(__dirname, '..');
 const REPO = path.resolve(FRONT, '..', '..');
 const ADAPTER = path.join(FRONT, 'js', 'ape-v9', 'ape-4k6k-audit-adapter.js');
 const WRAP = path.join(REPO, 'tools', 'pulse', 'ape-pulse-wrap.js');
+const LIST = path.join(REPO, 'tools', 'pulse', 'ape-pulse-list.cjs');
 const BUILDER = path.join(REPO, 'tools', 'url2', 'ape-url-builder.js');
 const VALIDATOR = path.join(REPO, 'tools', 'quality', 'validate_extshimott.js');
 const DOCTRINE = path.join(REPO, 'contracts', 'muestra-12p', 'DOCTRINA_EJECUCION_12P.md');
@@ -140,13 +141,17 @@ const FIX = [
 ].join('\n');
 
 const WRAP_SRC = read(WRAP);
+const LIST_SRC = read(LIST);
 ok('B0 el envoltorio está y trae la bandera documentada',
-    WRAP_SRC.indexOf("args['tag-before-stream-inf']") >= 0 && /RFC 8216 §4\.3\.4\.2/.test(WRAP_SRC));
-ok('B0b versión del envoltorio declarada', /const WRAPPER_VERSION = '1\.7\.0';/.test(WRAP_SRC), (WRAP_SRC.match(/WRAPPER_VERSION = '[^']+'/) || [''])[0]);
+    LIST_SRC.indexOf("args['tag-before-stream-inf']") >= 0 && /RFC 8216 §4\.3\.4\.2/.test(LIST_SRC));
+ok('B0b versión del envoltorio declarada', /const WRAPPER_VERSION = '1\.8\.0';/.test(LIST_SRC), (LIST_SRC.match(/WRAPPER_VERSION = '[^']+'/) || [''])[0]);
+/* El despachador 1.8.0 debe exponer los tres modos y no perder el modo iptv. */
+ok('B0d el despachador 1.8.0 expone iptv|hls-master|upscale',
+    /--format iptv\|hls-master\|upscale/.test(WRAP_SRC) && /ape-pulse-list\.cjs/.test(WRAP_SRC));
 /* B0c · la clave de caché del .sh va EN PAR con la del envoltorio. El .state guarda
  * wrapper_version: si el .js sube y el .sh no, las listas ya envueltas dan need=0 y
  * NUNCA reciben los tags nuevos (medido: sync se quedó en 1.5.0 con el .js en 1.7.0). */
-const wrapVer = (WRAP_SRC.match(/const WRAPPER_VERSION = '([^']+)'/) || [])[1];
+const wrapVer = (LIST_SRC.match(/const WRAPPER_VERSION = '([^']+)'/) || [])[1];
 const syncSrc = read(SYNC);
 const syncVer = (syncSrc.match(/^WRAPPER_VERSION=([0-9][0-9.]*)/m) || [])[1];
 ok('B0c la versión del envoltorio y la clave de caché del .sh van EN PAR',
