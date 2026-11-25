@@ -420,6 +420,38 @@ function ape_pulse_norm_body(string $body): array
  * Devuelve: kind (media|master|empty|html|xml|json|mpegts|fmp4|binary|text|noplaylist),
  * format (familia detectada), first (primera linea, recortada) y why (motivo legible).
  */
+function ape_pulse_shape(string $body): array
+{
+    // Clasificacion de TIPO sin borrar ni reescribir el cuerpo. Un cuerpo con
+    // #EXT-X-STREAM-INF (master) y #EXTINF (catalogo/media) es "mixed": no se
+    // puede tratar como master puro ni elegir una variante al azar.
+    list($norm, $lines) = ape_pulse_norm_body($body);
+    $master = false;
+    $media = false;
+    $catalog = false;
+    foreach ($lines as $line) {
+        $t = ltrim((string)$line);
+        if (preg_match('/^#EXT-X-STREAM-INF[ \t]*:/i', $t)) { $master = true; continue; }
+        if (preg_match('/^#EXT-X-(?:TARGETDURATION|MEDIA-SEQUENCE|DISCONTINUITY-SEQUENCE|MAP|ENDLIST|PLAYLIST-TYPE|PART|PART-INF|SERVER-CONTROL)[ \t]*:/i', $t)) {
+            $media = true;
+            continue;
+        }
+        if (preg_match('/^#EXTINF[ \t]*:/i', $t)) { $catalog = true; }
+    }
+    $kind = 'none';
+    if ($master && ($media || $catalog)) { $kind = 'mixed'; }
+    elseif ($master) { $kind = 'master'; }
+    elseif ($media || $catalog) { $kind = 'media'; }
+    return [
+        'kind' => $kind,
+        'master' => $master,
+        'media' => $media,
+        'catalog' => $catalog,
+        'lines' => count($lines),
+        'first' => isset($lines[0]) ? substr(trim($lines[0]), 0, 90) : '',
+    ];
+}
+
 function ape_pulse_classify(string $body, string $ctype = ''): array
 {
     list($norm, $lines) = ape_pulse_norm_body($body);
@@ -431,17 +463,23 @@ function ape_pulse_classify(string $body, string $ctype = ''): array
         'why'    => '',
         'lines'  => count($lines),
         'ctype'  => substr($ctype, 0, 40),
+        'shape'  => ape_pulse_shape($body),
     ];
     if ($norm === '') { $res['format'] = 'empty'; $res['why'] = 'cuerpo vacio'; return $res; }
 
     // 6a. Playlist HLS legitima: #EXTM3U como PRIMERA linea no vacia.
     if (strncasecmp(ltrim($first), '#EXTM3U', 7) === 0) {
         $res['format'] = 'm3u8';
-        if (preg_match('/^[ \t]*#EXT-X-STREAM-INF[ \t]*:/im', $norm)) {
+        $shape = $res['shape'];
+        if ($shape['kind'] === 'mixed') {
+            $res['kind'] = 'mixed';
+            $res['why'] = 'EXT-X-STREAM-INF + ' . ($shape['catalog'] ? 'EXTINF' : 'tag de media');
+            return $res;
+        }
+        if ($shape['kind'] === 'master') {
             $res['kind'] = 'master'; $res['why'] = 'EXT-X-STREAM-INF'; return $res;
         }
-        if (preg_match('/^[ \t]*#EXT-X-(TARGETDURATION|MEDIA-SEQUENCE|MAP|ENDLIST|DISCONTINUITY-SEQUENCE|PLAYLIST-TYPE)[ \t]*:/im', $norm)
-            || preg_match('/^[ \t]*#EXTINF[ \t]*:/im', $norm)) {
+        if ($shape['kind'] === 'media') {
             $res['kind'] = 'media'; $res['why'] = 'tag de media'; return $res;
         }
         $res['kind'] = 'empty'; $res['why'] = '#EXTM3U sin tags de variante ni de segmento'; return $res;
@@ -633,8 +671,20 @@ if ($mode === 'proxy') {
                 }
             }
             $cls  = ape_pulse_classify($raw);
-            $kind = ($cls['kind'] === 'master' || $cls['kind'] === 'media') ? $cls['kind'] : 'noplaylist';
+            $kind = in_array($cls['kind'], ['master', 'media', 'mixed'], true) ? $cls['kind'] : 'noplaylist';
             $ok = ($code === 200 && $kind !== 'noplaylist');
+            if ($ok && $kind === 'mixed') {
+                // No se elige una variante al azar de un catalogo mixto. Si el
+                // cuerpo tiene EXTINF, es un catalogo y no un master de canal.
+                $shape = isset($cls['shape']) && is_array($cls['shape']) ? $cls['shape'] : [];
+                if (!empty($shape['catalog'])) {
+                    $ok = false;
+                    $code = 502;
+                    $cls['why'] = 'mixed_catalog_requires_projection';
+                } else {
+                    $kind = 'master';
+                }
+            }
             if ($ok && $kind === 'master') {
                 $variant = ape_pulse_pick_variant($raw, $eff);
                 if ($variant !== '') {
@@ -656,8 +706,8 @@ if ($mode === 'proxy') {
                     $code = 502;
                 }
             } elseif ($ok) {
-                /* Aqui $kind solo puede ser 'media': si hubiera sido master, habria
-                 * entrado por la rama de arriba. Enrutado de segmentos por /seg/. */
+                /* Aqui $kind solo puede ser 'media' o 'mixed' sin catalogo (ya se
+                 * convirtio a master). Enrutado de segmentos por /seg/. */
                 $body = ape_pulse_route_segments(ape_pulse_absolutize($raw, $eff));
             }
 

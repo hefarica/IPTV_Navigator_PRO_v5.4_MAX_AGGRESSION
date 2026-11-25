@@ -502,21 +502,28 @@ function isSignedPulse(url) {
 }
 
 function transformUrl(url) {
-    // No alterar los parámetros ni la firma de una URL ya cableada. Se comprueba
-    // ANTES de normalizar/rebuild: una URL /pulse o /url2 ya emitida es contrato
-    // del player y no debe recibir un m= nuevo que rompa su firma.
+    // La URL firmada se devuelve BYTE A BYTE antes de normalizar/rebuild/`p`.
     if (isSignedPulse(url)) {
         counters.hybridSkippedSigned = (counters.hybridSkippedSigned || 0) + 1;
-        counters.already++;
-        return url;
-    }
-    if (ALREADY.test(url)) {
         counters.already++;
         return url;
     }
     url = normalizeUpstream(url);
     url = rebuildDeviceData(url);
     const decision = hybridDecision();
+    if (ALREADY.test(url)) {
+        if (!APE_HYBRID_PULSE) { counters.already++; return url; }
+        if (isSignedPulse(url)) {
+            counters.hybridSkippedSigned = (counters.hybridSkippedSigned || 0) + 1;
+            counters.already++;
+            return url;
+        }
+        const p = (decision.parametrosPulse || {}).p || '';
+        const upgraded = p ? ApeUrlBuilder.setPulseProfile(url, p) : url;
+        if (upgraded !== url) counters.hybridUpgraded = (counters.hybridUpgraded || 0) + 1;
+        counters.already++;
+        return upgraded;
+    }
     if (!/^https?:\/\//i.test(url)) return url;
     seq++;
     // EXPLICITO manda; heuristica solo cuando la lista no declara perfil.

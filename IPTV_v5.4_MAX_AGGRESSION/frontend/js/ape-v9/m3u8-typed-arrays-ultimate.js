@@ -13768,7 +13768,7 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                 let u = String(rawUrl == null ? '' : rawUrl).trim();
                 if (!/^https?:\/\//i.test(u)) return rawUrl;
                 if (u.indexOf('/pulse/') !== -1) {
-                    return _apeHybridOn ? _apeSetPulseP(u) : u;   // idempotente + p híbrido
+                    return u;   // ya cableada: preservar query/firma, no reescribir el modo
                 }
                 const base = (typeof window !== 'undefined' && window.APE_PULSE_BASE)
                     ? String(window.APE_PULSE_BASE).replace(/\/+$/, '')
@@ -13784,7 +13784,9 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                 const id = m[1];
                 const dev = _apePulseDeviceB64(channel, profile, _probeData);
                 const pPart = (_apeHybridOn && _apePulseP) ? `&p=${_apePulseP}` : '';
-                return `${base}/pulse/${id}.m3u8?u=${encodeURIComponent(u)}&d=${dev}${pPart}`;
+                const _pulseMode = (typeof window !== 'undefined' && ['proxy', 'cartridge', 'redirect'].includes(window.APE_PULSE_MODE))
+                    ? window.APE_PULSE_MODE : 'proxy';
+                return `${base}/pulse/${id}.m3u8?u=${encodeURIComponent(u)}&d=${dev}${pPart}&m=${_pulseMode}`;
             } catch (_eWrap) {
                 return rawUrl;   // fail-open: si algo falla, la lista sale como antes
             }
