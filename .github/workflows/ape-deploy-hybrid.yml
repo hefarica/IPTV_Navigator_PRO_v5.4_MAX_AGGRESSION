@@ -169,6 +169,7 @@ jobs:
       PULSE_DIR: /opt/ape-pulse
       FRONTEND_FILES: >-
         index-v4.html
+        app.js
         js/ape-v9/ape-crystal-hybrid.js
         js/ape-v9/m3u8-typed-arrays-ultimate.js
         js/ape-v9/generation-output-panel.js
@@ -233,6 +234,9 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
+          SRC_SHA=$(git rev-parse HEAD)
+          echo "SRC_SHA=$SRC_SHA" >> "$GITHUB_ENV"
+          echo "source_sha=$SRC_SHA workflow_sha=$GITHUB_SHA ref=$DEPLOY_REF"
           STAMP=$(date -u +%Y%m%dT%H%M%SZ)
           STAGE="/tmp/ape-hybrid-$STAMP"
           BACKUP="/var/backups/ape-hybrid/$STAMP"
@@ -402,5 +406,5 @@ jobs:
           done
 
           trap - ERR
-          ssh "$TARGET" "sudo -n sh -c 'printf \"%s\\n\" \"ref=$DEPLOY_REF commit=${GITHUB_SHA} stamp=$STAMP mode=apply\" > \"$BACKUP/receipt.txt\"; chmod 0644 \"$BACKUP/receipt.txt\"'"
-          echo "DEPLOY HÍBRIDO OK stamp=$STAMP ref=$DEPLOY_REF commit=${GITHUB_SHA}"
+          ssh "$TARGET" "sudo -n sh -c 'printf \"%s\\n\" \"ref=$DEPLOY_REF source_sha=$SRC_SHA workflow_sha=$GITHUB_SHA stamp=$STAMP mode=apply\" > \"$BACKUP/receipt.txt\"; chmod 0644 \"$BACKUP/receipt.txt\"'"
+          echo "DEPLOY HÍBRIDO OK stamp=$STAMP ref=$DEPLOY_REF source_sha=$SRC_SHA workflow_sha=$GITHUB_SHA"
