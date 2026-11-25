@@ -144,9 +144,9 @@ const WRAP_SRC = read(WRAP);
 const LIST_SRC = read(LIST);
 ok('B0 el envoltorio está y trae la bandera documentada',
     LIST_SRC.indexOf("args['tag-before-stream-inf']") >= 0 && /RFC 8216 §4\.3\.4\.2/.test(LIST_SRC));
-ok('B0b versión del envoltorio declarada', /const WRAPPER_VERSION = '1\.8\.0';/.test(LIST_SRC), (LIST_SRC.match(/WRAPPER_VERSION = '[^']+'/) || [''])[0]);
-/* El despachador 1.8.0 debe exponer los tres modos y no perder el modo iptv. */
-ok('B0d el despachador 1.8.0 expone iptv|hls-master|upscale',
+ok('B0b versión del envoltorio declarada', /const WRAPPER_VERSION = '1\.8\.1';/.test(LIST_SRC), (LIST_SRC.match(/WRAPPER_VERSION = '[^']+'/) || [''])[0]);
+/* El despachador 1.8.1 debe exponer los tres modos y no perder el modo iptv. */
+ok('B0d el despachador 1.8.1 expone iptv|hls-master|upscale',
     /--format iptv\|hls-master\|upscale/.test(WRAP_SRC) && /ape-pulse-list\.cjs/.test(WRAP_SRC));
 /* B0c · la clave de caché del .sh va EN PAR con la del envoltorio. El .state guarda
  * wrapper_version: si el .js sube y el .sh no, las listas ya envueltas dan need=0 y

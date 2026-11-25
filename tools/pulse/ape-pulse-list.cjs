@@ -32,7 +32,7 @@
  *                 (cartridge/redirect) sin romper el contrato de la URL.
  *
  * USO
- *   node ape-pulse-wrap.js --in <src[.gz]> --out <dst.m3u8> [--mode cartridge|redirect]
+ *   node ape-pulse-wrap.js --in <src[.gz]> --out <dst.m3u8> [--mode proxy|cartridge|redirect]
  *        [--base https://iptv-ape.duckdns.org/pulse] [--policy 1] [--state <json>] [--quiet]
  *
  * Salida: exit 0 ok · 1 error · 3 saltado (sin cambios, ya al día)
@@ -60,7 +60,7 @@ const POLICY_VERSION = '1';
 // Si esta sube y la del .sh no, las listas ya envueltas no se re-envuelven (el .state
 // guarda wrapper_version y da need=0) y no reciben los tags nuevos: al subir esta,
 // subir también la del .sh, o correr `ape-pulse-sync.sh --force` una vez.
-const WRAPPER_VERSION = '1.8.0';
+const WRAPPER_VERSION = '1.8.1';
 const PULSE_BASE_DEFAULT = 'https://iptv-ape.duckdns.org/pulse';
 const ALREADY = /\/(pulse|url2)\//i;
 // [HÍBRIDO APE CRYSTAL] default ON. Rollback sin editar código:
@@ -84,7 +84,11 @@ const args = parseArgs(process.argv);
 const inPath = args.in;
 const outPath = args.out;
 if (!inPath || !outPath) { console.error('uso: --in <src> --out <dst>'); process.exit(2); }
-const mode = (args.mode === 'redirect') ? 'redirect' : 'cartridge';
+const mode = args.mode === undefined ? 'proxy' : String(args.mode);
+if (!['proxy', 'cartridge', 'redirect'].includes(mode)) {
+  console.error('uso: --mode proxy|cartridge|redirect');
+  process.exit(2);
+}
 const pulseBase = String(args.base || PULSE_BASE_DEFAULT).replace(/\/+$/, '');
 const policy = String(args.policy || POLICY_VERSION);
 const statePath = args.state || '';
@@ -498,28 +502,21 @@ function isSignedPulse(url) {
 }
 
 function transformUrl(url) {
-    // La URL firmada se devuelve BYTE A BYTE antes de normalizar/rebuild/`p`.
+    // No alterar los parámetros ni la firma de una URL ya cableada. Se comprueba
+    // ANTES de normalizar/rebuild: una URL /pulse o /url2 ya emitida es contrato
+    // del player y no debe recibir un m= nuevo que rompa su firma.
     if (isSignedPulse(url)) {
         counters.hybridSkippedSigned = (counters.hybridSkippedSigned || 0) + 1;
+        counters.already++;
+        return url;
+    }
+    if (ALREADY.test(url)) {
         counters.already++;
         return url;
     }
     url = normalizeUpstream(url);
     url = rebuildDeviceData(url);
     const decision = hybridDecision();
-    if (ALREADY.test(url)) {
-        if (!APE_HYBRID_PULSE) { counters.already++; return url; }
-        if (isSignedPulse(url)) {
-            counters.hybridSkippedSigned = (counters.hybridSkippedSigned || 0) + 1;
-            counters.already++;
-            return url;
-        }
-        const p = (decision.parametrosPulse || {}).p || '';
-        const upgraded = p ? ApeUrlBuilder.setPulseProfile(url, p) : url;
-        if (upgraded !== url) counters.hybridUpgraded = (counters.hybridUpgraded || 0) + 1;
-        counters.already++;
-        return upgraded;
-    }
     if (!/^https?:\/\//i.test(url)) return url;
     seq++;
     // EXPLICITO manda; heuristica solo cuando la lista no declara perfil.
@@ -565,10 +562,10 @@ function transformUrl(url) {
     counters.hybrid = (counters.hybrid || 0) + 1;
     counters.hybridRoutes = counters.hybridRoutes || {};
     counters.hybridRoutes[decision.ruta] = (counters.hybridRoutes[decision.ruta] || 0) + 1;
-    // [MODO] `--mode redirect` se honra de verdad: el pulso devuelve 302 al
-    // proveedor. `cartridge` sigue siendo el default y el modo de mayor calidad
-    // para los players capaces (VLC/Kodi/ExoPlayer/OTT/TiviMate/Smarters).
-    return built + '&m=' + (mode === 'redirect' ? 'redirect' : 'cartridge') + '&l=' + encodeURIComponent(listName);
+    // [MODO] `redirect` devuelve 302; `proxy` entrega una lista de segmentos a
+    // clientes estrictos (default desde 1.8.1 para evitar el error "Loaded
+    // playlist has unexpected type."); `cartridge` queda como opción explícita.
+    return built + '&m=' + mode + '&l=' + encodeURIComponent(listName);
 }
 
 /**

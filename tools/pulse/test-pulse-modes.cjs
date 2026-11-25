@@ -1,9 +1,12 @@
 /**
- * test-pulse-modes.cjs — modos de lista del despachador 1.8.0.
+ * test-pulse-modes.cjs — modos de lista del despachador 1.8.1.
  *
  * Cubre:
  *   - `--format iptv` idéntico al modo por defecto;
- *   - `--mode redirect` se honra (m=redirect, no cartridge);
+ *   - URL nuevas con `m=proxy` por defecto (fix del "Loaded playlist has
+ *     unexpected type.");
+ *   - `--mode cartridge|redirect` se honra;
+ *   - una URL ya /pulse/ se conserva sin reescribir su firma;
  *   - `--format hls-master` conserva STREAM-INF→URI e I-FRAME y retira IPTV;
  *   - el maestro rechaza catálogos/listas de segmentos.
  */
@@ -44,12 +47,49 @@ run(['--format', 'iptv', '--in', catalogPath, '--out', explicitOut]);
 assert.deepStrictEqual(fs.readFileSync(explicitOut), fs.readFileSync(defaultOut));
 console.log('PASS --format iptv == default');
 
+const defaultText = fs.readFileSync(defaultOut, 'utf8');
+assert.ok(/[?&]m=proxy/.test(defaultText), 'default debe pedir m=proxy');
+assert.ok(!/[?&]m=cartridge/.test(defaultText), 'default no debe pedir cartridge');
+console.log('PASS default m=proxy (evita master inesperado)');
+
+const cartridgeOut = path.join(TMP, 'cartridge.m3u8');
+run(['--in', catalogPath, '--out', cartridgeOut, '--mode', 'cartridge']);
+assert.ok(/[?&]m=cartridge/.test(fs.readFileSync(cartridgeOut, 'utf8')));
+console.log('PASS --mode cartridge honrado');
+
+const invalidOut = path.join(TMP, 'invalid.m3u8');
+let invalidRejected = false;
+try {
+  run(['--in', catalogPath, '--out', invalidOut, '--mode', 'bogus']);
+} catch (error) {
+  invalidRejected = true;
+  assert.notStrictEqual(error.status, 0);
+  assert.ok(String(error.stderr || '').includes('proxy|cartridge|redirect'));
+}
+assert.ok(invalidRejected, 'un modo desconocido debe rechazarse');
+console.log('PASS modo desconocido rechazado');
+
 const redirectOut = path.join(TMP, 'redirect.m3u8');
 run(['--in', catalogPath, '--out', redirectOut, '--mode', 'redirect']);
 const redirectText = fs.readFileSync(redirectOut, 'utf8');
 assert.ok(/_m=redirect/.test(redirectText) || /[?&]m=redirect/.test(redirectText), redirectText);
 assert.ok(!/[?&]m=cartridge/.test(redirectText), 'redirect no debe emitir cartridge');
 console.log('PASS --mode redirect honrado');
+
+const signedCatalog = [
+  '#EXTM3U',
+  '#EXTINF:-1 tvg-id="a" tvg-name="A" group-title="TEST",A',
+  'https://iptv-ape.duckdns.org/pulse/7.m3u8?u=https%3A%2F%2Fprovider.invalid%2Flive%2Fu%2Fp%2F1.m3u8&d=x&p=P1&m=cartridge&l=vieja&fp=abc&sig=deadbeef',
+  '',
+].join('\n');
+const signedPath = path.join(TMP, 'signed.m3u8');
+const signedOut = path.join(TMP, 'signed.out.m3u8');
+fs.writeFileSync(signedPath, signedCatalog, 'utf8');
+run(['--in', signedPath, '--out', signedOut]);
+const signedText = fs.readFileSync(signedOut, 'utf8');
+assert.ok(signedText.includes('m=cartridge'), 'una URL ya envuelta no debe cambiar de modo');
+assert.ok(signedText.includes('sig=deadbeef'), 'la firma debe conservarse byte a byte');
+console.log('PASS URL /pulse ya envuelta intacta');
 
 const master = [
   '#EXTM3U',

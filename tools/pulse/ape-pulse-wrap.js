@@ -27,7 +27,7 @@ function parseArgs(argv) {
 
 const args = parseArgs(process.argv);
 const format = args.format === undefined ? 'iptv' : String(args.format);
-const WRAPPER_VERSION = '1.8.0';
+const WRAPPER_VERSION = '1.8.1';
 
 if (!['iptv', 'hls-master', 'upscale'].includes(format)) {
   console.error('uso: --format iptv|hls-master|upscale --in <src> --out <dst>');

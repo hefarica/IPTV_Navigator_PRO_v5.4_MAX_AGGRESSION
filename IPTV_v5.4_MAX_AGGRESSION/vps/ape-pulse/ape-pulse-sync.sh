@@ -24,12 +24,12 @@ LOG="${APE_PULSE_LOG:-/var/log/ara/pulse-sync.log}"
 LOCK="${APE_PULSE_LOCK:-/run/ape-pulse-sync.lock}"
 DISK_PATH="${APE_PULSE_DISK_PATH:-/var/www}"
 POLICY_VERSION=1
-WRAPPER_VERSION=1.8.0   # 1.8.0: EN PAR con ape-pulse-wrap.js / ape-pulse-list.cjs
+WRAPPER_VERSION=1.8.1   # 1.8.1: EN PAR con ape-pulse-wrap.js / ape-pulse-list.cjs
 # Esta constante es la clave de caché: el .state guarda wrapper_version y, si coincide
 # con el origen, la lista NO se re-envuelve (need=0). Si el wrapper sube de versión y
 # esto no, las listas ya envueltas se quedan para siempre con el formato viejo (sin
 # #EXTSHIMOTT). Al subir el wrapper hay que subir esta línea en el mismo cambio.
-MODE="${APE_PULSE_MODE:-cartridge}"          # cartridge | redirect
+MODE="${APE_PULSE_MODE:-proxy}"          # proxy | cartridge | redirect
 MAX_MB="${APE_PULSE_MAX_MB:-0}"                  # 0 = sin tope artificial; el disco manda
 MIN_FREE_MB="${APE_PULSE_MIN_FREE_MB:-1500}"
 FORCE=0
