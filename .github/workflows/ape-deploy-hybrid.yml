@@ -75,6 +75,10 @@ jobs:
             IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/generation-output-panel.js \
             IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/profile-manager-v9.js \
             IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-lab-12p-reconcile.js \
+            IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/parsers/ape-universal-parser-stack.js \
+            IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-universal-emit.js \
+            IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-multi-parser.js \
+            IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-multi-export-ui.js \
             tools/pulse/ape-pulse-wrap.js \
             tools/pulse/ape-pulse-list.cjs \
             tools/pulse/ape-pulse-master.cjs \
@@ -95,6 +99,7 @@ jobs:
           node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/gen-output-panel-format.test.js
           node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ape-r17-doctrina-y-adyacencia.test.js
           node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ape-load-fast-and-pulse.test.js
+          node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ape-universal-parser-stack.test.js
           node tools/url2/test_ape_url_builder.js
           node tools/pulse/test-crystal-plan.cjs
           node tools/pulse/test-pulse-modes.cjs
@@ -183,6 +188,11 @@ jobs:
         js/ape-v9/generation-output-panel.js
         js/ape-v9/profile-manager-v9.js
         js/ape-v9/ape-lab-12p-reconcile.js
+        js/ape-v9/parsers/ape-universal-parser-stack.js
+        js/ape-v9/parsers/ape-parser-generation-bridge.js
+        js/ape-v9/ape-universal-emit.js
+        js/ape-v9/ape-multi-parser.js
+        js/ape-v9/ape-multi-export-ui.js
       TOOLS_FILES: >-
         tools/pulse/ape-pulse-wrap.js
         tools/pulse/ape-pulse-list.cjs
@@ -425,7 +435,10 @@ jobs:
             'js/ape-v9/m3u8-typed-arrays-ultimate.js|seleccionarHibridoOwner' \
             'js/ape-v9/m3u8-typed-arrays-ultimate.js|HYBRID-PULSE' \
             'js/ape-v9/generation-output-panel.js|HÍBRIDO P1.5/p=P1' \
-            'js/ape-v9/ape-lab-12p-reconcile.js|APE_FUSION_HIBRIDO_OPTIMO_12P'; do
+            'js/ape-v9/ape-lab-12p-reconcile.js|APE_FUSION_HIBRIDO_OPTIMO_12P' \
+            'js/ape-v9/parsers/ape-universal-parser-stack.js|MIXED_PLAYLIST_TYPES' \
+            'js/ape-v9/ape-universal-emit.js|APE_UNIVERSAL_EMIT' \
+            'js/ape-v9/ape-multi-parser.js|APEMultiParser'; do
             P="${spec%%|*}"; NEEDLE="${spec#*|}"
             code=$(curl -sS --compressed -o "/tmp/ape-http-$$" -w '%{http_code}' --max-time 30 "https://iptv-ape.duckdns.org/$P")
             [ "$code" = "200" ] || { echo "::error::HTTP $code para $P"; false; }
