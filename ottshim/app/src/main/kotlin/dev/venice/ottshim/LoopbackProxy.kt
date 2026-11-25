@@ -83,6 +83,19 @@ class LoopbackProxy(private val policy: AbrPolicy) {
 
     @Volatile private var server: ServerSocket? = null
 
+    private val canaryClient = client.newBuilder().followRedirects(false)
+        .followSslRedirects(false).retryOnConnectionFailure(false).build()
+    private data class CanaryRef(val path: String, val url: HttpUrl, val channel: String)
+    private val canaryRefs = LinkedHashMap<String, CanaryRef>(512, 0.75f, true)
+
+    private fun canaryRef(path: String, url: HttpUrl, channel: String): String = synchronized(canaryRefs) {
+        val ref = CanaryRef(path, url, channel)
+        val key = canaryRefs.entries.firstOrNull { it.value == ref }?.key?.also { canaryRefs[it] }
+            ?: UUID.randomUUID().toString().also { canaryRefs[it] = ref }
+        if (canaryRefs.size > 512) canaryRefs.remove(canaryRefs.keys.first())
+        path + "?id=" + key
+    }
+
     private fun map(url: String): String = synchronized(ids) {
         urlToId[url]?.takeIf { ids.containsKey(it) }?.let { return it }
         val id = UUID.randomUUID().toString().replace("-", "")
@@ -232,6 +245,7 @@ class LoopbackProxy(private val policy: AbrPolicy) {
         // el proceso y el resto de conexiones siguen.
         try {
             when {
+                req.path.startsWith("/canary/") -> canary(clientSocket, req)
                 req.path == "/source.m3u8" -> playlist(clientSocket, req, policy.sourceUrl)
                 req.id != null && (req.path == "/master.m3u8" || req.path == "/media.m3u8") ->
                     playlist(clientSocket, req, unmap(req.id))
@@ -240,6 +254,72 @@ class LoopbackProxy(private val policy: AbrPolicy) {
             }
         } catch (e: IOException) {
             Log.d("conn closed: ${e.javaClass.simpleName} ${e.message}")
+        }
+    }
+
+    private fun canary(c: Socket, req: Req) {
+        val catalog = req.path == "/canary/catalog.m3u"
+        val media = req.path == "/canary/media.m3u8"
+        val resource = req.path == "/canary/resource"
+        if (!(catalog || media || resource)) return text(c, "canary_not_found", code = 404)
+        if (req.head && !resource) return text(c, "", code = 405)
+        val ref = if (catalog) null else synchronized(canaryRefs) { canaryRefs[req.id] }
+        val url = if (catalog) policy.sourceUrl?.toHttpUrlOrNull() else ref?.takeIf { it.path == req.path }?.url
+        if (url == null) return text(c, "canary_not_found", code = 404)
+        if (!url.isHttps || url.username.isNotEmpty() || url.password.isNotEmpty() || url.fragment != null)
+            return text(c, "canary_https_required", code = 400)
+        val request = Request.Builder().url(url)
+        (req.ua ?: policy.userAgent)?.let { request.header("User-Agent", it) }
+        if (resource) req.range?.let { request.header("Range", it) }
+        if (req.head) request.head()
+        val response = try { canaryClient.newCall(request.build()).execute() } catch (_: IOException) {
+            return text(c, "canary_upstream_unavailable", code = 502)
+        }
+        response.use { resp ->
+            policy.qoe.onHttpStatus(resp.code)
+            if (resp.code != 200 && !(resource && resp.code == 206)) {
+                val code = if (resp.code in 400..599) resp.code else 502
+                val retry = resp.header("Retry-After")?.toIntOrNull()?.takeIf { it in 0..3600 }
+                return canaryReply(c, code, "text/plain", "canary_upstream_$code".toByteArray(), req.head, retry)
+            }
+            if (resource) {
+                val body = resp.body ?: return text(c, "canary_empty_resource", code = 502)
+                val len = body.contentLength()
+                val range = resp.header("Content-Range")
+                if (resp.code == 206 && (range == null || !Regex("bytes [0-9]+-[0-9]+/(?:[0-9]+|\\*)").matches(range)))
+                    return text(c, "canary_bad_range", code = 502)
+                val out = c.getOutputStream()
+                out.write(buildString {
+                    append("HTTP/1.1 ${resp.code} X\r\nConnection: close\r\nContent-Type: application/octet-stream\r\n")
+                    if (len >= 0) append("Content-Length: $len\r\n")
+                    if (resp.code == 206) append("Content-Range: $range\r\n")
+                    append("\r\n")
+                }.toByteArray())
+                val bytes = if (req.head) 0L else body.byteStream().copyTo(out)
+                out.flush()
+                if (!req.head) Log.d("canary: channel=${ref?.channel} resource_served status=${resp.code} bytes=$bytes")
+                return
+            }
+            val out = runCatching {
+                val body = CanaryWire.readSmall(requireNotNull(resp.body).byteStream())
+                if (catalog) CanaryWire.catalog(body, url) { id, upstream ->
+                    "http://127.0.0.1:${c.localPort}" + canaryRef("/canary/media.m3u8", upstream, id)
+                } else CanaryWire.media(body, url) { upstream ->
+                    canaryRef("/canary/resource", upstream, requireNotNull(ref).channel)
+                }
+            }.getOrElse { return text(c, "canary_invalid_playlist", code = 502) }
+            val bytes = out.toByteArray()
+            canaryReply(c, 200, "application/vnd.apple.mpegurl", bytes, false)
+            if (media) Log.d("canary: channel=${ref?.channel} manifest_served bytes=${bytes.size}")
+        }
+    }
+
+    private fun canaryReply(c: Socket, code: Int, type: String, body: ByteArray, head: Boolean, retry: Int? = null) {
+        val extra = if (retry == null) "" else "Retry-After: $retry\r\n"
+        c.getOutputStream().apply {
+            write("HTTP/1.1 $code X\r\nContent-Type: $type\r\nContent-Length: ${body.size}\r\nCache-Control: no-store\r\n${extra}Connection: close\r\n\r\n".toByteArray())
+            if (!head) write(body)
+            flush()
         }
     }
 
