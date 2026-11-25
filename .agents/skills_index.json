@@ -1,6 +1,6 @@
 {
   "spec_version": "iptv-enterprise-300-skills-v1",
-  "generated_at": "2026-11-20T07:00:27Z",
+  "generated_at": "2026-11-25T17:50:00Z",
   "team_agent_supremo": {
     "specialists": {
       "S1": {
@@ -66,11 +66,11 @@
     }
   },
   "totals": {
-    "skills_total": 308,
-    "anchors": 17,
+    "skills_total": 309,
+    "anchors": 18,
     "satellites": 291,
     "by_specialist": {
-      "S1": 32,
+      "S1": 33,
       "S2": 30,
       "S3": 31,
       "S4": 30,
@@ -5625,6 +5625,25 @@
         "python -m unittest discover -s .agents/skills/ape-iptv-auditoria-4k-premium6k/scripts -p \"test_*.py\" -v",
         "python .agents/skills/ape-iptv-auditoria-4k-premium6k/scripts/verificar_lista.py --help",
         "node frontend/tests/ape-4k6k-audit-adapter.test.js"
+      ]
+    },
+    {
+      "name": "ssd-spec-driven-development",
+      "specialist": "S1",
+      "specialist_name": "IPTV/HLS Architect",
+      "domain": "Methodology/Spec-Driven Development",
+      "kind": "anchor",
+      "parent_anchor": null,
+      "status": "installed",
+      "description": "Flujo Spec-Driven Development (SSD): constitución, spec EARS, clarificación QA, plan, tareas <30 min, implementación de una tarea con tests primero, validación RF→test y cambio con spec primero. Adaptado a IPTV/APE con truth-guards de imagen, anti-degradación, VPS metadata-only y REA solo en su propio player.",
+      "installed_at": "2026-11-25T17:50:00Z",
+      "risk_level": "low",
+      "source_repos": [
+        "mouredev/hello-sdd"
+      ],
+      "external_packages": [],
+      "validation_commands": [
+        "python .agents/skills/ssd-spec-driven-development/scripts/ssd_check.py --feature .agents/skills/ssd-spec-driven-development/fixtures/valid"
       ]
     }
   ]

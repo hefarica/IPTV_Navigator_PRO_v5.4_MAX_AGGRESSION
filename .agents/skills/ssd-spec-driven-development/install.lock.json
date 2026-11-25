@@ -1,0 +1,18 @@
+{
+  "skill": "ssd-spec-driven-development",
+  "version": "1.0.0",
+  "created_at": "2026-11-25T17:50:00Z",
+  "source": {
+    "repository": "https://github.com/mouredev/hello-sdd",
+    "commit": "358dfe85a818bccdd839f78e804668b3ebaa10b5",
+    "license": "Apache-2.0",
+    "course": "https://youtube.com/live/5HaOxAAA5qI"
+  },
+  "adaptation": "Flujo SSD resumido y adaptado al repo APE/IPTV; no copia literal de plantillas.",
+  "validation": {
+    "command": "python .agents/skills/ssd-spec-driven-development/scripts/ssd_check.py --feature .agents/skills/ssd-spec-driven-development/fixtures/valid",
+    "expected": "PASS, exit 0"
+  },
+  "dependencies": [],
+  "production_changes": false
+}
