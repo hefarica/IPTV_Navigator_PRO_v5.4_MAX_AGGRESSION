@@ -232,7 +232,7 @@ jobs:
       - name: Instalar con backup, verificar y rollback automático
         shell: bash
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
           STAMP=$(date -u +%Y%m%dT%H%M%SZ)
           STAGE="/tmp/ape-hybrid-$STAMP"
           BACKUP="/var/backups/ape-hybrid/$STAMP"
@@ -316,6 +316,11 @@ jobs:
           for f in $FRONTEND_FILES; do PATHS+=("$SRC_DIR/$f"); done
           for f in $TOOLS_FILES; do PATHS+=("$f"); done
           tar -czf "$TAR" -C "$GITHUB_WORKSPACE" "${PATHS[@]}"
+          # El staging también se extrae en el RUNNER: install_tool calcula el sha
+          # local desde "$STAGE/..." y sin esta extracción fallaba antes de instalar
+          # /opt/ape-pulse (run 45520180706). El staging remoto es independiente.
+          mkdir -p "$STAGE"
+          tar -xzf "$TAR" -C "$STAGE"
           scp -q "$TAR" "$TARGET:$TAR"
           ssh "$TARGET" "mkdir -p '$STAGE' && tar -xzf '$TAR' -C '$STAGE'"
           for f in $FRONTEND_FILES; do
