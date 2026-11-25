@@ -83,6 +83,7 @@ for (const [profile, width, height, inputSar] of anamorphic) {
   }, '6k', 'max', 'strong');
   assert.strictEqual(result.profile, profile);
   assert.strictEqual(result.input_sar, inputSar);
+  assert.strictEqual(result.sar_assumed, false);
   assert.strictEqual(result.display_aspect_ratio, '4:3');
   assert.deepStrictEqual(result.active_px, [4320, 3240], profile + ' anamórfico');
   assert.deepStrictEqual(result.output_px, [5760, 3240], profile + ' anamórfico');
@@ -97,15 +98,39 @@ for (const [profile, width, height, inputSar] of anamorphic) {
   console.log('PASS anamórfico 6K', profile, result.active_px.join('x'), 'SAR=' + inputSar);
 }
 
-// DAR fallback: sin SAR, display_aspect_ratio=4:3 y 720x576 => SAR 16:15.
+// Sin SAR utilizable se asume 1:1 (comportamiento 1.6.4), no se inventa 16:15
+// aunque el DAR de display sea 4:3.
 const darFallback = crystalPlan({
   width: 720, height: 576, field_order: 'tt', sample_aspect_ratio: '',
   display_aspect_ratio: '4:3', color_transfer: 'bt709',
 }, '6k', 'max', 'strong');
-assert.deepStrictEqual(darFallback.active_px, [4320, 3240]);
+assert.deepStrictEqual(darFallback.active_px, [4050, 3240]);
 assert.strictEqual(darFallback.input_sar, '1:1');
+assert.strictEqual(darFallback.sar_assumed, true);
 assert.strictEqual(darFallback.display_aspect_ratio, '4:3');
-console.log('PASS DAR fallback 4:3 sin SAR');
+console.log('PASS SAR ausente asume 1:1 y marca sar_assumed');
+
+// Referencia exacta guardada por el proyecto del enlace:
+// crystal-6k-4x3-filters.json (wrapper 1.6.4). El comportamiento debe coincidir
+// aunque nuestra versión de despliegue sea 1.8.0.
+const reference = JSON.parse(require('fs').readFileSync(
+  require('path').join(__dirname, 'crystal-6k-4x3-filters.json'), 'utf8'));
+for (const [profile, expectedProfile] of Object.entries(reference.profiles)) {
+  const actual = crystalPlan({
+    width: expectedProfile.source_px[0],
+    height: expectedProfile.source_px[1],
+    field_order: 'tt',
+    sample_aspect_ratio: expectedProfile.input_sar,
+    display_aspect_ratio: reference.display_aspect_ratio,
+    color_transfer: 'bt709',
+  }, reference.target, reference.quality, reference.sharpness);
+  assert.deepStrictEqual(actual.active_px, expectedProfile.active_px, profile + ' referencia activa');
+  assert.deepStrictEqual(actual.output_px, expectedProfile.output_px, profile + ' referencia salida');
+  assert.deepStrictEqual(actual.filters, expectedProfile.filters, profile + ' referencia filtros');
+  assert.strictEqual(actual.input_sar, expectedProfile.input_sar);
+  assert.strictEqual(actual.sar_assumed, false);
+}
+console.log('PASS referencia crystal-6k-4x3-filters.json (5 perfiles)');
 
 // 4:3 se conserva dentro del lienzo (no se estira).
 const micro4k = plan(320, 240, '4k', 'max', 'classic');

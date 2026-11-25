@@ -1,0 +1,138 @@
+{
+  "wrapper": "1.6.4",
+  "target": "6k",
+  "display_aspect_ratio": "4:3",
+  "interlaced_input": true,
+  "quality": "max",
+  "sharpness": "strong",
+  "profiles": {
+    "micro-sd": {
+      "source_px": [
+        320,
+        240
+      ],
+      "input_sar": "1:1",
+      "active_px": [
+        4320,
+        3240
+      ],
+      "output_px": [
+        5760,
+        3240
+      ],
+      "filters": [
+        "bwdif=mode=send_field:parity=auto:deint=all",
+        "deblock=filter=weak:block=8:alpha=0.06:beta=0.035:gamma=0.035:delta=0.035",
+        "hqdn3d=1.4:1.0:0.8:0.6",
+        "format=yuv420p10le",
+        "deband=1thr=0.008:2thr=0.008:3thr=0.008:range=12:blur=false",
+        "scale=4320:3240:flags=lanczos+accurate_rnd+full_chroma_int:threads=2",
+        "cas=strength=0.34:planes=1",
+        "setsar=1",
+        "pad=5760:3240:trunc((ow-iw)/4)*2:trunc((oh-ih)/4)*2",
+        "format=yuv420p10le"
+      ]
+    },
+    "sd": {
+      "source_px": [
+        720,
+        576
+      ],
+      "input_sar": "16:15",
+      "active_px": [
+        4320,
+        3240
+      ],
+      "output_px": [
+        5760,
+        3240
+      ],
+      "filters": [
+        "bwdif=mode=send_field:parity=auto:deint=all",
+        "deblock=filter=weak:block=8:alpha=0.06:beta=0.035:gamma=0.035:delta=0.035",
+        "hqdn3d=1.1:0.9:0.65:0.55",
+        "format=yuv420p10le",
+        "deband=1thr=0.008:2thr=0.008:3thr=0.008:range=12:blur=false",
+        "scale=4320:3240:flags=lanczos+accurate_rnd+full_chroma_int:threads=2",
+        "cas=strength=0.30:planes=1",
+        "setsar=1",
+        "pad=5760:3240:trunc((ow-iw)/4)*2:trunc((oh-ih)/4)*2",
+        "format=yuv420p10le"
+      ]
+    },
+    "hd": {
+      "source_px": [
+        1280,
+        720
+      ],
+      "input_sar": "3:4",
+      "active_px": [
+        4320,
+        3240
+      ],
+      "output_px": [
+        5760,
+        3240
+      ],
+      "filters": [
+        "bwdif=mode=send_field:parity=auto:deint=all",
+        "hqdn3d=0.85:0.65:0.55:0.4",
+        "format=yuv420p10le",
+        "deband=1thr=0.008:2thr=0.008:3thr=0.008:range=12:blur=false",
+        "scale=4320:3240:flags=lanczos+accurate_rnd+full_chroma_int:threads=2",
+        "cas=strength=0.13:planes=1",
+        "setsar=1",
+        "pad=5760:3240:trunc((ow-iw)/4)*2:trunc((oh-ih)/4)*2",
+        "format=yuv420p10le"
+      ]
+    },
+    "fhd": {
+      "source_px": [
+        1920,
+        1080
+      ],
+      "input_sar": "3:4",
+      "active_px": [
+        4320,
+        3240
+      ],
+      "output_px": [
+        5760,
+        3240
+      ],
+      "filters": [
+        "bwdif=mode=send_field:parity=auto:deint=all",
+        "format=yuv420p10le",
+        "deband=1thr=0.008:2thr=0.008:3thr=0.008:range=12:blur=false",
+        "scale=4320:3240:flags=lanczos+accurate_rnd+full_chroma_int:threads=2",
+        "cas=strength=0.09:planes=1",
+        "setsar=1",
+        "pad=5760:3240:trunc((ow-iw)/4)*2:trunc((oh-ih)/4)*2",
+        "format=yuv420p10le"
+      ]
+    },
+    "uhd": {
+      "source_px": [
+        2560,
+        1440
+      ],
+      "input_sar": "3:4",
+      "active_px": [
+        4320,
+        3240
+      ],
+      "output_px": [
+        5760,
+        3240
+      ],
+      "filters": [
+        "bwdif=mode=send_field:parity=auto:deint=all",
+        "format=yuv420p10le",
+        "scale=4320:3240:flags=lanczos+accurate_rnd+full_chroma_int:threads=2",
+        "setsar=1",
+        "pad=5760:3240:trunc((ow-iw)/4)*2:trunc((oh-ih)/4)*2",
+        "format=yuv420p10le"
+      ]
+    }
+  }
+}

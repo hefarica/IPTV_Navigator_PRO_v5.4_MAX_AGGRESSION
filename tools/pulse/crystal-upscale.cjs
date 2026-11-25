@@ -131,21 +131,31 @@ function crystalPlan(stream, target, quality, sharpness) {
   const sarText = String(stream.sample_aspect_ratio || '');
   const darText = String(stream.display_aspect_ratio || '');
   const sar = /^(\d+):(\d+)$/.exec(sarText);
-  const dar = /^(\d+):(\d+)$/.exec(darText);
-  let ratio = 1;
-  if (sar && Number(sar[1]) > 0 && Number(sar[2]) > 0) {
-    ratio = Number(sar[1]) / Number(sar[2]);
-  } else if (dar && Number(dar[1]) > 0 && Number(dar[2]) > 0) {
-    // DAR = (width * SAR) / height => SAR = DAR * height / width.
-    ratio = (Number(dar[1]) / Number(dar[2])) * height / width;
-  }
-  if (ratio < 0.1 || ratio > 10) {
-    throw new Error('Relación de píxel fuera del intervalo admitido');
-  }
+  const declaredSar = sar ? sar.slice(1).map(Number) : null;
+  const validSar = declaredSar && declaredSar.every((n) => Number.isSafeInteger(n) && n > 0);
+  const sarNum = validSar ? declaredSar[0] : 1;
+  const sarDen = validSar ? declaredSar[1] : 1;
+  const sarAssumed = !validSar;
 
-  const scale = Math.min(tw / (width * ratio), th / height);
-  const active = [even(width * ratio * scale), even(height * scale)];
-  const bypass = scale <= 1 + 1e-8 || active[0] < width || active[1] < height;
+  // Cálculo EXACTO del rectángulo activo (sin coma flotante). Se compara
+  // tw*sarDen/(width*sarNum) contra th/height con productos enteros y se baja
+  // al par para 4:2:0. Esto evita que un SAR como 16:15 o 3:4 redondee a 4318.
+  const widthLimited = (BigInt(tw) * BigInt(sarDen) * BigInt(height)) <=
+    (BigInt(th) * BigInt(width) * BigInt(sarNum));
+  let activeWidth;
+  let activeHeight;
+  if (widthLimited) {
+    activeWidth = tw;
+    activeHeight = Number((BigInt(tw) * BigInt(height) * BigInt(sarDen)) /
+      (BigInt(width) * BigInt(sarNum)));
+  } else {
+    activeHeight = th;
+    activeWidth = Number((BigInt(th) * BigInt(width) * BigInt(sarNum)) /
+      (BigInt(height) * BigInt(sarDen)));
+  }
+  const active = [even(activeWidth), even(activeHeight)];
+  const bypass = active[0] < width || active[1] < height ||
+    (active[0] === width && active[1] === height);
   const preset = CONTRACT.presets.find((item) => Math.min(width, height) <= item.max);
   if (!preset) throw new Error('No hay preset para la resolución medida');
 
@@ -182,7 +192,8 @@ function crystalPlan(stream, target, quality, sharpness) {
     quality,
     sharpness,
     source_px: [width, height],
-    input_sar: sarText || '1:1',
+    input_sar: validSar ? sarNum + ':' + sarDen : '1:1',
+    sar_assumed: sarAssumed,
     display_aspect_ratio: darText || null,
     active_px: active,
     output_px: bypass ? null : [tw, th],
