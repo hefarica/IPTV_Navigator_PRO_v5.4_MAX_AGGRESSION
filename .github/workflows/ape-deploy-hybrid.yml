@@ -76,6 +76,9 @@ jobs:
             IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/profile-manager-v9.js \
             IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-lab-12p-reconcile.js \
             tools/pulse/ape-pulse-wrap.js \
+            tools/pulse/ape-pulse-list.cjs \
+            tools/pulse/ape-pulse-master.cjs \
+            tools/pulse/crystal-upscale.cjs \
             tools/pulse/ape-crystal-hybrid.cjs \
             tools/pulse/ape-crystal-hybrid-owner.cjs \
             tools/url2/ape-url-builder.js; do
@@ -93,6 +96,8 @@ jobs:
           node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ape-r17-doctrina-y-adyacencia.test.js
           node IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ape-load-fast-and-pulse.test.js
           node tools/url2/test_ape_url_builder.js
+          node tools/pulse/test-crystal-plan.cjs
+          node tools/pulse/test-pulse-modes.cjs
 
       - name: JSON del contrato parsea y conserva la versión
         shell: bash
@@ -105,6 +110,9 @@ jobs:
           if (j._meta.version !== 'APE_v9.4_CRYSTAL_HYBRID_12P') throw new Error('versión inesperada: ' + j._meta.version);
           if (j._meta.crystal_hybrid.schema !== 'ape.crystal.hybrid/1') throw new Error('schema inesperado');
           console.log('contrato OK', j._meta.version, j._meta.crystal_hybrid.schema);
+          const u = JSON.parse(fs.readFileSync('contracts/crystal_upscale_profiles.json', 'utf8'));
+          if (u.schema !== 'ape.crystal.upscale/1') throw new Error('upscale schema inesperado');
+          console.log('upscale OK', u.schema, u.targets['4k'], u.targets['6k']);
           NODE
 
   verify:
@@ -147,7 +155,7 @@ jobs:
             ssh "$TARGET" "sudo -n stat -c '%n %s bytes %y' '/var/www/html/$f' 2>&1 || echo AUSENTE" || true
             ssh "$TARGET" "sudo -n sha256sum '/var/www/html/$f' 2>&1 || true" || true
           done
-          for f in ape-pulse-wrap.js ape-crystal-hybrid.cjs ape-crystal-hybrid-owner.cjs APE_FUSION_HIBRIDO_OPTIMO_12P.json ape-url-builder.js; do
+          for f in ape-pulse-wrap.js ape-crystal-hybrid.cjs ape-crystal-hybrid-owner.cjs APE_FUSION_HIBRIDO_OPTIMO_12P.json ape-url-builder.js ape-pulse-list.cjs ape-pulse-master.cjs crystal-upscale.cjs crystal_upscale_profiles.json; do
             ssh "$TARGET" "sudo -n sha256sum '/opt/ape-pulse/$f' 2>&1 || echo AUSENTE" || true
           done
           echo '--- HTTP ---'
@@ -177,6 +185,10 @@ jobs:
         js/ape-v9/ape-lab-12p-reconcile.js
       TOOLS_FILES: >-
         tools/pulse/ape-pulse-wrap.js
+        tools/pulse/ape-pulse-list.cjs
+        tools/pulse/ape-pulse-master.cjs
+        tools/pulse/crystal-upscale.cjs
+        contracts/crystal_upscale_profiles.json
         tools/pulse/ape-crystal-hybrid.cjs
         tools/pulse/ape-crystal-hybrid-owner.cjs
         tools/pulse/APE_FUSION_HIBRIDO_OPTIMO_12P.json
@@ -368,6 +380,10 @@ jobs:
           }
           install_tool "$STAGE/tools/pulse/ape-pulse-wrap.js" "$PULSE_DIR/ape-pulse-wrap.js"
           ssh "$TARGET" "sudo -n chmod 0755 '$PULSE_DIR/ape-pulse-wrap.js'"
+          install_tool "$STAGE/tools/pulse/ape-pulse-list.cjs" "$PULSE_DIR/ape-pulse-list.cjs"
+          install_tool "$STAGE/tools/pulse/ape-pulse-master.cjs" "$PULSE_DIR/ape-pulse-master.cjs"
+          install_tool "$STAGE/tools/pulse/crystal-upscale.cjs" "$PULSE_DIR/crystal-upscale.cjs"
+          install_tool "$STAGE/contracts/crystal_upscale_profiles.json" "$PULSE_DIR/crystal_upscale_profiles.json"
           install_tool "$STAGE/tools/pulse/ape-crystal-hybrid.cjs" "$PULSE_DIR/ape-crystal-hybrid.cjs"
           install_tool "$STAGE/tools/pulse/ape-crystal-hybrid-owner.cjs" "$PULSE_DIR/ape-crystal-hybrid-owner.cjs"
           install_tool "$STAGE/tools/pulse/APE_FUSION_HIBRIDO_OPTIMO_12P.json" "$PULSE_DIR/APE_FUSION_HIBRIDO_OPTIMO_12P.json"
@@ -375,14 +391,20 @@ jobs:
 
           # 5) GATES remotos: sintaxis, contrato y decisión real.
           ssh "$TARGET" "node --check '$PULSE_DIR/ape-pulse-wrap.js'"
+          ssh "$TARGET" "node --check '$PULSE_DIR/ape-pulse-list.cjs'"
+          ssh "$TARGET" "node --check '$PULSE_DIR/ape-pulse-master.cjs'"
+          ssh "$TARGET" "node --check '$PULSE_DIR/crystal-upscale.cjs'"
           ssh "$TARGET" "node --check '$PULSE_DIR/ape-crystal-hybrid.cjs'"
           ssh "$TARGET" "node --check '$PULSE_DIR/ape-crystal-hybrid-owner.cjs'"
           ssh "$TARGET" "node --check '$PULSE_DIR/ape-url-builder.js'"
-          ssh "$TARGET" "node -e \"const fs=require('fs');const j=JSON.parse(fs.readFileSync('$PULSE_DIR/APE_FUSION_HIBRIDO_OPTIMO_12P.json','utf8'));if(j._meta.crystal_hybrid.schema!=='ape.crystal.hybrid/1')process.exit(1);console.log('json OK')\""
+          ssh "$TARGET" "node -e \"const fs=require('fs');const j=JSON.parse(fs.readFileSync('$PULSE_DIR/APE_FUSION_HIBRIDO_OPTIMO_12P.json','utf8'));if(j._meta.crystal_hybrid.schema!=='ape.crystal.hybrid/1')process.exit(1);const u=JSON.parse(fs.readFileSync('$PULSE_DIR/crystal_upscale_profiles.json','utf8'));if(u.schema!=='ape.crystal.upscale/1')process.exit(2);console.log('contracts OK')\""
+          ssh "$TARGET" "node -e \"const u=require('$PULSE_DIR/crystal-upscale.cjs');const p=u.crystalPlan({width:320,height:240,field_order:'tt',sample_aspect_ratio:'1:1'},'6k','max','strong');if(p.output_px.join('x')!=='5760x3240')process.exit(3);if(p.active_px.join('x')!=='4320x3240')process.exit(4);if(p.filters[0]!=='bwdif=mode=send_field:parity=auto:deint=all')process.exit(5);if(p.filters[6]!=='cas=strength=0.34:planes=1')process.exit(6);console.log('upscale plan OK',p.active_px.join('x'),p.output_px.join('x'))\""
           ssh "$TARGET" "node -e \"const {seleccionarHibridoOwner}=require('$PULSE_DIR/ape-crystal-hybrid-owner.cjs');const cfg=require('$PULSE_DIR/APE_FUSION_HIBRIDO_OPTIMO_12P.json');const a=seleccionarHibridoOwner(cfg,{fuenteVerificada:true,ancho:1920,alto:1080,solicitar4K:true,upscaleAll:true});const b=seleccionarHibridoOwner(cfg,{fuenteVerificada:true,ancho:7680,alto:4320,solicitar4K:true,upscaleAll:true});if(a.ruta!=='max'||a.parametrosPulse.p!=='P1')process.exit(2);if(b.ruta!=='max8k'||b.parametrosPulse.p!=='P0')process.exit(3);console.log('owner OK',a.ruta,a.parametrosPulse.p,b.ruta,b.parametrosPulse.p)\""
           ssh "$TARGET" "node -e \"const {ApeUrlBuilder}=require('$PULSE_DIR/ape-url-builder.js');const u=ApeUrlBuilder.build({url:'https://provider.invalid/live/u/p/1.m3u8',channelName:'T',channelId:1,deviceType:'generic',profile:'P3.5',omitProfile:true,forceProfile:true,endpoint:'https://iptv-ape.duckdns.org/pulse/{id}.m3u8'}).url;if(/[?&]p=/.test(u))process.exit(2);console.log('builder omitProfile OK')\""
-          ssh "$TARGET" "grep -q 'ape.crystal.hybrid/1' '$PULSE_DIR/ape-pulse-wrap.js'"
-          ssh "$TARGET" "grep -q 'seleccionarHibridoOwner' '$PULSE_DIR/ape-pulse-wrap.js'"
+          ssh "$TARGET" "grep -q 'ape.crystal.hybrid/1' '$PULSE_DIR/ape-pulse-list.cjs'"
+          ssh "$TARGET" "grep -q 'seleccionarHibridoOwner' '$PULSE_DIR/ape-pulse-list.cjs'"
+          ssh "$TARGET" "grep -q 'crystal-upscale' '$PULSE_DIR/ape-pulse-wrap.js'"
+          ssh "$TARGET" "grep -q 'ape-pulse-list.cjs' '$PULSE_DIR/ape-pulse-wrap.js'"
 
           # 6) nginx -t + reload (nunca restart). Si -t falla, el trap restaura.
           ssh "$TARGET" 'sudo -n nginx -t'
