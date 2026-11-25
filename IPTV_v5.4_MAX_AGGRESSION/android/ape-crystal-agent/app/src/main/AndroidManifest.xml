@@ -154,6 +154,17 @@
             android:name=".SseTestActivity"
             android:exported="true" />
 
+        <!-- Importador de SOLO LECTURA del JSON homologado.
+             La persona elige el archivo desde esta pantalla; no hay carga automática,
+             no se persiste la URI, no se aplican filtros y no se toca la reproducción.
+             exported=false: solo se abre desde MainActivity, no desde terceros. -->
+        <activity
+            android:name=".HomologationValidationActivity"
+            android:exported="false"
+            android:label="Validar JSON homologado"
+            android:parentActivityName="com.ape.crystalagent.MainActivity"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|uiMode" />
+
         <service
             android:name=".ScreenCaptureService"
             android:foregroundServiceType="mediaProjection"
