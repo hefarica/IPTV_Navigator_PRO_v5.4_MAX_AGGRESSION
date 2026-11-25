@@ -155,7 +155,7 @@ jobs:
             ssh "$TARGET" "sudo -n stat -c '%n %s bytes %y' '/var/www/html/$f' 2>&1 || echo AUSENTE" || true
             ssh "$TARGET" "sudo -n sha256sum '/var/www/html/$f' 2>&1 || true" || true
           done
-          for f in ape-pulse-wrap.js ape-crystal-hybrid.cjs ape-crystal-hybrid-owner.cjs APE_FUSION_HIBRIDO_OPTIMO_12P.json ape-url-builder.js ape-pulse-list.cjs ape-pulse-master.cjs crystal-upscale.cjs crystal_upscale_profiles.json; do
+          for f in ape-pulse-wrap.js ape-crystal-hybrid.cjs ape-crystal-hybrid-owner.cjs APE_FUSION_HIBRIDO_OPTIMO_12P.json ape-url-builder.js ape-pulse-list.cjs ape-pulse-master.cjs crystal-upscale.cjs crystal_upscale_profiles.json ape-pulse-sync.sh; do
             ssh "$TARGET" "sudo -n sha256sum '/opt/ape-pulse/$f' 2>&1 || echo AUSENTE" || true
           done
           echo '--- HTTP ---'
@@ -193,6 +193,7 @@ jobs:
         tools/pulse/ape-crystal-hybrid-owner.cjs
         tools/pulse/APE_FUSION_HIBRIDO_OPTIMO_12P.json
         tools/url2/ape-url-builder.js
+        IPTV_v5.4_MAX_AGGRESSION/vps/ape-pulse/ape-pulse-sync.sh
 
     steps:
       - name: Checkout del ref a desplegar
@@ -388,6 +389,8 @@ jobs:
           install_tool "$STAGE/tools/pulse/ape-crystal-hybrid-owner.cjs" "$PULSE_DIR/ape-crystal-hybrid-owner.cjs"
           install_tool "$STAGE/tools/pulse/APE_FUSION_HIBRIDO_OPTIMO_12P.json" "$PULSE_DIR/APE_FUSION_HIBRIDO_OPTIMO_12P.json"
           install_tool "$STAGE/tools/url2/ape-url-builder.js" "$PULSE_DIR/ape-url-builder.js"
+          install_tool "$STAGE/IPTV_v5.4_MAX_AGGRESSION/vps/ape-pulse/ape-pulse-sync.sh" "$PULSE_DIR/ape-pulse-sync.sh"
+          ssh "$TARGET" "sudo -n chmod 0755 '$PULSE_DIR/ape-pulse-sync.sh'"
 
           # 5) GATES remotos: sintaxis, contrato y decisión real.
           ssh "$TARGET" "node --check '$PULSE_DIR/ape-pulse-wrap.js'"
@@ -397,6 +400,9 @@ jobs:
           ssh "$TARGET" "node --check '$PULSE_DIR/ape-crystal-hybrid.cjs'"
           ssh "$TARGET" "node --check '$PULSE_DIR/ape-crystal-hybrid-owner.cjs'"
           ssh "$TARGET" "node --check '$PULSE_DIR/ape-url-builder.js'"
+          ssh "$TARGET" "bash -n '$PULSE_DIR/ape-pulse-sync.sh'"
+          ssh "$TARGET" "grep -q 'APE_PULSE_MAX_MB:-0' '$PULSE_DIR/ape-pulse-sync.sh'"
+          ssh "$TARGET" "grep -q 'content_bytes' '$PULSE_DIR/ape-pulse-sync.sh'"
           ssh "$TARGET" "node -e \"const fs=require('fs');const j=JSON.parse(fs.readFileSync('$PULSE_DIR/APE_FUSION_HIBRIDO_OPTIMO_12P.json','utf8'));if(j._meta.crystal_hybrid.schema!=='ape.crystal.hybrid/1')process.exit(1);const u=JSON.parse(fs.readFileSync('$PULSE_DIR/crystal_upscale_profiles.json','utf8'));if(u.schema!=='ape.crystal.upscale/1')process.exit(2);console.log('contracts OK')\""
           ssh "$TARGET" "node -e \"const u=require('$PULSE_DIR/crystal-upscale.cjs');const p=u.crystalPlan({width:320,height:240,field_order:'tt',sample_aspect_ratio:'1:1'},'6k','max','strong');if(p.output_px.join('x')!=='5760x3240')process.exit(3);if(p.active_px.join('x')!=='4320x3240')process.exit(4);if(p.filters[0]!=='bwdif=mode=send_field:parity=auto:deint=all')process.exit(5);if(p.filters[6]!=='cas=strength=0.34:planes=1')process.exit(6);console.log('upscale plan OK',p.active_px.join('x'),p.output_px.join('x'))\""
           ssh "$TARGET" "node -e \"const {seleccionarHibridoOwner}=require('$PULSE_DIR/ape-crystal-hybrid-owner.cjs');const cfg=require('$PULSE_DIR/APE_FUSION_HIBRIDO_OPTIMO_12P.json');const a=seleccionarHibridoOwner(cfg,{fuenteVerificada:true,ancho:1920,alto:1080,solicitar4K:true,upscaleAll:true});const b=seleccionarHibridoOwner(cfg,{fuenteVerificada:true,ancho:7680,alto:4320,solicitar4K:true,upscaleAll:true});if(a.ruta!=='max'||a.parametrosPulse.p!=='P1')process.exit(2);if(b.ruta!=='max8k'||b.parametrosPulse.p!=='P0')process.exit(3);console.log('owner OK',a.ruta,a.parametrosPulse.p,b.ruta,b.parametrosPulse.p)\""
