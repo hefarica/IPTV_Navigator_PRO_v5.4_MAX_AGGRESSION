@@ -61,9 +61,51 @@ for (const [profile, width, height, active] of inputs) {
   assert.deepStrictEqual(result.active_px, active);
   assert.deepStrictEqual(result.output_px, [5760, 3240]);
   assert.deepStrictEqual(result.filters, expected[profile], profile + ' 6K strong');
+  assert.strictEqual(result.input_sar, '1:1');
   assert.strictEqual(result.status, undefined);
   console.log('PASS 6K strong', profile, result.active_px.join('x'));
 }
+
+// Referencia anamórfica del propietario: SAR 16:15 / 3:4, DAR 4:3.
+// Todos los perfiles deben caer en una imagen activa 4320x3240 y 5760x3240 de
+// lienzo, y conservar su preset (el SAR cambia el ancho activo, no el preset).
+const anamorphic = [
+  ['micro-sd', 320, 240, '1:1'],
+  ['sd', 720, 576, '16:15'],
+  ['hd', 1280, 720, '3:4'],
+  ['fhd', 1920, 1080, '3:4'],
+  ['uhd', 2560, 1440, '3:4'],
+];
+for (const [profile, width, height, inputSar] of anamorphic) {
+  const result = crystalPlan({
+    width, height, field_order: 'tt', sample_aspect_ratio: inputSar,
+    display_aspect_ratio: '4:3', color_transfer: 'bt709',
+  }, '6k', 'max', 'strong');
+  assert.strictEqual(result.profile, profile);
+  assert.strictEqual(result.input_sar, inputSar);
+  assert.strictEqual(result.display_aspect_ratio, '4:3');
+  assert.deepStrictEqual(result.active_px, [4320, 3240], profile + ' anamórfico');
+  assert.deepStrictEqual(result.output_px, [5760, 3240], profile + ' anamórfico');
+  let expectedFilters = expected[profile];
+  if (profile === 'sd') {
+    expectedFilters = expectedFilters.map((f) => f.startsWith('scale=') ? f.replace('4050:3240', '4320:3240') : f);
+  }
+  if (profile === 'hd' || profile === 'fhd' || profile === 'uhd') {
+    expectedFilters = expectedFilters.map((f) => f.startsWith('scale=') ? f.replace('5760:3240', '4320:3240') : f);
+  }
+  assert.deepStrictEqual(result.filters, expectedFilters, profile + ' anamórfico strong');
+  console.log('PASS anamórfico 6K', profile, result.active_px.join('x'), 'SAR=' + inputSar);
+}
+
+// DAR fallback: sin SAR, display_aspect_ratio=4:3 y 720x576 => SAR 16:15.
+const darFallback = crystalPlan({
+  width: 720, height: 576, field_order: 'tt', sample_aspect_ratio: '',
+  display_aspect_ratio: '4:3', color_transfer: 'bt709',
+}, '6k', 'max', 'strong');
+assert.deepStrictEqual(darFallback.active_px, [4320, 3240]);
+assert.strictEqual(darFallback.input_sar, '1:1');
+assert.strictEqual(darFallback.display_aspect_ratio, '4:3');
+console.log('PASS DAR fallback 4:3 sin SAR');
 
 // 4:3 se conserva dentro del lienzo (no se estira).
 const micro4k = plan(320, 240, '4k', 'max', 'classic');

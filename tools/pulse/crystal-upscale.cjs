@@ -128,9 +128,17 @@ function crystalPlan(stream, target, quality, sharpness) {
   }
 
   const [tw, th] = CONTRACT.targets[target];
-  const sar = /^(\d+):(\d+)$/.exec(String(stream.sample_aspect_ratio || ''));
-  const ratio = sar && Number(sar[1]) > 0 && Number(sar[2]) > 0
-    ? Number(sar[1]) / Number(sar[2]) : 1;
+  const sarText = String(stream.sample_aspect_ratio || '');
+  const darText = String(stream.display_aspect_ratio || '');
+  const sar = /^(\d+):(\d+)$/.exec(sarText);
+  const dar = /^(\d+):(\d+)$/.exec(darText);
+  let ratio = 1;
+  if (sar && Number(sar[1]) > 0 && Number(sar[2]) > 0) {
+    ratio = Number(sar[1]) / Number(sar[2]);
+  } else if (dar && Number(dar[1]) > 0 && Number(dar[2]) > 0) {
+    // DAR = (width * SAR) / height => SAR = DAR * height / width.
+    ratio = (Number(dar[1]) / Number(dar[2])) * height / width;
+  }
   if (ratio < 0.1 || ratio > 10) {
     throw new Error('Relación de píxel fuera del intervalo admitido');
   }
@@ -174,6 +182,8 @@ function crystalPlan(stream, target, quality, sharpness) {
     quality,
     sharpness,
     source_px: [width, height],
+    input_sar: sarText || '1:1',
+    display_aspect_ratio: darText || null,
     active_px: active,
     output_px: bypass ? null : [tw, th],
     target,
