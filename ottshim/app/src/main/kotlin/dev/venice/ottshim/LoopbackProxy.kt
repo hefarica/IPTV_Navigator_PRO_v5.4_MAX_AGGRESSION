@@ -107,7 +107,14 @@ class LoopbackProxy(private val policy: AbrPolicy) {
     private fun unmap(id: String): String? = synchronized(ids) { ids[id] }
 
     fun start(): Int {
-        val socket = ServerSocket(0, 64, InetAddress.getByName("127.0.0.1"))
+        // Puerto estable para que el proveedor de OTT no cambie tras cada reinicio.
+        // Si 33355 está ocupado, se usa el puerto efímero anterior.
+        val socket = try {
+            ServerSocket(33355, 64, InetAddress.getByName("127.0.0.1"))
+        } catch (e: java.io.IOException) {
+            android.util.Log.w("ottshim", "preferred port 33355 busy (${e.message}); using ephemeral")
+            ServerSocket(0, 64, InetAddress.getByName("127.0.0.1"))
+        }
         // BG20 (t58) — CAUSA RAÍZ del proxy "mudo": con soTimeout=30 s, `accept()` lanzaba
         // SocketTimeoutException a los 30 s sin tráfico, el `catch (IOException) { break }` mataba
         // el lazo y el puerto quedaba abierto pero SIN nadie aceptando (/health colgado para
@@ -268,14 +275,17 @@ class LoopbackProxy(private val policy: AbrPolicy) {
         if (url == null) return text(c, "canary_not_found", code = 404)
         if (!url.isHttps || url.username.isNotEmpty() || url.password.isNotEmpty() || url.fragment != null)
             return text(c, "canary_https_required", code = 400)
+        android.util.Log.i("ottshim", "canary request path=${req.path} host=${url.host} target=${url.encodedPath}")
         val request = Request.Builder().url(url)
         (req.ua ?: policy.userAgent)?.let { request.header("User-Agent", it) }
         if (resource) req.range?.let { request.header("Range", it) }
         if (req.head) request.head()
-        val response = try { canaryClient.newCall(request.build()).execute() } catch (_: IOException) {
+        val response = try { canaryClient.newCall(request.build()).execute() } catch (e: IOException) {
+            android.util.Log.i("ottshim", "canary upstream exception=${e.javaClass.simpleName} ${e.message}")
             return text(c, "canary_upstream_unavailable", code = 502)
         }
         response.use { resp ->
+            android.util.Log.i("ottshim", "canary upstream code=${resp.code} host=${url.host} path=${url.encodedPath}")
             policy.qoe.onHttpStatus(resp.code)
             if (resp.code != 200 && !(resource && resp.code == 206)) {
                 val code = if (resp.code in 400..599) resp.code else 502
@@ -305,9 +315,13 @@ class LoopbackProxy(private val policy: AbrPolicy) {
                 if (catalog) CanaryWire.catalog(body, url) { id, upstream ->
                     "http://127.0.0.1:${c.localPort}" + canaryRef("/canary/media.m3u8", upstream, id)
                 } else CanaryWire.media(body, url) { upstream ->
-                    canaryRef("/canary/resource", upstream, requireNotNull(ref).channel)
+                    "http://127.0.0.1:${c.localPort}" +
+                        canaryRef("/canary/resource", upstream, requireNotNull(ref).channel)
                 }
-            }.getOrElse { return text(c, "canary_invalid_playlist", code = 502) }
+            }.getOrElse { error ->
+                android.util.Log.i("ottshim", "canary playlist exception=${error.javaClass.simpleName} ${error.message}")
+                return text(c, "canary_invalid_playlist", code = 502)
+            }
             val bytes = out.toByteArray()
             canaryReply(c, 200, "application/vnd.apple.mpegurl", bytes, false)
             if (media) Log.d("canary: channel=${ref?.channel} manifest_served bytes=${bytes.size}")
