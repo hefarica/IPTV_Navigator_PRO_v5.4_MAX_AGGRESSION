@@ -15,6 +15,41 @@
 (function () {
     'use strict';
 
+    /* [2026-11-22 · PM9-RENDER-NULL] Resolver el perfil activo SIN desreferenciar null.
+     *
+     * DEFECTO MEDIDO (consola del operador, 2026-11-22):
+     *   [LAB] Import falló: TypeError: Cannot read properties of null (reading 'color')
+     *       at ProfileManagerV9.render (profile-manager-v9.js:912:91)
+     * El id activo persistido era de un perfil `.5` mientras la config sólo tenía los 6
+     * canónicos, así que `getProfile(id)` devolvió null y `activeProfile.color` tumbó el
+     * render completo: el operador veía "Import falló" con el import YA aplicado.
+     *
+     * Regla: se cae al primer perfil DISPONIBLE; nunca se inventa un perfil ni se toca un
+     * valor. Si no hay ninguno, devuelve null y el llamador pinta un estado vacío legible.
+     * Función pura y aislada para poder probarla sin DOM. */
+    function _pm9ResolveActive(config, activeProfileId) {
+        let list = [];
+        try {
+            if (config && typeof config.getDegradationHierarchy === 'function') {
+                const h = config.getDegradationHierarchy();
+                if (Array.isArray(h)) list = h;
+            } else if (config && typeof config.getAllProfiles === 'function') {
+                const all = config.getAllProfiles();
+                if (all && typeof all === 'object') list = Object.values(all);
+            }
+        } catch (_eHier) { list = []; }
+        let active = null;
+        try {
+            if (config && typeof config.getProfile === 'function' && activeProfileId != null) {
+                active = config.getProfile(activeProfileId);
+            }
+        } catch (_eGet) { active = null; }
+        if (!active || typeof active !== 'object') {
+            active = (list.length && list[0] && typeof list[0] === 'object') ? list[0] : null;
+        }
+        return { profiles: list, active: active };
+    }
+
     class ProfileManagerV9 {
         // ═══════════════════════════════════════════════════════════════════════
         // CONSTANTES QUIRÚRGICAS v13.1 PRO
@@ -206,7 +241,10 @@
             this.containerId = containerId;
             this.container = null;
             this.config = null;
-            this.activeProfileId = 'P3'; // Default
+            // [HÍBRIDO APE CRYSTAL · 2026-11-24] Perfil por defecto P1 (4K UHD Pro)
+            // para que toda lista nueva nazca con el LAB de 27 chunks y el híbrido
+            // p=P1 del cartucho. El operador puede cambiarlo; P1 es el target.
+            this.activeProfileId = 'P1'; // Default híbrido APE Crystal
             this.expandedCategories = new Set(['identity']); // Default expanded
             this.isOpen = false;
 
@@ -248,6 +286,18 @@
             if (saved && this.config.getProfile(saved)) {
                 this.activeProfileId = saved;
             }
+
+            // [HÍBRIDO APE CRYSTAL · 2026-11-24] El objetivo es máxima resolución
+            // posible: P1 (4K UHD Pro) es el perfil del híbrido. Un P2/P3/P4/P5
+            // guardado de una sesión anterior se eleva a P1; P0 (8K real) se respeta.
+            // Se puede desactivar con window.APE_HYBRID_CRYSTAL = false.
+            try {
+                if (typeof window !== 'undefined' && window.APE_HYBRID_CRYSTAL !== false
+                    && (!saved || ['P2', 'P3', 'P4', 'P5'].indexOf(saved) >= 0)) {
+                    this.activeProfileId = 'P1';
+                    localStorage.setItem('ape_active_profile', 'P1');
+                }
+            } catch (_eHybrid) { /* localStorage no disponible */ }
 
             console.log('%c🎚️ Profile Manager v9.0 Inicializado', 'color: #10b981; font-weight: bold;');
             console.log(`   Perfil activo: ${this.activeProfileId}`);
@@ -865,8 +915,20 @@
             this.isOpen = true;
 
             this.normalizeAllProfiles();
-            const profiles = this.config.getDegradationHierarchy ? this.config.getDegradationHierarchy() : Object.values(this.config.getAllProfiles());
-            const activeProfile = this.config.getProfile(this.activeProfileId);
+            const _pm9Res = _pm9ResolveActive(this.config, this.activeProfileId);
+            const profiles = _pm9Res.profiles;
+            const activeProfile = _pm9Res.active;
+            if (activeProfile && activeProfile.id && activeProfile.id !== this.activeProfileId) {
+                console.warn('[PM9] perfil activo "' + this.activeProfileId + '" inexistente en la config → se muestra "' + activeProfile.id + '" (ningún valor se inventó)');
+                this.activeProfileId = activeProfile.id;
+            }
+            if (!activeProfile) {
+                this.container.innerHTML = '<div class="pm9-empty-state" style="padding:24px;font-family:monospace;color:#f87171;line-height:1.6;">'
+                    + '⚠️ No hay ningún perfil disponible en APE_PROFILES_CONFIG.<br>'
+                    + 'No se ha inventado ningún valor: importa el LAB o restaura un perfil antes de editar.</div>';
+                console.warn('[PM9] render abortado: 0 perfiles disponibles');
+                return;
+            }
             const activeManifest = this.config.getManifestConfig();
             const categories = this.config.getCategories();
 
@@ -956,11 +1018,20 @@
                             <div class="pm9-setting">
                                 <label>Estrategia</label>
                                 <select id="pm9_strategy" onchange="window.ProfileManagerV9.updateSetting('strategy', this.value)">
-                                    ${Object.keys(ProfileManagerV9.STRATEGY_CONFIG).map(s => `
-                                        <option value="${s}" ${activeProfile.settings.strategy === s ? 'selected' : ''}>
-                                            ${s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, ' ')}
-                                        </option>
-                                    `).join('')}
+                                    ${Object.keys(ProfileManagerV9.STRATEGY_CONFIG).map(s => {
+                                        /* [t17] etiqueta legible del tuner (español) y 'selected'
+                                         * por CLAVE CANÓNICA: acepta 'ultra-aggressive' y
+                                         * 'Ultra-Agresivo' sin dejar el select sin opción. */
+                                        const T = (typeof window !== 'undefined') ? window.APE_HEALTH_TUNER : null;
+                                        const label = (T && typeof T.strategyOf === 'function') ? T.strategyOf(s).name
+                                            : (s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, ' '));
+                                        const cur = (T && typeof T.strategyKey === 'function')
+                                            ? T.strategyKey(activeProfile.settings.strategy) : activeProfile.settings.strategy;
+                                        return `
+                                        <option value="${s}" ${cur === s ? 'selected' : ''}>
+                                            ${label}
+                                        </option>`;
+                                    }).join('')}
                                 </select>
                             </div>
                         </div>
@@ -1079,6 +1150,15 @@
                                  background:rgba(255,255,255,.03);border:1px solid rgba(148,163,184,.28);
                                  font-size:9px;color:#94a3b8;line-height:1.35;">
                                 Gate: headroom &ge; 200 % y risk &le; 10
+                            </div>
+                            <!-- [2026-11-18] Enlace al módulo «Latencia Rayo»: es la
+                                 REFERENCIA de red del cálculo. Se muestra aquí, donde el
+                                 operador mira el rendimiento, sin mover ni tocar el bloque
+                                 QoS original (ni sus ids ni su estructura interna). -->
+                            <div id="pm9_qos_link" style="margin-top:6px;padding:5px 8px;border-radius:6px;
+                                 background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.3);
+                                 font-size:9px;color:#7dd3fc;line-height:1.35;">
+                                📡 Latencia Rayo: sin medición
                             </div>
                         </div>
                         
@@ -1259,7 +1339,7 @@
                     <div id="ape-floating-save-menu" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000000; flex-direction: column; gap: 10px; background: rgba(15, 23, 42, 0.97); padding: 16px; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.5); box-shadow: 0 10px 25px rgba(0,0,0,0.6); backdrop-filter: blur(10px); min-width: 280px;">
                         <div style="color: #6ee7b7; font-size: 0.8rem; font-weight: bold; text-align: center; text-transform: uppercase;">💾 Guardar estado</div>
                         <button onclick="window.ProfileManagerV9.saveCurrentProfile()" style="background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.4); padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: 700;">💾 Guardar perfil actual (<span id="pm9-save-current-id">P0</span>)</button>
-                        <button onclick="window.ProfileManagerV9.saveAllProfiles()" style="background: rgba(139, 92, 246, 0.2); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.4); padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: 700;">📦 Guardar P0–P5 (estado actual)</button>
+                        <button onclick="window.ProfileManagerV9.saveAllProfiles()" style="background: rgba(139, 92, 246, 0.2); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.4); padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: 700;">📦 Guardar TODOS los perfiles (${this._allProfileIds().length})</button>
                         <button onclick="window.ProfileManagerV9.toggleSaveMenu()" style="background: transparent; color: #94a3b8; border: 1px solid rgba(148,163,184,0.3); padding: 7px 12px; border-radius: 8px; cursor: pointer;">Cancelar</button>
                     </div>
 
@@ -1278,6 +1358,34 @@
 
             // v3.1: Actualizar indicadores de Streaming Health
             this._updateStreamingHealth();
+
+            // [t13 2026-11-17] El auto-arranque de UNA sola medición por sesión se
+            // sustituye por el PRIMER CICLO DEL GOBERNADOR: medir una vez y
+            // congelar el resultado no es calibrar. El gobernador mide, calcula
+            // y aplica en bucle (30 s), se pausa con la pestaña oculta y nunca
+            // solapa dos ciclos. No se duplica la medición: este es el único
+            // arranque automático.
+            /* [t16 2026-11-19 · ORDEN DEL OPERADOR] CERO BUCLE Y CERO AUTO-MEDICIÓN.
+             * "tiene que medir cuando lo pido… ya luego no tiene porque repetirse
+             * una y otra vez, pues esto va a generar que este cambiando datos sin
+             * que se lo pida". Aquí SOLO se restaura el snapshot persistente: no
+             * se arranca el gobernador ni se lanza ninguna sonda. La única vía de
+             * medir es la acción explícita del usuario (botón único). */
+            if (!this._bwAutoStarted) {
+                this._bwAutoStarted = true;
+                const _self = this;
+                setTimeout(function () {
+                    try {
+                        const rr = _self._restoreQoePlan();
+                        if (typeof console !== 'undefined' && rr) {
+                            console.log('[SNAPSHOT] ' + (rr.restored
+                                ? ('plan restaurado para ' + _self.activeProfileId + (rr.stale ? ' (ANTIGUO, sin medir)' : ''))
+                                : 'no restaurado: ' + (rr.reason || 'sin datos')));
+                        }
+                    } catch (e) { /* no bloqueante */ }
+                    /* NO se llama a startGovernor(): sin acción del usuario no se mide. */
+                }, 0);
+            }
         }
 
         /**
@@ -1329,6 +1437,83 @@
                 }
             } catch (e) { /* no bloqueante */ }
 
+            // ═══════════════════════════════════════════════════════════════
+            // [2026-11-18 · ENCARGO FINAL] RIESGO Y HEADROOM CON LA BASE DEL PLAN.
+            //
+            // DEFECTO MEDIDO: el panel calculaba el riesgo con settings.bitrate
+            // (200) mientras el plan dimensiona con calculateBitrate del panel
+            // (P0 8K = 35 Mbps). Con 146 Mbps medidos eso daba 146/200 = 0.73x
+            // → risk 95 (rojo), cuando la pareja real es 146/35 = 4.17x → risk 5
+            // y gate excepcional cumplido. El device decodifica un stream de
+            // 35 Mbps, no de 200.
+            //
+            // UNA SOLA BASE, la del plan:
+            //   ratio = medido / requiredMbpsBasis
+            //   risk  = APE_BW_METER.riskFromRatio(ratio)   (mismas anclas:
+            //           3.0x→5 · 2.0x→20 · 1.5x→35 · 1.3x→50 · 1.0x→70 · 0x→95)
+            // Sin medición fresca NO se inventa riesgo: evidence=false y el
+            // campo dice "--" con el motivo (nunca 95 por defecto).
+            // ═══════════════════════════════════════════════════════════════
+            let riskTitle = '';
+            try {
+                const np = this._networkProfile();
+                const basis = this._requiredMbpsBasis(profile);
+                const bwM = (typeof window !== 'undefined') ? window.APE_BW_METER : null;
+                if (np && np.fresh && basis.mbps > 0 && bwM && typeof bwM.riskFromRatio === 'function') {
+                    /* [t16] risk/headroom sobre la CAPACIDAD (peak), no sobre el dip */
+                    /* [t30] capacidAD con precedencia declarada; si NO es
+                     * computable, no se fabrica un número pequeño. */
+                    const capSrc = this._capacitySource();
+                    const capR = this._capacity();
+                    const capMbps = capSrc.noComputado ? null : Number(capSrc.mbps);
+                    if (capSrc.noComputado) {
+                        performance.evidence = false;
+                        performance.bw_no_computado = true;
+                        performance.bw_reason = capSrc.reason;
+                        throw new Error('CAPACIDAD_NO_COMPUTADA');
+                    }
+                    const ratio = Math.round((capMbps / basis.mbps) * 100) / 100;
+                    const risk = bwM.riskFromRatio(ratio);
+                    performance.evidence = true;
+                    performance.headroomRatio = ratio;
+                    performance.headroomSparePct = Math.round((ratio - 1) * 100);
+                    performance.headroom_percent = performance.headroomSparePct;
+                    performance.risk_score = risk;
+                    performance.risk_level = risk <= 20 ? 'LOW' : risk <= 40 ? 'MODERATE'
+                        : risk <= 60 ? 'ELEVATED' : risk <= 80 ? 'HIGH' : 'CRITICAL';
+                    performance.risk_color = risk <= 30 ? '#10b981' : risk <= 60 ? '#eab308' : '#ef4444';
+                    performance.bw_measured_mbps = capMbps;
+                    performance.bw_source = capSrc.source;
+                    /* bw_now_mbps = MUESTRA INSTANTÁNEA (downlink), NO la capacidad:
+                     * es la que alimenta la detección de oscilación del gobernador. */
+                    performance.bw_now_mbps = Number((np && np.downloadMbps) || capMbps);
+                    performance.bw_peak_mbps = capMbps;
+                    performance.peak_hold = capR || null;
+                    performance.dip = !!(capR && capR.dip);
+                    performance.dip_ratio = capR ? capR.dipRatio : null;
+                    performance.peak_expired = !!(capR && capR.expired);
+                    performance.required_basis_mbps = basis.mbps;
+                    performance.required_basis_source = basis.source;
+                    performance.stall_rate_percent = (typeof this._stallFromRatio === 'function')
+                        ? this._stallFromRatio(ratio) : performance.stall_rate_percent;
+                    riskTitle = 'risk ' + risk + ' · ratio ' + ratio + 'x = ' + capMbps +
+                        ' Mbps de CAPACIDAD (pico sostenido) / ' + basis.mbps + ' Mbps exigidos (base del plan: ' +
+                        basis.source + ') · ahora ' + ((np && np.downloadMbps) || capMbps) + ' Mbps · pico ' + capMbps + ' Mbps' +
+                        ((capR && capR.dip) ? ' · DIP al ' + Math.round((capR.dipRatio || 0) * 100) + ' % del pico (inestabilidad, no falta de capacidad)' : '') +
+                        ((capR && capR.expired) ? ' · peak anterior EXPIRADO: recalibrado al nuevo maximo' : '');
+                } else {
+                    performance.evidence = false;
+                    performance.risk_score = null;
+                    performance.headroomRatio = null;
+                    performance.headroomSparePct = null;
+                    performance.required_basis_mbps = basis.mbps || null;
+                    performance.required_basis_source = basis.source;
+                    riskTitle = 'NO_MEASUREMENT: sin perfil de red fresco no hay riesgo que calcular' +
+                        (basis.mbps > 0 ? ' (base del plan ' + basis.mbps + ' Mbps)' : '') +
+                        (np && !np.fresh ? ' — perfil caducado hace ' + Math.round(np.ageMs / 1000) + ' s' : '');
+                }
+            } catch (e) { /* no bloqueante */ }
+
             // Actualizar indicadores del panel superior
             const healthIndicator = document.getElementById('pm9_health_indicator');
             const stabilityLabel = document.getElementById('pm9_stability_label');
@@ -1336,26 +1521,56 @@
             const riskPreview = document.getElementById('pm9_risk_preview');
             const headroomPreview = document.getElementById('pm9_headroom_preview');
 
+            /* [2026-11-17] DIAGNOSTICO VISIBLE. Antes, cuando no habia medicion,
+             * el panel decia "SIN MEDICION" y OCULTABA el motivo: era imposible
+             * saber si faltaba el medidor, si la sonda no encontraba objetivo o
+             * si la medicion llego vacia. Ahora el estado real queda en la
+             * consola y en el title de los dos indicadores. Solo anade texto:
+             * no altera ningun valor pintado. */
+            try {
+                const _bwd = this._lastBw;
+                if (_bwd && !_bwd.ok) {
+                    const why = '[STREAMING HEALTH] ' + (_bwd.state || 'SIN_ESTADO')
+                        + ' :: ' + (_bwd.reason || 'sin motivo') + ' @ ' + new Date(_bwd.at || Date.now()).toISOString();
+                    if (typeof console !== 'undefined' && console.warn) console.warn(why);
+                    if (stallPreview) stallPreview.setAttribute('title', why);
+                    if (headroomPreview) headroomPreview.setAttribute('title', why);
+                } else if (!_bwd) {
+                    const why2 = '[STREAMING HEALTH] SIN_INTENTO :: el medidor nunca arranco '
+                        + '(APE_BW_METER=' + (typeof window !== 'undefined' && window.APE_BW_METER ? 'OK' : 'AUSENTE') + ')';
+                    if (typeof console !== 'undefined' && console.warn) console.warn(why2);
+                    if (stallPreview) stallPreview.setAttribute('title', why2);
+                    if (headroomPreview) headroomPreview.setAttribute('title', why2);
+                }
+            } catch (e) { /* no bloqueante */ }
+
+            /* el motivo/base va SIEMPRE en el title: "risk 5 · ratio 4.17x =
+             * 146 Mbps medidos / 35 Mbps exigidos (base del plan: …)" o el
+             * NO_MEASUREMENT con su razón. Sin esto el número no es auditable. */
+            if (riskTitle) {
+                if (riskPreview) riskPreview.title = riskTitle;
+                if (headroomPreview) headroomPreview.title = riskTitle;
+                if (stallPreview) stallPreview.title = riskTitle;
+            }
+
             if (healthIndicator) {
-                const riskScore = performance.risk_score || 0;
-                const color = riskScore <= 30 ? '#10b981' : riskScore <= 60 ? '#eab308' : '#ef4444';
+                /* sin medición el semáforo NO puede estar verde (0 falso) ni
+                 * rojo por un 95 inventado: gris = no se sabe. */
+                const noEv = performance.evidence === false;
+                const riskScore = (performance.risk_score === null || performance.risk_score === undefined)
+                    ? null : performance.risk_score;
+                const color = noEv ? '#64748b'
+                    : (riskScore === null ? '#64748b'
+                        : (riskScore <= 30 ? '#10b981' : riskScore <= 60 ? '#eab308' : '#ef4444'));
                 healthIndicator.style.background = color;
                 healthIndicator.style.boxShadow = `0 0 8px ${color}55`;
             }
 
+            /* [t20] etiqueta y color desde la FUENTE ÚNICA (el plan) */
             if (stabilityLabel) {
-                // FIX 2026-10-24: sin medición real → "SIN MEDICIÓN", nunca
-                // "UNSTABLE". Antes el piso del perfil se presentaba como
-                // ancho de banda observado y el panel quedaba rojo siempre.
-                const noEvidence = performance.evidence === false;
-                const label = noEvidence
-                    ? 'SIN MEDICIÓN'
-                    : (performance.stability?.label || performance.stall_class || 'OPTIMAL');
-                const color = noEvidence
-                    ? '#64748b'
-                    : (performance.stability?.color || performance.stall_color || '#10b981');
-                stabilityLabel.textContent = label;
-                stabilityLabel.style.color = color;
+                const v = this._verdict();
+                stabilityLabel.textContent = v.label;
+                stabilityLabel.style.color = v.color;
             }
 
             if (stallPreview) {
@@ -1395,14 +1610,25 @@
                 // contra el gate (headroom >= 3.00x = 200 % Y risk <= 10).
                 const ratio = (typeof performance.headroomRatio === 'number')
                     ? performance.headroomRatio : null;
-                const plausible = (ratio !== null && ratio >= 0.01 && ratio <= 100);
+                /* [2026-11-20] El tope de 100x marcaba IMPLAUSIBLE un ratio REAL: con 113 Mbps
+         * medidos y un perfil de 0,5 Mbps el ratio es 227x y es fisicamente correcto.
+         * El tope existia para cazar el antiguo piso de 0,1 Mbps (ratio 1999x); 2000 lo caza igual. */
+        const plausible = (ratio !== null && ratio >= 0.01 && ratio <= 2000);
                 const hasMeasurement = (performance.evidence !== false) && plausible;
                 if (typeof window.evaluateSufficiency === 'function') {
                     const ev = window.evaluateSufficiency(ratio, performance.risk_score, hasMeasurement);
-                    headroomPreview.textContent = window.sufficiencyLabel
-                        ? window.sufficiencyLabel(ev) : (ev.headroomPct + '%');
+                    /* Operador: "+197 %" y "margen 1,3x" parecían lo mismo con bases
+                     * distintas. Se NOMBRA la base: el % es capacidad/exigido (red
+                     * frente al perfil); el 1,3x de la ley es el MÍNIMO de industria
+                     * (≈ +30 %), un umbral, no una medición. */
+                    headroomPreview.textContent = (window.sufficiencyLabel
+                        ? window.sufficiencyLabel(ev) : (ev.headroomPct + '%')) + ' (red)';
                     headroomPreview.style.color = ev.color || '#64748b';
-                    headroomPreview.title = ev.reason +
+                    headroomPreview.title = 'Headroom de RED = capacidad medida / exigido por el perfil' +
+                        (ratio !== null ? (' = ' + ratio + 'x') : ' = (sin medir)') +
+                        '. El 1,3x de la ley es el MÍNIMO recomendado de industria (~+30 %), NO un valor medido. ' +
+                        'El riesgo mostrado es riesgo de RED, no estabilidad de reproducción. ' +
+                        ev.reason +
                         (ev.target ? (' — gate: headroom >= ' + Math.round((ev.target.headroomRatio - 1) * 100) +
                           ' % y risk <= ' + ev.target.riskMax) : '');
                 } else if (performance.evidence === false) {
@@ -1420,33 +1646,80 @@
 
             // GATE DE SUFICIENCIA: declarar explicitamente si el perfil alcanza
             // el estado excepcional, y si no, cuanto le falta.
+            /* ═══════════════════════════════════════════════════════════════
+             * [t18] UN SOLO VEREDICTO, DOS DIMENSIONES ETIQUETADAS.
+             *
+             * El operador vio "SUFICIENCIA EXCEPCIONAL" al lado de un plan
+             * INCOHERENTE y preguntó por qué el panel decía UNSTABLE. No era un
+             * fallo de cálculo: eran DOS preguntas mezcladas.
+             *   · TRANSPORTE: disponible (capacidad×duty) vs exigido → MANDA.
+             *   · CODEC: capacidad vs bitrate del codec → informativo.
+             * Si el plan es ok:false el gate NUNCA dice EXCEPCIONAL ni verde.
+             * ═══════════════════════════════════════════════════════════════ */
+            const selfPM = this;
+            const dims = (function dimensiones() {
+                const prof = (selfPM.config && selfPM.config.getProfile) ? selfPM.config.getProfile(selfPM.activeProfileId) : null;
+                const plan = (typeof selfPM._coherentPlanFor === 'function')
+                    ? selfPM._coherentPlanFor(prof, selfPM._activeStrategyId()) : null;
+                const m = (plan && plan.metrics) || {};
+                const vv = (plan && plan.values) || {};
+                const cap = Number(m.measuredMbps);
+                const req = Number(m.requiredMbpsForStall || vv.bwMinMbps || m.requiredMbps);
+                const avail = (m.availableMbps === null || m.availableMbps === undefined)
+                    ? Number(m.measuredMbps) : Number(m.availableMbps);
+                /* [t20] Number(null)=0 colaba un ratio 0 falso: se distingue ausencia */
+                const ratioT = (m.dutyRatio === null || m.dutyRatio === undefined) ? null : Number(m.dutyRatio);
+                const codecMbps = (typeof selfPM._stallBitrateFor === 'function') ? Number(selfPM._stallBitrateFor(prof)) : null;
+                const ratioC = (isFinite(cap) && isFinite(codecMbps) && codecMbps > 0)
+                    ? Math.round((cap / codecMbps) * 100) / 100 : null;
+                return {
+                    plan: plan, ok: !!(plan && plan.ok), measured: m.measuredMbps === undefined ? null : cap,
+                    req: isFinite(req) ? req : null,
+                    avail: isFinite(avail) ? avail : null,
+                    ratioT: (ratioT !== null && ratioT !== undefined && isFinite(ratioT)) ? ratioT
+                        : ((isFinite(avail) && isFinite(req) && req > 0) ? (Math.round((avail / req) * 100) / 100)
+                            : (isFinite(Number(m.ratio)) ? Number(m.ratio) : null)),
+                    faltaUtil: (isFinite(req) && isFinite(avail)) ? Math.max(0, Math.round((req - avail) * 100) / 100) : null,
+                    codecMbps: (isFinite(codecMbps) && codecMbps > 0) ? codecMbps : null,
+                    ratioC: ratioC,
+                    stall: (m.stallEstimatePct === undefined || m.stallEstimatePct === null) ? null : m.stallEstimatePct,
+                    target: m.targetStallPct === undefined ? null : m.targetStallPct,
+                    causa: (plan && plan.violations && plan.violations.length) ? plan.violations[0] : null
+                };
+            })();
+            this._dims = dims;
+
             (function renderSufficiencyGate() {
                 const el = document.getElementById('pm9_sufficiency_gate');
                 if (!el) return;
-                if (typeof window.evaluateSufficiency !== 'function') { el.textContent = ''; return; }
-                const ratio = (typeof performance.headroomRatio === 'number')
-                    ? performance.headroomRatio : null;
-                const plausible = (ratio !== null && ratio >= 0.01 && ratio <= 100);
-                const hasM = (performance.evidence !== false) && plausible;
-                const ev = window.evaluateSufficiency(ratio, performance.risk_score, hasM);
-                if (ev.satisfiesExceptional) {
-                    el.textContent = 'SUFICIENCIA EXCEPCIONAL: headroom ' + ev.headroomPct +
-                        ' % (>= 200 %) y risk ' + ev.risk + ' (<= 10)';
+                const d = dims;
+                /* sin medición: ni color ni veredicto inventado */
+                if (d.measured === null) {
+                    el.textContent = 'NO EXCEPCIONAL (NO_MEASUREMENT): sin medición de red no hay veredicto';
+                    el.style.color = '#64748b';
+                    el.style.borderColor = 'rgba(148,163,184,.35)';
+                    el.title = 'Mide con el botón único: sin capacidad medida no se declara suficiencia.';
+                    return;
+                }
+                const trans = 'TRANSPORTE: ' + d.avail + '/' + d.req + ' Mbps (' + d.ratioT + 'x)' +
+                    (d.ok ? ' — cubre el mínimo' : (' — faltan ' + d.faltaUtil + ' Mbps útiles'));
+                const codec = (d.codecMbps !== null)
+                    ? ('CODEC: ' + d.measured + ' Mbps vs ' + d.codecMbps + ' Mbps de bitrate (' + d.ratioC + 'x) — decodificable' +
+                       (d.ok ? '' : ' [informativo: NO compensa un transporte rojo]'))
+                    : 'CODEC: sin bitrate de códec disponible';
+                if (d.ok) {
+                    el.textContent = 'EXCEPCIONAL (plan coherente) · ' + trans + ' · ' + codec;
                     el.style.color = '#10b981';
                     el.style.borderColor = 'rgba(16,185,129,.5)';
                 } else {
-                    const g = ev.gap || {};
-                    let msg = 'NO EXCEPCIONAL (' + ev.state + '): ';
-                    if (ev.state === 'NO_MEASUREMENT') msg += 'sin medicion de red, el headroom no es computable';
-                    else if (ev.state === 'IMPLAUSIBLE') msg += 'el ratio esta fuera de rango fisico: revisar bandwidthSafe';
-                    else {
-                        msg += 'headroom ' + ev.headroomPct + ' % (faltan ' + (g.headroomMissing || 0) +
-                            'x para 3.0x)' + (g.riskExcess ? (' · risk ' + ev.risk + ' excede en ' + g.riskExcess) : '');
-                    }
-                    el.textContent = msg;
-                    el.style.color = '#eab308';
-                    el.style.borderColor = 'rgba(234,179,8,.5)';
+                    el.textContent = 'NO EXCEPCIONAL (plan incoherente) · ' + trans + ' · ' + codec +
+                        (d.causa ? (' · causa: ' + d.causa) : '');
+                    el.style.color = '#ef4444';
+                    el.style.borderColor = 'rgba(239,68,68,.55)';
                 }
+                el.title = 'Para EXCEPCIONAL el TRANSPORTE debe dar capacidad ≥ 3x lo exigido (con este perfil: ' +
+                    (d.req ? Math.round(d.req * 3) : '?') + ' Mbps medidos) o bajar de perfil. ' +
+                    'El CODEC sólo dice si el bitrate es decodificable; no vuelve verde un transporte rojo.';
             })();
 
             // Actualizar panel de resumen (mostrar si hay warnings)
@@ -1464,15 +1737,20 @@
                 const warningText = document.getElementById('pm9_warning_text');
 
                 if (summaryStability) {
-                    summaryStability.textContent = performance.stability?.label || performance.stall_class || '--';
-                    summaryStability.style.color = performance.stability?.color || '#10b981';
+                    /* [t20] fuente única: el plan, no performance.stability */
+                    const vS = this._verdict();
+                    summaryStability.textContent = vS.label;
+                    summaryStability.style.color = vS.color;
                 }
+                const etiq = this._summaryLabels(performance);
                 if (summaryStall) {
-                    summaryStall.textContent = `${performance.stall_rate_percent?.toFixed(2) || '--'}%`;
+                    summaryStall.textContent = etiq.stall;
+                    summaryStall.title = etiq.stallTitle;
                 }
                 if (summaryRisk) {
-                    summaryRisk.textContent = `${performance.risk_score || '--'} (${performance.risk_level || 'N/A'})`;
+                    summaryRisk.textContent = etiq.risk;
                     summaryRisk.style.color = performance.risk_color || '#eab308';
+                    summaryRisk.title = etiq.riskTitle;
                 }
                 if (summaryMemory) {
                     summaryMemory.textContent = `${performance.memory_usage_mb || '--'} MB`;
@@ -1503,24 +1781,69 @@
                 rtRam.textContent = `${performance.memory_usage_mb}/${performance.memory_peak_mb || '~'} MB`;
             }
             if (rtStall) {
-                const stall = performance.stall_rate_percent || 0;
-                rtStall.textContent = stall <= 1.67 ? `<${stall}%` : `${stall}%`;
-                rtStall.style.color = this._getStallColor(stall);
+                /* [t18] "<0.00%" es imposible: se muestra el valor y, si no hay,
+                 * NO COMPUTADO. */
+                const spN = Number(performance.stall_rate_percent);
+                if (performance.evidence === false || !isFinite(spN)) {
+                    rtStall.textContent = 'NO COMPUTADO';
+                    rtStall.style.color = '#64748b';
+                } else {
+                    const stall = Math.max(0, spN);
+                    rtStall.textContent = stall.toFixed(2) + '%';
+                    rtStall.style.color = this._getStallColor(stall);
+                }
             }
 
-            // Actualizar banner de estabilidad
-            const stabilityBanner = document.querySelector('.pm9-stability-banner');
-            if (stabilityBanner && performance.stability) {
-                stabilityBanner.style.background = `${performance.stability.color}22`;
-                stabilityBanner.style.borderLeftColor = performance.stability.color;
-                const bannerContent = stabilityBanner.querySelector('span');
-                if (bannerContent) {
-                    bannerContent.innerHTML = `
-                        ${performance.stability.icon} <strong>${performance.stability.label}</strong>
-                        <span style="color: #64748b; margin-left: 8px;">Headroom: ${performance.headroom_percent}%</span>
-                        ${performance.unstable_margin ? `<span style="color: #64748b; margin-left: 8px;">(Margin: ${performance.unstable_margin}x)</span>` : ''}
-                    `;
+            /* [t18] La estabilidad del panel se DERIVA del plan: coherente=estable.
+             * Nada de un cálculo paralelo que diga UNSTABLE con un gate verde. */
+            try {
+                const dS = this._dims || {};
+                const lbl = document.getElementById('pm9_stability_label');
+                const ind = document.getElementById('pm9_health_indicator');
+                const spv = document.getElementById('pm9_stall_preview');
+                if (lbl) {
+                    if (dS.measured === null || dS.measured === undefined) {
+                        lbl.textContent = 'SIN MEDICIÓN';
+                        lbl.style.color = '#64748b';
+                    } else if (dS.ok) {
+                        lbl.textContent = 'ESTABLE (plan coherente)';
+                        lbl.style.color = '#10b981';
+                    } else {
+                        lbl.textContent = 'NO ESTABLE — transporte insuficiente';
+                        lbl.style.color = '#ef4444';
+                    }
                 }
+                if (ind) {
+                    const col = (dS.measured === null || dS.measured === undefined) ? '#64748b'
+                        : (dS.ok ? '#10b981' : '#ef4444');
+                    ind.style.background = col;
+                    ind.style.boxShadow = '0 0 8px ' + col + '55';
+                }
+                if (spv) {
+                    /* [t18] "<0.00%" junto a UNSTABLE es incoherente: se muestra la
+                     * ESTIMACIÓN del plan; si no es computable, se dice. */
+                    /* [t18] mismo formato honesto que el veredicto: si supera, LO DICE. */
+                    spv.textContent = (dS.stall === null || dS.stall === undefined)
+                        ? 'stall: NO COMPUTADO'
+                        : ('stall est. ' + dS.stall + ' %' + (dS.target === null ? ''
+                            : (Number(dS.stall) > Number(dS.target)
+                                ? (' SUPERA el target ' + dS.target + ' %')
+                                : (' ≤ target ' + dS.target + ' % (cumple)'))));
+                    spv.style.color = (dS.stall !== null && dS.target !== null && Number(dS.stall) > Number(dS.target))
+                        ? '#ef4444' : '#64748b';
+                    spv.title = 'Estimación del MODELO de stall para el plan aplicado (no observada en el reproductor).';
+                }
+            } catch (e) { /* no bloqueante */ }
+
+            // Actualizar banner de estabilidad
+            /* [t20] el banner EN VIVO usa la MISMA fuente que el resto. */
+            const stabilityBanner = document.querySelector('.pm9-stability-banner');
+            if (stabilityBanner) {
+                const b = this._verdictHtmlBanner();
+                stabilityBanner.style.background = b.v.color + '22';
+                stabilityBanner.style.borderLeftColor = b.v.color;
+                const bannerContent = stabilityBanner.querySelector('span');
+                if (bannerContent) bannerContent.innerHTML = b.inner;
             }
 
             // Actualizar métricas v3.1 si existen
@@ -1533,16 +1856,106 @@
             this._updateV31Metrics(performance);
 
             console.log('📊 Streaming Health updated:', {
-                stability: performance.stability?.label,
+                stability: (this._verdict() || {}).label,
                 stall: performance.stall_rate_percent,
                 risk: performance.risk_score,
                 warnings: performance.policy_warnings?.length || 0
             });
+
+            /* [2026-11-18] El panel de rendimiento se pinta con el PLAN y el
+             * perfil de red medido, no con constantes del perfil. Se hace aquí
+             * porque este método corre tras CADA ciclo del gobernador y tras
+             * cada render. */
+            /* El plan del panel se RECALCULA aquí con el perfil y la medición
+             * actuales: si se pintara _lastCoherent, el gate podría mostrar el
+             * veredicto de un ciclo anterior y el display iría por detrás. */
+            try { this._paintPerfPanel(this._coherentPlanFor(null, this._activeStrategyId())); } catch (e) { /* no bloqueante */ }
         }
 
         /**
          * Actualiza las métricas v3.1 en el panel inferior
          */
+        /* [t18] Etiquetas del bloque de resumen. Se extraen para poder probarlas
+         * sin DOM: el operador detectó "STALL RATE <0%" (imposible) y "Risk
+         * 5/100 (LOW)" junto a UNSTABLE sin decir qué mide cada número. */
+        _summaryLabels(perf) {
+            perf = perf || {};
+            const noEv = perf.evidence === false;
+            const sp = Number(perf.stall_rate_percent);
+            const stall = noEv ? 'sin medir (observada del reproductor)'
+                : (isFinite(sp) ? (Math.max(0, sp).toFixed(2) + '%') : 'sin medir');
+            const risk = 'red: ' + String(perf.risk_score === undefined || perf.risk_score === null ? '--' : perf.risk_score) +
+                '/100 (' + String(perf.risk_level || 'N/A') + ')';
+            return {
+                stall: stall,
+                stallTitle: noEv
+                    ? 'No hay evidencia de reproducción medida: la tasa de interrupción observada aún no existe'
+                    : 'Tasa de interrupción estimada por el modelo (no observada en el reproductor)',
+                risk: risk,
+                riskTitle: 'Riesgo de RED = f(capacidad medida / exigido por el perfil). NO es un veredicto de estabilidad de reproducción:'
+                    + ' la estabilidad se mide con el reproductor y, si no hay datos, figura como "sin medir".'
+            };
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════
+         * [t20] FUENTE ÚNICA DEL VEREDICTO (panel + widget V1.1 + banner + CTA).
+         * Todo sale del PLAN (this._dims, derivado de coherentPlan). Ningún
+         * widget calcula estabilidad por su cuenta; el headroom es UNA cifra.
+         *   plan ok   -> ESTABLE, verde, sin CTA
+         *   plan !ok  -> NO ESTABLE, rojo, CTA "ACCION URGENTE REQUERIDA"
+         *   sin medic -> SIN MEDICIÓN, gris, sin CTA
+         * ═══════════════════════════════════════════════════════════════════ */
+        _verdict() {
+            const d = this._dims || {};
+            if (d.measured === null || d.measured === undefined) {
+                return {
+                    state: 'NOM', ok: null, label: 'SIN MEDICIÓN', color: '#64748b',
+                    icon: '⚪', cta: false, headroomRatio: null, headroomPct: null,
+                    bwMin: (d.req === undefined ? null : d.req),
+                    stall: null, stallTarget: null, stallOk: null, cause: null
+                };
+            }
+            const ok = !!d.ok;
+            const ratio = (d.ratioT === null || d.ratioT === undefined) ? null : d.ratioT;
+            return {
+                state: ok ? 'OK' : 'BAD',
+                ok: ok,
+                label: ok ? 'ESTABLE (plan coherente)' : 'NO ESTABLE — transporte insuficiente',
+                color: ok ? '#10b981' : '#ef4444',
+                icon: ok ? '✅' : '⚠️',
+                cta: !ok,
+                headroomRatio: ratio,
+                headroomPct: (ratio === null) ? null : Math.round((ratio - 1) * 100),
+                bwMin: (d.req === undefined ? null : d.req),
+                stall: (d.stall === undefined ? null : d.stall),
+                stallTarget: (d.target === undefined ? null : d.target),
+                stallOk: (d.stall === null || d.stall === undefined || d.target === null || d.target === undefined)
+                    ? null : (Number(d.stall) <= Number(d.target)),
+                cause: ok ? null : (d.causa || null)
+            };
+        }
+
+        /* HTML del banner: MISMA fuente y MISMAS cifras que el panel superior */
+        _verdictHtmlBanner() {
+            const v = this._verdict();
+            const head = (v.headroomPct === null) ? 'Headroom: --'
+                : ('Headroom: ' + v.headroomRatio + 'x (' + v.headroomPct + ' %)');
+            return {
+                v: v,
+                style: 'background: ' + v.color + '22; border-left: 3px solid ' + v.color +
+                    '; padding: 6px 10px; margin-bottom: 10px; border-radius: 4px; display: flex;' +
+                    ' justify-content: space-between; align-items: center;',
+                inner: '<span style="font-size: 11px;"><strong>' + v.icon + ' ' + v.label + '</strong>' +
+                    '<span style="color: #64748b; margin-left: 8px;">' + head + '</span>' +
+                    (v.stall === null ? '' : '<span style="color: #64748b; margin-left: 8px;">stall ' +
+                        v.stall + ' % / target ' + v.stallTarget + ' %</span>') +
+                    '<span style="color: #64748b; margin-left: 8px;">BW mín ' +
+                    (v.bwMin === null ? '--' : v.bwMin + ' Mbps') + '</span></span>' +
+                    (v.cta ? '<span style="color: #ef4444; font-size: 10px;">⚠️ ' +
+                        String(v.cause || 'BW insuficiente').slice(0, 120) + '</span>' : '')
+            };
+        }
+
         _updateV31Metrics(performance) {
             // IDs explícitos (el selector legacy cogía la fila del TÍTULO, no la
             // del Risk Score, y por eso el número se quedaba clavado en 100).
@@ -1561,7 +1974,9 @@
             const noEvidence = performance.evidence === false;
             setText('pm9_risk_score', noEvidence ? '--' : `${performance.risk_score ?? '--'}/100`,
                 noEvidence ? '#64748b' : performance.risk_color);
-            setText('pm9_risk_level', noEvidence ? '(sin medición)' : `(${performance.risk_level || 'N/A'})`);
+            setText('pm9_risk_level', noEvidence
+                ? '(sin medición)'
+                : `(decode: ${performance.risk_level || 'N/A'} · no es salud global)`);
 
             // Health badge
             const healthBadge = document.getElementById('pm9_health_badge');
@@ -2445,7 +2860,7 @@
                             </select>
                         </div>
                         
-                        <p class="pm9-prefetch-desc">${currentStrategy.description || 'Configuración personalizada'}</p>
+                        <p class="pm9-prefetch-desc">${this.coherentVerdictHtml(activeProfile, prefetchConfig.strategy)}</p>
                         
                         <!-- Configuration Grid -->
                         <div class="pm9-prefetch-grid">
@@ -2474,9 +2889,9 @@
                                        oninput="window.ProfileManagerV9.updatePrefetchValue('buffer_target_seconds', parseInt(this.value) || 90)">
                             </div>
                             <div class="pm9-prefetch-setting">
-                                <label>BW Mínimo (Mbps) <span style="font-size:9px;color:#10b981;">AUTO 3×</span></label>
+                                <label>BW Mínimo (Mbps) <span style="font-size:9px;color:#10b981;">AUTO ×1.15 · piso del perfil</span></label>
                                 <input type="number" id="pm9_prefetch_bw" 
-                                       value="${prefetchConfig.min_bandwidth_mbps === 'AUTO' ? 40 : prefetchConfig.min_bandwidth_mbps}"
+                                       value="${this._displayMinBwMbps()}"
                                        readonly style="opacity: 0.8; cursor: not-allowed; border-color: #00ff41;">
                             </div>
                         </div>
@@ -2530,25 +2945,11 @@
                             </div>
                             
                             <!-- Stability Class Banner -->
-                            ${performance.stability ? `
-                            <div class="pm9-stability-banner" style="
-                                background: ${performance.stability.color}22;
-                                border-left: 3px solid ${performance.stability.color};
-                                padding: 6px 10px;
-                                margin-bottom: 10px;
-                                border-radius: 4px;
-                                display: flex;
-                                justify-content: space-between;
-                                align-items: center;
-                            ">
-                                <span style="font-size: 11px;">
-                                    ${performance.stability.icon} <strong>${performance.stability.label}</strong>
-                                    <span style="color: #64748b; margin-left: 8px;">Headroom: ${performance.headroom_percent}%</span>
-                                    ${performance.unstable_margin ? `<span style="color: #64748b; margin-left: 8px;">(Margin: ${performance.unstable_margin}x)</span>` : ''}
-                                </span>
-                                ${!performance.is_stable ? '<span style="color: #ef4444; font-size: 10px;">⚠️ BW insuficiente</span>' : ''}
-                            </div>
-                            ` : ''}
+                            ${(function (PMi) {
+                                /* [t20] banner desde la FUENTE ÚNICA (el plan). */
+                                const b = PMi._verdictHtmlBanner();
+                                return '<div class="pm9-stability-banner" style="' + b.style + '">' + b.inner + '</div>';
+                            })(this)}
                             
                             <div class="pm9-prefetch-preview-grid">
                                 <div class="pm9-prefetch-metric">
@@ -2633,11 +3034,15 @@
                             ` : ''}
                             
                             <!-- Policy Status Badge -->
-                            ${performance.has_urgent ? `
-                            <div style="margin-top: 6px; padding: 4px 8px; background: rgba(239,68,68,0.2); border-radius: 4px; text-align: center;">
-                                <span style="font-size: 10px; color: #ef4444; font-weight: 600;">🚨 ACCIÓN URGENTE REQUERIDA</span>
-                            </div>
-                            ` : ''}
+                            ${(function (PMi) {
+                                /* [t20] la CTA la dicta el PLAN: sólo si es incoherente. */
+                                const v = PMi._verdict();
+                                if (!v.cta) return '';
+                                return '<div style="margin-top: 6px; padding: 4px 8px; background: rgba(239,68,68,0.2); border-radius: 4px; text-align: center;">' +
+                                    '<span style="font-size: 10px; color: #ef4444; font-weight: 600;">🚨 ACCIÓN URGENTE REQUERIDA</span>' +
+                                    (v.cause ? '<div style="font-size: 9px; color: #fca5a5; margin-top: 2px;">' + String(v.cause).slice(0, 160) + '</div>' : '') +
+                                    '</div>';
+                            })(this)}
                         </div>
                     </div>
                 </div>
@@ -2674,8 +3079,18 @@
         updatePrefetchStrategy(strategyId) {
             if (this.config && this.config.setPrefetchStrategy) {
                 this.config.setPrefetchStrategy(this.activeProfileId, strategyId);
-                // Refresh the panel to show new values
+                /* [t13 2026-11-17] El preset NO es la decisión: son valores
+                 * fijos por estrategia (prefetch-presets.js:99-102) que daban
+                 * BUFFER 90 s · BW MÍNIMO 70 Mbps · RAM 10800/12150 MB contra
+                 * una red de 0.1 Mbps. Ahora, si hay medición, los CUATRO campos
+                 * los deriva APE_HEALTH_TUNER.coherentPlan() y el preset queda
+                 * sólo como respaldo declarado cuando no hay medición. */
+                this.applyCoherentPlan(strategyId);
+                // Refresh the panel to show new values (con los cuatro nuevos)
                 this.render();
+                this._paintCoherentValues();
+                this._updateStreamingHealth();
+                return this._lastCoherent;
             }
         }
 
@@ -2694,15 +3109,1618 @@
                     const segmentsInput = document.getElementById('pm9_prefetch_segments');
                     if (segmentsInput) segmentsInput.value = segments;
 
-                    // AUTO-SYNC: Prefetch-dependent headers
-                    this.config.setHeaderOverride(this.activeProfileId, 'X-Prefetch-Segments', String(segments));
-                    this.config.setHeaderOverride(this.activeProfileId, 'X-Parallel-Segments', String(value));
-                    this.config.setHeaderOverride(this.activeProfileId, 'X-Concurrent-Downloads', String(value));
+                    /* [t21] el ajuste debe generar la CASCADA completa (misma aridad
+                     * que el perfil), no un único token: el perfil declara
+                     * X-Parallel-Segments="8,6,4,2" y X-Prefetch-Segments="12,10,8,6". */
+                    this._reconcilePlanCascades(profile, {
+                        prefetch_segments: segments,
+                        parallel_downloads: value
+                    });
                 }
 
                 // v3.1: Actualizar Streaming Health en tiempo real
                 this._updateStreamingHealth();
             }
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════
+         * PLAN COHERENTE POR ESTRATEGIA — cableado del motor (t13 2026-11-17)
+         * ═══════════════════════════════════════════════════════════════════
+         * Los cuatro campos del panel (segmentos, paralelas, buffer objetivo y
+         * BW mínimo) dejan de venir del preset y los deriva
+         * window.APE_HEALTH_TUNER.coherentPlan() desde la MEDICIÓN y el
+         * presupuesto de RAM. El preset sólo sobrevive cuando coherentPlan
+         * devuelve values:null (sin medición), y entonces el panel lo DICE.
+         *
+         * No se toca ninguna de las 4 fórmulas del tuner, ni la cadena de
+         * fallbacks F0-F5, ni los tiers: aquí sólo se llama y se escriben
+         * valores por las APIs del modelo (updatePrefetchSetting).
+         * ═══════════════════════════════════════════════════════════════════ */
+
+        /* Dominio REAL de los cuatro controles: los min/max con los que
+         * _renderPrefetchSection pinta los inputs (segmentos 5..200, paralelas
+         * 1..50, buffer 10..600). El plan se recorta a lo que el control puede
+         * representar y cada recorte se declara; NO se cambia el min/max del
+         * HTML, porque eso sería alterar la validación prediseñada. */
+        _prefetchFieldDomain() {
+            return {
+                prefetch_segments:     { min: 5,  max: 200 },
+                parallel_downloads:    { min: 1,  max: 50 },
+                buffer_target_seconds: { min: 10, max: 600 },
+                min_bandwidth_mbps:    { min: 0,  max: 10000 }   // readonly
+            };
+        }
+
+        /* Margen de seguridad: la MISMA constante que usa el tuner
+         * (APE_HEALTH_TUNER.DEFAULTS.margin) y que ya rige el panel en
+         * streaming-calculator.js:45 (SAFETY_MARGIN = 1.15). Sin tuner cargado
+         * el respaldo es 1.15, no 3. */
+        _safetyMargin() {
+            const T = (typeof window !== 'undefined') ? window.APE_HEALTH_TUNER : null;
+            const m = (T && T.DEFAULTS && Number(T.DEFAULTS.margin));
+            return (isFinite(m) && m > 0) ? m : 1.15;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════
+         * PERFIL DE RED = REFERENCIA DEL CÁLCULO (encargo 2026-11-17)
+         *
+         * El módulo «Configuración Inteligente QoS (Latencia Rayo)» de app.js
+         * mide la red de VERDAD (sonda APE_BW_METER + HEAD al mismo origen) y
+         * guarda {downloadMbps, pingMs, timestamp}. Ese perfil es la referencia:
+         * coherentPlan recibe SU downloadMbps como measuredMbpsSafe, en vez de
+         * que cada pieza calcule por su cuenta.
+         *
+         * TTL: el gobernador reescribe el perfil cada 30 s, así que 5 minutos
+         * son 10 ciclos perdidos. Más viejo que eso NO es referencia → el plan
+         * devuelve NO_MEASUREMENT, como ya hacía sin medición.
+         * ═══════════════════════════════════════════════════════════════════ */
+        _networkProfileTtlMs() { return 5 * 60 * 1000; }
+
+        /* ═══════════════════════════════════════════════════════════════════
+         * PEAK-HOLD (t16 2026-11-18)
+         *
+         * DEFECTO MEDIDO POR EL OPERADOR: minuto 0 el panel daba 240,97 Mbps
+         * (Risk 5, headroom 635 %); un ciclo malo posterior dio 18,72 Mbps y el
+         * panel cayó a Risk 81 / headroom -43 % / plan INCOHERENTE. El plan se
+         * calculaba con la ULTIMA muestra, así que un dip borraba la capacidad.
+         *
+         * REGLA: la capacidad de referencia es el MAXIMO SOSTENIDO en ventana.
+         *   N   = 20 ciclos      (configurable en _peakCfg)
+         *   TTL = 10 min         (declarado; el peak caduca y entonces se baja)
+         * Un ciclo por debajo NO borra el peak ni el plan: se marca 'dip' y se
+         * conserva el ultimo plan coherente. Solo al CADUCAR el peak se recalcula
+         * desde el nuevo maximo y se declara 'peak expirado'. Sin muestras ->
+         * NO_MEASUREMENT (no se inventa nada).
+         * ═══════════════════════════════════════════════════════════════════ */
+        _peakCfg() {
+            return { maxCycles: 20, ttlMs: 10 * 60 * 1000, dipRatio: 0.8 };
+        }
+
+        _peakLoad() {
+            if (Array.isArray(this._peakSamples)) return this._peakSamples;
+            this._peakSamples = [];
+            try {
+                if (typeof localStorage !== 'undefined' && localStorage.getItem) {
+                    const raw = localStorage.getItem('ape_peak_hold_v1');
+                    if (raw) {
+                        const o = JSON.parse(raw);
+                        if (o && Array.isArray(o.samples)) {
+                            this._peakSamples = o.samples.filter(s => s && isFinite(Number(s.mbps)) && Number(s.mbps) > 0)
+                                .map(s => ({ mbps: Number(s.mbps), at: Number(s.at) || 0 }));
+                        }
+                    }
+                }
+            } catch (e) { /* sin persistencia: se sigue en memoria */ }
+            return this._peakSamples;
+        }
+
+        _peakSave() {
+            try {
+                if (typeof localStorage === 'undefined' || !localStorage.setItem) return;
+                localStorage.setItem('ape_peak_hold_v1', JSON.stringify({
+                    v: 1, ts: Date.now(), samples: this._peakSamples.slice(-this._peakCfg().maxCycles)
+                }));
+            } catch (e) { /* no bloqueante */ }
+        }
+
+        /* Registra una medición en la ventana del peak-hold. */
+        _peakRecord(mbps, atMs) {
+            const m = Number(mbps);
+            if (!isFinite(m) || m <= 0) return null;
+            const cfg = this._peakCfg();
+            const at = Number(atMs) || Date.now();
+            const arr = this._peakLoad();
+            const last = arr.length ? arr[arr.length - 1] : null;
+            if (last && last.mbps === m && (at - last.at) < 1000) return arr;   // idempotente en el mismo ms
+            arr.push({ mbps: m, at: at });
+            while (arr.length > cfg.maxCycles) arr.shift();
+            this._peakSave();
+            return arr;
+        }
+
+        /* Capacidad de referencia (peak) + valor instantaneo + estado del dip. */
+        /* [t30] medición REAL del medidor desplegado (ape-speed-meter-v9.js).
+         * Devuelve la fuente y, si no sirve, el motivo — nunca un número pequeño. */
+        _speedmeterMeasure() {
+            const w = (typeof window !== 'undefined') ? window : {};
+            const last = w.APE_SPEEDMETER_LAST;
+            const med = last && last.medicion;
+            if (!med) return { ok: false, reason: 'sin medición del medidor' };
+            const p10 = Number(med.mbps_p10);
+            if (!isFinite(p10) || p10 <= 0) return { ok: false, reason: 'mbps_p10 no válido' };
+            const bytes = Number(med.bytesTransferred || med.bytes || 0);
+            const MIN = 2 * 1024 * 1024;   // 2 MiB: por debajo no hay régimen
+            if (!(bytes >= MIN)) {
+                return { ok: false, reason: 'muestra insuficiente (' + bytes + ' B < ' + MIN + ' B)', bytes: bytes };
+            }
+            return { ok: true, mbps: p10, source: 'ape-speed-meter (p10)', bytes: bytes };
+        }
+
+        /* [t30] ¿este perfil de red viene de una ESTIMACIÓN del navegador? */
+        _isBrowserEstimate(np) {
+            const src = String((np && np.source) || '').toLowerCase();
+            return src.indexOf('navigator') >= 0 || src.indexOf('downlink') >= 0;
+        }
+
+        /* [t30] CAPACIDAD con precedencia declarada:
+         *   1) medición real del medidor (p10)
+         *   2) peak-hold de mediciones reales
+         *   3) navigator.connection.downlink  ← ÚLTIMO RECURSO, declarado
+         * Sin ninguna fuente válida: NO COMPUTADO con motivo. */
+        _capacitySource() {
+            const np = this._networkProfile();
+            const real = this._speedmeterMeasure();
+            const capP = this._capacity();
+            if (real.ok) {
+                return { mbps: real.mbps, source: real.source, noComputado: false, reason: null };
+            }
+            if (capP && capP.mbps && !this._isBrowserEstimate(np)) {
+                return { mbps: capP.mbps, source: 'peak-hold', noComputado: false, reason: null };
+            }
+            if (np && np.fresh && !this._isBrowserEstimate(np)) {
+                return { mbps: np.downloadMbps, source: 'sonda de red (' + (np.source || 'probe') + ')', noComputado: false, reason: null };
+            }
+            if (np && np.fresh) {
+                return {
+                    mbps: np.downloadMbps, source: 'navigator.connection.downlink (estimación)',
+                    noComputado: false, reason: null, ultimoRecurso: true
+                };
+            }
+            return {
+                mbps: null, source: null, noComputado: true,
+                reason: real.reason || 'sin medición real ni peak-hold'
+            };
+        }
+
+        _capacity() {
+            const cfg = this._peakCfg();
+            const arr = this._peakLoad();
+            const np = this._networkProfile();
+            /* [t30] una ESTIMACIÓN del navegador (navigator.connection.downlink,
+             * ~0.39 Mbps en escritorio) NO se registra como muestra de capacidad. */
+            if (np && np.fresh && !this._isBrowserEstimate(np)) {
+                const last = arr.length ? arr[arr.length - 1] : null;
+                if (!last || (Number(np.timestamp) || 0) > last.at) {
+                    this._peakRecord(np.downloadMbps, np.timestamp);
+                }
+            }
+            const nowMs = Date.now();
+            const vivos = arr.filter(s => (nowMs - s.at) <= cfg.ttlMs);
+            if (!vivos.length) {
+                return { mbps: (arr.length ? Math.max.apply(null, arr.map(function (s) { return s.mbps; })) : null), now: (arr.length ? arr[arr.length - 1].mbps : null), peak: (arr.length ? Math.max.apply(null, arr.map(function (s) { return s.mbps; })) : null), dip: false, expired: arr.length > 0,
+                         samples: arr.length, cfg: cfg, state: (arr.length ? 'MEASURED_STALE' : 'NO_MEASUREMENT') };
+            }
+            let peak = vivos[0];
+            for (let i = 1; i < vivos.length; i++) { if (vivos[i].mbps > peak.mbps) peak = vivos[i]; }
+            const instante = vivos[vivos.length - 1].mbps;
+            /* 'expirado': hubo una muestra mayor que la del peak actual y ya salio
+             * de la ventana -> el peak anterior caduco. */
+            const expirado = arr.some(s => s.mbps > peak.mbps);
+            return {
+                mbps: peak.mbps,                    // CAPACIDAD DE REFERENCIA
+                peak: peak.mbps,
+                peakAt: peak.at,
+                peakAgeMs: nowMs - peak.at,
+                now: instante,                      // ultima muestra (puede ser un dip)
+                dip: instante < peak.mbps * cfg.dipRatio,
+                dipRatio: Math.round((instante / peak.mbps) * 100) / 100,
+                expired: expirado,
+                samples: vivos.length,
+                cfg: cfg,
+                state: 'MEASURED'
+            };
+        }
+
+        _networkProfile() {
+            let np = null;
+            try {
+                if (typeof window !== 'undefined' && window.app && window.app.state) {
+                    np = window.app.state.networkProfile || null;
+                }
+            } catch (e) { np = null; }
+            if (!np && typeof localStorage !== 'undefined' && localStorage.getItem) {
+                try {
+                    const raw = localStorage.getItem('iptv_qos_profile');
+                    if (raw) np = JSON.parse(raw);
+                } catch (e) { np = null; }
+            }
+            if (!np) return null;
+            const mbps = Number(np.downloadMbps);
+            if (!isFinite(mbps) || mbps <= 0) return null;
+            const pingNum = Number(np.pingMs);
+            const ts = Number(np.timestamp) || 0;
+            const age = Date.now() - ts;
+            return {
+                downloadMbps: mbps,
+                pingMs: (isFinite(pingNum) && pingNum > 0) ? pingNum : null,
+                timestamp: ts, ageMs: age,
+                fresh: ts > 0 && age >= 0 && age <= this._networkProfileTtlMs(),
+                source: np.source || 'unknown',
+                ttlMs: this._networkProfileTtlMs()
+            };
+        }
+
+        /* Medición de referencia: el PERFIL DE RED si está fresco. Si no existe
+         * o caducó, null → coherentPlan devuelve NO_MEASUREMENT (no se inventa).
+         * El perfil lo escribe el gobernador en cada ciclo con la sonda que ya
+         * hizo (una sola medición por ciclo). */
+        _freshMeasurement() {
+            const np = this._networkProfile();
+            /* [t17] tras un reload NO hay networkProfile vivo pero SÍ snapshot y
+             * peak persistido: la capacidad medida sigue siendo válida. Sin
+             * muestras (ni perfil ni peak) se mantiene NO_MEASUREMENT. */
+            if (!np || !np.fresh) {
+                const capSolo = this._capacity();
+                if (capSolo && capSolo.mbps) {
+                    return {
+                        measuredMbpsSafe: capSolo.mbps,
+                        nowMbps: capSolo.now, peakMbps: capSolo.peak,
+                        dip: !!capSolo.dip, expired: !!capSolo.expired,
+                        pingMs: null,
+                        source: 'peak-hold (snapshot)',
+                        ageMs: capSolo.peakAgeMs
+                    };
+                }
+                return null;
+            }
+            if (np && np.fresh) {
+                /* [t16] la referencia es la CAPACIDAD SOSTENIDA (peak-hold), no el
+                 * ultimo ciclo: un dip no debe romper el plan. */
+                const cap = this._capacity();
+                return {
+                    measuredMbpsSafe: (cap && cap.mbps) ? cap.mbps : np.downloadMbps,
+                    nowMbps: np.downloadMbps,
+                    peakMbps: (cap && cap.peak) ? cap.peak : np.downloadMbps,
+                    dip: !!(cap && cap.dip),
+                    expired: !!(cap && cap.expired),
+                    headroomRatio: null,        // coherentPlan deriva measured/required
+                    pingMs: np.pingMs,
+                    source: 'networkProfile',
+                    ageMs: np.ageMs
+                };
+            }
+            return null;
+        }
+
+        /* El tuner nombra sus presets por NOMBRE ('Ultra-Agresivo'), el select
+         * por id ('ULTRA_AGRESIVO'). Se traduce con el nombre del preset. */
+        _strategyNameFor(strategyId) {
+            const all = (typeof window !== 'undefined' && window.PREFETCH_STRATEGIES) || {};
+            const s = all[strategyId];
+            return (s && s.name) ? s.name : strategyId;
+        }
+
+        /* Bitrate con el que el PANEL estima el stall: NO el del perfil, sino el
+         * que calcula el propio calculador del panel a partir de resolución,
+         * códec y fps (streaming-calculator.js:215-231 calculateBitrate, con
+         * compressionMult por defecto 0.22 tal como lo usa calculateAllMetrics
+         * en :537). Se usa la función REAL cuando está cargada; si no, se
+         * devuelve null y coherentPlan aplica su base conservadora declarada
+         * (stallBasis='required_fallback'). */
+        _stallBitrateFor(profile) {
+            const st = (profile && profile.settings) || {};
+            const SC = (typeof window !== 'undefined') ? window.StreamingCalculator : null;
+            if (!SC || typeof SC.calculateBitrate !== 'function') return null;
+            try {
+                const b = SC.calculateBitrate(
+                    st.resolution || '1920x1080',
+                    st.codec || 'H265',
+                    Number(st.fps) || 60
+                );
+                return (isFinite(b) && b > 0) ? b : null;
+            } catch (e) { return null; }
+        }
+
+        /* Target de stall del panel: STREAMING_CONSTANTS.TARGET_STALL_RATE
+         * (streaming-calculator.js:42 y :670), que es el mismo 1.67 % que pinta
+         * el chip «Target: <1.67 %». Sin calculador cargado, el del tuner. */
+        _stallTargetPct() {
+            const C = (typeof window !== 'undefined') ? window.STREAMING_CONSTANTS : null;
+            const t = (C && Number(C.TARGET_STALL_RATE)) || null;
+            if (t && isFinite(t) && t > 0) return t;
+            const T = (typeof window !== 'undefined') ? window.APE_HEALTH_TUNER : null;
+            const d = (T && T.STALL && Number(T.STALL.target)) || null;
+            return (d && isFinite(d) && d > 0) ? d : 1.67;
+        }
+
+        /* Base de exigencia del PLAN, la MISMA que usa coherentPlan para el
+         * modelo de stall (calculateBitrate del panel). Orden de precedencia:
+         *   1. override manual del operador sobre el bitrate  → settings.bitrate
+         *   2. calculateBitrate del panel                     → base del plan
+         *   3. sin calculador                                 → settings.bitrate (declarado)
+         * El riesgo y el headroom del panel se calculan con ESTA base, no con el
+         * bitrate declarado a secas: eran dos bases distintas y de ahí el 95. */
+        /* ═══ BW mínimo de prefetch: resolución DETERMINISTA (2026-11-22) ═════════
+         * MEDIDO: el panel mostraba `BW mínimo = 1` en un plan 8K. Origen: el piso
+         * caía a los 0,5 Mbps genéricos de `_requiredMbpsBasis`, se multiplicaba por
+         * 1,15 y redondeaba a 1; ese 1 se persistía y el generador emitía
+         * `#EXT-X-APE-PREFETCH-BW-MIN:1Mbps` sobre un canal 8K.
+         *
+         * REGLA: el piso lo fija el TIER del perfil (resolución). Un valor persistido
+         * MENOR que el piso del tier es basura y NO se acepta como piso. La medición
+         * de red sólo puede SUBIR el valor, nunca bajarlo. Sin medición no se inventa
+         * nada: se devuelve el piso. Todo el cálculo vive en la función pura
+         * `prefetch-min-bw.js` (18 tests en tests/prefetch-min-bw.test.js). */
+        _prefetchFloorMbps(profile) {
+            const M = (typeof window !== 'undefined') ? window.APEPrefetchMinBw : null;
+            if (!M || typeof M.resolveMinBwMbps !== 'function') return null;
+            const p = profile || (this.config && this.config.getProfile
+                ? this.config.getProfile(this.activeProfileId) : null);
+            const st = (p && p.settings) || {};
+            const tierSrc = st.resolution || (p && p.quality_level) || (p && p.qualityLevel) || (p && p.id) || '';
+            const tierMbps = M.tierFloor(tierSrc);
+            const rawDeclared = Number(p && p.prefetch_config && p.prefetch_config.min_bandwidth_mbps);
+            const declaredMbps = (isFinite(rawDeclared) && tierMbps !== null && rawDeclared >= tierMbps)
+                ? rawDeclared : null;
+            return { tierMbps: tierMbps, declaredMbps: declaredMbps, tierSrc: tierSrc };
+        }
+
+        _resolvePrefetchMinBw(profile, measuredMbps) {
+            const M = (typeof window !== 'undefined') ? window.APEPrefetchMinBw : null;
+            if (!M || typeof M.resolveMinBwMbps !== 'function') return null;
+            const f = this._prefetchFloorMbps(profile);
+            if (!f) return null;
+            return M.resolveMinBwMbps({
+                tierMbps: f.tierMbps,
+                declaredMbps: f.declaredMbps,
+                measuredMbps: measuredMbps,
+                margin: this._safetyMargin()
+            });
+        }
+
+        /* Pinta el campo readonly con la MISMA verdad que el veredicto del plan:
+         * si hay plan, su bwMinMbps; si no, el piso determinista del perfil. Nunca
+         * el valor persistido — esa era la segunda fuente de verdad. */
+        _displayMinBwMbps() {
+            try {
+                const plan = this._coherentPlanFor(null, this._activeStrategyId());
+                if (plan && plan.values && plan.values.bwMinMbps !== null && plan.values.bwMinMbps !== undefined) {
+                    const c = this._clampPlanValues(plan.values);
+                    if (c && c.values && c.values.min_bandwidth_mbps !== null && c.values.min_bandwidth_mbps !== undefined) {
+                        return c.values.min_bandwidth_mbps;
+                    }
+                }
+            } catch (e) { /* no bloqueante: se cae al piso */ }
+            const r = this._resolvePrefetchMinBw(null, null);
+            return (r && r.mbps !== null) ? r.mbps : '';
+        }
+
+        _requiredMbpsBasis(profile) {
+            const p = profile || (this.config && this.config.getProfile
+                ? this.config.getProfile(this.activeProfileId) : null);
+            const st = (p && p.settings) || {};
+            const declared = Number(st.bitrate) || 0;
+            const calc = this._stallBitrateFor(p);
+            if (declared > 0 && st.bitrate_user_override === true) {
+                return { mbps: declared, source: 'settings.bitrate (override del operador)' };
+            }
+            if (calc && calc > 0) return { mbps: calc, source: 'calculateBitrate del panel' };
+            if (declared > 0) return { mbps: declared, source: 'settings.bitrate (sin calculador)' };
+            /* [2026-11-20 · OPERADOR: "P4, P5 aparecen sin headroom"] La base caia a 0 en
+             * los perfiles de exigencia minima y con base 0 el bloque de riesgo daba "--".
+             * Un perfil de video SIEMPRE exige algo: maxBitrateKbps declarado si existe
+             * y, si no, un piso de 0,5 Mbps NOMBRADO en la fuente (sin numeros magicos). */
+            const _maxK = Number(st.maxBitrateKbps) || 0;
+            if (_maxK > 0) return { mbps: _maxK / 1000, source: 'settings.maxBitrateKbps (declarado)' };
+            return { mbps: 0.5, source: 'piso minimo de video 0,5 Mbps (perfil sin bitrate declarado)' };
+        }
+
+        /* ═════════════════════════════════════════════════════════════════════════
+     * APLICACION AUTOMATICA DE PARAMETROS (2026-11-20)
+     *
+     * Entrada: la medicion r del ciclo (r.measurement.mbpsSafe, r.headroomRatio).
+     * Motor:   APE_HEALTH_TUNER.deterministic(mbps, ratio, segDur) — formulas ya
+     *          escritas (bufferForRatio, timeoutForRatio, prefetchForBuffer,
+     *          parallelForRatio). AQUI NO SE ELIGE NINGUN VALOR A MANO.
+     * Salida:  por CADA uno de los 12 perfiles, con SU propio ratio
+     *          (medido / exigido por ese perfil):
+     *            settings.buffer            = bufferTargetS * 1000  (ms)
+     *            vlcopt['network-caching']  = bufferTargetS * 1000  (ms, VLC)
+     *            settings.network_timeout_ms= readTimeoutMs
+     *            prefetch_config.prefetch_segments / parallel_downloads
+     *          y se persiste (config.save) para que la generacion lo herede.
+     * Si no hay medicion valida NO se toca nada y se devuelve null.
+     * ═════════════════════════════════════════════════════════════════════════ */
+    _applyAutoTune(r) {
+        try {
+            const T = (typeof window !== 'undefined') ? window.APE_HEALTH_TUNER : null;
+            const cfg = this.config;
+            if (!T || typeof T.deterministic !== 'function' || !cfg || typeof cfg.getProfile !== 'function') return null;
+            const acc = (r && r.measurement) || {};
+            /* [2026-11-21 · MEDIDO] GATE DE PROCEDENCIA. Un número sólo mueve
+             * parámetros si describe TRANSPORTE. Caso real: la sonda estaba
+             * bloqueada por preflight (405 → status 0), `mode:'auto'` cayó al
+             * sampler pasivo y publicó 0.2 Mbps de tráfico incidental de la
+             * página; este método reescribió los 12 perfiles a 0.01x. La ley
+             * anti-degradación prohíbe degradar por un no-dato. Sin procedencia
+             * verificable: no se toca nada y se nombra la causa. */
+            const BW = (typeof window !== 'undefined') ? window.APE_BW_METER : null;
+            if (BW && typeof BW.isTrustworthyMeasurement === 'function') {
+                const tv = BW.isTrustworthyMeasurement(r);
+                if (!tv.ok) {
+                    this._lastAutoTuneSkip = { at: Date.now(), reason: tv.reason };
+                    if (typeof console !== 'undefined' && console.warn) {
+                        console.warn('[AUTO-TUNE] omitido: ' + tv.reason + ' (los perfiles NO se tocan)');
+                    }
+                    return null;
+                }
+            }
+            const mbps = (typeof acc.mbpsSafe === 'number' && isFinite(acc.mbpsSafe) && acc.mbpsSafe > 0) ? acc.mbpsSafe : null;
+            if (mbps === null) return null;
+
+            /* [2026-11-21 · MEDIDO] HISTÉRESIS ASIMÉTRICA contra el vaivén real de la
+             * sesión: 355 → 1.18 → 102 Mbps en 90 s, tres planes distintos y los 12
+             * perfiles reescritos tres veces. SUBIR es inmediato (una medición mejor
+             * siempre se aprovecha). BAJAR exige DOS mediciones consecutivas dentro de
+             * 10 min: una caída súbita puede ser una sonda defectuosa, no el enlace.
+             * El estado vive en el ledger, así que sobrevive a la recarga (F5). */
+            const LED = (typeof window !== 'undefined') ? window.APE_LEDGER : null;
+            const HOLD_MS = 10 * 60 * 1000;
+            if (LED && typeof LED.getState === 'function') {
+                const prev = LED.getState() || null;
+                const prevMbps = (prev && Number(prev.mbps) > 0) ? Number(prev.mbps) : null;
+                const prevAt = (prev && Number(prev.at)) ? Number(prev.at) : 0;
+                const reciente = prevMbps !== null && (Date.now() - prevAt) < HOLD_MS;
+                if (reciente && mbps < prevMbps * 0.5) {
+                    const pend = (Number(prev.pendingLow) || 0) + 1;
+                    if (pend < 2) {
+                        LED.setState({ pendingLow: pend, lastLowMbps: mbps, lastLowAt: Date.now(), mbps: prevMbps, reason: 'caída súbita en espera de confirmación' });
+                        this._lastAutoTuneHold = { at: Date.now(), mbps: mbps, prevMbps: prevMbps, pendingLow: pend };
+                        if (typeof console !== 'undefined' && console.warn) {
+                            console.warn('[AUTO-TUNE] en espera (' + pend + '/2): ' + mbps + ' Mbps es <50% de ' + prevMbps + ' Mbps recientes. Perfiles intactos; se confirma con la próxima medición.');
+                        }
+                        return null;
+                    }
+                }
+                LED.setState({ mbps: mbps, pendingLow: 0, confirmedAt: Date.now(), reason: 'aplicado', scope: acc.scope || null });
+            }
+            const ids = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P0.5', 'P1.5', 'P2.5', 'P3.5', 'P4.5', 'P5.5'];
+            const aplicado = [];
+            for (const id of ids) {
+                const p = cfg.getProfile(id);
+                if (!p) continue;
+                const req = this._requiredMbpsBasis(p).mbps;
+                if (!(req > 0)) continue;
+                const ratio = Math.round((mbps / req) * 100) / 100;
+                const det = T.deterministic(mbps, ratio, 6);
+                if (!det) continue;
+                const cacheMs = Math.round(det.bufferTargetS * 1000);
+                p.settings = p.settings || {};
+                p.settings.buffer = cacheMs;
+                p.settings.bufferSeconds = det.bufferTargetS;
+                p.settings.network_timeout_ms = det.readTimeoutMs;
+                p.vlcopt = p.vlcopt || {};
+                p.vlcopt['network-caching'] = String(cacheMs);
+                p.prefetch_config = p.prefetch_config || {};
+                p.prefetch_config.prefetch_segments = det.prefetchSegments;
+                p.prefetch_config.parallel_downloads = det.parallelDownloads;
+                aplicado.push({ id: id, ratio: ratio, cacheMs: cacheMs, timeoutMs: det.readTimeoutMs,
+                    prefetch: det.prefetchSegments, parallel: det.parallelDownloads });
+            }
+            if (!aplicado.length) return null;
+            if (typeof cfg.save === 'function') cfg.save();
+            /* [2026-11-21 · ENCARGO] El CÁLCULO también se persiste: qué número lo
+             * produjo, con qué ámbito, y el antes/después de cada perfil. Única
+             * fuente de verdad del plan aplicado, cubre la vía del gobernador y la
+             * del botón AUTO-AJUSTAR. Si el ledger falla, el tune sigue. */
+            if (LED && typeof LED.pushPlan === 'function') {
+                try {
+                    LED.pushPlan({
+                        mbps: mbps,
+                        alcance: 'todos',
+                        source: acc.source || (r && r.source) || 'APE_BW_METER',
+                        scope: acc.scope || null,
+                        perfiles: aplicado
+                    });
+                } catch (e) { /* el ledger nunca rompe el tune */ }
+            }
+            this._lastAutoTune = { at: Date.now(), mbps: mbps, perfiles: aplicado };
+            if (typeof console !== 'undefined') {
+                console.log('[AUTO-TUNE] aplicado a ' + aplicado.length + ' perfiles · medido ' + mbps +
+                    ' Mbps · ' + aplicado.map(a => a.id + ':' + a.cacheMs + 'ms/' + a.timeoutMs + 'ms/' + a.ratio + 'x').join(' '));
+            }
+            if (typeof document !== 'undefined') {
+                try { this.render(); } catch (_r) { }
+            }
+            return this._lastAutoTune;
+        } catch (_e) { return null; }
+    }
+
+    _coherentPlanFor(profile, strategyId) {
+            const T = (typeof window !== 'undefined') ? window.APE_HEALTH_TUNER : null;
+            if (!T || typeof T.coherentPlan !== 'function') return null;
+            const p = profile || (this.config && this.config.getProfile
+                ? this.config.getProfile(this.activeProfileId) : null);
+            const st = (p && p.settings) || {};
+            const cfg = (this.config && this.config.getPrefetchConfig)
+                ? (this.config.getPrefetchConfig(this.activeProfileId) || {}) : {};
+            const sid = strategyId || cfg.strategy;
+            const meas = this._freshMeasurement() || {};
+            /* [t19] base REAL de la exigencia (la misma que pinta el display) */
+            const baseReal = this._requiredMbpsBasis(p);
+            return T.coherentPlan({
+                requiredMbps: (baseReal && baseReal.mbps > 0) ? baseReal.mbps : (Number(st.bitrate) || 0),
+                /* requiredMbps ya se pasa arriba con la base REAL del perfil */
+                measuredMbpsSafe: meas.measuredMbpsSafe,
+                headroomRatio: meas.headroomRatio,
+                segDurationSec: Number(st.segment_duration_s) || 0,
+                ramBudgetMB: (T.DEFAULTS && T.DEFAULTS.ramBudgetMB) || undefined,
+                margin: this._safetyMargin(),
+                strategy: this._strategyNameFor(sid),
+                /* [t13] el plan debe razonar con el MISMO bitrate y el MISMO
+                 * target de stall con los que el panel pintará el chip, para que
+                 * el ok:true del plan y el verde del chip no puedan divergir. */
+                bitrateForStall: this._stallBitrateFor(p) || undefined,
+                /* trazabilidad: de dónde salió la exigencia */
+                requiredBasis: baseReal ? baseReal.source : 'sin base',
+                targetStallPct: this._stallTargetPct()
+            });
+        }
+
+        /* Recorta los valores del plan al dominio del panel. Puro: no escribe.
+         * Devuelve {values, clamped[]} para que el mismo recorte se use al
+         * aplicar Y al declararlo en pantalla (sin dos verdades distintas).
+         *
+         * OJO CON LAS DOS NOMENCLATURAS: coherentPlan devuelve camelCase
+         * (bufferTargetS / prefetchSegments / parallelDownloads / bwMinMbps) y
+         * los cuatro controles del panel son snake_case (buffer_target_seconds
+         * ...). Este es el ÚNICO mapa entre las dos: sin él el recorte devolvía
+         * {} y no se aplicaba ni un campo (medido en el test t13). */
+        _planKeyMap() {
+            return {
+                prefetch_segments:     'prefetchSegments',
+                parallel_downloads:    'parallelDownloads',
+                buffer_target_seconds: 'bufferTargetS',
+                min_bandwidth_mbps:    'bwMinMbps'
+            };
+        }
+
+        _clampPlanValues(values) {
+            const dom = this._prefetchFieldDomain();
+            const KEYMAP = this._planKeyMap();
+            const out = {}, clamped = [];
+            Object.keys(dom).forEach((k) => {
+                const src = values ? values[KEYMAP[k]] : undefined;
+                if (src === undefined || src === null) return;
+                const raw = Math.round(Number(src));
+                if (!isFinite(raw)) return;
+                const r = dom[k];
+                const v = Math.min(r.max, Math.max(r.min, raw));
+                if (v !== raw) {
+                    clamped.push({ key: k, plan: raw, applied: v,
+                                   reason: 'el control sólo admite [' + r.min + ', ' + r.max + ']' });
+                }
+                out[k] = v;
+            });
+            return { values: out, clamped: clamped };
+        }
+
+        /* Aplica el plan a los CUATRO campos por la API del modelo.
+         * Devuelve el plan (con ._applied y ._clamped) para poder verificarlo
+         * desde consola. Si no hay medición NO escribe: no hay plan. */
+        applyCoherentPlan(strategyId) {
+            const profile = (this.config && this.config.getProfile)
+                ? this.config.getProfile(this.activeProfileId) : null;
+            const plan = this._coherentPlanFor(profile, strategyId);
+            this._lastCoherent = plan;
+            if (!plan || !plan.values) return plan;
+            if (!this.config || typeof this.config.updatePrefetchSetting !== 'function') return plan;
+            const c = this._clampPlanValues(plan.values);
+            const applied = this._applyPlanValues(c.values);
+            if (Object.keys(applied).length) this._lastAppliedSet = applied;
+            plan._applied = applied;
+            plan._clamped = c.clamped;
+            return plan;
+        }
+
+        /* Veredicto del plan en texto (misma fuente para el render y para el
+         * repintado tras medir, para que no haya dos verdades). */
+        coherentVerdictHtml(profile, strategyId) {
+            const all = (typeof window !== 'undefined' && window.PREFETCH_STRATEGIES) || {};
+            const cfg = (this.config && this.config.getPrefetchConfig)
+                ? (this.config.getPrefetchConfig(this.activeProfileId) || {}) : {};
+            const sid = strategyId || cfg.strategy;
+            const base = (all[sid] && all[sid].description) || 'Configuración personalizada';
+            const plan = this._coherentPlanFor(profile, sid);
+            const margin = this._safetyMargin();
+
+            if (!plan || plan.state === 'NO_MEASUREMENT' || !plan.values) {
+                return base + ' <span style="color:#64748b;">· plan: SIN MEDICIÓN — los cuatro ' +
+                    'campos quedan del preset, no calculados (pulsa «Medir ahora»)</span>';
+            }
+
+            const c = this._clampPlanValues(plan.values);
+            const v = c.values;
+            const clampTxt = c.clamped.length
+                ? ' <span style="color:#94a3b8;">(' + c.clamped.map(function (x) {
+                      return x.key + ' ' + x.plan + '→' + x.applied + ' por el mínimo del control';
+                  }).join(' · ') + ')</span>'
+                : '';
+
+            /* El stall estimado y su base se publican SIEMPRE: es lo que hace
+             * verificable el verde (target del panel vs estimación del plan). */
+            const m = plan.metrics || {};
+            const stallTxt = (m.stallEstimatePct === null || m.stallEstimatePct === undefined)
+                ? ''
+                : ' · stall est. ' + m.stallEstimatePct + ' % ' +
+                        ((Number(m.stallEstimatePct) <= Number(m.targetStallPct))
+                            ? ('≤ target ' + m.targetStallPct + ' %')
+                            : ('SUPERA el target ' + m.targetStallPct + ' %')) +
+                  (m.stallBasis === 'required_fallback' ? ' [base conservadora: bitrate del perfil]' : '');
+
+            if (plan.ok) {
+                return base + ' <span style="color:#10b981;font-weight:600;">· ✓ plan COHERENTE</span>' +
+                    '<span style="color:#94a3b8;"> ' + m.measuredMbps + ' Mbps medidos ≥ ' +
+                    'exigido×' + margin + ' = ' + v.min_bandwidth_mbps + ' Mbps · buffer ' +
+                    v.buffer_target_seconds + ' s · ' + v.prefetch_segments + ' seg · ' +
+                    v.parallel_downloads + ' paralelas' + stallTxt + '</span>' + clampTxt;
+            }
+            return base + ' <span style="color:#ef4444;font-weight:600;">· ✗ plan INCOHERENTE</span>' +
+                '<span style="color:#fca5a5;"> ' + (plan.violations || []).join(' · ')
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>' +
+                '<span style="color:#eab308;"> · red mínima para verde: ' +
+                plan.neededMbpsForGreen + ' Mbps útiles / ' +
+                (function () {
+                    /* el panel sólo cuenta el 90 % de lo medido (duty de la
+                     * estrategia): el bruto necesario es útil / duty. */
+                    const duty = Number(m && m.demandDuty) || 1;
+                    return (Math.round((plan.neededMbpsForGreen / duty) * 100) / 100) + ' Mbps medidos' +
+                        (duty !== 1 ? ' (factor ' + duty + ')' : '');
+                })() +
+                (plan.neededBufferS ? ' · buffer mínimo para el target: ' + plan.neededBufferS + ' s' : '') +
+                '</span>' + stallTxt + clampTxt;
+        }
+
+        /* Pinta los cuatro controles + la línea de veredicto con los valores
+         * NUEVOS, sin reconstruir el panel (no se pierde el foco). Los ids son
+         * los que ya existen en _renderPrefetchSection. */
+        _paintCoherentValues() {
+            const plan = this._lastCoherent;
+            const a = (plan && plan._applied) || null;
+            if (a) {
+                const setV = (id, v) => {
+                    const el = document.getElementById(id);
+                    if (el && v !== undefined && v !== null) el.value = String(v);
+                };
+                setV('pm9_prefetch_segments', a.prefetch_segments);
+                setV('pm9_prefetch_parallel', a.parallel_downloads);
+                setV('pm9_prefetch_buffer', a.buffer_target_seconds);
+                setV('pm9_prefetch_bw', a.min_bandwidth_mbps);
+            }
+            const root = this.container || (typeof document !== 'undefined' ? document : null);
+            const desc = root ? root.querySelector('.pm9-prefetch-desc') : null;
+            if (desc) desc.innerHTML = this.coherentVerdictHtml(null, null);
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════
+         * PANEL DE RENDIMIENTO pintado con el PLAN y el PERFIL MEDIDO
+         * (encargo 2026-11-18). Antes estos ids salían de constantes del perfil
+         * (t1/t2 y aritmética del buffer) y el gate arrastraba 'SIN_INTENTO'.
+         * Ahora: sin perfil fresco NO se pinta cifra (se dice), y con perfil se
+         * pinta el plan coherente + la red medida.
+         * ═══════════════════════════════════════════════════════════════════ */
+        _paintPerfPanel(plan) {
+            const setTxt = (id, txt, color) => {
+                const el = (typeof document !== 'undefined') ? document.getElementById(id) : null;
+                if (!el) return false;
+                el.textContent = txt;
+                if (color) el.style.color = color;
+                return true;
+            };
+            const prof = (this.config && this.config.getProfile)
+                ? this.config.getProfile(this.activeProfileId) : null;
+            const player = Number(prof && prof.settings ? prof.settings.playerBuffer : 0) || 0;
+            const np = this._networkProfile();
+            const p = plan || this._lastCoherent || null;
+            /* [t18] con el modelo bajo demanda puede no haber networkProfile vivo
+             * y SÍ haber capacidad medida (peak/snapshot): eso cuenta como
+             * medición válida para pintar. */
+            const capP = this._capacity();
+            const hayCapacidad = !!(capP && capP.mbps);
+            const capMbps = hayCapacidad ? capP.mbps : (np ? np.downloadMbps : null);
+
+            /* ── Enlace al módulo QoS: estado de la medición vigente ── */
+            const fresh = !!((np && np.fresh) || hayCapacidad);
+            const edadS = np ? Math.round(np.ageMs / 1000) : null;
+            const qosEl = (typeof document !== 'undefined') ? document.getElementById('pm9_qos_link') : null;
+            if (qosEl) {
+                const capQ = this._capacity();
+                const snap = this._snapshotLabel();
+                if (snap && qosEl) { qosEl.title = snap; }
+                qosEl.textContent = fresh
+                    ? ('📡 Latencia Rayo: ACTIVO · ahora ' + (np ? np.downloadMbps : capMbps) + ' Mbps · pico ' +
+                       ((capQ && capQ.peak) ? capQ.peak : capMbps) + ' Mbps' +
+                       ((np && np.pingMs !== null && np.pingMs !== undefined) ? ' · ' + np.pingMs + ' ms' : ' · ping no medido') +
+                       ' · hace ' + edadS + ' s (fuente ' + ((np && np.source) || (this._snapshotInfo && this._snapshotInfo.source) || 'desconocida') + ')')                    + (((np && np.fresh === false) || (this._snapshotInfo && this._snapshotInfo.stale)) ? ' · ANTIGUO' : '')
+                    : ('📡 Latencia Rayo: ' + (np ? 'CADUCADO (' + edadS + ' s > ' + Math.round(np.ttlMs / 60000) + ' min)' : 'OFFLINE (sin medición)') +
+                       ' — valores guardados: se mantienen hasta que vuelvas a medir');
+                qosEl.style.color = fresh ? '#7dd3fc' : '#eab308';
+                qosEl.style.borderColor = fresh ? 'rgba(56,189,248,.3)' : 'rgba(234,179,8,.4)';
+            }
+            /* el badge del propio módulo también dice la verdad */
+            const badge = (typeof document !== 'undefined') ? document.getElementById('qosStatusBadge') : null;
+            if (badge) {
+                if (fresh) {
+                    badge.style.background = '#10b981';
+                    badge.innerHTML = 'Status: Active (' + ((np && np.downloadMbps) || capMbps) + 'Mbps)';
+                } else {
+                    badge.style.background = '#ef4444';
+                    badge.innerHTML = 'Status: Offline (sin medición)';
+                }
+            }
+
+            const gate = (typeof document !== 'undefined') ? document.getElementById('pm9_sufficiency_gate') : null;
+            const planTxt = (p && p.values)
+                ? (' · plan ' + (p.ok ? '✓ COHERENTE' : '✗ INCOHERENTE') +
+                   (p.ok ? '' : ' (' + (p.violations || [])[0] + ')') +
+                   ' · stall est. ' + p.metrics.stallEstimatePct + ' % ' +
+                    ((Number(p.metrics.stallEstimatePct) <= Number(p.metrics.targetStallPct))
+                        ? ('≤ ' + p.metrics.targetStallPct + ' % (cumple)')
+                        : ('SUPERA el target ' + p.metrics.targetStallPct + ' %')))
+                : ' · plan: sin medición';
+
+            if (!p || !p.values || !fresh) {
+                ['pm9_net_min', 'pm9_net_opt', 'pm9_jitter_max', 'pm9_buffer_total',
+                 'pm9_ram_real', 'pm9_ram_theoretical'].forEach(id => setTxt(id, '-- (sin medición)', '#64748b'));
+                setTxt('pm9_ram_note', 'sin perfil de red fresco: no hay cifra que pintar', '#eab308');
+                if (gate && !this._dims) gate.textContent = 'Gate: sin medición fresca de red (TTL ' +
+                    Math.round(this._networkProfileTtlMs() / 60000) + ' min)' + planTxt;
+                return { painted: false, fresh: false };
+            }
+
+            const v = p.values, m = p.metrics || {};
+            setTxt('pm9_net_min', v.bwMinMbps + ' Mbps (mínimo exigido)');
+            setTxt('pm9_net_opt', m.measuredMbps + ' Mbps (red medida)');
+            setTxt('pm9_jitter_max', Math.floor(v.bufferTargetS * 1000 * 0.8) + ' ms (buffer ' + v.bufferTargetS + ' s × 0.8)');
+            setTxt('pm9_buffer_total', Math.round(v.bufferTargetS * 2000 + player) + ' ms (C1+C2 = plan ' +
+                v.bufferTargetS + ' s ×2 + player ' + player + ' ms)');
+            const ramPure = Number(m.ramMB) || 0;
+            const C = (typeof window !== 'undefined') ? window.STREAMING_CONSTANTS : null;
+            const OH = (C && Number(C.MEMORY_OVERHEAD_STEADY)) || 1.20;   // streaming-calculator.js:48
+            setTxt('pm9_ram_real', (Math.round(ramPure * OH * 10) / 10) + ' MB (Real ×' + OH + ')');
+            setTxt('pm9_ram_theoretical', ramPure + ' MB (Puro)');
+            const pct = m.ramBudgetMB ? Math.round((ramPure / m.ramBudgetMB) * 1000) / 10 : null;
+            setTxt('pm9_ram_note', 'Presupuesto ' + m.ramBudgetMB + ' MB · el plan usa ' + ramPure + ' MB' +
+                (pct === null ? '' : ' (' + pct + ' %)') + ' · estrategia ' + (p.strategy ? p.strategy.name : '-') +
+                ' · retraso ≈ ' + v.bufferTargetS + ' s respecto al directo' +
+                /* Operador: 5 segmentos no dicen nada sin la duración real. La
+                 * duración va en #EXTINF de la lista; aquí se declara la base
+                 * usada por el plan para que la cuenta sea auditable. */
+                ' · cobertura ' + v.prefetchSegments + ' seg × ' + (Number(m.segDurS) || 6) + ' s = ' +
+                (v.prefetchSegments * (Number(m.segDurS) || 6)) + ' s de contenido vs buffer ' + v.bufferTargetS + ' s');
+            /* [t18] el veredicto lo escribe el gate unificado (dos dimensiones).
+             * Aquí sólo se añade la parte del plan si ese gate no existe todavía. */
+            if (gate && !this._dims) {
+                gate.textContent = (gate.textContent || '').split(' · plan ')[0] + planTxt;
+            }
+            return { painted: true, fresh: true };
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════
+         * GOBERNADOR DE CALIBRACIÓN (t13 · 2026-11-17)
+         * ═══════════════════════════════════════════════════════════════════
+         * El operador: «la medición TIENE que alimentar a un MOTOR QUE CALIBRA,
+         * en bucle. Medir una vez al abrir el panel y quedarse congelado no es
+         * calibrar.» Esto es el bucle:
+         *
+         *   MEDIR (sonda APE_BW_METER) → coherentPlan → APLICAR los 4 campos
+         *   → repintar derivados → repetir.
+         *
+         * Reglas duras que implementa:
+         *   · setTimeout recursivo, NUNCA setInterval: los ciclos no se solapan.
+         *   · máximo UN ciclo en vuelo; el tick que llega ocupado se SALTA y se
+         *     cuenta en _lastTune.skipped.
+         *   · plazo total del ciclo (12 s por defecto): si la sonda agota, se
+         *     registra y se espera al siguiente ciclo. No se aplica nada.
+         *   · si el plan no es coherente NO se aplica y NO se fuerza verde: se
+         *     publican violations + neededMbpsForGreen y se CONSERVA el último
+         *     juego coherente aplicado.
+         *   · antioscilación: si ningún campo se mueve al menos un escalón
+         *     (buffer 2 s · segmentos 1 · paralelas 1 · bwMin 1 Mbps) no se
+         *     aplica nada; el ciclo queda como skipped por antioscilación.
+         *   · se detiene con la pestaña oculta y se reanuda al volver.
+         * ═══════════════════════════════════════════════════════════════════ */
+
+        _governorCfg() {
+            return {
+                intervaloS: 30,        // cadencia entre ciclos
+                windowS: 5,            // ventana de la sonda
+                deadlineMs: 12000,     // plazo total del ciclo
+                /* Escalones de antioscilación. bwMin lleva 1 Mbps porque sin
+                 * escalón cualquier variación de 0,01 lo haría aplicar siempre y
+                 * anularía la regla para los otros tres. */
+                step: { buffer_target_seconds: 2, prefetch_segments: 1, parallel_downloads: 1, min_bandwidth_mbps: 1 }
+            };
+        }
+
+        /* Estrategia activa: la del PANEL (#pm9_strategy → settings.strategy), que
+         * es la que el operador elige y la que dispara el recálculo. El preset de
+         * prefetch queda como respaldo si el perfil no declara estrategia. */
+        /* ═══════════════════════════════════════════════════════════════════
+         * [t17 2026-11-19] LA ELECCIÓN DEL OPERADOR ES INTOCABLE.
+         *
+         * DEFECTO REPORTADO: selecciona ULTRA-AGRESIVO y el panel lo cambia a
+         * "Conservador" con paralelas=1. La estrategia no puede degradarse sola:
+         * si el plan no alcanza, se DECLARA ok:false con su motivo, pero la
+         * estrategia elegida se queda.
+         *
+         * ÚNICO escritor: _setUserStrategy() desde el <select> (updateSetting).
+         * Ningún plan, pintado, gobernador o preset escribe settings.strategy.
+         * _guardStrategy() lo verifica después de cada ciclo y RESTAURA con aviso
+         * si algo lo hubiese cambiado (defensa en profundidad).
+         * ═══════════════════════════════════════════════════════════════════ */
+        _setUserStrategy(profileId, value) {
+            const p = this.config && this.config.getProfile ? this.config.getProfile(profileId || this.activeProfileId) : null;
+            if (!p || !p.settings) return false;
+            const canon = (window.APE_HEALTH_TUNER && window.APE_HEALTH_TUNER.strategyKey)
+                ? window.APE_HEALTH_TUNER.strategyKey(value) : String(value);
+            p.settings.strategy = canon;
+            this._userStrategy = { id: profileId || this.activeProfileId, value: canon, at: Date.now() };
+            return true;
+        }
+
+        _guardStrategy(profile, expected) {
+            if (!profile || !profile.settings) return { ok: true };
+            const want = expected || (this._userStrategy && this._userStrategy.id === profile.id
+                ? this._userStrategy.value : profile.settings.strategy);
+            if (!want) return { ok: true };
+            if (String(profile.settings.strategy) !== String(want)) {
+                const mal = profile.settings.strategy;
+                profile.settings.strategy = want;
+                try {
+                    if (typeof console !== 'undefined') {
+                        console.warn('[t17] estrategia revertida por ' + mal + ' -> se restaura ' + want +
+                            ' (la elige el operador, no el plan)');
+                    }
+                } catch (e) {}
+                return { ok: false, restored: want, was: mal };
+            }
+            return { ok: true };
+        }
+
+        _activeStrategyId() {
+            const p = (this.config && this.config.getProfile)
+                ? this.config.getProfile(this.activeProfileId) : null;
+            const stg = (p && p.settings) ? p.settings.strategy : null;
+            if (stg) return stg;
+            const cfg = (this.config && this.config.getPrefetchConfig)
+                ? (this.config.getPrefetchConfig(this.activeProfileId) || {}) : {};
+            return cfg.strategy || 'balanced';
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════
+         * BOTÓN ÚNICO: MEDIR → CALCULAR+APLICAR → AUTOGUARDAR → REPINTAR
+         * (encargo 2026-11-18). target 'one' = perfil activo · 'all' = todos los
+         * perfiles configurados, cada uno con SU propio bitrate calculado y por
+         * lotes. Idempotente: UNA medición por pulsación; el doble clic reutiliza
+         * la promesa en vuelo (_qosRunPromise). ═════════════════════════════ */
+        qosRunAll(target, opts) {
+            opts = opts || {};
+            if (this._qosRunPromise) return this._qosRunPromise;
+            const self = this;
+            const p = this._qosRunAllImpl(target === 'all' ? 'all' : 'one', opts)
+                .then(function (r) { self._qosRunPromise = null; self._qosUiStop(r); return r; })
+                .catch(function (e) {
+                    self._qosRunPromise = null;
+                    const r = { ok: false, state: 'EXCEPTION', reason: (e && e.message) || 'error en el flujo' };
+                    self._qosUiStop(r);
+                    return r;
+                });
+            this._qosRunPromise = p;
+            this._qosUiStart(opts);
+            return p;
+        }
+
+        _allProfileIds() {
+            const cfg = this.config;
+            const all = (cfg && cfg.profiles) ? Object.keys(cfg.profiles) : [];
+            const list = all.filter(function (id) { return cfg.profiles[id] && cfg.profiles[id].settings; });
+            return list.length ? list : [this.activeProfileId];
+        }
+
+        _strategyOfProfile(id) {
+            const p = (this.config && this.config.getProfile) ? this.config.getProfile(id) : null;
+            const stg = (p && p.settings) ? p.settings.strategy : null;
+            return stg || this._activeStrategyId();
+        }
+
+        /* Escritura de los 4 valores en un perfil CONCRETO (no sólo el activo). */
+        /* [t21] aridad de un campo: nº de posiciones de la cascada del PERFIL */
+        _arityOf(profile, headerName) {
+            if (!this.config || typeof this.config.getHeaderValue !== 'function') return 1;
+            const v = this.config.getHeaderValue(profile.id, headerName);
+            return (v === null || v === undefined || String(v) === '') ? 1 : String(v).split(',').length;
+        }
+
+        /* [t21] cascada MONÓTONA de n posiciones a partir del valor del plan.
+         * No repite el mismo valor (ese era el defecto de X-Color-Depth): baja
+         * por niveles hasta 1, preservando la aridad del perfil. */
+        _cascadeOf(base, n) {
+            const b = Math.max(1, Math.round(Number(base) || 1));
+            const k = Math.max(1, Number(n) || 1);
+            const out = [];
+            for (let i = 0; i < k; i++) out.push(Math.max(1, b - i));
+            return out.join(',');
+        }
+
+        /* [t21] escribe las cascadas que gobierna el plan conservando su aridad. */
+        _reconcilePlanCascades(profile, applied) {
+            const r = { plan: {} };
+            if (!profile || !this.config || typeof this.config.setHeaderOverride !== 'function') return r;
+            const a = applied || {};
+            const pares = [
+                ['X-Parallel-Segments', a.parallel_downloads],
+                ['X-Prefetch-Segments', a.prefetch_segments],
+                ['X-Concurrent-Downloads', a.parallel_downloads]
+            ];
+            const self = this;
+            pares.forEach(function (par) {
+                const name = par[0], val = par[1];
+                if (val === undefined || val === null) return;
+                const ar = self._arityOf(profile, name);
+                const cas = self._cascadeOf(val, ar);
+                self.config.setHeaderOverride(profile.id, name, cas);
+                r.plan[name] = { posiciones: ar, valor: cas };
+            });
+            return r;
+        }
+
+        /* [t21] GUARD DE CIERRE: ningún campo vacío; ninguna cascada gobernada por
+         * el plan con una sola posición. Devuelve el informe para el botón. */
+        _guardFields(profile) {
+            const inf = { vacios: [], rellenados: [], aridad: [], declarados: [], ok: true };
+            if (!profile || !this.config) return inf;
+            const self = this;
+            const hdrs = ['Keep-Alive', 'Connection', 'Accept-Encoding', 'Sec-CH-UA-Platform',
+                'X-Dolby-Vision-Profile', 'X-Dolby-Vision-Level', 'X-APE-STRATEGY', 'X-Color-Depth',
+                'X-Segment-Duration', 'X-Prefetch-Segments', 'X-Parallel-Segments', 'X-Frame-Rates'];
+            hdrs.forEach(function (name) {
+                const v = self.config.getHeaderValue(profile.id, name);
+                if (v === null || v === undefined || String(v).trim() === '') {
+                    let donor = null;
+                    const all = (self.config.profiles ? Object.keys(self.config.profiles) : []);
+                    for (let i = 0; i < all.length; i++) {
+                        const pv = self.config.getHeaderValue(all[i], name);
+                        if (pv !== null && pv !== undefined && String(pv).trim() !== '') { donor = String(pv); break; }
+                    }
+                    if (donor) {
+                        self.config.setHeaderOverride(profile.id, name, donor);
+                        inf.rellenados.push(name + ' = ' + donor);
+                    } else {
+                        /* [t21] sin donante en otros perfiles: se deriva del PROPIO
+                         * perfil (SSOT de codec). Dolby Vision se declara con el
+                         * codec real del perfil, nunca con un valor inventado. */
+                        const st = profile.settings || {};
+                        const cadena = String(st.codec_chain_video || '') + ',' + String(st.codec_full || '');
+                        let derivado = null;
+                        if (name === 'X-Dolby-Vision-Profile') {
+                            const dv = /dvh1\.[0-9.]+/.exec(cadena);
+                            if (dv) derivado = dv[0];
+                        } else if (name === 'X-Dolby-Vision-Level') {
+                            const lv = /L(\d{2,3})/.exec(cadena);
+                            if (lv) derivado = 'L' + lv[1];
+                        }
+                        if (derivado) {
+                            self.config.setHeaderOverride(profile.id, name, derivado);
+                            inf.rellenados.push(name + ' = ' + derivado + ' (derivado del codec del perfil)');
+                        } else {
+                            inf.declarados.push(name + ' (sin Dolby Vision en este perfil: N/A declarado)');
+                        }
+                    }
+                }
+            });
+            ['X-Prefetch-Segments', 'X-Parallel-Segments', 'X-Concurrent-Downloads'].forEach(function (name) {
+                const v = self.config.getHeaderValue(profile.id, name);
+                if (v !== null && v !== undefined && String(v).indexOf(',') < 0) {
+                    inf.aridad.push(name + ' = ' + v + ' (una sola posición)');
+                    inf.ok = false;
+                }
+            });
+            ['Connection', 'Accept-Encoding', 'Sec-CH-UA-Platform'].forEach(function (name) {
+                const v = self.config.getHeaderValue(profile.id, name);
+                if (v !== null && v !== undefined && String(v).indexOf(',') < 0) {
+                    inf.declarados.push(name + ' = ' + v + ' (aridad 1 por diseño del SSOT)');
+                }
+            });
+            return inf;
+        }
+
+        _applyPlanValuesFor(profileId, values) {
+            const applied = {};
+            if (!this.config || typeof this.config.updatePrefetchSetting !== 'function') return applied;
+            const id = profileId || this.activeProfileId;
+            Object.keys(values || {}).forEach((k) => {
+                if (this.config.updatePrefetchSetting(id, k, values[k])) applied[k] = values[k];
+            });
+            return applied;
+        }
+
+        async _qosRunAllImpl(target, opts) {
+            const A = (typeof window !== 'undefined') ? window.app : null;
+            const report = { ok: false, state: 'SIN_MEDICION', target: target, profiles: {}, appliedIds: [] };
+
+            /* 1 · MEDIR — una sola vez para todo el flujo */
+            let measured = opts.measured || null;
+            if (!measured) {
+                if (!A || typeof A.measureQosBandwidth !== 'function') {
+                    report.state = 'NO_APP';
+                    report.reason = 'app.js no expone measureQosBandwidth';
+                    return report;
+                }
+                measured = await A.measureQosBandwidth({ windowS: Number(opts.windowS) || 8 });
+            }
+            report.measured = measured;
+            if (!measured || measured.ok !== true) {
+                report.state = (measured && measured.state) || 'NO_MEASUREMENT';
+                report.reason = (measured && measured.reason) || 'no se pudo medir';
+                return report;                     /* NO se aplica ni se guarda nada */
+            }
+
+            /* 2 · publicar el perfil de red (referencia del cálculo) */
+            if (A && typeof A.applyNetworkMeasurement === 'function') {
+                A.applyNetworkMeasurement(measured, { silent: true });
+            }
+
+            /* 3 · CALCULAR + APLICAR cada perfil con SU bitrate */
+            const ids = (target === 'all') ? this._allProfileIds() : [this.activeProfileId];
+            for (let i = 0; i < ids.length; i++) {
+                const id = ids[i];
+                const profile = this.config.getProfile(id);
+                if (!profile || !profile.settings) continue;
+                const plan = this._coherentPlanFor(profile, this._strategyOfProfile(id));
+                if (!plan || !plan.values) continue;
+                const c = this._clampPlanValues(plan.values);
+                const applied = this._applyPlanValuesFor(id, c.values);
+                const basis = this._requiredMbpsBasis(profile);
+                report.profiles[id] = {
+                    profileId: id, strategy: plan.strategyKey || this._strategyOfProfile(id),
+                    bufferTargetS: c.values.buffer_target_seconds,
+                    prefetchSegments: c.values.prefetch_segments,
+                    parallelDownloads: c.values.parallel_downloads,
+                    bwMinMbps: c.values.min_bandwidth_mbps,
+                    basis: basis.mbps, basisSource: basis.source,
+                    ok: plan.ok, violations: plan.violations || [],
+                    applied: applied, clamped: c.clamped, ts: Date.now()
+                };
+                report.appliedIds.push(id);
+                /* por lotes: ceder el hilo cada 3 perfiles para no bloquear la UI */
+                if ((i + 1) % 3 === 0) await new Promise(function (r) { setTimeout(r, 0); });
+            }
+
+            /* [t21] CASCADAS + GUARD DE CIERRE sobre el perfil activo: ningún
+             * campo vacío y ninguna cascada gobernada por el plan con una sola
+             * posición. Se informa en el resultado del botón. */
+            try {
+                const pAct = this.config.getProfile(this.activeProfileId);
+                const aplAct = (report.profiles[this.activeProfileId] || {}).applied || {};
+                report.cascadas = this._reconcilePlanCascades(pAct, aplAct);
+                report.guard = this._guardFields(pAct);
+            } catch (e) { report.guard = { ok: false, vacios: ['(error: ' + (e && e.message) + ')'] }; }
+
+            /* 4 · AUTOGUARDAR — DESPUÉS de aplicar, nunca antes */
+            const saved = this._saveQoePlan(report.profiles, measured);
+            report.saved = !!saved;
+            report.ok = true;
+            report.state = report.appliedIds.length ? 'APPLIED' : 'SIN_PERFILES';
+            report.coherent = Object.keys(report.profiles).some(function (k) { return report.profiles[k].ok; });
+
+            /* [t17] ningún paso del flujo puede haber cambiado la estrategia */
+            try { this._guardStrategy(this.config.getProfile(this.activeProfileId)); } catch (e) {}
+            /* 5 · repintar */
+            try {
+                this._paintCoherentValues();
+                this._paintPerfPanel(this._coherentPlanFor(null, this._activeStrategyId()));
+                this._updateStreamingHealth();
+            } catch (e) { /* no bloqueante */ }
+            return report;
+        }
+
+        /* ── AUTOGUARDADO del plan por perfil ─────────────────────────────── */
+        _saveQoePlan(plans, measured) {
+            try {
+                if (typeof localStorage === 'undefined' || !localStorage.setItem) return null;
+                const rec = {
+                    v: 1, ts: Date.now(),
+                    measurement: measured ? {
+                        mbpsSafe: measured.mbpsSafe, mbpsP95: measured.mbpsP95,
+                        jitterMbps: measured.jitterMbps, bufferbloatMs: measured.bufferbloatMs,
+                        rttIdleMs: measured.rttIdleMs, source: measured.source || 'explicit'
+                    } : null,
+                    profiles: plans || {}
+                };
+                /* [t16] HISTORICO de mediciones explícitas (trazabilidad). No
+                 * recalcula nada: sólo se anexa. Gana siempre la última. */
+                try {
+                    const prev = JSON.parse(localStorage.getItem('ape_qoe_plan_v1') || 'null');
+                    const hist = (prev && Array.isArray(prev.history)) ? prev.history : [];
+                    hist.push({ ts: rec.ts, mbpsSafe: rec.measurement ? rec.measurement.mbpsSafe : null,
+                                mbpsP95: rec.measurement ? rec.measurement.mbpsP95 : null,
+                                jitterMbps: rec.measurement ? rec.measurement.jitterMbps : null,
+                                bufferbloatMs: rec.measurement ? rec.measurement.bufferbloatMs : null,
+                                source: rec.measurement ? rec.measurement.source : 'explicit',
+                                profiles: Object.keys(rec.profiles || {}).length });
+                    while (hist.length > 20) hist.shift();
+                    rec.history = hist;
+                } catch (e) { /* sin historico: el snapshot sigue válido */ }
+                localStorage.setItem('ape_qoe_plan_v1', JSON.stringify(rec));
+                this._snapshotInfo = {
+                    ts: rec.ts, ageMs: 0, stale: false,
+                    source: rec.measurement ? rec.measurement.source : 'explicit',
+                    mbps: rec.measurement ? rec.measurement.mbpsSafe : null,
+                    p95: rec.measurement ? rec.measurement.mbpsP95 : null,
+                    jitter: rec.measurement ? rec.measurement.jitterMbps : null,
+                    bufferbloatMs: rec.measurement ? rec.measurement.bufferbloatMs : null,
+                    plan: null
+                };
+                return rec;
+            } catch (e) { return null; }
+        }
+
+        _loadQoePlan() {
+            try {
+                if (typeof localStorage === 'undefined' || !localStorage.getItem) return null;
+                const raw = localStorage.getItem('ape_qoe_plan_v1');
+                if (!raw) return null;
+                const o = JSON.parse(raw);
+                if (!o || !o.profiles) return null;
+                o.fresh = (Date.now() - (Number(o.ts) || 0)) <= this._networkProfileTtlMs();
+                return o;
+            } catch (e) { return null; }
+        }
+
+        /* Restaura el plan guardado. Si caducó NO se aplica: se informa. */
+        /* [t16 · ORDEN DEL OPERADOR] El snapshot se restaura y se APLICA siempre.
+         * Ningún TTL borra ni mueve el plan: si envejeció se marca ANTIGUO
+         * (visible + title) y los valores siguen aplicados hasta que el operador
+         * vuelva a medir. Prohibido que un temporizador cambie un valor. */
+        _restoreQoePlan() {
+            const o = this._loadQoePlan();
+            if (!o) return { restored: false, reason: 'sin plan guardado' };
+            const mine = o.profiles[this.activeProfileId];
+            if (!mine) return { restored: false, reason: 'el plan no tiene este perfil', ts: o.ts };
+            const p = (this.config && this.config.getProfile) ? this.config.getProfile(this.activeProfileId) : null;
+            const applied = this._applyPlanValuesFor(this.activeProfileId, {
+                prefetch_segments: mine.prefetchSegments,
+                parallel_downloads: mine.parallelDownloads,
+                buffer_target_seconds: mine.bufferTargetS,
+                min_bandwidth_mbps: mine.bwMinMbps
+            });
+            const ageMs = Date.now() - (Number(o.ts) || 0);
+            this._snapshotInfo = {
+                ts: Number(o.ts) || 0, ageMs: ageMs, stale: !o.fresh,
+                source: (o.measurement && o.measurement.source) || 'desconocida',
+                mbps: o.measurement ? o.measurement.mbpsSafe : null,
+                p95: o.measurement ? o.measurement.mbpsP95 : null,
+                jitter: o.measurement ? o.measurement.jitterMbps : null,
+                bufferbloatMs: o.measurement ? o.measurement.bufferbloatMs : null,
+                plan: mine
+            };
+            if (mine.basis > 0) this._peakRecord(Number(o.measurement && o.measurement.mbpsSafe) || 0, this._snapshotInfo.ts);
+            /* [t21] un snapshot viejo puede traer campos vacíos: se completan con
+             * el perfil en vez de aplicarse a medias. */
+            try {
+                this._reconcilePlanCascades(p, {
+                    prefetch_segments: mine.prefetchSegments,
+                    parallel_downloads: mine.parallelDownloads
+                });
+                const g = this._guardFields(p);
+                this._snapshotInfo.guard = g;
+                if (g && (g.rellenados.length || g.vacios.length)) {
+                    if (typeof console !== 'undefined') {
+                        console.log('[t21] snapshot: rellenados=' + g.rellenados.length +
+                            ' · vacios sin relleno=' + g.vacios.length);
+                    }
+                }
+            } catch (e) { /* no bloqueante */ }
+            return { restored: true, stale: !!this._snapshotInfo.stale, plan: mine, applied: applied,
+                     ageMs: ageMs, snapshot: this._snapshotInfo };
+        }
+
+        /* Texto del panel: "medido hace X (fuente Y)" + marca ANTIGUO. */
+        _snapshotLabel() {
+            const s = this._snapshotInfo;
+            if (!s || !s.ts) return null;
+            const sSeg = Math.round(s.ageMs / 1000);
+            const hace = sSeg < 90 ? (sSeg + ' s') : (sSeg < 5400 ? (Math.round(sSeg / 60) + ' min') : (Math.round(sSeg / 3600) + ' h'));
+            return 'medido hace ' + hace + ' (fuente ' + s.source + ')' + (s.stale ? ' · ANTIGUO' : '');
+        }
+
+        /* ── Feedback visual: LED minimalista (CSS puro, sin librerías) ───── */
+        _qosUiStart(opts) {
+            try {
+                const btn = (typeof document !== 'undefined') ? document.getElementById('pm9_auto_adjust_btn') : null;
+                if (!btn) return;
+                this._qosBtnLabel = btn.innerHTML;
+                btn.disabled = true;
+                this._qosT0 = Date.now();
+                const self = this;
+                const paint = function () {
+                    const s = Math.round((Date.now() - self._qosT0) / 1000);
+                    btn.innerHTML = '⏳ Midiendo… ' + s + ' s';
+                };
+                paint();
+                this._qosTimer = setInterval(paint, 500);
+                if (typeof document !== 'undefined' && document.head && !document.getElementById('pm9_qos_leds_style')) {
+                    const st = document.createElement('style');
+                    st.id = 'pm9_qos_leds_style';
+                    st.textContent = '@keyframes pm9Led{0%,100%{opacity:.25;transform:scale(.85)}50%{opacity:1;transform:scale(1)}}' +
+                        '#pm9_qos_leds{display:inline-flex;gap:3px;margin-left:8px;vertical-align:middle}' +
+                        '#pm9_qos_leds span{width:6px;height:6px;border-radius:50%;background:#38bdf8;display:inline-block;animation:pm9Led 1s infinite ease-in-out}';
+                    document.head.appendChild(st);
+                }
+                let leds = (typeof document !== 'undefined') ? document.getElementById('pm9_qos_leds') : null;
+                if (!leds && typeof document !== 'undefined') {
+                    leds = document.createElement('span');
+                    leds.id = 'pm9_qos_leds';
+                    if (btn.parentNode && typeof btn.parentNode.insertBefore === 'function') {
+                        btn.parentNode.insertBefore(leds, btn.nextSibling);
+                    } else if (document.body && document.body.appendChild) {
+                        document.body.appendChild(leds);
+                    }
+                }
+                /* los 4 puntos se crean si faltan (idempotente) */
+                if (leds && (!leds.children || leds.children.length === 0)) {
+                    for (let i = 0; i < 4; i++) {
+                        const dot = document.createElement('span');
+                        dot.style.animationDelay = (i * 0.12) + 's';
+                        leds.appendChild(dot);
+                    }
+                }
+            } catch (e) { /* no bloqueante */ }
+        }
+
+        _qosUiStop(result) {
+            try {
+                if (this._qosTimer) { clearInterval(this._qosTimer); this._qosTimer = null; }
+                const b2 = (typeof document !== 'undefined') ? document.getElementById('pm9_auto_adjust_btn') : null;
+                if (b2) {
+                    b2.disabled = false;
+                    b2.innerHTML = this._qosBtnLabel || '⚡ AUTO-AJUSTAR (función objetivo)';
+                }
+                const leds = (typeof document !== 'undefined') ? document.getElementById('pm9_qos_leds') : null;
+                if (leds) {
+                    const measuredOk = !!(result && result.measured && result.measured.ok);
+                    const coherent = !!(result && result.coherent);
+                    const color = !measuredOk ? '#ef4444' : (coherent ? '#10b981' : '#eab308');
+                    Array.prototype.forEach.call(leds.children, function (el) {
+                        el.style.background = color;
+                        el.style.animation = 'none';
+                        el.style.opacity = '1';
+                        el.style.transform = 'scale(1)';
+                    });
+                    leds.title = !measuredOk
+                        ? ('no se pudo medir: ' + ((result && (result.reason || result.state)) || 'sin motivo'))
+                        : (coherent ? 'plan coherente aplicado' : 'midió pero no alcanza (ver gate)');
+                }
+            } catch (e) { /* no bloqueante */ }
+        }
+
+        /* UN ciclo INMEDIATO y FORZADO (ignora la antioscilación). Idempotente:
+         * si ya hay un ciclo en vuelo devuelve ESE, de modo que pulsar
+         * AUTO-AJUSTAR dos veces no lanza dos sondas. */
+        governorRunOnce(opts) {
+            opts = opts || {};
+            if (this._govCyclePromise) {
+                this._govForceApply = (opts.force !== false);
+                return this._govCyclePromise;
+            }
+            this._govForceApply = (opts.force !== false);
+            const self = this;
+            const p = this._governorCycle().then(function (r) {
+                self._govCyclePromise = null;
+                self._govForceApply = false;
+                return r;
+            }).catch(function (e) {
+                self._govCyclePromise = null;
+                self._govForceApply = false;
+                throw e;
+            });
+            this._govCyclePromise = p;
+            return p;
+        }
+
+        /* Escritura de los cuatro valores: ÚNICO camino (lo usan applyCoherentPlan
+         * y el gobernador). Va por updatePrefetchSetting, no por
+         * updatePrefetchValue: ese handler sincroniza parallel→segments 3:1 y
+         * pisaría el plan (que deriva los segmentos del buffer, no del paralelo). */
+        _applyPlanValues(values) {
+            const applied = {};
+            if (!this.config || typeof this.config.updatePrefetchSetting !== 'function') return applied;
+            Object.keys(values || {}).forEach((k) => {
+                if (this.config.updatePrefetchSetting(this.activeProfileId, k, values[k])) {
+                    applied[k] = values[k];
+                }
+            });
+            return applied;
+        }
+
+        /* Arranca el gobernador. Idempotente: una sola instancia. */
+        startGovernor(opts) {
+            const cfg = Object.assign(this._governorCfg(), opts || {});
+            this._govCfg = cfg;
+            if (this._govTimer || this._govActive) {
+                return { ok: true, already: true, intervaloS: cfg.intervaloS };
+            }
+            this._govActive = true;
+            this._govCycles = this._govCycles || 0;
+            this._govInFlight = false;
+
+            /* Pausa/reanudación por visibilidad (una sola vez). */
+            if (!this._govVisHooked && typeof document !== 'undefined' && document.addEventListener) {
+                this._govVisHooked = true;
+                const self = this;
+                document.addEventListener('visibilitychange', function () {
+                    if (document.hidden) {
+                        if (self._govActive) {
+                            self._govPaused = true;
+                            self._govActive = false;
+                            if (self._govTimer) { clearTimeout(self._govTimer); self._govTimer = null; }
+                            if (typeof console !== 'undefined') console.log('[CALIB] pausado: pestaña oculta');
+                        }
+                    } else if (self._govPaused) {
+                        self._govPaused = false;
+                        self._govTimer = null;
+                        self.startGovernor(self._govCfg);
+                        if (typeof console !== 'undefined') console.log('[CALIB] reanudado: pestaña visible');
+                    }
+                });
+            }
+
+            this._governorTick();     // primer ciclo inmediato
+            return { ok: true, started: true, intervaloS: cfg.intervaloS, deadlineMs: cfg.deadlineMs };
+        }
+
+        stopGovernor() {
+            this._govActive = false;
+            if (this._govTimer) { clearTimeout(this._govTimer); this._govTimer = null; }
+            return { ok: true, stopped: true, cycles: this._govCycles || 0 };
+        }
+
+        _governorSchedule(ms) {
+            if (!this._govActive) return;
+            if (this._govTimer) clearTimeout(this._govTimer);
+            const self = this;
+            this._govTimer = setTimeout(function () { self._governorTick(); }, Math.max(0, ms));
+        }
+
+        /* Un tick: si ya hay un ciclo en vuelo, NO se solapa: se salta y se cuenta. */
+        _governorTick() {
+            if (!this._govActive) return;
+            const self = this;
+            const cfg = this._govCfg || this._governorCfg();
+            if (this._govInFlight) {
+                this._govSkipped = (this._govSkipped || 0) + 1;
+                this._lastTune = Object.assign({}, this._lastTune || {},
+                    { skipped: this._govSkipped, skipReason: 'ciclo_anterior_en_vuelo' });
+                this._governorSchedule(cfg.intervaloS * 1000);
+                return;
+            }
+            this._govInFlight = true;
+            /* se guarda la promesa para que governorRunOnce pueda REUTILIZAR este
+             * ciclo en vez de lanzar una segunda sonda (AUTO-AJUSTAR idempotente). */
+            const p = this._governorCycle();
+            this._govCyclePromise = p;
+            p.then(function () {
+                self._govInFlight = false;
+                self._govCyclePromise = null;
+                self._governorSchedule(cfg.intervaloS * 1000);
+            }).catch(function (e) {
+                self._govInFlight = false;
+                self._govCyclePromise = null;
+                if (typeof console !== 'undefined') console.warn('[CALIB] ciclo abortado: ' + ((e && e.message) || e));
+                self._governorSchedule(cfg.intervaloS * 1000);
+            });
+        }
+
+        /* Un ciclo completo. Devuelve una promesa con el registro del ciclo. */
+        _governorCycle() {
+            const self = this;
+            const cfg = this._govCfg || this._governorCfg();
+            const profile = (this.config && this.config.getProfile)
+                ? this.config.getProfile(this.activeProfileId) : null;
+            const required = Number(profile && profile.settings ? profile.settings.bitrate : 0) || 0;
+            const bw = (typeof window !== 'undefined') ? window.APE_BW_METER : null;
+            const T = (typeof window !== 'undefined') ? window.APE_HEALTH_TUNER : null;
+            this._govCycles = (this._govCycles || 0) + 1;
+
+            /* 1 · MEDIR. Sin sonda no hay ciclo válido: se registra y se sale. */
+            const measure = (bw && typeof bw.measureAndIntegrate === 'function')
+                ? bw.measureAndIntegrate(required, { windowS: cfg.windowS, mode: 'auto' })
+                : Promise.resolve({ ok: false, state: 'NO_METER',
+                                    reason: 'APE_BW_METER no cargado (bandwidth-meter-v1.js)' });
+
+            /* 3 · plazo total del ciclo: si la sonda no vuelve, no se cuelga. */
+            let deadlineHit = false;
+            const deadline = new Promise(function (resolve) {
+                setTimeout(function () {
+                    deadlineHit = true;
+                    resolve({ ok: false, state: 'CYCLE_DEADLINE',
+                              reason: 'el ciclo superó ' + cfg.deadlineMs + ' ms' });
+                }, cfg.deadlineMs);
+            });
+
+            return Promise.race([measure, deadline]).then(function (r) {
+                r = r || { ok: false, state: 'SIN_RESULTADO' };
+                r.at = Date.now();                 // frescura para _freshMeasurement
+                self._lastBw = r;                  // alimenta panel y veredicto
+
+                /* 1bis · PUBLICAR EL PERFIL DE RED desde ESTA MISMA MEDICIÓN.
+                 * El módulo «Latencia Rayo» (app.js) es la REFERENCIA del
+                 * cálculo, y el gobernador lo alimenta con la sonda que ya hizo:
+                 * UNA sola medición por ciclo, no dos. Se publica ANTES de
+                 * calcular el plan para que éste lea el perfil recién escrito. */
+                const A = (typeof window !== 'undefined') ? window.app : null;
+                const publish = (r.ok && A && typeof A.profileNetwork === 'function')
+                    ? Promise.resolve(A.profileNetwork({ prefetched: r, silent: true }))
+                        .catch(function (e) {
+                            return { ok: false, reason: (e && e.message) || 'profileNetwork falló' };
+                        })
+                    : Promise.resolve(null);
+
+                return publish.then(function (np) {
+                    self._lastNetProfile = np;
+                    return self._governorDecide(r, np, profile, T);
+                });
+            });
+        }
+
+        /* Decide y aplica a partir de una medición ya publicada en el perfil de
+         * red. Separado de _governorCycle para poder esperar la publicación del
+         * perfil sin anidar promesas dentro del cuerpo de decisión. */
+        _governorDecide(r, np, profile, T) {
+            const self = this;
+            const cfg = this._govCfg || this._governorCfg();
+
+            const mbps = (r.measurement && typeof r.measurement.mbpsSafe === 'number')
+                ? r.measurement.mbpsSafe : null;
+            const ratio = (typeof r.headroomRatio === 'number') ? r.headroomRatio : null;
+            const ping = (np && isFinite(Number(np.ttfbMs))) ? Number(np.ttfbMs) : null;
+
+            /* 2 · CALCULAR con el método MEDIDO (jamás con settings.bitrate). */
+            const plan = (r.ok && T && typeof T.coherentPlan === 'function')
+                ? self._coherentPlanFor(profile, self._activeStrategyId())
+                : null;
+            /* el plan del ciclo es el que pinta el panel: una sola fuente */
+            if (plan) self._lastCoherent = plan;
+        /* [2026-11-20 · OPERADOR: "aplicar los parametros de manera automatica"]
+         * Tras CADA medicion, el gobernador APLICA lo que deriva el motor a los 12
+         * perfiles: buffer (settings.buffer y vlcopt network-caching) y el timeout
+         * de red. Cada perfil usa SU propio ratio (medido / exigido por el perfil),
+         * no el del perfil activo. Se persiste para que la lista lo herede. */
+        /* [t30] el auto-tune sólo corre sobre una medición VÁLIDA: si el ciclo no
+         * es ok (la red no sostiene ni el mínimo), escribir 12 perfiles rompía
+         * "CONSERVA el juego coherente anterior" y disparaba el antioscilación. */
+        if (r && r.ok) { try { self._applyAutoTune(r); } catch (_at) { /* aditivo: nunca rompe el ciclo */ } }
+            /* [t17] pase lo que pase con el plan, la estrategia no se revierte */
+            self._guardStrategy(profile);
+
+            const rec = {
+                at: r.at, ok: false, values: null, violations: [], applied: null,
+                measuredMbpsSafe: mbps, headroomRatio: ratio,
+                netProfileMbps: (np && np.downloadMbps) || null,
+                netProfileSource: (np && np.source) || null,
+                pingMs: ping,
+                planState: plan ? plan.state : (r.state || 'SIN_PLAN'),
+                skipped: self._govSkipped || 0, cycle: self._govCycles
+            };
+
+            if (!plan || !plan.values) {
+                /* Sin medición o sin plan: NO se aplica y NO se inventa. */
+                rec.violations = (plan && plan.violations) ? plan.violations
+                    : [String(r.state || 'SIN_MEDICION') + ': ' + String(r.reason || 'sin medición válida')];
+                self._lastTune = rec;
+                self._governorLog(rec);
+                self._governorPaintGate(rec);
+                return rec;
+            }
+
+            rec.violations = plan.violations || [];
+            rec.neededMbpsForGreen = plan.neededMbpsForGreen;
+
+            /* 4 · plan NO coherente: no se aplica, no se fuerza verde y se
+             * CONSERVA el último juego coherente aplicado. */
+            if (!plan.ok) {
+                rec.ok = false;
+                rec.kept = self._lastAppliedSet || null;
+                self._lastTune = rec;
+                self._governorLog(rec);
+                self._governorPaintGate(rec);
+                self._updateStreamingHealth();
+                return rec;
+            }
+
+            /* 3 · plan coherente: antioscilación y aplicación. */
+            const c = self._clampPlanValues(plan.values);
+            const cur = (self.config.getPrefetchConfig(self.activeProfileId) || {});
+            const moves = Object.keys(c.values).some(function (k) {
+                const now = Number(cur[k]);
+                const step = Number(cfg.step[k]) || 0;
+                if (!isFinite(now)) return true;
+                return Math.abs(c.values[k] - now) >= step;
+            });
+
+            /* AUTO-AJUSTAR fuerza la aplicación aunque el cambio sea menor que el
+             * escalón: el operador lo pidió explícito y es una acción manual. */
+            if (!moves && !self._govForceApply) {
+                rec.ok = true;
+                rec.skipped = (self._govSkipped || 0) + 0;
+                rec.skipReason = 'antioscilacion';
+                rec.values = c.values;
+                self._lastTune = rec;
+                self._governorLog(rec);
+                return rec;
+            }
+
+            const applied = self._applyPlanValues(c.values);
+            if (Object.keys(applied).length) self._lastAppliedSet = applied;
+            rec.ok = true;
+            rec.values = c.values;
+            rec.applied = applied;
+            rec.clamped = c.clamped;
+            self._lastTune = rec;
+            self._governorLog(rec);
+            self._governorPaintGate(rec);
+            try {
+                self._paintCoherentValues();
+                self._paintPerfPanel(self._lastCoherent);
+                self._updateStreamingHealth();
+            } catch (e) { /* no bloqueante */ }
+            return rec;
+        }
+
+        /* Publica el aviso del ciclo en el gate de suficiencia (texto existente,
+         * sin tocar la estructura del panel). */
+        _governorPaintGate(rec) {
+            try {
+                const el = (typeof document !== 'undefined') ? document.getElementById('pm9_sufficiency_gate') : null;
+                if (!el || !rec) return;
+                if (!rec.ok && rec.violations && rec.violations.length) {
+                    const kept = rec.kept ? (' · se conserva ' + JSON.stringify(rec.kept)) : '';
+                    el.title = '[CALIB] ' + rec.violations.join(' · ') + kept;
+                } else {
+                    el.title = '[CALIB] ciclo ' + (rec.cycle || '') + ' coherente' +
+                        (rec.skipReason ? ' (sin cambios: ' + rec.skipReason + ')' : '');
+                }
+            } catch (e) { /* no bloqueante */ }
+        }
+
+        /* Una línea de consola por ciclo, con el formato pedido. */
+        _governorLog(rec) {
+            if (typeof console === 'undefined' || !rec) return;
+            const v = rec.values || (rec.applied || {});
+            const iso = new Date(rec.at || Date.now()).toISOString();
+            console.log('[CALIB] at=' + iso +
+                ' mbps=' + (rec.measuredMbpsSafe === null ? 'n/a' : rec.measuredMbpsSafe) +
+                ' ratio=' + (rec.headroomRatio === null ? 'n/a' : rec.headroomRatio) +
+                ' ok=' + rec.ok +
+                ' buf=' + (v.buffer_target_seconds === undefined ? 'n/a' : v.buffer_target_seconds) +
+                ' seg=' + (v.prefetch_segments === undefined ? 'n/a' : v.prefetch_segments) +
+                ' par=' + (v.parallel_downloads === undefined ? 'n/a' : v.parallel_downloads) +
+                ' bwMin=' + (v.min_bandwidth_mbps === undefined ? 'n/a' : v.min_bandwidth_mbps) +
+                ' net=' + (rec.netProfileMbps === null ? 'n/a' : rec.netProfileMbps) +
+                (rec.pingMs === null || rec.pingMs === undefined ? '' : ' ping=' + rec.pingMs) +
+                (rec.skipReason ? ' skipped=' + rec.skipReason : '') +
+                ' ' + (rec.violations && rec.violations.length ? rec.violations.join(' | ') : ''));
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -2714,6 +4732,93 @@
          * Timing vía APE_BW), refresca la ventana del predictor y re-renderiza.
          * Si no hay medición disponible lo dice; no inventa Mbps.
          */
+        /* ═══════════════════════════════════════════════════════════════════
+         * STREAMING HEALTH MEDIDO (2026-11-16)
+         *
+         * Mide en bins de 1 s sobre una ventana de 5 s (hasta 10 s) usando los
+         * bytes de media que el player YA descargó (Resource Timing): cero
+         * tráfico extra. Alimenta el panel con la ley de suficiencia y, cuando
+         * el headroom lo permite, devuelve la configuración recomendada.
+         *
+         * Sin medición NO publica cifras: deja evidence=false y explica por qué.
+         * Devuelve la promesa para poder verificarlo desde consola o test.
+         * ═══════════════════════════════════════════════════════════════════ */
+        measureStreamingHealth(windowS) {
+            const bw = (typeof window !== 'undefined') ? window.APE_BW_METER : null;
+            const profile = this.config.getProfile(this.activeProfileId);
+            const required = Number(profile && profile.settings ? profile.settings.bitrate : 0) || 0;
+            const self = this;
+
+            if (!bw || typeof bw.measureAndIntegrate !== 'function') {
+                this._lastBw = { ok: false, state: 'NO_METER', at: Date.now(),
+                                 reason: 'APE_BW_METER no cargado (bandwidth-meter-v1.js)' };
+                this._updateStreamingHealth();
+                return Promise.resolve(this._lastBw);
+            }
+
+            return bw.measureAndIntegrate(required, { windowS: windowS || 5, mode: 'auto' }).then(function (r) {
+                r.at = Date.now();
+                r.stallPct = self._stallFromRatio(r.headroomRatio);
+                self._lastBw = r;
+
+                // ═══════════════════════════════════════════════════════════
+                // [2026-11-16] NO sólo se muestra: SE MUEVEN LOS PARÁMETROS.
+                // 1) el tuner calcula con las 4 fórmulas (buffer/prefetch/
+                //    paralelo/read-timeout) y consulta al LLM de la plataforma
+                //    (/image/optimize-llm) con purpose='streaming_health';
+                // 2) la validación por rangos decide: si el LLM toca fallbacks,
+                //    codec, resolución o se sale de rango, gana el determinista;
+                // 3) se aplica al perfil activo SOLO por las APIs del modelo.
+                // ═══════════════════════════════════════════════════════════
+                const T = (typeof window !== 'undefined') ? window.APE_HEALTH_TUNER : null;
+                if (!T || !r.ok) { self._updateStreamingHealth(); return r; }
+                const segDur = (profile && profile.settings) ? profile.settings.segment_duration_s : null;
+                return T.plan({
+                    requiredMbps: required,
+                    headroomRatio: r.headroomRatio,
+                    risk: r.risk,
+                    measuredMbpsSafe: r.measurement ? r.measurement.mbpsSafe : null,
+                    jitter: r.measurement ? r.measurement.jitter : null,
+                    windowS: r.measurement ? r.measurement.windowS : null,
+                    segDurationSec: segDur
+                }, {
+                    llm: true,
+                    fetch: (typeof window !== 'undefined' ? window.fetch : null)
+                }).then(function (pl) {
+                    self._lastTune = pl;
+                    if (pl && pl.ok && pl.chosen) {
+                        pl.applied = T.apply(self, self.activeProfileId, pl.chosen);
+                    }
+                    /* [t13] Al TERMINAR una medición el panel no se queda con
+                     * valores del preset: los CUATRO campos se recalculan con
+                     * coherentPlan (medición fresca) y se repintan los
+                     * derivados con esos números, no con los viejos. */
+                    try {
+                        const _cfg = self.config.getPrefetchConfig(self.activeProfileId) || {};
+                        self.applyCoherentPlan(_cfg.strategy);
+                        self._paintCoherentValues();
+                    } catch (e) { /* no bloqueante */ }
+                    self._updateStreamingHealth();
+                    return r;
+                });
+            }).catch(function (e) {
+                self._lastBw = { ok: false, state: 'MEASURE_FAILED',
+                                 reason: (e && e.message) || 'error midiendo', at: Date.now() };
+                self._updateStreamingHealth();
+                return self._lastBw;
+            });
+        }
+
+        /* Estimación DOCUMENTADA de stall a partir del headroom.
+         * Tiempo de descarga de un segmento = segDur / ratio. Si ratio < 1 el
+         * segmento llega tarde y el buffer se vacía en esa proporción.
+         * NO es una medición de stall: es una derivación del mismo ratio, y se
+         * etiqueta como tal. ratio >= 1 ⇒ 0 %. */
+        _stallFromRatio(r) {
+            if (typeof r !== 'number' || !isFinite(r) || r <= 0) return null;
+            return Math.max(0, Math.round((1 / r - 1) * 10000) / 100);
+        }
+
         measurePredictiveAI() {
             try {
                 if (!window.APE_BW || !window.APE_PREDICT) {
@@ -2918,7 +5023,10 @@
             // Regla 3 leía s.fps (viejo) al cambiar fps y s.resolution (viejo) en cascadas.
             // Medido: cambiar 30 -> 60 fps recalculaba el bitrate con 30. El valor se
             // escribe primero y las reglas derivan de él.
-            profile.settings[key] = value;
+            /* [t17] 'strategy' pasa por el escritor único y se normaliza a la clave
+             * canónica del panel (ultra-aggressive, no 'Ultra-Agresivo'). */
+            if (key === 'strategy') { this._setUserStrategy(this.activeProfileId, value); }
+            else { profile.settings[key] = value; }
 
             // Motor de Reglas Reactivas (Reactive Engine v9.0)
             this._applyReactiveRules(profile, key, value);
@@ -2935,6 +5043,14 @@
             } else {
                 // Para cambios menores, solo actualizar métricas de Streaming Health
                 this._updateStreamingHealth();
+            }
+
+            /* [2026-11-18 · encargo] La ESTRATEGIA cambia el plan, así que al
+             * cambiarla se recalcula TODO de inmediato (un ciclo forzado del
+             * gobernador, que además publica el perfil de red con su sonda).
+             * Antes sólo se escribía el setting y el plan quedaba viejo. */
+            if (key === 'strategy') {
+                try { this.governorRunOnce({ force: true }); } catch (e) { /* no bloqueante */ }
             }
         }
 
@@ -3006,11 +5122,27 @@
 
                 console.log(`🧠 Reactive PRO [v13.1]: Bitrate ${value}Mbps → T1:${s.t1}, T2:${s.t2}`);
 
-                // AUTO: BW Mínimo de Prefetch = 3× Bitrate (para coherencia por perfil)
+                // AUTO: BW Mínimo de Prefetch = exigencia × margen (1.15), NO 3×.
+                // [t13 2026-11-17] 3×bitrate era IMPOSIBLE de cumplir con redes
+                // reales: un perfil de 200 Mbps exigía 600 Mbps de mínimo y con
+                // 0.1 Mbps medidos la validación no podía cuadrar jamás. El
+                // margen es exactamente el que devuelve coherentPlan como
+                // bwMinMbps y el que ya rige el panel en
+                // streaming-calculator.js:45 (SAFETY_MARGIN = 1.15).
                 if (this.config && this.config.updatePrefetchSetting) {
-                    const minBwMbps = Math.round(value * 3);
-                    this.config.updatePrefetchSetting(profile.id, 'min_bandwidth_mbps', minBwMbps);
-                    console.log(`🧠 Reactive PRO [v13.1]: BW Mínimo Prefetch AUTO → ${minBwMbps} Mbps (3× ${value})`);
+                    /* [2026-11-22] Antes: baseReal × 1,15. Cuando la base caía a los
+                     * 0,5 Mbps genéricos, un perfil 8K quedaba exigiendo 1 Mbps y ese
+                     * valor se persistía y viajaba al generador. Ahora manda el piso
+                     * del TIER del perfil y la medición de red sólo puede SUBIRLO.
+                     * Sin piso declarado no se escribe nada (no se inventa). */
+                    const _meas = (this._freshMeasurement && this._freshMeasurement()) || {};
+                    const _r = this._resolvePrefetchMinBw(profile, _meas.measuredMbpsSafe);
+                    if (_r && _r.mbps !== null) {
+                        this.config.updatePrefetchSetting(profile.id, 'min_bandwidth_mbps', _r.mbps);
+                        console.log(`🧠 [PRE-FETCH BW] ${profile.id}: ${_r.mbps} Mbps (${_r.source}; piso ${_r.floor}; margen ×${_r.margin})`);
+                    } else {
+                        console.log('[PRE-FETCH BW] ' + profile.id + ': sin piso declarado — no se escribe');
+                    }
                 }
             }
 
@@ -3777,13 +5909,14 @@
                     let profilesData = null;
                     if (data && data.profiles && typeof data.profiles === 'object') {
                         profilesData = data.profiles;
-                    } else if (data && /^P[0-5]$/.test(Object.keys(data)[0] || '')) {
+                    } else if (data && /^P[0-5](?:[._]5)?$/.test(Object.keys(data)[0] || '')) {
                         profilesData = data;
                     }
 
                     if (!profilesData) throw new Error('El archivo no contiene perfiles válidos (P0-P5).');
 
-                    const pids = Object.keys(profilesData).filter(k => /^P[0-5]$/.test(k));
+                    /* [2026-11-20] /^P[0-5]$/ descartaba P0.5..P5.5: se importaban 6 de 12. */
+    const pids = Object.keys(profilesData).filter(k => /^P[0-5](?:[._]5)?$/.test(k));
                     if (pids.length === 0) throw new Error('No se encontraron perfiles P0-P5 en el JSON.');
 
                     // Usar importProfiles de la clase (hace deep merge con DEFAULT_PROFILES)
@@ -3795,9 +5928,20 @@
                         this.config.profiles = profilesData;
                         this.config.save();
                     }
+                    /* [2026-11-22 · foot-gun medido] `importProfiles` carga los 12 perfiles pero
+                     * NO abre el gate: el generation-controller abortaba después con "LAB JSON no
+                     * importado". La fecha sale del propio fichero; si no la declara, se avisa.
+                     * OJO: el JSON real declara `_meta.exported` (el normalizador lo renombra a
+                     * `exported_at`), así que se aceptan las dos formas y `exported_at` raíz. */
+                    const _exp = (data._meta && (data._meta.exported_at || data._meta.exported))
+                        || data.exported_at || null;
+                    if (typeof this.config.openLabGate === 'function') this.config.openLabGate(_exp);
                     this.render();
-                    console.log(`✅ ${pids.length} perfiles importados: ${pids.join(', ')}`);
-                    alert(`✅ ${pids.length} perfiles restaurados: ${pids.join(', ')}`);
+                    console.log(`✅ ${pids.length} perfiles importados: ${pids.join(', ')} · gate=` + (this.config.labExportedAt || 'CERRADO'));
+                    alert(`✅ ${pids.length} perfiles restaurados: ${pids.join(', ')}`
+                        + '\n\nGate LAB: ' + (this.config.labExportedAt
+                            ? 'abierto (exported_at=' + this.config.labExportedAt + ')'
+                            : 'CERRADO — el fichero no declara exported_at; el generador lo exigirá'));
                 } catch (err) {
                     console.error('❌ Error al importar todos los perfiles:', err);
                     alert(`❌ Error al leer la plantilla:\n${err.message}\n\nAsegúrate de que sea un JSON con perfiles P0-P5 válidos.`);
@@ -3835,6 +5979,7 @@
         }
 
         saveCurrentProfile() {
+        try { this._pushProfilesToVps('saveCurrentProfile'); } catch (e) { /* no bloqueante */ }
             if (!this.config) return;
             this._applyDerivedProfile(this.config.getProfile(this.activeProfileId));
             const snap = this._persistProfileSnapshot('ProfileManagerV9.saveCurrentProfile');
@@ -3848,18 +5993,56 @@
             console.log('✅ Perfil guardado:', this.activeProfileId, { profilesBytes: bytes });
         }
 
+        /* [2026-11-19] Al GUARDAR, empujar los perfiles al VPS para que su
+         * generacion/consumo use exactamente lo que el operador tiene aqui.
+         * Fire-and-forget: si el VPS no responde, el guardado local ya esta
+         * hecho y no se pierde nada. Devuelve la promesa para poder esperarla
+         * en el boton si se quiere. */
+        _pushProfilesToVps(source) {
+            try {
+                const cfg = this.config;
+                if (!cfg || !cfg.profiles) return Promise.resolve({ ok: false, reason: 'no_config' });
+                const S = (typeof window !== 'undefined' && window.APE_PROFILES_SYNC) || {};
+                const url = S.url || '/prisma/api/ape-profiles-state.php';
+                const headers = { 'Content-Type': 'application/json' };
+                if (S.token) headers['X-APE-Token'] = S.token;
+                const body = JSON.stringify({ source: source || 'panel', profiles: cfg.profiles });
+                return fetch(url, { method: 'POST', headers: headers, body: body, keepalive: true, cache: 'no-store' })
+                    .then(function (r) { return r.json().then(function (j) { return Object.assign({ http: r.status }, j); }); })
+                    .then((res) => {
+                        const ok = !!res.ok;
+                        console.log('[SYNC] perfiles -> VPS:', ok ? ('OK ' + res.profiles + ' perfiles, ' + res.bytes + ' B') : ('FALLO ' + (res.error || res.http)));
+                        try {
+                            if (ok && window.app && typeof window.app.showToast === 'function') {
+                                window.app.showToast('VPS actualizado: ' + res.profiles + ' perfiles', 'success');
+                            } else if (!ok && window.app && typeof window.app.showToast === 'function') {
+                                window.app.showToast('VPS NO actualizado: ' + (res.error || res.http), 'error');
+                            }
+                        } catch (e) { /* no bloqueante */ }
+                        return res;
+                    })
+                    .catch(function (e) {
+                        console.log('[SYNC] perfiles -> VPS: red ' + ((e && e.message) || e));
+                        return { ok: false, reason: 'network' };
+                    });
+            } catch (e) {
+                return Promise.resolve({ ok: false, reason: 'exception' });
+            }
+        }
+
         saveAllProfiles() {
             if (!this.config) return;
             this.normalizeAllProfiles();
             const snap = this._persistProfileSnapshot('ProfileManagerV9.saveAllProfiles');
+        try { this._pushProfilesToVps('saveAllProfiles'); } catch (e) { /* no bloqueante */ }
             const bytes = snap ? snap.length : 0;
             try {
                 if (window.app && typeof window.app.showToast === 'function') {
-                    window.app.showToast('P0–P5 guardados (' + Math.round(bytes / 1024) + ' KB)', 'success');
+                    window.app.showToast(this._allProfileIds().length + ' perfiles guardados (' + Math.round(bytes / 1024) + ' KB)', 'success');
                 }
             } catch (e) { /* no bloqueante */ }
             this.toggleSaveMenu();
-            console.log('✅ P0–P5 guardados:', { profilesBytes: bytes });
+            console.log('✅ perfiles guardados:', { profilesBytes: bytes });
         }
 
         saveAndClose() {
@@ -3948,7 +6131,89 @@
                     const text = await file.text();
                     const data = JSON.parse(text);
 
-                    // [2026-11-08] Huella criptografica del fichero importado. Cierra la carencia
+                    /* ═══════════════════════════════════════════════════════════════
+             * [2026-11-20] EL BOTON "Import LAB" TAMBIEN ACEPTA LOS all_profiles
+             *
+             * Los ficheros APE_ALL_PROFILES_*.json (PREMIUM_120_60_30,
+             * 6K_4K_CASCADA, y cualquier export de "Guardar TODOS") traen la forma
+             *   { _meta:{type:'all_profiles'}, profiles:{P0..P5,P0.5..P5.5} }
+             * y NO traen lab_version. Este boton los rechazaba con
+             *   "Schema no soportado: undefined"
+             * aunque el proyecto SI sabe aplicarlos (importAllProfiles). Aqui se
+             * detectan ANTES de la validacion de schema y se aplican por la misma
+             * via, preservando las 12 entradas y TODAS sus claves: settings (71),
+             * quality_levels, headers, vlcopt, kodiprop, prefetch_config, bounds,
+             * optimized_knobs, fitness, _objective... El deep merge del motor
+             * rellena lo que falte y NO borra lo que venga.
+             * ═══════════════════════════════════════════════════════════════ */
+            /* ═══════════════════════════════════════════════════════════════════
+             * [2026-11-22 · H-03] El LAB DE FUSIÓN CALIBRADO va por el camino LAB.
+             *
+             * MEDIDO: el bloque de abajo mandaba `_meta.type==='all_profiles'` a
+             * `importProfiles()`, que sólo recibe {profiles, manifest, strategicHeaders,
+             * rea_processing} y DESCARTA `_meta` ⇒ `labExportedAt` quedaba null ⇒
+             * generation-controller.js:1590 aborta la generación ("LAB JSON no importado").
+             * Además ese merge inyecta claves de DEFAULT_PROFILES ausentes del JSON.
+             *
+             * Camino correcto: normalize → importFromLABData (ape-profiles-config.js:5046),
+             * que consume el payload completo y abre el gate con el `_meta.exported` REAL.
+             * Verificado: 12/12 perfiles, labExportedAt abierto, settings intactos.
+             * Si el normalizador o el consumidor no están, se cae al camino viejo.
+             * ═══════════════════════════════════════════════════════════════════ */
+            if (data && data._meta && data._meta.type === 'all_profiles'
+                && typeof window !== 'undefined' && window.APELabNormalize
+                && this.config && typeof this.config.importFromLABData === 'function') {
+                const _n = window.APELabNormalize.normalize(data);
+                if (!_n || !_n.ok) {
+                    throw new Error('LAB all_profiles no normalizable: ' + ((_n && _n.reason) || 'razón desconocida'));
+                }
+                await this.config.importFromLABData(_n.data);
+                this.render();
+                const _idsB = _n.ids || [];
+                console.log('[IMPORT] all_profiles por camino LAB: ' + _idsB.length + ' perfiles → ' + _idsB.join(', ')
+                    + ' · gate exported_at=' + this.config.labExportedAt);
+                alert('✅ ' + _idsB.length + ' perfiles importados por el camino LAB: ' + _idsB.join(', ')
+                    + '\n\nFuente: ' + file.name
+                    + '\nGate LAB abierto (exported_at=' + (this.config.labExportedAt || 'sin fecha') + ')');
+                return;
+            }
+
+            if (data && data.profiles && typeof data.profiles === 'object' && !data.lab_version) {
+                const _ids = Object.keys(data.profiles).filter(k => /^P[0-5](?:[._]5)?$/.test(k));
+                if (_ids.length > 0) {
+                    let _ok = false;
+                    if (typeof this.config.importProfiles === 'function') {
+                        _ok = this.config.importProfiles({
+                            profiles: data.profiles,
+                            manifest: data.manifest,
+                            strategicHeaders: data.strategicHeaders,
+                            rea_processing: data.rea_processing
+                        });
+                    } else {
+                        this.config.profiles = data.profiles;
+                        if (typeof this.config.save === 'function') this.config.save();
+                        _ok = true;
+                    }
+                    if (!_ok) throw new Error('importProfiles reporto fallo');
+                    /* [2026-11-22 · foot-gun medido] Mismo agujero que en la plantilla: los 12
+                     * perfiles entran pero el gate queda CERRADO y el generador aborta. Se abre
+                     * con la fecha que declara ESTE fichero, no con una inventada. */
+                    const _expB = (data._meta && (data._meta.exported_at || data._meta.exported))
+                        || data.exported_at || null;
+                    if (typeof this.config.openLabGate === 'function') this.config.openLabGate(_expB);
+                    this.render();
+                    console.log('[IMPORT] all_profiles via boton LAB: ' + _ids.length + ' perfiles -> ' + _ids.join(', ')
+                        + ' · gate=' + (this.config.labExportedAt || 'CERRADO'));
+                    alert('✅ ' + _ids.length + ' perfiles importados: ' + _ids.join(', ')
+                        + '\n\nFuente: ' + file.name
+                        + '\nSe conservan settings, quality_levels, headers, vlcopt y kodiprop.'
+                        + '\nGate LAB: ' + (this.config.labExportedAt
+                            ? 'abierto (exported_at=' + this.config.labExportedAt + ')'
+                            : 'CERRADO — el fichero no declara exported_at'));
+                    return;
+                }
+            }
+            // [2026-11-08] Huella criptografica del fichero importado. Cierra la carencia
                     // 'sha256=unverified': el DNA de la lista podia nombrar el LAB pero no probar
                     // QUE fichero exacto se importo. Se calcula sobre los bytes reales del upload.
                     let labSha256 = null;
@@ -4190,7 +6455,10 @@
                 'inputstream.adaptive.manifest_update_parameter'
             ]);
 
-            const labProfiles = data.profiles_calibrated || {};
+            /* [FASE 3] Dos familias: profiles_calibrated (bulletproof) y profiles (fusión, 12 con P*.5). */
+            const labProfiles = (typeof global !== 'undefined' && global.APELabNormalize)
+                ? global.APELabNormalize.profilesOf(data)
+                : (data.profiles_calibrated || {});
             // [6K 2026-11-05] El LAB v24 trae P0.5..P5.5 ademas de P0..P5. El diff del import
             // debe contarlos o el panel reporta menos cambios de los que realmente aplica.
             const APE_6K_IDS = ['P0.5','P1.5','P2.5','P3.5','P4.5','P5.5'];

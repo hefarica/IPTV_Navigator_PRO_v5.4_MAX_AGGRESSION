@@ -22,14 +22,48 @@
 
     const dict = {
         _db: null,
+        _opening: null,
+
+        /**
+         * ¿Sigue usable la conexión? Una conexión en cierre conserva los
+         * objectStoreNames pero lanza InvalidStateError al abrir transacción:
+         * ese era el origen de las 181 InvalidStateError de la consola.
+         */
+        _isAlive() {
+            if (!this._db) return false;
+            try {
+                this._db.transaction('aliases', 'readonly');
+                return true;
+            } catch (_) {
+                this._db = null;
+                return false;
+            }
+        },
+
+        /**
+         * Suelta la conexión si otra pestaña pide upgrade o el navegador la
+         * cierra; la siguiente llamada a open() la reabre.
+         */
+        _attachLifecycle(db) {
+            try {
+                db.onversionchange = () => {
+                    try { db.close(); } catch (_) { }
+                    if (this._db === db) this._db = null;
+                };
+                db.onclose = () => {
+                    if (this._db === db) this._db = null;
+                };
+            } catch (_) { /* noop */ }
+        },
 
         /**
          * Open (or create) the ANLE database.
          * @returns {Promise<IDBDatabase>}
          */
         async open() {
-            if (this._db) return this._db;
-            return new Promise((resolve, reject) => {
+            if (this._isAlive()) return this._db;
+            if (this._opening) return this._opening;
+            this._opening = new Promise((resolve, reject) => {
                 const req = indexedDB.open(DB_NAME, DB_VERSION);
 
                 req.onupgradeneeded = (e) => {
@@ -51,10 +85,12 @@
 
                 req.onsuccess = () => {
                     this._db = req.result;
+                    this._opening = null;
+                    this._attachLifecycle(this._db);
                     resolve(this._db);
                 };
 
-                req.onerror = () => reject(req.error);
+                req.onerror = () => { this._opening = null; reject(req.error); };
             });
         },
 

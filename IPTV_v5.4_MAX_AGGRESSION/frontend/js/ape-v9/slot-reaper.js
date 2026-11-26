@@ -1,193 +1,284 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🪦 OMEGA SLOT REAPER v1.0 — Pre-flight connection slot liberator
+ * 🪦 OMEGA SLOT REAPER v2.0 — Connection-budget aware, single-flight
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * REQUISITO USUARIO 2026-04-09: "CUANDO GENERE LISTAS, QUE TUMBE LAS CONEXIONES VIGENTES"
  *
  * Causa raíz del 403 que motiva este módulo:
- *   El proveedor IPTV (Xtream Codes) tiene `max_connections=1` (cuenta trial). Cuando
- *   el reproductor abre la lista, satura el slot inmediatamente y NGINX devuelve 406/403.
- *   Este módulo se ejecuta ANTES de generar la lista, leyendo el `player_api.php` para
- *   verificar `active_cons` y forzando un cycle de conexión vía `Connection: close`
- *   para liberar slots zombie.
+ *   El proveedor IPTV (Xtream Codes) puede tener `max_connections=1`. Cuando
+ *   el reproductor abre la lista, satura el slot y NGINX devuelve 406/403.
  *
- * Investigación previa (verificada con curl real):
- *   - Xtream Codes NO expone acción pública `force_logout` (todas las acciones devuelven
- *     el mismo `user_info` JSON, ignoran el parámetro action).
- *   - `panel_api.php` requiere admin del panel — no accesible al usuario.
- *   - `c/api.php?action=disconnect` no existe en este panel.
- *   - HEAD con `Connection: close` SÍ persuade al NGINX a ciclar las conexiones.
+ * v2.0 — correcciones sobre v1.0:
+ *   1. SINGLE-FLIGHT: dos llamadas simultáneas para el mismo servidor comparten
+ *      la misma promesa. Antes, dos clics podían lanzar dos reapers y duplicar
+ *      las conexiones.
+ *   2. CERO BURST PARALELO: v1.0 hacía Promise.all de 3 HEAD. Con max_connections=1
+ *      eso creaba 3 conexiones y empeoraba el 403 que decía resolver. Ahora el
+ *      burst es secuencial, con delay, y sólo si max_connections > 1.
+ *   3. TIMEOUT REAL: fetchSlotState usa AbortController y no deja sockets colgados.
+ *   4. DIAGNÓSTICO HONESTO: devuelve códigos SLOT_* y active/max; no inventa
+ *      códigos del proveedor.
  *
  * API: window.OmegaSlotReaper.reap(server, options)
  *
- * Doctrina OMEGA-NO-DELETE: este módulo solo AÑADE comportamiento. No elimina nada.
+ * Doctrina OMEGA-NO-DELETE: este módulo conserva la API pública v1.0 y sólo
+ * endurece el comportamiento. No elimina llamadas existentes.
  */
-
 (function() {
     'use strict';
+
+    var VERSION = '2.0.0';
+    var _inflight = new Map();
+
+    function _num(value, fallback) {
+        var n = parseInt(value, 10);
+        return Number.isFinite(n) ? n : fallback;
+    }
+
+    function _serverKey(server) {
+        server = server || {};
+        return String(server.id || server.baseUrl || server.url || server.name || 'unknown');
+    }
+
+    function _apiUrl(server) {
+        var baseUrl = String(server.baseUrl || server.url || '').replace(/\/+$/, '');
+        var user = encodeURIComponent(server.username || server.user || '');
+        var pass = encodeURIComponent(server.password || server.pass || '');
+        if (!baseUrl || !user || !pass) return '';
+        return baseUrl + '/player_api.php?username=' + user + '&password=' + pass + '&_t=' + Date.now();
+    }
+
+    function _sleep(ms) {
+        return new Promise(function(resolve) { setTimeout(resolve, ms); });
+    }
+
+    async function _fetchJson(url, timeoutMs) {
+        var controller = new AbortController();
+        var timer = setTimeout(function() { controller.abort(); }, timeoutMs || 5000);
+        try {
+            var resp = await fetch(url, {
+                method: 'GET',
+                cache: 'no-store',
+                credentials: 'omit',
+                keepalive: false,
+                redirect: 'follow',
+                headers: { 'Accept': 'application/json' },
+                signal: controller.signal
+            });
+            if (!resp.ok) return { ok: false, status: resp.status };
+            return { ok: true, status: resp.status, data: await resp.json() };
+        } catch (e) {
+            return { ok: false, status: 0, error: e && e.message ? e.message : String(e) };
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+
+    async function _headClose(url) {
+        var controller = new AbortController();
+        var timer = setTimeout(function() { controller.abort(); }, 5000);
+        try {
+            await fetch(url, {
+                method: 'HEAD',
+                cache: 'no-store',
+                credentials: 'omit',
+                keepalive: false,
+                redirect: 'manual',
+                headers: { 'Connection': 'close' },
+                signal: controller.signal
+            });
+        } catch (_) {
+            // HEAD puede fallar por CORS o por bloqueo del proveedor. No es fatal.
+        } finally {
+            clearTimeout(timer);
+        }
+    }
 
     /**
      * Lee el estado actual de conexiones del servidor Xtream Codes.
      * @param {Object} server - { baseUrl, username, password }
-     * @returns {Promise<{active: number, max: number, raw: object}|null>}
+     * @returns {Promise<{active:number,max:number,raw:object}|null>}
      */
     async function fetchSlotState(server) {
-        const baseUrl = (server.baseUrl || server.url || '').replace(/\/+$/, '');
-        const user    = encodeURIComponent(server.username || server.user || '');
-        const pass    = encodeURIComponent(server.password || server.pass || '');
-
-        if (!baseUrl || !user || !pass) {
-            return null;
-        }
-
-        const apiUrl = `${baseUrl}/player_api.php?username=${user}&password=${pass}&_t=${Date.now()}`;
-
-        try {
-            const resp = await fetch(apiUrl, { cache: 'no-store' });
-            if (!resp.ok) return null;
-            const data = await resp.json();
-            const ui = data && data.user_info;
-            if (!ui) return null;
-            return {
-                active: parseInt(ui.active_cons || '0', 10),
-                max:    parseInt(ui.max_connections || '1', 10),
-                raw:    data
-            };
-        } catch (e) {
-            return null;
-        }
+        var url = _apiUrl(server || {});
+        if (!url) return null;
+        var result = await _fetchJson(url, 5000);
+        if (!result.ok || !result.data) return null;
+        var ui = result.data.user_info;
+        if (!ui) return null;
+        return {
+            active: Math.max(0, _num(ui.active_cons, 0)),
+            max: Math.max(1, _num(ui.max_connections, 1)),
+            raw: result.data
+        };
     }
 
     /**
-     * Burst de HEAD requests con Connection: close para forzar cycle del NGINX.
-     * No es destructivo: hace requests al propio API endpoint con la cuenta del usuario.
+     * Burst secuencial de HEAD con Connection: close.
+     * NUNCA en paralelo: con max_connections=1 cada HEAD extra es un 403 extra.
      */
-    async function burstReapNginxSlots(server, burstSize) {
-        const baseUrl = (server.baseUrl || server.url || '').replace(/\/+$/, '');
-        const user    = encodeURIComponent(server.username || server.user || '');
-        const pass    = encodeURIComponent(server.password || server.pass || '');
-        const apiUrl  = `${baseUrl}/player_api.php?username=${user}&password=${pass}&_t=${Date.now()}`;
+    async function burstReapNginxSlots(server, burstSize, maxConnections) {
+        var max = Math.max(1, _num(maxConnections, 1));
+        if (max <= 1) return { sent: 0, skipped: 'single_slot' };
 
-        const promises = Array.from({ length: burstSize }, () =>
-            fetch(apiUrl + '_burst' + Math.random(), {
-                method:    'HEAD',
-                headers:   { 'Connection': 'close' },
-                cache:     'no-store',
-                keepalive: false
-            }).catch(() => null)
-        );
-        await Promise.all(promises);
+        var requested = Math.max(1, _num(burstSize, 1));
+        var safe = Math.min(requested, Math.max(0, max - 1), 4);
+        if (safe <= 0) return { sent: 0, skipped: 'no_spare_slot' };
+
+        var baseUrl = String(server.baseUrl || server.url || '').replace(/\/+$/, '');
+        var user = encodeURIComponent(server.username || server.user || '');
+        var pass = encodeURIComponent(server.password || server.pass || '');
+        var apiUrl = baseUrl + '/player_api.php?username=' + user + '&password=' + pass + '&_t=' + Date.now();
+
+        var sent = 0;
+        for (var i = 0; i < safe; i++) {
+            await _headClose(apiUrl + '_burst' + i);
+            sent++;
+            await _sleep(250);
+        }
+        return { sent: sent, skipped: null };
     }
 
     /**
-     * Reaper principal. Espera hasta que `active_cons` llegue a 0 (o timeout).
+     * Reaper principal. Espera hasta que `active_cons` llegue a `targetActive`
+     * (por defecto 0) o hasta que venza el timeout.
      *
-     * @param {Object}   server   - { baseUrl, username, password, name? }
-     * @param {Object}   options  - { maxWaitMs, pollIntervalMs, burstReap, burstSize, onProgress }
-     * @returns {Promise<{ok:boolean, reason:string, active?:number, max?:number, waitedMs?:number}>}
+     * @param {Object} server
+     * @param {Object} options - { maxWaitMs, pollIntervalMs, burstReap, burstSize, targetActive, onProgress }
+     * @returns {Promise<{ok:boolean,code:string,reason:string,active?:number,max?:number,waitedMs?:number}>}
      */
-    async function reap(server, options) {
+    async function _reap(server, options) {
         options = options || {};
-        const maxWaitMs      = options.maxWaitMs      || 60000;
-        const pollIntervalMs = options.pollIntervalMs || 3000;
-        const burstReap      = options.burstReap      !== false;
-        const burstSize      = options.burstSize      || 3;
-        const onProgress     = typeof options.onProgress === 'function' ? options.onProgress : function(){};
+        var maxWaitMs = Math.max(1000, _num(options.maxWaitMs, 60000));
+        var pollIntervalMs = Math.max(500, _num(options.pollIntervalMs, 3000));
+        var targetActive = Math.max(0, _num(options.targetActive, 0));
+        var onProgress = typeof options.onProgress === 'function' ? options.onProgress : function() {};
 
-        // Step 1: estado inicial
-        const initial = await fetchSlotState(server);
+        var initial = await fetchSlotState(server);
         if (!initial) {
-            onProgress({ stage: 'error', error: 'API unreachable' });
-            return { ok: false, reason: 'api_unreachable' };
+            onProgress({ stage: 'error', error: 'API unreachable or no user_info' });
+            return { ok: false, code: 'SLOT_API_UNREACHABLE', reason: 'api_unreachable' };
         }
 
         onProgress({ stage: 'check', active: initial.active, max: initial.max });
 
-        if (initial.active === 0) {
-            return { ok: true, reason: 'already_clear', active: 0, max: initial.max };
+        if (initial.active <= targetActive) {
+            return {
+                ok: true,
+                code: 'SLOT_CLEAR',
+                reason: 'already_clear',
+                active: initial.active,
+                max: initial.max,
+                waitedMs: 0
+            };
         }
 
-        // Step 2: burst-reap (persuade al NGINX a ciclar slots zombie)
-        if (burstReap) {
-            onProgress({ stage: 'reap_burst', count: burstSize });
-            await burstReapNginxSlots(server, burstSize);
+        // Sólo tiene sentido "persuadir" a NGINX si hay más de un slot.
+        if (options.burstReap === true && initial.max > 1) {
+            onProgress({ stage: 'reap_burst', count: Math.min(_num(options.burstSize, 1), initial.max - 1) });
+            var burst = await burstReapNginxSlots(server, options.burstSize, initial.max);
+            onProgress({ stage: 'reap_burst_done', sent: burst.sent, skipped: burst.skipped });
+        } else if (options.burstReap === true && initial.max <= 1) {
+            onProgress({ stage: 'reap_burst_skipped', reason: 'single_slot' });
         }
 
-        // Step 3: poll loop
-        const startedAt = Date.now();
-        let activeConn = initial.active;
-        let maxConn    = initial.max;
+        var startedAt = Date.now();
+        var activeConn = initial.active;
+        var maxConn = initial.max;
 
         while (Date.now() - startedAt < maxWaitMs) {
-            await new Promise(function(r) { setTimeout(r, pollIntervalMs); });
-
-            const refresh = await fetchSlotState(server);
+            await _sleep(pollIntervalMs);
+            var refresh = await fetchSlotState(server);
             if (refresh) {
                 activeConn = refresh.active;
-                maxConn    = refresh.max;
-                const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+                maxConn = refresh.max;
+                var elapsed = Math.floor((Date.now() - startedAt) / 1000);
                 onProgress({ stage: 'poll', active: activeConn, max: maxConn, elapsedSec: elapsed });
-
-                if (activeConn === 0) {
+                if (activeConn <= targetActive) {
                     return {
-                        ok:       true,
-                        reason:   'reaped',
-                        active:   0,
-                        max:      maxConn,
+                        ok: true,
+                        code: 'SLOT_REAPED',
+                        reason: 'reaped',
+                        active: activeConn,
+                        max: maxConn,
                         waitedMs: Date.now() - startedAt
                     };
                 }
             }
         }
 
-        // Step 4: timeout
         return {
-            ok:       false,
-            reason:   'timeout',
-            active:   activeConn,
-            max:      maxConn,
+            ok: false,
+            code: 'SLOT_TIMEOUT',
+            reason: 'timeout',
+            active: activeConn,
+            max: maxConn,
             waitedMs: maxWaitMs
         };
     }
 
     /**
-     * Reap multi-server. Itera sobre todos los servers activos.
-     * Devuelve un array de resultados.
-     *
-     * @param {Array<Object>} servers
-     * @param {Object}        options
-     * @returns {Promise<Array>}
+     * Single-flight: dos llamadas concurrentes para el mismo servidor comparten
+     * la misma promesa. Evita que dos clics dupliquen las conexiones.
      */
-    // PhD-AUDIT FIX F4 (2026-04-11): Parallelize reap across providers.
-    // Serial loop caused 1000 servers x 60s = 16h worst case. Now uses
-    // worker pool with configurable concurrency (default 32).
+    async function reap(server, options) {
+        var key = _serverKey(server);
+        if (_inflight.has(key)) return _inflight.get(key);
+        var promise = _reap(server, options).finally(function() {
+            _inflight.delete(key);
+        });
+        _inflight.set(key, promise);
+        return promise;
+    }
+
+    /**
+     * Reap multi-server con concurrencia acotada. Por defecto 1: si el proveedor
+     * tiene max_connections=1, abrir varios servidores en paralelo también es
+     * una mala idea.
+     */
     async function reapAll(servers, options) {
-        const concurrency = (options && options.concurrency) || 32;
-        const queue = (servers || []).slice();
-        const results = [];
+        options = options || {};
+        var concurrency = Math.max(1, _num(options.concurrency, 1));
+        var list = Array.isArray(servers) ? servers : [];
+        var queue = list.slice();
+        var results = [];
+
         async function worker() {
             while (queue.length) {
-                const srv = queue.shift();
+                var srv = queue.shift();
                 try {
-                    const result = await reap(srv, options);
-                    results.push({ server: srv, result: result });
+                    results.push({ server: srv, result: await reap(srv, options) });
                 } catch (e) {
-                    results.push({ server: srv, result: { error: e.message } });
+                    results.push({ server: srv, result: { ok: false, code: 'SLOT_ERROR', error: e && e.message } });
                 }
             }
         }
-        await Promise.all(Array.from({ length: concurrency }, worker));
+
+        await Promise.all(Array.from({ length: Math.min(concurrency, Math.max(1, list.length)) }, worker));
         return results;
     }
 
-    // Exponer al window
+    function diagnose(result) {
+        result = result || {};
+        if (result.code === 'SLOT_CLEAR') return 'Slot libre: no hay conexiones activas.';
+        if (result.code === 'SLOT_REAPED') return 'Slot liberado tras esperar al proveedor.';
+        if (result.code === 'SLOT_API_UNREACHABLE') return 'No se pudo leer player_api.php. Revisa URL/credenciales o CORS.';
+        if (result.code === 'SLOT_TIMEOUT') {
+            return 'El proveedor sigue con ' + (result.active != null ? result.active : '?') + '/' +
+                (result.max != null ? result.max : '?') + ' conexiones activas. ' +
+                'Cierra el player u otro dispositivo y reintenta.';
+        }
+        return 'Estado de slot desconocido.';
+    }
+
     window.OmegaSlotReaper = {
-        version:        '1.0.0',
-        reap:           reap,
-        reapAll:        reapAll,
-        fetchSlotState: fetchSlotState
+        version: VERSION,
+        reap: reap,
+        reapAll: reapAll,
+        fetchSlotState: fetchSlotState,
+        diagnose: diagnose
     };
 
-    console.log('🪦 [OmegaSlotReaper v1.0] cargado — pre-flight connection slot reaper listo');
+    console.log('🪦 [OmegaSlotReaper v' + VERSION + '] single-flight · sin burst en max_connections=1');
 })();

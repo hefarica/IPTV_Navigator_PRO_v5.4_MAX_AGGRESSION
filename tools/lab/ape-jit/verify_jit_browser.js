@@ -113,7 +113,11 @@ async function evalJs(ws, expr, awaitPromise) {
   console.log('  #aip-al-profile opciones   : ' + (d.dom.alProfileOptions ? d.dom.alProfileOptions.length : 'n/a') +
               (d.dom.alProfileOptions ? '  ' + JSON.stringify(d.dom.alProfileOptions) : ''));
 
-  // Si los selects existen, simular el cambio a P0.5 y ver que campos se llenan
+  // Si los selects existen, simular el cambio a P0.5 y ver que campos se llenan.
+  // [2026-11-21] Una simulacion fallida NO puede terminar en exit 0: era el patron que el
+  // gate `tools exit contract` caza (veredicto tragado -> el build lee exito). Se recuerda
+  // el fallo y el proceso sale 1, sin inventar un resultado que no se midio.
+  let simFallo = '';
   if (d.dom.bProfileExists) {
     const sim = `(async () => {
       const selB = document.getElementById('aip-b-profile');
@@ -136,10 +140,15 @@ async function evalJs(ws, expr, awaitPromise) {
       console.log('  === SELECCIONANDO P0.5 EN EL NAVEGADOR ===');
       Object.keys(s).forEach(k => console.log('   ' + k.padEnd(10) + ' = ' + s[k]));
     } catch (e) {
-      console.log('  simulacion fallo: ' + e.message);
+      simFallo = e.message || 'excepcion en la simulacion';
+      console.log('  simulacion fallo: ' + simFallo);
     }
   }
 
   ws.close();
+  if (simFallo) {
+    console.log('  VEREDICTO: FAIL — la simulacion del cambio de perfil no se pudo medir (' + simFallo + ')');
+    process.exit(1);
+  }
   process.exit(0);
 })().catch(e => { console.log('  FATAL: ' + e.message); process.exit(1); });

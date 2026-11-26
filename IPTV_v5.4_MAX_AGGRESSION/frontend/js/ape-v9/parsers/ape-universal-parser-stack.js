@@ -87,10 +87,26 @@
     // ─── SHALLOW DETECTORS ──────────────────────────────────────────────────
 
     function detectType(text) {
-        const t = String(text || '');
-        if (!t.trim().toUpperCase().startsWith('#EXTM3U')) return 'unknown';
-        if (t.indexOf('#EXT-X-STREAM-INF') !== -1)         return 'hls_master';
-        if (t.indexOf('#EXT-X-TARGETDURATION') !== -1)     return 'hls_media';
+        // Recorrer líneas sin crear un array con el catálogo completo. Los
+        // comentarios y los valores de atributos no son marcadores de tipo.
+        const t = String(text || '').trimStart();
+        const lines = /[^\r\n]+/g;
+        const header = lines.exec(t);
+        if (!header || !/^#EXTM3U(?:[ \t].*)?$/i.test(header[0])) return 'unknown';
+        let master = false, media = false, catalog = false, extinf = false;
+        let line;
+        while ((line = lines.exec(t))) {
+            if (/^#EXT-X-(?:STREAM-INF|I-FRAME-STREAM-INF|MEDIA):/.test(line[0])) master = true;
+            else if (/^#EXT-X-(?:TARGETDURATION|MEDIA-SEQUENCE|DISCONTINUITY-SEQUENCE|MAP|PLAYLIST-TYPE|PART|PART-INF)(?::|$)/.test(line[0]) ||
+                     /^#EXT-X-ENDLIST[ \t]*$/.test(line[0])) media = true;
+            else if (/^#EXTINF:/.test(line[0])) {
+                extinf = true;
+                if (/^#EXTINF:[ \t]*-\d|^#EXTINF:[^,]*\b(?:tvg-[\w-]+|group-title)[ \t]*=/i.test(line[0])) catalog = true;
+            }
+            if ((master && (media || extinf)) || (catalog && media)) return 'mixed_m3u';
+        }
+        if (master) return 'hls_master';
+        if (media) return 'hls_media';
         return 'flat_m3u';
     }
 
@@ -292,6 +308,11 @@
         const text = String(input);
         const t = detectType(text);
 
+        if (t === 'mixed_m3u') {
+            audit.parserErrors++;
+            return { type: t, canonical: null, errors: ['MIXED_PLAYLIST_TYPES'], audit: getParserAuditSummary() };
+        }
+
         if (t === 'flat_m3u') {
             const flat = parseFlatM3U(text);
             const out = [];
@@ -306,6 +327,10 @@
         }
 
         if (t === 'hls_master') {
+            if (!g('APEHlsMasterParser') || !g('APEParserNormalizer')) {
+                audit.parserErrors++;
+                return { type: t, canonical: null, errors: ['PARSER_DEPENDENCY_MISSING'], audit: getParserAuditSummary() };
+            }
             const master = parseHlsMaster(text, baseUrl);
             const can = parseChannelBlock({ url: baseUrl || null }, {
                 master: master,
@@ -315,6 +340,10 @@
         }
 
         if (t === 'hls_media') {
+            if (!g('APEHlsMediaParser') || !g('APEParserNormalizer')) {
+                audit.parserErrors++;
+                return { type: t, canonical: null, errors: ['PARSER_DEPENDENCY_MISSING'], audit: getParserAuditSummary() };
+            }
             const media = parseHlsMedia(text);
             const llhls = g('APELLHlsParser') ? g('APELLHlsParser').parseLLHls(text) : null;
             const dates = g('APEDateRangeScte35Parser') ? g('APEDateRangeScte35Parser').parseDateRanges(text) : null;

@@ -15,17 +15,22 @@
 # Uso: ape-pulse-sync.sh [--force] [--only <base>]
 set -euo pipefail
 
-LISTS=/var/www/lists
-OUT="$LISTS/pulse"
-STATE="$OUT/.state"
-WRAP=/opt/ape-pulse/ape-pulse-wrap.js
-BUILDER=/opt/ape-pulse/ape-url-builder.js
-LOG=/var/log/ara/pulse-sync.log
-LOCK=/run/ape-pulse-sync.lock
+LISTS="${APE_PULSE_LISTS:-/var/www/lists}"
+OUT="${APE_PULSE_OUT:-$LISTS/pulse}"
+STATE="${APE_PULSE_STATE:-$OUT/.state}"
+WRAP="${APE_PULSE_WRAP:-/opt/ape-pulse/ape-pulse-wrap.js}"
+BUILDER="${APE_PULSE_BUILDER:-/opt/ape-pulse/ape-url-builder.js}"
+LOG="${APE_PULSE_LOG:-/var/log/ara/pulse-sync.log}"
+LOCK="${APE_PULSE_LOCK:-/run/ape-pulse-sync.lock}"
+DISK_PATH="${APE_PULSE_DISK_PATH:-/var/www}"
 POLICY_VERSION=1
-WRAPPER_VERSION=1.5.0   # 1.5.0: normaliza /cdn/ -> proveedor + .m3u8
-MODE="${APE_PULSE_MODE:-cartridge}"          # cartridge | redirect
-MAX_MB="${APE_PULSE_MAX_MB:-700}"
+WRAPPER_VERSION=1.8.1   # 1.8.1: EN PAR con ape-pulse-wrap.js / ape-pulse-list.cjs
+# Esta constante es la clave de caché: el .state guarda wrapper_version y, si coincide
+# con el origen, la lista NO se re-envuelve (need=0). Si el wrapper sube de versión y
+# esto no, las listas ya envueltas se quedan para siempre con el formato viejo (sin
+# #EXTSHIMOTT). Al subir el wrapper hay que subir esta línea en el mismo cambio.
+MODE="${APE_PULSE_MODE:-proxy}"          # proxy | cartridge | redirect
+MAX_MB="${APE_PULSE_MAX_MB:-0}"                  # 0 = sin tope artificial; el disco manda
 MIN_FREE_MB="${APE_PULSE_MIN_FREE_MB:-1500}"
 FORCE=0
 BACKFILL=0
@@ -55,7 +60,7 @@ if command -v flock >/dev/null 2>&1; then
   flock -n 9 || { log "skip: otra instancia corriendo"; exit 0; }
 fi
 
-free_mb() { df -Pm /var/www 2>/dev/null | awk 'NR==2{print $4}' || echo 0; }
+free_mb() { df -Pm "$DISK_PATH" 2>/dev/null | awk 'NR==2{print $4}' || echo 0; }
 
 # ── Backfill: sella el estado de salidas YA generadas sin reescribirlas ───────
 # Sirve cuando una versión anterior guardó el estado vacío: evita re-envolver
@@ -121,10 +126,19 @@ for src in "$LISTS"/*.m3u8; do
   else
     real="$src"; rsize=$size
   fi
+  # El tamaño que ocupa la salida es el DESCOMPRIMIDO, no el .gz. Si el origen
+  # es un placeholder + .gz, gzip -l da el tamaño real de la lista. Sin esto,
+  # una lista de 1,8 GB comprimida a 0,49 GB se colaría y llenaría el disco.
+  content_bytes=$rsize
+  if [ "$real" != "$src" ] && [ "${real##*.}" = gz ]; then
+    content_bytes=$(gzip -l "$real" 2>/dev/null | awk 'END{print $2}' || echo 0)
+    case "$content_bytes" in ''|*[!0-9]*) content_bytes=$((rsize * 3)) ;; esac
+  fi
   rmb=$(( rsize / 1048576 ))
+  cmb=$(( content_bytes / 1048576 ))
   if [ "$rsize" -le 2048 ]; then skipped=$((skipped+1)); continue; fi
-  if [ "$rmb" -gt "$MAX_MB" ]; then
-    log "skip $base: ${rmb}MB > MAX_MB=$MAX_MB"; skipped=$((skipped+1)); continue
+  if [ "$MAX_MB" -gt 0 ] && [ "$cmb" -gt "$MAX_MB" ]; then
+    log "skip $base: ${cmb}MB > MAX_MB=$MAX_MB"; skipped=$((skipped+1)); continue
   fi
   if [ -z "$ONLY" ] && [ "$MODE" = "cartridge" ]; then :; fi
 
@@ -148,13 +162,13 @@ for src in "$LISTS"/*.m3u8; do
   # Guarda de disco: no empezar si el espacio previsto no cabe.
   # El colchon grande (MIN_FREE_MB) sólo se exige a listas grandes; una lista de
   # 160 KB no debe quedarse fuera por el margen pensado para 600 MB.
-  fm=$(free_mb); need_mb=$(( (rsize * 11 / 10) / 1048576 + 64 ))
-  if [ "$rsize" -gt $((100 * 1048576)) ]; then cushion=$MIN_FREE_MB; else cushion=256; fi
+  fm=$(free_mb); need_mb=$(( (content_bytes * 11 / 10) / 1048576 + 64 ))
+  if [ "$content_bytes" -gt $((100 * 1048576)) ]; then cushion=$MIN_FREE_MB; else cushion=256; fi
   if [ "$fm" -lt $((need_mb + cushion)) ]; then
-    log "skip $base: disco libre ${fm}MB < ${need_mb}MB+${cushion}MB"; skipped=$((skipped+1)); continue
+    log "skip $base: disco libre ${fm}MB < ${need_mb}MB+${cushion}MB (lista ${cmb}MB descomprimida)"; skipped=$((skipped+1)); continue
   fi
 
-  log "wrap $base (${rmb}MB, mode=$MODE, policy=$POLICY_VERSION)"
+  log "wrap $base (${rmb}MB comprimido, ${cmb}MB descomprimido, mode=$MODE, policy=$POLICY_VERSION)"
   tmpjson=$(mktemp)
   if APE_URL_BUILDER="$BUILDER" node "$WRAP" --in "$real" --out "$out" \
         --mode "$MODE" --base "$NET_LISTS_BASE" --policy "$POLICY_VERSION" > "$tmpjson" 2>>"$LOG"; then

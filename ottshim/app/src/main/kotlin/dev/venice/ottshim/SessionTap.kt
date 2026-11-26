@@ -1,7 +1,6 @@
 package dev.venice.ottshim
 
 import android.content.ComponentName
-import android.content.Intent
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
@@ -10,9 +9,8 @@ import android.os.Looper
 import android.service.notification.NotificationListenerService
 
 /**
- * Owns one OTT MediaController. A transient null playbackState is tolerated
- * for 6 consecutive polls (1.2 s); only then is the session released.
- * There is exactly one polling loop; callbacks never start a second one.
+ * Observes one OTT MediaController. Six consecutive null states release it.
+ * The session is a control/telemetry surface, not a video-processing path.
  */
 class SessionTap : NotificationListenerService() {
     private val handler = Handler(Looper.getMainLooper())
@@ -22,39 +20,78 @@ class SessionTap : NotificationListenerService() {
     private var lastPosition = -1L
     private var lastState = -1
     private var lastZapAt = 0L
+    private var lastActions: Long? = null
+    private var lastCustomCount: Int? = null
 
-    private val callback = object : MediaController.Callback() {
-        override fun onPlaybackStateChanged(state: PlaybackState?) {
-            if (state?.state == PlaybackState.STATE_PLAYING) ensurePolling()
-        }
-    }
+    private val tick = Runnable { poll() }
+
+    private var callback: MediaController.Callback? = null
 
     override fun onListenerConnected() {
         ensurePolling()
     }
 
+    override fun onListenerDisconnected() {
+        stopObserving()
+    }
+
+    override fun onDestroy() {
+        stopObserving()
+        super.onDestroy()
+    }
+
+    private fun stopObserving() {
+        polling = false
+        handler.removeCallbacks(tick)
+        releaseController()
+    }
+
+    private fun releaseController() {
+        val previous = controller
+        controller = null
+        callback?.let { previous?.unregisterCallback(it) }
+        callback = null
+        nullStreak = 0
+        lastPosition = -1L
+        lastState = -1
+        lastZapAt = 0L
+        lastActions = null
+        lastCustomCount = null
+        if (previous != null) ProxyService.policy.qoe.onSessionLost()
+    }
+
     private fun ensurePolling() {
         if (polling) return
         polling = true
-        handler.postDelayed(::poll, 200L)
+        handler.postDelayed(tick, 200L)
     }
 
     private fun poll() {
+        if (!polling) return
         val current = controller
         if (current == null) {
             bindBest()
         } else {
             val state = current.playbackState
             if (state == null) {
-                if (++nullStreak > 6) {
-                    current.unregisterCallback(callback)
-                    controller = null
-                    nullStreak = 0
-                    ProxyService.policy.qoe.onSessionLost()
+                if (++nullStreak >= 6) {
+                    releaseController()
                     android.util.Log.i("ottshim", "session released after 6 nulls")
                 }
             } else {
                 nullStreak = 0
+                if (state.actions != lastActions || state.customActions.size != lastCustomCount) {
+                    lastActions = state.actions
+                    lastCustomCount = state.customActions.size
+                    android.util.Log.i("ottshim", "ott_session actions=0x${state.actions.toString(16)} " +
+                        "play=${supports(state, PlaybackState.ACTION_PLAY)} " +
+                        "pause=${supports(state, PlaybackState.ACTION_PAUSE)} " +
+                        "play_pause=${supports(state, PlaybackState.ACTION_PLAY_PAUSE)} " +
+                        "next=${supports(state, PlaybackState.ACTION_SKIP_TO_NEXT)} " +
+                        "previous=${supports(state, PlaybackState.ACTION_SKIP_TO_PREVIOUS)} " +
+                        "play_from_uri=${supports(state, PlaybackState.ACTION_PLAY_FROM_URI)} " +
+                        "custom_count=${state.customActions.size}")
+                }
                 ProxyService.policy.qoe.onSession(
                     current.packageName,
                     state.state,
@@ -67,18 +104,16 @@ class SessionTap : NotificationListenerService() {
                 val now = System.currentTimeMillis()
                 if ((reset || rebufferStart) && now - lastZapAt > 3_000L) {
                     lastZapAt = now
-                    sendBroadcast(
-                        Intent("com.ape.crystalagent.ZAP")
-                            .setPackage("com.ape.crystalagent")
-                    )
-                    android.util.Log.i("ottshim", "zap signal reset=$reset buffer=$rebufferStart")
+                    android.util.Log.i("ottshim", "ott_session transition_hint reset=$reset buffer=$rebufferStart")
                 }
                 lastPosition = state.position
                 lastState = state.state
             }
         }
-        handler.postDelayed(::poll, 200L)
+        if (polling) handler.postDelayed(tick, 200L)
     }
+
+    private fun supports(state: PlaybackState, action: Long): Boolean = (state.actions and action) != 0L
 
     private fun bindBest() {
         runCatching {
@@ -102,10 +137,15 @@ class SessionTap : NotificationListenerService() {
     private fun bind(candidate: MediaController) {
         if (candidate.packageName != TARGET) return
         if (controller?.sessionToken == candidate.sessionToken) return
-        controller?.unregisterCallback(callback)
+        releaseController()
         controller = candidate
-        nullStreak = 0
-        candidate.registerCallback(callback)
+        val observer = object : MediaController.Callback() {
+            override fun onSessionDestroyed() {
+                if (controller === candidate) releaseController()
+            }
+        }
+        callback = observer
+        candidate.registerCallback(observer, handler)
         android.util.Log.i("ottshim", "session bind ${candidate.packageName} state=${candidate.playbackState?.state}")
     }
 

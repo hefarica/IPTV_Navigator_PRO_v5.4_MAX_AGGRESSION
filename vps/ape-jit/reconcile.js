@@ -22,11 +22,33 @@
  *      entra SIN reiniciar y sin cortar la reproducción.
  *   4. Las 5 releases anteriores se conservan: rollback = reapuntar `current`.
  *
- * FAIL-CLOSED
- *   Si el parseo da menos del 95 % de los canales que ya tenía la allowlist, NO
- *   publica: es la firma de una lista truncada o de un parseo roto. Deja el mapa
- *   anterior intacto y sale con código 2. Un espejo que se puede quedar vacío no
- *   es un espejo.
+ * FAIL-CLOSED, PERO POR IDENTIDAD DE LISTA (2026-11-21)
+ *   Antes: si el parseo daba menos del 95 % de los canales de la allowlist, NO publicaba.
+ *   Correcto para LA MISMA lista (firma de truncado o parseo roto), pero el catalogo
+ *   servido cambia de lista: medido en produccion, la allowlist de 21 224 salio de
+ *   APE_LISTA_1794783650337_CDN.m3u8 y el reconciliador parseaba
+ *   APE_LISTA_1795151699916_DIRECTA_CABLEADA.m3u8. Comparar dos catalogos distintos
+ *   abortaba cada 5 minutos para siempre y congelaba la allowlist.
+ *   Ahora: MISMA lista -> guard estricto del 95 % (sin cambios). OTRA lista -> publica
+ *   diciendo LIST_CHANGED con los dos counts, con FLOOR_DURO (100) para no publicar
+ *   un catalogo absurdo, y deja traza nominal (channels_dropped.txt / channels_added.txt)
+ *   para que ningun canal desaparezca sin nombre.
+ *
+ * GUARDA DE ORIGEN — NO SE PUEDE REESCRIBIR EL ORIGEN DE CASI TODO (2026-11-21)
+ *   El riesgo que cierra: `pickList()` elige por mtime cuando el timer corre sin `--list`,
+ *   y `ape-cablear-auto` re-envuelve listas cada ~15 min, asi que la "lista mas reciente"
+ *   puede ser OTRO catalogo con los MISMOS ids servidos por OTRO host. Medido en el censo
+ *   del lote (ver artifacts/verify/listas_lote_20261121.md): APE_LISTA_1794100720046_P3_
+ *   PLACEHOLDER comparte 11 168 ids con la fuente vigente y cambia el host de origen de
+ *   11 160 (99,93 %): nfqdeuxu.x1megaott.store -> evestv.wuitf.com (evestv midio 7/7
+ *   caidos con 406). Publicar eso no es actualizar el mapa: es reescribir el origen de
+ *   casi todo el catalogo y dejar el JIT sirviendo un proveedor muerto.
+ *   Por eso, ademas de LIST_CHANGED / FLOOR_DURO / guard de bucle, se compara el mapa
+ *   previo con el nuevo por id -> HOST DEL PAYLOAD:
+ *     comunes, mismo_host, host_distinto  (se registran SIEMPRE en 'ORIGEN')
+ *     si host_distinto / comunes > MAX_RATIO_ORIGEN  ->  ABORT REESCRITURA_DE_ORIGEN (2)
+ *   Un cambio de ruta del mismo host NO cuenta (solo cambia el host). Los umbrales estan
+ *   justificados con el censo en el propio codigo (ver MAX_RATIO_ORIGEN).
  *
  * USO
  *   node reconcile.js [--list <ruta>] [--out <dir>] [--dry-run] [--verbose]
@@ -48,10 +70,36 @@ const MAP_FILE = path.join(CURRENT, 'channels.json');     // se lee vía el syml
 const JIT_LIST = path.join(CURRENT, 'APE_JIT_LIST.m3u8');
 const MISSES = path.join(OUT_DIR, 'misses.log');          // ruta fija: sobrevive a los flips
 const STAMP = path.join(OUT_DIR, '.reconciled');          // ruta fija
-const LIST_DIR = '/var/www/lists/pulse';
+const LIST_DIR = arg('dir', '/var/www/lists/pulse');   // --dir existe para poder probarlo
 const BASE = 'https://iptv-ape.duckdns.org';
+const SELF_HOST = (() => { try { return new URL(BASE).host; } catch (_) { return 'iptv-ape.duckdns.org'; } })();
 const DEFAULT_UA = 'VLC/3.0.19 LibVLC/3.0.19';
 const MIN_RATIO = 0.95;
+
+/* ── GUARDA DE ORIGEN ────────────────────────────────────────────────────────
+ * MAX_RATIO_ORIGEN = 0.20  (20 % de los canales comunes pueden cambiar de host)
+ *
+ * POR QUE 0.20 Y NO UN NUMERO A OJO — datos del censo del lote (R5, 2026-11-21):
+ *   · Actualizacion legitima del MISMO catalogo (APE_LISTA_1795153321616 vs
+ *     APE_LISTA_1795150582572): ids comunes 11 222, host_distinto 0  -> ratio 0,0000.
+ *     El generador no cambia de host al regenerar: cambia ruta/credenciales, y la
+ *     guarda compara HOST, no ruta. Una regeneracion normal debe dar ~0.
+ *   · Desastre medido (P3_PLACEHOLDER sobre la vigente): comunes 11 168,
+ *     host_distinto 11 160 -> ratio 0,9993.
+ *   Cualquier umbral entre 0,01 y 0,99 separa esos dos mundos. Se elige 0,20 porque
+ *   deja margen a una migracion PARCIAL legitima (drenar un pool de CDN, mover un
+ *   lote de canales a otro host: hasta 1 de cada 5) y sigue bloqueando el cambio
+ *   masivo. Con 0,05 se abortaria una migracion parcial razonable; con 0,50 se
+ *   dejaria pasar media cartelera reescrita, que ya es un cambio de catalogo.
+ *
+ * MIN_COMUNES_ORIGEN = 50  (por debajo no hay veredicto: se registra y se sigue)
+ *   Con 11 canales comunes, 6 cambios son "55 %" y abortar no protege nada: el
+ *   numero absoluto de canales reescritos es irrelevante y FLOOR_DURO ya impide
+ *   sustituir un catalogo real por uno diminuto. El guard no finge: escribe
+ *   "muestra=N<50: sin veredicto" en la linea ORIGEN.
+ */
+const MAX_RATIO_ORIGEN = 0.20;
+const MIN_COMUNES_ORIGEN = 50;
 
 const log = (...a) => console.log(new Date().toISOString(), ...a);
 
@@ -83,13 +131,33 @@ function pickList() {
       const log = '/var/log/nginx/playlist_access.log';
       const fd  = fsl.openSync(log, 'r');
       const st  = fsl.fstatSync(fd);
-      const len = Math.min(st.size, 4 * 1024 * 1024);
+      /* [2026-11-19] OOM MEDIDO (status=6/ABRT, RegExpImpl::IrregexpExec ->
+       * String::SlowFlatten): aqui se leian 4 MB del access log, se convertian a
+       * un unico string y se les pasaba matchAll con regex global, generando un
+       * array de TODAS las coincidencias. Eso aborta el proceso en esta VPS y el
+       * servicio ape-jit-reconcile queda failed: la allowlist del JIT nunca se
+       * actualiza. Ahora se busca el ULTIMO '?l=' con Buffer.lastIndexOf (nativo,
+       * sin string global y sin array), que es justo lo que el codigo queria:
+       * la ULTIMA lista servida. */
+      const len = Math.min(st.size, 1024 * 1024);
       const buf = Buffer.alloc(len);
       fsl.readSync(fd, buf, 0, len, Math.max(0, st.size - len));
       fsl.closeSync(fd);
-      const ids = [...buf.toString('utf8').matchAll(/[?&]l=(APE_LISTA_[0-9A-Za-z_.-]+)/g)]
-        .map(x => x[1]);
-      return ids.length ? ids[ids.length - 1] : null;
+      const MARK = Buffer.from('l=APE_LISTA_');
+      let at = buf.lastIndexOf(MARK);
+      while (at >= 0) {
+        let end = at + MARK.length;
+        while (end < len) {
+          const c = buf[end];
+          const ok = (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 46 || c === 95 || c === 45;
+          if (!ok) break;
+          end++;
+        }
+        const id = buf.toString('utf8', at + 2, end);
+        if (id && id.indexOf('APE_LISTA_') === 0) return id;
+        at = buf.lastIndexOf(MARK, at - 1);
+      }
+      return null;
     } catch (e) { return null; }
   }
 
@@ -107,7 +175,53 @@ function pickList() {
     .map(f => ({ f, p: path.join(LIST_DIR, f), m: fs.statSync(path.join(LIST_DIR, f)).mtimeMs }))
     .sort((a, b) => b.m - a.m);
   if (!files.length) throw new Error('no hay listas en ' + LIST_DIR);
-  return files[0].p;
+
+  /* [2026-11-21] FUENTE vs SALIDA. Medido en produccion: la lista mas reciente por
+   * mtime era APE_LISTA_1795151699916_DIRECTA_CABLEADA y sus `?u=` apuntaban a
+   * https://iptv-ape.duckdns.org/jit/live/<id>/master.m3u8 — es decir, a NOSOTROS.
+   * Es una SALIDA ya envuelta: alimentar el espejo con ella crea el bucle
+   * /jit/live/1 -> /cdn/iptv-ape.duckdns.org/jit/live/1 -> ... Las crudas del mismo
+   * lote (APE_LISTA_*_CDN) apuntaban a 0/3 propias. El criterio no puede ser solo
+   * "la mas nueva": se descarta la que ya esta envuelta y se dice cual y por que. */
+  const envuelta = (p) => {
+    /* Muestreo por TRAMOS: un bloque de canal de estas listas ocupa ~1 MB, asi que leer
+     * solo los primeros 512 KB puede no encontrar ni un `?u=` y responder "no envuelta"
+     * (falso negativo medido). Se acumulan aciertos hasta 5 o hasta 16 MB. */
+    try {
+      const fd = fs.openSync(p, 'r');
+      const size = fs.fstatSync(fd).size;
+      let offset = 0, acc = '', hits = 0, propias = 0, vueltas = 0;
+      while (offset < size && hits < 5 && vueltas < 16) {
+        const len = Math.min(1024 * 1024, size - offset);
+        const buf = Buffer.alloc(len);
+        fs.readSync(fd, buf, 0, len, offset);
+        offset += len; vueltas++;
+        acc += buf.toString('utf8');
+        const found = acc.match(/u=[^&\s]*/g) || [];
+        if (found.length) {
+          for (const h of found) {
+            hits++;
+            try { if (decodeURIComponent(h.slice(2)).indexOf(SELF_HOST) >= 0) propias++; } catch (_) { /* noop */ }
+          }
+          acc = '';
+        } else {
+          acc = acc.slice(-4096);      // conserva un solape por si el token cruza el tramo
+        }
+      }
+      fs.closeSync(fd);
+      if (!hits) return false;
+      return propias > 0 && propias >= hits / 2;
+    } catch (_) { return false; }
+  };
+  const crudas = files.filter((x) => {
+    if (envuelta(x.p)) { log('CANDIDATA descartada (ya envuelta, apunta al propio JIT):', x.f); return false; }
+    return true;
+  });
+  if (!crudas.length) {
+    log('WARN', 'todas las listas de ' + LIST_DIR + ' parecen ya envueltas; uso la mas reciente y el guard decidira');
+    return files[0].p;
+  }
+  return crudas[0].p;
 }
 
 /** http://host/ruta/x.m3u8  ->  https://iptv-ape.duckdns.org/cdn/host/ruta/x.m3u8 */
@@ -125,11 +239,55 @@ function attr(extinf, name) {
   return m ? m[1] : '';
 }
 
+/* ── HOST DEL PAYLOAD (origen real del canal) ────────────────────────────────
+ * El mapa guarda la URL ya envuelta — BASE/cdn/<host-proveedor>/<ruta> — o la URL
+ * directa cuando la lista es ajena. En los dos casos el ORIGEN es:
+ *   · envuelta -> el primer segmento tras /cdn/
+ *   · directa  -> el host de la URL
+ * Se compara SOLO el host: un cambio de ruta o de credenciales del mismo host no
+ * es reescritura de origen (es lo normal al regenerar la lista y no debe abortar).
+ * Si no hay host reconocible se devuelve '' y esa pareja NO se cuenta: el guard no
+ * inventa una comparacion que no puede hacer. */
+function payloadHost(url) {
+  if (!url) return '';
+  const s = String(url);
+  const m = s.match(/\/cdn\/([^/?#]+)/);
+  if (m) return m[1].toLowerCase();
+  try { return new URL(s).host.toLowerCase(); } catch (_) { return ''; }
+}
+
+/** Compara mapa previo vs nuevo por id -> host del payload. Puro: no escribe nada. */
+function compararOrigen(prevMap, map) {
+  const prev = prevMap || {};
+  let comunes = 0, mismoHost = 0, hostDistinto = 0;
+  const ejemplos = [];
+  for (const id of Object.keys(map)) {
+    if (!Object.prototype.hasOwnProperty.call(prev, id)) continue;
+    const hPrev = payloadHost(prev[id] && prev[id].url);
+    const hNuevo = payloadHost(map[id] && map[id].url);
+    if (!hPrev || !hNuevo) continue;
+    comunes++;
+    if (hPrev === hNuevo) mismoHost++;
+    else {
+      hostDistinto++;
+      if (ejemplos.length < 3) ejemplos.push(id + ': ' + hPrev + ' -> ' + hNuevo);
+    }
+  }
+  const ratio = comunes ? hostDistinto / comunes : 0;
+  const muestraInsuficiente = comunes < MIN_COMUNES_ORIGEN;
+  const abortar = !muestraInsuficiente && ratio > MAX_RATIO_ORIGEN;
+  return { comunes, mismoHost, hostDistinto, ratio, muestraInsuficiente, abortar, ejemplos };
+}
+
 async function parseList(file) {
   const rl = readline.createInterface({ input: fs.createReadStream(file), crlfDelay: Infinity });
   const map = Object.create(null);
   const rows = [];
-  let cur = null, ua = '', pulseUrl = '', n = 0, skipped = 0, noUrl = 0;
+  // [2026-11-21] sinId se cuenta APARTE de skipped. Antes, un bloque con URL pero sin
+  // tvg-id caia en el `else if (cur.id)` como falso y NO se contaba en ningun sitio:
+  // desaparecia del mapa sin dejar traza. Medido: el log solo decia sin_url=0 cuando
+  // en realidad el agujero podia ser de ids ausentes.
+  let cur = null, ua = '', n = 0, noUrl = 0, sinId = 0, loop = 0;
 
   for await (const line of rl) {
     const t = line.trim();
@@ -137,8 +295,15 @@ async function parseList(file) {
     n++;
 
     if (t.startsWith('#EXTINF')) {
-      if (cur && cur.url) { map[cur.id] = { url: cur.url, ua: cur.ua }; rows.push(cur); }
-      else if (cur) noUrl++;
+      // [2026-11-21] La clasificación de cada bloque se hace AQUÍ, una sola vez: con id
+      // y url -> al mapa; sin id -> sinId; con id y sin url -> noUrl. Antes se contaba
+      // también en la línea de URL y un bloque sin id acababa sumando en sin_id Y en
+      // sin_url (medido por el test: sin_url=3 sin_id=3 para 3 bloques sin id).
+      if (cur) {
+        if (cur.id && cur.url) { map[cur.id] = { url: cur.url, ua: cur.ua }; rows.push(cur); }
+        else if (!cur.id) sinId++;
+        else if (!cur.loop) noUrl++;   // si era bucle ya esta contado en loop
+      }
       const te = t.match(/,(.*)$/);
       cur = {
         id: attr(t, 'tvg-id') || attr(t, 'tvg-chno'),
@@ -164,19 +329,39 @@ async function parseList(file) {
     // y también una URL directa, que es como vienen las listas ajenas. Sin esto el
     // espejo solo sabría leer las listas de este generador.
     let resolved = '';
+    let payload = '';        // URL DE ORIGEN, antes de envolverla: es la que dice si hay bucle
     if (t.includes('/pulse/')) {
       const u = t.match(/[?&]u=([^&\s]+)/);
-      if (u) { try { resolved = toCdn(decodeURIComponent(u[1])); } catch (_) { resolved = ''; } }
+      if (u) {
+        try {
+          payload = decodeURIComponent(u[1]);
+          resolved = toCdn(payload);
+        } catch (_) { resolved = ''; }
+      }
     } else if (/^https?:\/\//i.test(t)) {
-      resolved = t;                         // lista ajena: se usa su URL tal cual
+      payload = t;                          // lista ajena: se usa su URL tal cual
+      resolved = t;
     }
-    if (resolved && cur.id) { cur.url = resolved; cur.ua = ua || DEFAULT_UA; }
-    else if (cur.id) skipped++;
+    if (resolved && cur.id) {
+      /* [2026-11-21] BUCLE. El host que hay que mirar es el del PAYLOAD, no el de la URL
+       * ya envuelta: toCdn() SIEMPRE devuelve https://iptv-ape.duckdns.org/cdn/…, asi que
+       * comparar el host del resultado marcaba TODO como bucle (bug medido: 11222 de 11222
+       * tambien en listas crudas, y ese guard habria bloqueado para siempre). Se compara
+       * el origen real: si el `u=` ya es nuestro /jit/live/…, el canal NO entra al mapa
+       * y se cuenta como loop; si el `u=` es del proveedor, se envuelve como siempre. */
+      let propio = false;
+      try { propio = !!payload && new URL(payload).host === SELF_HOST; } catch (_) { propio = false; }
+      if (propio) { cur.loop = true; loop++; }
+      else { cur.url = resolved; cur.ua = ua || DEFAULT_UA; }
+    }
   }
-  if (cur && cur.url) { map[cur.id] = { url: cur.url, ua: cur.ua }; rows.push(cur); }
-  else if (cur) noUrl++;
+  if (cur) {
+    if (cur.id && cur.url) { map[cur.id] = { url: cur.url, ua: cur.ua }; rows.push(cur); }
+    else if (!cur.id) sinId++;
+    else if (!cur.loop) noUrl++;
+  }
 
-  return { map, rows, lines: n, skipped, noUrl };
+  return { map, rows, lines: n, noUrl, sinId, loop };
 }
 
 function buildJitList(rows) {
@@ -222,23 +407,94 @@ function atomicWrite(file, content) {
   const prevMap = (() => { try { return JSON.parse(fs.readFileSync(MAP_FILE, 'utf8')); } catch (_) { return {}; } })();
   const prevCount = Object.keys(prevMap).length;
 
-  const { map, rows, lines, skipped, noUrl } = await parseList(list);
+  /* [2026-11-21] IDENTIDAD DE LA LISTA — el defecto que dejaba el servicio en abort
+   * permanente. Medido en produccion: la allowlist publicada (21 224 canales) salio de
+   * APE_LISTA_1794783650337_CDN.m3u8 (1 380 561 704 B) y el reconciliador estaba
+   * parseando APE_LISTA_1795151699916_DIRECTA_CABLEADA.m3u8 (708 400 298 B): OTRO
+   * catalogo. Comparar 11 222 canales de una lista contra 21 224 de otra no mide una
+   * caida, mide dos catalogos distintos -> y el guard fail-closed abortaba cada 5 min
+   * para siempre, dejando la allowlist congelada.
+   *   - MISMA lista  -> se mantiene el guard estricto del 95 % (una caida ahi SI es
+   *     truncado o parseo roto).
+   *   - OTRA lista   -> se publica, pero se dice en voz alta (LIST_CHANGED) y se deja
+   *     traza nominal de quien entra y quien sale. Nunca en silencio.
+   * FLOOR_DURO impide publicar un catalogo vacio o absurdo en el camino de otra lista. */
+  const FLOOR_DURO = 100;
+  const listKey = path.basename(list).replace(/\.m3u8$/i, '');
+  let prevMeta = {};
+  try { prevMeta = JSON.parse(fs.readFileSync(path.join(CURRENT, 'meta.json'), 'utf8')); } catch (_) { prevMeta = {}; }
+  const prevKey = prevMeta.listKey
+    || (prevMeta.source ? path.basename(String(prevMeta.source)).replace(/\.m3u8$/i, '') : '');
+  const mismaLista = prevCount === 0 || prevKey === listKey;
+
+  const { map, rows, lines, noUrl, sinId, loop } = await parseList(list);
   const ids = Object.keys(map);
-  log('PARSE', 'lineas=' + lines, 'canales=' + ids.length, 'sin_url=' + (skipped + noUrl), 'allowlist_previa=' + prevCount);
+  log('PARSE', 'lineas=' + lines, 'canales=' + ids.length, 'sin_url=' + noUrl,
+    'sin_id=' + sinId, 'bucle=' + loop, 'allowlist_previa=' + prevCount, 'lista=' + listKey);
+
+  /* [2026-11-21] Una lista YA ENVUELTA no es una fuente: si la mitad o mas de sus
+   * canales apuntan a nuestro propio host, publicarla deja el espejo apuntandose a
+   * si mismo (bucle /jit/live/1 -> /cdn/iptv-ape.../jit/live/1). Se aborta con nombre
+   * propio para no confundirlo con un truncado ni con un cambio de catalogo. */
+  if (loop > 0 && loop >= Math.max(1, Math.floor((ids.length + loop) * 0.5))) {
+    log('ABORT', 'LISTA_ENVUELTA: ' + loop + ' de ' + (ids.length + loop) +
+      ' canales apuntan al propio JIT (' + SELF_HOST + '). No publico: seria un bucle. Usa la lista CRUDA del lote.');
+    process.exit(2);
+  }
 
   // ceil, no floor: con floor una lista de 2 canales dejaba pasar 1 (floor(1.9)=1),
 // es decir un 50 % de caida. Con ceil el minimo es el 95 % real redondeado ARRIBA.
   const floor = Math.ceil(prevCount * MIN_RATIO);
-  if (prevCount > 0 && ids.length < floor) {
-    log('ABORT', `solo ${ids.length} canales (< ${floor} = 95 % de ${prevCount}). No publico: el mapa actual queda intacto.`);
+  if (prevCount > 0 && !mismaLista) {
+    log('LIST_CHANGED', 'allowlist de ' + (prevKey || '(identidad desconocida)') + ' (' + prevCount +
+      ') -> lista ' + listKey + ' (' + ids.length + '): catalogos distintos, el ratio 95 % no aplica');
+    if (ids.length < FLOOR_DURO) {
+      log('ABORT', `catalogo nuevo con solo ${ids.length} canales (< FLOOR_DURO ${FLOOR_DURO}). No publico.`);
+      process.exit(2);
+    }
+  } else if (prevCount > 0 && ids.length < floor) {
+    log('ABORT', `solo ${ids.length} canales (< ${floor} = 95 % de ${prevCount}, misma lista). No publico: el mapa actual queda intacto.`);
     process.exit(2);
   }
   const bad = ids.filter(id => !/^[A-Za-z0-9_.-]{1,80}$/.test(id));
   if (bad.length) { log('ABORT', 'ids invalidos: ' + bad.slice(0, 5).join(',')); process.exit(2); }
 
+  /* [2026-11-21] GUARDA DE ORIGEN — antes de publicar nada.
+   * Escenario que cierra: el timer elige sin `--list` por mtime y `ape-cablear-auto`
+   * re-envuelve listas cada ~15 min, asi que la "mas reciente" puede ser otro catalogo
+   * con los MISMOS ids en OTRO host (medido: P3_PLACEHOLDER reescribia el origen del
+   * 99,93 % y su host evestv.wuitf.com estaba 7/7 caido con 406). Publicarlo dejaria el
+   * mapa entero apuntando a un proveedor muerto, y con dropped=0/added=0 el journal
+   * diria que no cambio nada. El ORIGEN se registra SIEMPRE (tambien con --dry-run)
+   * para que cada ciclo del timer deje los tres numeros en el journal. */
+  const origen = compararOrigen(prevMap, map);
+  log('ORIGEN', 'comunes=' + origen.comunes, 'mismo_host=' + origen.mismoHost,
+    'host_distinto=' + origen.hostDistinto, 'ratio=' + origen.ratio.toFixed(4),
+    origen.muestraInsuficiente
+      ? ('muestra=' + origen.comunes + '<' + MIN_COMUNES_ORIGEN + ': sin veredicto')
+      : ('umbral=' + MAX_RATIO_ORIGEN));
+  if (origen.abortar) {
+    log('ABORT', 'REESCRITURA_DE_ORIGEN: ' + origen.hostDistinto + ' de ' + origen.comunes +
+      ' canales comunes cambian de host (' + (origen.ratio * 100).toFixed(2) + ' % > ' +
+      (MAX_RATIO_ORIGEN * 100) + ' %). No publico: es un cambio de catalogo encubierto, no una ' +
+      'actualizacion. El mapa actual queda intacto. Ejemplos: ' + origen.ejemplos.join(' | '));
+    process.exit(2);
+  }
+
+  // Traza nominal: que id sale y cual entra. Sin esto un canal puede desaparecer sin
+  // nombre, que es justo lo que el guard nunca pudo explicar.
+  const prevIds = Object.keys(prevMap);
+  const nuevoSet = new Set(ids);
+  const dropped = prevIds.filter(id => !nuevoSet.has(id));
+  const prevSet = new Set(prevIds);
+  const added = ids.filter(id => !prevSet.has(id));
+  log('TRAZA', 'salen=' + dropped.length, 'entran=' + added.length,
+    dropped.length ? ('ej. salen: ' + dropped.slice(0, 5).join(',')) : '');
+
   const jitList = buildJitList(rows);
   if (flag('dry-run')) {
-    log('DRY-RUN', 'no escribo nada', 'channels=' + ids.length, 'jitlist_bytes=' + jitList.length);
+    log('DRY-RUN', 'no escribo nada', 'channels=' + ids.length, 'jitlist_bytes=' + jitList.length,
+      'salen=' + dropped.length, 'entran=' + added.length);
     const sample = rows.slice(0, 2);
     sample.forEach(r => log('  muestra', r.id, r.name, '->', r.url));
     return;
@@ -255,9 +511,14 @@ function atomicWrite(file, content) {
   fs.mkdirSync(vdir, { recursive: true });
   atomicWrite(path.join(vdir, 'channels.json'), JSON.stringify(map));
   atomicWrite(path.join(vdir, 'APE_JIT_LIST.m3u8'), jitList);
+  // Traza en la propia release: quien salio y quien entro, por id. Se conserva junto al
+  // mapa para que el rollback (reapuntar `current`) tambien conserve la explicacion.
+  atomicWrite(path.join(vdir, 'channels_dropped.txt'), dropped.join('\n') + (dropped.length ? '\n' : ''));
+  atomicWrite(path.join(vdir, 'channels_added.txt'), added.join('\n') + (added.length ? '\n' : ''));
   atomicWrite(path.join(vdir, 'meta.json'), JSON.stringify({
-    version, source: list, size: st.size, mtimeMs: st.mtimeMs,
-    channels: ids.length, at: Date.now(),
+    version, source: list, listKey, prevKey, size: st.size, mtimeMs: st.mtimeMs,
+    channels: ids.length, prev_channels: prevCount, dropped: dropped.length, added: added.length,
+    sin_id: sinId, misma_lista: mismaLista, at: Date.now(),
   }));
 
   // flip atómico: symlink temporal + rename()
@@ -272,9 +533,20 @@ function atomicWrite(file, content) {
 
   // verificación post-flip: lo publicado se lee vía `current/` y cuadra
   const check = JSON.parse(fs.readFileSync(MAP_FILE, 'utf8'));
-  const checkList = fs.readFileSync(JIT_LIST, 'utf8');
+  /* [2026-11-19] OOM MEDIDO: aqui se hacia fs.readFileSync(JIT_LIST) (7,5 MB) y
+   * luego checkList.match(/^#EXTINF/gm): un string enorme + el array de matches.
+   * En esta VPS eso ABORTA el proceso (status=6/ABRT en NewRawTwoByteString /
+   * StringDecoder::DecodeData) y el servicio ape-jit-reconcile queda failed, con
+   * lo que la allowlist del JIT nunca se actualiza. Se cuenta en STREAMING: no
+   * se materializa el fichero ni se crea el array. */
+  const nList = await new Promise((res, rej) => {
+    let n = 0;
+    const _rl = readline.createInterface({ input: fs.createReadStream(JIT_LIST), crlfDelay: Infinity });
+    _rl.on('line', (l) => { if (l.startsWith('#EXTINF')) n++; });
+    _rl.on('close', () => res(n));
+    _rl.on('error', rej);
+  });
   const nCheck = Object.keys(check).length;
-  const nList = (checkList.match(/^#EXTINF/gm) || []).length;
   if (nCheck !== ids.length || nList !== ids.length) {
     log('FATAL', 'verificacion post-flip: mapa=' + nCheck + ' lista=' + nList + ' esperado=' + ids.length);
     process.exit(3);

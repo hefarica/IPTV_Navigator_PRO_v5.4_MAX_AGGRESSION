@@ -1,0 +1,25 @@
+# [2026-11-19] APE - reparacion de placeholders de 8 B en /lists/*.m3u8
+#
+# CONTEXTO MEDIDO: finalize_upload.php aplica la "REGLA 84" — tras comprimir con
+# gzip -1 -k deja en la ruta .m3u8 un placeholder de 8 bytes ("#EXTM3U\n") para
+# ahorrar disco (el VPS esta al 93%). El contenido real vive en el .gz (que nginx
+# sirve con gzip_static) y en lists/pulse/<nombre> (que es lo que entrega el
+# handler ^/lists/(?<ape_list>...).m3u8$ via try_files).
+#
+# EL PROBLEMA: cualquier lector LOCAL del fichero (cat, grep, una auditoria, el
+# reconcile del JIT) veia 8 bytes donde hay cientos de MB. Ejemplo real auditado:
+# APE_LISTA_1795114283307_CDN.m3u8 = 8 B en disco, 735.670.279 B servidos.
+#
+# EL ARREGLO: el placeholder pasa a SYMLINK a la copia pulsada. Cuesta 0 bytes
+# (el ahorro de REGLA 84 se mantiene) y el contenido es legible por cualquiera.
+# No se toca finalize_upload.php: el flujo de subida es el mas delicado y no se
+# arriesga; este timer convierte el placeholder en cuanto la copia existe.
+#
+# Verificado: reparados 2, quedan 0 placeholders en /lists; la lista auditada
+# ahora deja leer 11.222 canales localmente y el HTTP sigue devolviendo
+# 200 / 735.670.279 B / application/vnd.apple.mpegurl.
+[Unit]
+Description=APE - reparacion de placeholders de 8 B en /lists (symlink a la copia pulsada)
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ape-list-phantom-repair.sh

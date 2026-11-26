@@ -82,7 +82,12 @@ class ExportModule {
             : (app.state.activeHeaders || {});
 
         const includeHeaders = options.includeHeaders !== false;
-        const baseLevel = parseInt(options.antiFreezeLevel || 3, 10) || 3;
+        /* [2026-11-19] DESACOPLE: el nivel de CABECERAS ya NO lo pone el selector de
+ * Anti-Freeze. Una opcion que dice "Buffer/Reconexion" no puede decidir cuantas
+ * cabeceras HTTP se emiten. Su fuente natural es el selector de EVASION
+ * (manualEvasionLevel, L1..L5 = 28/58/92/128/154). Con Auto-Detect marcado,
+ * la heuristica por canal sigue mandando igual que antes. */
+const baseLevel = parseInt(options.manualEvasionLevel || options.headerLevel || 3, 10) || 3;
         const autoDetect = (options.autoDetectLevel !== false);
         const targetPlayer = (options.targetPlayer || 'generic');
 

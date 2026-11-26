@@ -55,7 +55,7 @@ self.onmessage = async (event) => {
 
       self.postMessage({
         type: 'done',
-        channels,
+        channelsReturned: 0, // 🚀 [2026-11-24 · MEDIDO] el catálogo ya NO vuelve al hilo principal: copiarlo cuesta ~210 ms con 28 655 canales y ~435 ms con 57 310, y se pagaba también de vuelta en cada carga sólo para poner dos marcas que el hilo principal no lee.
         enriched: total,
         ts: Date.now(),
         source: msg.source?.id || 'worker'

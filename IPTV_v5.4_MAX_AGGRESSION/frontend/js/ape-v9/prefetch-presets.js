@@ -117,13 +117,13 @@
         },
 
         // ─────────────────────────────────────────────────────────────────────
-        // ⚡ ULTRA-AGRESIVO - Máximo rendimiento
+        // ⚡ ULTRA-AGRESIVO - Maximo rendimiento
         // ─────────────────────────────────────────────────────────────────────
         ULTRA_AGRESIVO: {
             id: 'ULTRA_AGRESIVO',
             name: 'Ultra-Agresivo',
             icon: '⚡',
-            description: 'Máximo prefetch para 8K y cero interrupciones',
+            description: 'Maximo prefetch para 8K y cero interrupciones',
 
             prefetch_segments: 90,
             parallel_downloads: 40,

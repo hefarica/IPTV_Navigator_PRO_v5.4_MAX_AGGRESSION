@@ -1,0 +1,300 @@
+diff --git a/IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html b/IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html
+index 3889040f..7deffcd7 100644
+--- a/IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html
++++ b/IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html
+@@ -4315,6 +4315,7 @@
+ <script src="js/ape-v9/rea-catalog-export.js?v=20261107-rea"></script>
+ <script src="js/ape-v9/ape-profiles-12k.js?v=20261119-12k"></script>
+   <script src="js/ape-v9/ape-profiles-config.js?v=20261120-perfiles12"></script>
++  <script src="js/ape-v9/ape-4k6k-audit-adapter.js?v=20261120-fase2"></script>
+   <!-- profile-manager-v9.js loaded later at v9.0.3 (line ~3171) -->
+   <script src="js/ape-v9/profile-bridge-v9.js?v=1.1"></script>
+   <script src="js/ape-v9/ape-xtream-atomic-probe.js?v=20261106-gen6k-atad"></script>
+@@ -4458,6 +4459,7 @@
+        La DNA contiene credenciales de proveedor → se sirve solo desde el
+        servidor local (mismo origen), nunca desde internet.
+        Uso en consola:  await apeImportLabLocal()   |   apeLabStatus() -->
++  <script src="js/ape-lab-normalize.js?v=20261120-lab-fusion"></script>
+   <script src="js/ape-lab-import-helper.js?v=20261107-rea"></script>
+ 
+   <!-- 🔧 Transform línea a línea BYTE-EXACTO (solo reescribe líneas ^http://)
+@@ -5156,6 +5158,58 @@
+   <script src="tests/integration.test.js" defer></script>
+   <script src="tests/performance.test.js" defer></script>
+ 
++<!-- ═══ [FASE 2 · 2026-11-20] Invocación visible de la auditoría 4K/Premium 6K ═══
++     Panel autocontenido y sin robo de foco: solo actúa al hacer clic el dueño.
++     Con window.APE_4K6K_AUDIT apagado (por defecto) no emite nada. -->
++<div id="ape4k6k-panel" style="position:fixed;right:12px;bottom:12px;z-index:2147483000;
++     background:#101418;color:#d7e3ee;border:1px solid #2a3a48;border-radius:8px;
++     font:12px/1.4 monospace;padding:8px 10px;max-width:420px">
++  <div style="font-weight:700;margin-bottom:4px">APE · 4K / Premium 6K</div>
++  <button id="ape4k6k-audit" type="button">Auditar</button>
++  <button id="ape4k6k-on" type="button">Activar</button>
++  <button id="ape4k6k-off" type="button">Desactivar</button>
++  <button id="ape4k6k-tag" type="button">Probar etiqueta</button>
++  <pre id="ape4k6k-out" style="white-space:pre-wrap;margin:6px 0 0">listo</pre>
++</div>
++<script>
++(function () {
++  var out = document.getElementById('ape4k6k-out');
++  function api() { return (typeof window.APE_4K6K !== 'undefined') ? window.APE_4K6K : null; }
++  function log(o) { try { out.textContent = 'APE4K6K:' + JSON.stringify(o); } catch (e) { out.textContent = 'APE4K6K:{"error":"log"}'; } }
++  var BLOQUE = '#EXTINF:-1 tvg-id="1",Canal\n#EXTSHIMOTT:{"ver":1}\nhttps://x/pulse/1.m3u8?u=a&d=b';
++  document.getElementById('ape4k6k-audit').addEventListener('click', function () {
++    var a = api();
++    if (!a) { log({ loaded: false }); return; }
++    var r = a.audit([{ name: 'demo', url: 'https://x/pulse/1.m3u8?u=a&d=b', rea: { schema: 'ape.rea-intent/1' } }]);
++    log({ loaded: true, flag: a.isEnabled(), canales: r.channels || r.canales || null, estado: r.implementation_state || null });
++  });
++  document.getElementById('ape4k6k-on').addEventListener('click', function () {
++    window.APE_4K6K_AUDIT = true;                 /* booleano explícito, como manda el contrato */
++    log({ accion: 'on', flag: api() ? api().isEnabled() : null, tipo: 'boolean' });
++  });
++  document.getElementById('ape4k6k-off').addEventListener('click', function () {
++    window.APE_4K6K_AUDIT = false;
++    log({ accion: 'off', flag: api() ? api().isEnabled() : null, tipo: 'boolean' });
++  });
++  document.getElementById('ape4k6k-tag').addEventListener('click', function () {
++    var a = api(); if (!a) { log({ loaded: false }); return; }
++    var ins = a.insertIntentTag(BLOQUE, { ape_profile: 'P3' });
++    log({ flag: a.isEnabled(), identico: ins === BLOQUE, lineas: ins.split('\n').length });
++  });
++  if (location.hash === '#ape4k6k-selftest') {
++    var a = api();
++    var off = a ? a.insertIntentTag(BLOQUE, { ape_profile: 'P3' }) : null;
++    var offFlag = a ? a.isEnabled() : null;
++    window.APE_4K6K_AUDIT = true;
++    var on = a ? a.insertIntentTag(BLOQUE, { ape_profile: 'P3' }) : null;
++    window.APE_4K6K_AUDIT = false;
++    log({ loaded: !!a, offFlag: offFlag, offIdentico: off === BLOQUE,
++          onLineas: on ? on.split('\n').length : null,
++          onUris: on ? (on.match(/^https:\/\//gm) || []).length : null,
++          onTagAntesDeUri: on ? (on.indexOf('#EXT-X-APE-4K6K-INTENT:') < on.indexOf('https://')) : null });
++  }
++})();
++</script>  <script src="_fase4_e2e_driver.js?v=20261120-f4"></script>
+ </body>
+ 
+ </html>
+diff --git a/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-lab-import-helper.js b/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-lab-import-helper.js
+index f1842998..a7107575 100644
+--- a/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-lab-import-helper.js
++++ b/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-lab-import-helper.js
+@@ -194,9 +194,18 @@
+         var cfg = global.APE_PROFILES_CONFIG;
+         if (!cfg) throw new Error('APE_PROFILES_CONFIG no cargado (recarga la página)');
+         if (typeof cfg.importFromLABData !== 'function') throw new Error('APE_PROFILES_CONFIG.importFromLABData no disponible');
+-        if (!data || !data.profiles_calibrated) throw new Error('JSON inválido: falta profiles_calibrated');
+-        var ver = String(data.lab_version || '');
+-        if (!/^omega_/i.test(ver) && data.bulletproof !== true) throw new Error('Schema no soportado: lab_version=' + ver);
++        /* [FASE 3 · 2026-11-20] Dos familias reales de LAB: profiles_calibrated
++         * (bulletproof, 6) y profiles + _meta (fusión, 12 con P*.5).
++         * Medido: con el LAB de fusión esto lanzaba «falta profiles_calibrated».
++         * El normalizador NO elige si hay conflicto y conserva los IDs exactos. */
++        if (global.APELabNormalize) {
++            var _norm = global.APELabNormalize.normalize(data);
++            data = _norm.data;
++        } else {
++            if (!data || !data.profiles_calibrated) throw new Error('JSON inválido: falta profiles_calibrated');
++            var ver = String(data.lab_version || '');
++            if (!/^omega_/i.test(ver) && data.bulletproof !== true) throw new Error('Schema no soportado: lab_version=' + ver);
++        }
+ 
+         var applied = await cfg.importFromLABData(data);
+         await apeLabSnapshotSave(data);
+diff --git a/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-4k6k-audit-adapter.js b/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-4k6k-audit-adapter.js
+index b2478b3e..33143f85 100644
+--- a/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-4k6k-audit-adapter.js
++++ b/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-4k6k-audit-adapter.js
+@@ -280,15 +280,45 @@
+      * intención viaja en un campo propio y versionado. Mismo contenido, dueño
+      * distinto: nadie que lea `rea` ve un campo que no esperaba.
+      */
++    /* [FASE 2 · corregido con el LAB del propietario] El objetivo del PERFIL manda.
++     * Medido en APE_FUSION_PREMIUM_6K_4K_ZAPPING_ATOMICO (12 perfiles):
++     *   P0 = 7680x4320 · P1/P2 = 3840x2160 · P3/P4/P5 = 1080p/720p/480p ·
++     *   P0.5..P5.5 = 5760x3240
++     * Declarar 3840 fijo sobre P0 seria DEGRADAR su declaracion (ley anti-degradacion).
++     * Regla: objetivo = max(perfil, standard_4k); premium = max(perfil, premium_6k).
++     */
++    function profileResolution(pid) {
++        var cfg = readProfilesConfig();
++        var p = (cfg && isObj(cfg.profiles)) ? cfg.profiles[pid] : null;
++        var res = p && ((p.settings && p.settings.resolution) || p.resolution);
++        var m = (typeof res === 'string') ? res.match(/^(\d{2,5})x(\d{2,5})$/) : null;
++        return m ? { w: parseInt(m[1], 10), h: parseInt(m[2], 10) } : null;
++    }
++
++    function objective(pid) {
++        var own = profileResolution(pid);
++        var std = { w: 3840, h: 2160 };
++        var prem = { w: 5760, h: 3240 };
++        return {
++            own: own,
++            target: (own && own.w > std.w) ? own : std,
++            premium: (own && own.w > prem.w) ? own : prem,
++            profileWasHigher: !!(own && own.w > prem.w)
++        };
++    }
++
++    function wh(o) { return o.w + 'x' + o.h; }
++
+     function buildIntent(profile) {
++        var o = objective(profile);
+         return {
+             schema: SCHEMA_INTENT,
+             status: 'requested_only',
+-            targetResolution: '3840x2160',
+-            targetWidth: 3840,
+-            targetHeight: 2160,
+-            boxWidth: 3840,
+-            boxHeight: 2160,
++            targetResolution: wh(o.target),
++            targetWidth: o.target.w,
++            targetHeight: o.target.h,
++            boxWidth: o.target.w,
++            boxHeight: o.target.h,
+             mode: 'upscale_if_needed',
+             enhancementRequested: true,
+             execution: 'not_verified',
+@@ -297,14 +327,14 @@
+             /* El consumidor REA no ha sido probado con esta extensión: se declara. */
+             reaPolicyPreserved: true,
+             reaFieldsWritten: 0,
+-            /* EXACTAMENTE 13 claves, igual que antes; ahora dentro del sidecar. */
++            /* EXACTAMENTE 13 claves; ahora el objetivo sale del perfil real. */
+             outputPolicy: {
+                 schema: SCHEMA_INTENT,
+                 profile: profile,
+                 defaultVariant: 'standard_4k',
+-                floorLock: '3840x2160',
++                floorLock: wh(o.target),
+                 premiumRequested: true,
+-                premiumResolution: '5760x3240',
++                premiumResolution: wh(o.premium),
+                 premiumKind: 'simulated_spatial_upscale',
+                 preserveHigherSource: true,
+                 sourceTruthUnchanged: true,
+@@ -312,10 +342,12 @@
+                 hdrPolicy: 'preserve_verified_source',
+                 nativeResolutionClaim: false,
+                 executed: false
+-            }
++            },
++            /* Trazabilidad del perfil medido: si el perfil ya era mayor, se dice. */
++            profileTarget: o.own ? wh(o.own) : null,
++            profileTargetPreserved: o.profileWasHigher
+         };
+     }
+-
+     /* §6 caso 2: REA con JSON inválido ⇒ ABORTA. Prohibido "arreglarlo" en silencio.
+      * Se acepta objeto (forma normal) y string JSON (forma serializada). */
+     function normaliseRea(raw, label) {
+@@ -856,8 +888,34 @@
+         return INTENT_TAG + JSON.stringify(payload);
+     }
+ 
++    /* ── INSERCIÓN EN EL BLOQUE (§4: una URI por canal, tag antes de la URI) ── *
++     * [FASE 2 · corregido contra el generador REAL] El bloque de un canal NO
++     * termina en la URI: el emisor añade metadata después (medido con el LAB
++     * real: 65.278 caracteres que acaban en `#EXT-X-APE-CRYSTAL-UHD:...`).
++     * La regla correcta es localizar la ÚNICA línea de URI e insertar justo antes.
++     *   · si hay 0 o más de 1 línea de URI, NO se toca el bloque (no se adivina);
++     *   · conserva el fin de línea (LF/CRLF) y la ausencia de salto final;
++     *   · no reordena ni toca ninguna otra línea (EXTHTTP, EXTVLCOPT, KODIPROP,
++     *     EXT-X-*, EXTSHIMOTT incluidos);
++     *   · con la bandera OFF devuelve el bloque TAL CUAL (identidad): ningún
++     *     llamador puede emitir metadata nueva sin activar el flag, aunque olvide
++     *     el guard. `force === true` es solo para pruebas.
++     */
++    function insertIntentTag(block, ch, force) {
++        if (force !== true && !isEnabled()) return block;
++        if (typeof block !== 'string' || block === '') return block;
++        var eol = block.indexOf('\r\n') >= 0 ? '\r\n' : '\n';
++        var lineas = block.split(eol);
++        var idx = -1, n = 0, i;
++        for (i = 0; i < lineas.length; i++) {
++            if (/^\s*https?:\/\//i.test(lineas[i])) { n++; idx = i; }
++        }
++        if (n !== 1) return block;                 /* ambiguo o sin URI: intacto */
++        lineas.splice(idx, 0, intentTag(ch));
++        return lineas.join(eol);
++    }
+     return {
+-        version: '1.0.0',
++        version: '1.1.0',
+         FLAG: FLAG,
+         SCHEMAS: {
+             intent: SCHEMA_INTENT, extends: SCHEMA_EXTENDS,
+@@ -880,6 +938,7 @@
+         overlay: overlay,
+         enrich: enrich,
+         intentTag: intentTag,
++        insertIntentTag: insertIntentTag,
+         _sha256Hex: sha256Hex,
+         _utf8Bytes: utf8Bytes
+     };
+diff --git a/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js b/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js
+index b8fce9f5..57bbf9ca 100644
+--- a/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js
++++ b/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js
+@@ -5088,7 +5088,7 @@
+                 // amplía la aceptación de schema. JSON ajeno (sin omega_ y no bulletproof) sigue lanzando.
+                 const isVersionSupported = (data && data.lab_version && /^omega_/i.test(String(data.lab_version)))
+                     || supportedSchemas.includes(data && data.lab_version)
+-                    || isBulletproof;
++                    || isBulletproof || (data && data._meta && data._meta.type === 'all_profiles') || (data && data.lab_schema_variant === 'all_profiles'); /* [FASE 4] forma all_profiles medida en la app */
+                 if (!data || !isVersionSupported) {
+                     throw new Error(`Schema invalido: lab_version='${data && data.lab_version}', schema_variant='${data && data.lab_schema_variant}' (esperado omega_* o bulletproof:true)`);
+                 }
+@@ -5135,7 +5135,10 @@
+                     return out;
+                 };
+ 
+-                const labProfiles = data.profiles_calibrated || {};
++                /* [FASE 3] Dos familias: profiles_calibrated (bulletproof) y profiles (fusión, 12 con P*.5). */
++            const labProfiles = (typeof global !== 'undefined' && global.APELabNormalize)
++                ? global.APELabNormalize.profilesOf(data)
++                : (data.profiles_calibrated || {});
+                 // [6K 2026-11-05] El LAB v24 trae seis variantes emuladas ademas de las seis base.
+                 // Sin ampliar esta lista, P0.5..P5.5 se importaban como humo: estaban en el
+                 // fichero y la app las ignoraba. Se recorren DESPUES de las base para que el
+diff --git a/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js b/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js
+index c47d67f6..0cf13112 100644
+--- a/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js
++++ b/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js
+@@ -13687,7 +13687,16 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
+         // Se aplica sobre el bloque YA finalizado para que el tag sea la ÚLTIMA
+         // línea de tag e inmediatamente preceda a la URI. No toca ni reordena
+         // EXTHTTP / EXTVLCOPT / KODIPROP / EXT-X-APE-* / EXT-X-STREAM-INF.
+-        return _apeAppendExtshimottTag(_reaFinalBlock, channel, profile, _probeData, cfg, index, _uaApeProfile, 'https://www.google.com/');
++        var _fase2Block = _apeAppendExtshimottTag(_reaFinalBlock, channel, profile, _probeData, cfg, index, _uaApeProfile, 'https://www.google.com/');
++        // [FASE 2 · 2026-11-20] Intención 4K/Premium 6K en sidecar propio (window.APE_4K6K_AUDIT).
++        // OFF por defecto: si el flag no está activo NO se ejecuta nada y el bloque
++        // sale byte a byte como antes. La lógica vive en el adaptador (probada en
++        // Node y en navegador); aquí solo hay un guard de una línea.
++        if (typeof window !== 'undefined' && window.APE_4K6K && typeof window.APE_4K6K.insertIntentTag === 'function'
++            && window.APE_4K6K.isEnabled()) {
++            _fase2Block = window.APE_4K6K.insertIntentTag(_fase2Block, channel);
++        }
++        return _fase2Block;
+     }
+ 
+     if (typeof window !== 'undefined') window.APE_GEN = generateM3U8Stream; // [t53/t72] export headless (hoisting)
+diff --git a/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/profile-manager-v9.js b/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/profile-manager-v9.js
+index 43930e28..111d6dca 100644
+--- a/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/profile-manager-v9.js
++++ b/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/profile-manager-v9.js
+@@ -6148,7 +6148,10 @@
+                 'inputstream.adaptive.manifest_update_parameter'
+             ]);
+ 
+-            const labProfiles = data.profiles_calibrated || {};
++            /* [FASE 3] Dos familias: profiles_calibrated (bulletproof) y profiles (fusión, 12 con P*.5). */
++            const labProfiles = (typeof global !== 'undefined' && global.APELabNormalize)
++                ? global.APELabNormalize.profilesOf(data)
++                : (data.profiles_calibrated || {});
+             // [6K 2026-11-05] El LAB v24 trae P0.5..P5.5 ademas de P0..P5. El diff del import
+             // debe contarlos o el panel reporta menos cambios de los que realmente aplica.
+             const APE_6K_IDS = ['P0.5','P1.5','P2.5','P3.5','P4.5','P5.5'];

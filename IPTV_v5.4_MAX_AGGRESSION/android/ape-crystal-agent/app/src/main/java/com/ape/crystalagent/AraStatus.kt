@@ -87,6 +87,14 @@ object AraStatus {
     @Volatile var extShimOtt: String = ""
     @Volatile var extShimOttAt: Long = 0L
 
+    /**
+     * Ultimo recibo del contrato QoE (#EXT-X-APE-QOE-CONTRACT), por knob: EXECUTED solo si se
+     * escribio Y se relello igual; DECLARED/UNMAPPED con su motivo. Lo escribe QoeContractApply.
+     * Vacio = no hay contrato vigente (nadie emite el tag todavia).
+     */
+    @Volatile var qoeContract: String = ""
+    @Volatile var qoeContractAt: Long = 0L
+
     // ── Homologación de presets de lista ─────────────────────────────────────
     @Volatile var lastPresetCount: Int = 0
     @Volatile var lastPresetLocal: Int = 0

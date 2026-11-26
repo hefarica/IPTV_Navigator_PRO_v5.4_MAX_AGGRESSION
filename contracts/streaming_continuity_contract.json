@@ -1,7 +1,8 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "status": "mandatory",
   "effective": "2026-11-01",
+  "amended": "2026-11-15",
   "manifests": {
     "cache_control": "no-cache, no-store, must-revalidate, private, max-age=0",
     "pragma": "no-cache",
@@ -38,13 +39,58 @@
   ],
   "forbidden_tokens": [
     "4KFALSE",
-    "8KFAKE",
+    "8KFAKE"
+  ],
+  "declared_allowed_tokens": [
     "LCEVC",
     "AI-SR",
     "AI-FI",
     "DV-PROFILE",
     "QUANTUM-PIXEL"
   ],
+  "token_semantics": {
+    "forbidden_tokens": "Prohiben AFIRMAR una fuente falsa (decir que un canal FHD es 4K real, o que la fuente es 8K cuando no lo es). NO prohiben los tags de simulacion UHD.",
+    "declared_allowed_tokens": "Permitidos como metadata DECLARADA de mejora simulada; cada uno debe viajar con STATUS=DECLARED_ONLY / EXECUTED=0 (nunca 'applied').",
+    "simulation_is_mandatory": true,
+    "authority": "owner-decision-2026-11-15",
+    "supersedes": "forbidden_tokens prohibia antes los 7 tokens por igual; 4KFALSE/8KFAKE pasan a significar 'claim de fuente falsa' y los otros 5 quedan declarados permitidos."
+  },
+  "uhd_simulation": {
+    "required": true,
+    "objective": "OBJETIVO DE LA APP: 4K FAKE · 6K SIMULATE · 8K FAKE — simular resoluciones UHD de alta calidad",
+    "tiers": [
+      {
+        "id": "4K-FAKE",
+        "target": "3840x2160",
+        "tag": "#EXT-X-APE-4KFALSE-MODE:ACTIVE",
+        "declares_stream_inf_resolution": true
+      },
+      {
+        "id": "6K-SIMULATE",
+        "target": "5760x3240",
+        "tag": "#EXT-X-APE-CRYSTAL-6K:...;RES=5760x3240;CODEC=hvc1.2.4.L183.B0",
+        "declares_stream_inf_resolution": true,
+        "required_codec_level": "hvc1.2.4.L183.B0"
+      },
+      {
+        "id": "8K-FAKE",
+        "target": "7680x4320",
+        "tag": "#EXT-X-APE-8KFAKE:ENABLED=1;NEVER_REAL=1;TARGET=DISPLAY",
+        "declares_stream_inf_resolution": false,
+        "reason": "display-side; no va en RESOLUTION por defecto"
+      }
+    ],
+    "quality_floor": "alta: TECH declarada + EXECUTOR=display; sin recorte de bitrate, fps, HDR ni audio",
+    "required_truth_tags": [
+      "#EXT-X-APE-UPSCALE:MODE=SIMULATED|EMULATED;EXECUTOR=display;EXECUTED=0",
+      "#EXT-X-APE-STREAM-TRUTH:src=,w=,h=,fps=,range=,codec="
+    ],
+    "forbidden": [
+      "declarar la FUENTE en la resolucion objetivo",
+      "declarar applied/verified sin recibo del motor"
+    ],
+    "authority": "owner-decision-2026-11-15"
+  },
   "ci": [
     "node tools/certify_http_200_206_302.js",
     "node tools/verify_streaming_headers.js",

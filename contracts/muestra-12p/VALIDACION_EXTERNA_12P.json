@@ -1,0 +1,94 @@
+{
+  "parser": "m3u8",
+  "master": {
+    "is_variant": true,
+    "playlists": 12,
+    "segments": 0
+  },
+  "media": [
+    {
+      "profile": "P0",
+      "target_duration": 4,
+      "segments": 6,
+      "max_extinf": 4.0
+    },
+    {
+      "profile": "P1",
+      "target_duration": 4,
+      "segments": 6,
+      "max_extinf": 4.0
+    },
+    {
+      "profile": "P2",
+      "target_duration": 4,
+      "segments": 6,
+      "max_extinf": 4.0
+    },
+    {
+      "profile": "P3",
+      "target_duration": 4,
+      "segments": 6,
+      "max_extinf": 4.0
+    },
+    {
+      "profile": "P4",
+      "target_duration": 4,
+      "segments": 6,
+      "max_extinf": 4.0
+    },
+    {
+      "profile": "P5",
+      "target_duration": 4,
+      "segments": 6,
+      "max_extinf": 4.0
+    },
+    {
+      "profile": "P0.5",
+      "target_duration": 4,
+      "segments": 6,
+      "max_extinf": 4.0
+    },
+    {
+      "profile": "P1.5",
+      "target_duration": 4,
+      "segments": 6,
+      "max_extinf": 4.0
+    },
+    {
+      "profile": "P2.5",
+      "target_duration": 4,
+      "segments": 6,
+      "max_extinf": 4.0
+    },
+    {
+      "profile": "P3.5",
+      "target_duration": 4,
+      "segments": 6,
+      "max_extinf": 4.0
+    },
+    {
+      "profile": "P4.5",
+      "target_duration": 4,
+      "segments": 6,
+      "max_extinf": 4.0
+    },
+    {
+      "profile": "P5.5",
+      "target_duration": 4,
+      "segments": 6,
+      "max_extinf": 4.0
+    }
+  ],
+  "execution_doctrine": {
+    "id": "UPSCALE_SIMULADO_VIDEO_FILTERS",
+    "binding": true,
+    "immutable_by_agents": true,
+    "execution_status": "SIMULATED_EXECUTED",
+    "transcode": true,
+    "upscale": true,
+    "mechanism": "video_filters",
+    "dec_label_occurrences": 0,
+    "simulated_label_lines": 0,
+    "note": "La salida es lienzo 6K/4K por upscale simulado; la fuente y la calidad no se miden."
+  }
+}

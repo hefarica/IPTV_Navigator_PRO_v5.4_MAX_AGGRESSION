@@ -9,6 +9,19 @@ class AbrPolicy {
     @Volatile var emergencyUntil: Long = 0L
     @Volatile var currentVariantBps: Long = 0L
 
+    /**
+     * Presupuesto de precarga, escrito por [QoeContractTap] a partir del tag
+     * `#EXT-X-APE-QOE-CONTRACT` del canal servido.
+     *
+     * DEFAULTS = COMPORTAMIENTO ANTERIOR, byte a byte:
+     *  · [prefetchDepth] = 1 -> `afterSegment` precargaba exactamente la siguiente.
+     *  · [prebufferSegments] = 0 -> `recordPlaylist` no precargaba segmentos (solo MAP/KEY).
+     * Sin tag, o con el tag rechazado, el proxy se comporta como antes de existir este campo.
+     * Solo suben el buffer por delante: ningun valor puede degradar la senal.
+     */
+    @Volatile var prefetchDepth: Int = 1
+    @Volatile var prebufferSegments: Int = 0
+
     val meter = SegmentMeter()
     val qoe = QoeEngine()
 

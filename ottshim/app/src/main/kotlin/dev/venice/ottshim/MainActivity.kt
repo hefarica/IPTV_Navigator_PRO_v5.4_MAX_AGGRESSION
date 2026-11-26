@@ -82,7 +82,7 @@ class MainActivity : Activity() {
         logView.postDelayed({
             if (ProxyService.port > 0) {
                 val base = "http://127.0.0.1:${ProxyService.port}"
-                logView.text = "base=$base\nsource=$base/source.m3u8\nhealth=$base/health"
+                logView.text = "base=$base\ncanary=$base/canary/catalog.m3u\nsource=$base/source.m3u8\nhealth=$base/health"
             }
         }, 500)
     }

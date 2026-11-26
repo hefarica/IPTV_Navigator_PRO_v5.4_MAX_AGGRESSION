@@ -696,3 +696,21 @@ prioridad. Si una decisión puede subir el tier de codec sin romper FREEZELESS �
 
 
 
+
+---
+
+## 🧊 BUFFER FORENSICS — skill obligatoria para rebuffering (2026-11-21)
+
+Antes de tocar cualquier valor de buffer, `load_control`, `#EXT-X-TARGETDURATION` o duración de
+segmento, cargar la skill **`iptv-hls-buffer-forensics`** (instalada en
+`.agents/skills/iptv-hls-buffer-forensics/` y en `~/.claude/skills/`).
+
+Contrato que esa skill impone y el CI verifica en cada push
+(`node .agents/skills/iptv-hls-buffer-forensics/scripts/check_buffer_contract.js`):
+
+- Rebuffering se diagnostica con **evidencia POR CANAL**, nunca con la media global.
+- `#EXT-X-TARGETDURATION` sale de la duración **real** del segmento (2/4/6), jamás un literal fijo.
+- `load_control` = `minBufferMs 30000 / bufferForPlaybackMs 500 / bufferForPlaybackAfterRebufferMs 3000 / maxBufferMs 90000`.
+- Estrategia de buffer = `MIN=15s | TARGET=24s | MAX=48s`.
+- **Prohibido** bajar bitrate, resolución o fps para mejorar el ratio (ley anti-degradación).
+- **Prohibido** prometer buffer infinito, freeze 0 o lag 0 sin medición real.

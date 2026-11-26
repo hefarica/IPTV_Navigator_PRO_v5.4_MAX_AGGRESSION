@@ -165,12 +165,25 @@ section('E. Garantías (SSOT y pisos)');
 // ══════════════════════════════════════════════════════════════════════════
 section('F. Determinismo');
 {
+    // [2026-11-23 · MEDIDO] Esta comprobación fallaba de vez en cuando (medido: 15 pares
+    // distintos de 3000, ~0,5 %). La causa NO es la decisión: es `evidence.measuredAt`,
+    // una marca de reloj (Date.now()) que cambia si las dos llamadas caen en
+    // milisegundos distintos. Se compara todo byte a byte EXCEPTO esa marca, y se
+    // comprueba aparte que la marca existe y es un instante válido.
     function run() {
         P.reset();
         feed(P, [50, 44, 38, 33, 29, 26], 2000, 0);
-        return JSON.stringify(P.decide({ prefetch_ai_prediction: true, prefetch_segments: 90, prefetch_parallel: 40, bitrate: 12000 }));
+        return P.decide({ prefetch_ai_prediction: true, prefetch_segments: 90, prefetch_parallel: 40, bitrate: 12000 });
     }
-    ok(run() === run(), 'misma entrada ⇒ misma decisión (byte a byte)');
+    function estable(d) {
+        const copia = JSON.parse(JSON.stringify(d));
+        if (copia.evidence) delete copia.evidence.measuredAt;
+        return JSON.stringify(copia);
+    }
+    const f1 = run(), f2 = run();
+    ok(estable(f1) === estable(f2), 'misma entrada ⇒ misma decisión (byte a byte, sin la marca de reloj)');
+    ok(f1.evidence && Number.isFinite(f1.evidence.measuredAt) && f1.evidence.measuredAt > 0,
+       'evidence.measuredAt es una marca de reloj válida (excluida a propósito de la comparación)');
 }
 
 // ══════════════════════════════════════════════════════════════════════════

@@ -479,6 +479,9 @@
                 fileInput.type = 'file';
                 fileInput.id = 'gateway-file-input';
                 fileInput.style.display = 'none';
+                // ✅ 2026-11-24: lista plana O lista ya comprimida (.m3u8.gz).
+                // El pipeline detecta el contenido real por magia gzip, no por la extensión.
+                fileInput.accept = '.m3u8,.m3u,.m3u8.gz,.m3u.gz,.gz,application/vnd.apple.mpegurl,application/gzip';
                 fileInput.addEventListener('change', (e) => this._handleManualFileSelect(e));
                 document.body.appendChild(fileInput);
             }
@@ -526,25 +529,30 @@
         }
 
         _handleManualFileSelect(event) {
-            const file = event.target.files[0];
+            const file = event.target.files && event.target.files[0];
             if (!file) return;
 
-            const validExtensions = ['.m3u8', '.m3u'];
-            const hasValidExt = validExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
-            if (!hasValidExt) {
-                alert('⚠️ Por favor selecciona un archivo .m3u8 o .m3u');
+            // ✅ 2026-11-24: acepta lista plana (.m3u8/.m3u) y lista YA comprimida
+            // (.m3u8.gz/.m3u.gz). El backend publica el .gz VERBATIM y escribe el
+            // placeholder de 8 B; el edge lo sirve con gzip_static always + gunzip on.
+            const valid = /\.(m3u8|m3u)(\.gz)?$/i.test(file.name);
+            if (!valid) {
+                alert('⚠️ Selecciona una lista .m3u8, .m3u o .m3u8.gz');
                 event.target.value = '';
                 return;
             }
 
+            const isGz = /\.gz$/i.test(file.name);
             this.state.manualFile = file;
+            this.state.manualFileIsGz = isGz;
             this.state.lastM3U8Content = null;
 
             this.state.lastMetadata = {
-                filename: file.name,
+                filename: isGz ? file.name.replace(/\.gz$/i, '') : file.name,
+                source_filename: file.name,
                 size: file.size,
                 channels: 0,
-                source: 'MANUAL_UPLOAD',
+                source: isGz ? 'MANUAL_GZ_PRECOMPRESSED' : 'MANUAL_UPLOAD',
                 timestamp: new Date().toISOString(),
                 generation_id: 'file_' + file.lastModified + '_' + file.size
             };
@@ -553,6 +561,27 @@
             this._updateStatsUI();
             this._updateFileSelectorUI();
             this._updateFixedUrlUI();
+
+            // Sonda de cabecera: canales declarados SIN descomprimir 1.4 GB en RAM.
+            const pub = globalThis.APEPublisher;
+            if (pub && typeof pub.inspect === 'function') {
+                pub.inspect(file).then(info => {
+                    if (!info) return;
+                    if (info.declared) {
+                        this.state.lastMetadata.channels = info.declared;
+                        this._updateStatsUI();
+                    }
+                    const infoEl = document.getElementById('file-selector-info');
+                    if (infoEl) {
+                        infoEl.style.display = 'block';
+                        infoEl.textContent = [
+                            this._formatBytes(file.size),
+                            info.declared ? `${info.declared.toLocaleString()} canales declarados` : 'canales: se cuentan en el VPS',
+                            isGz ? 'gz precomprimido → se publica verbatim' : 'plano → gzip -9 en el servidor'
+                        ].join(' • ');
+                    }
+                }).catch(err => console.warn('[GATEWAY] sonda de cabecera:', err && err.message));
+            }
         }
 
         _updateFileSelectorUI() {
@@ -691,9 +720,103 @@
             }, 3000);
         }
 
+        /**
+         * ✅ 2026-11-24: pipeline de publicación nuevo.
+         * - Lista plana: chunks SHA-256 -> gzip -9 UNA vez en el VPS.
+         * - Lista .m3u8.gz: chunks SHA-256 -> publicación VERBATIM (sin recomprimir).
+         * - El servidor exige gzip -t + canales declarados == reales antes de publicar.
+         * - Resultado: <base>.m3u8 de 8 B + <base>.m3u8.gz real.
+         */
+        async _uploadWithAPEPublisher() {
+            let blob = this.state.manualFile || null;
+            let filename = this.config.custom_filename || this.state.lastMetadata?.filename || 'APE_ULTIMATE_v9.m3u8';
+
+            if (!blob) {
+                const content = this.state.lastM3U8Content;
+                if (!content) {
+                    document.getElementById('gateway-file-input')?.click();
+                    return;
+                }
+
+                // Gate de completitud SOLO para contenido generado en memoria
+                // (no carga ficheros gigantes: eso ya lo valida el servidor).
+                const declared = (content.match(/^#EXT-X-APE-CHANNELS:(\d+)/m) || [])[1];
+                const real = (content.match(/^#EXTINF/gm) || []).length;
+                if (declared && Number(declared) !== real) {
+                    alert(`⛔ LISTA INCOMPLETA — no se sube\n\nDeclara ${declared} canales y tiene ${real}.\nFaltan ${Number(declared) - real}.`);
+                    return;
+                }
+                const lastNonEmpty = (content.trimEnd().split('\n').pop() || '').trim();
+                if (lastNonEmpty.startsWith('#EXTINF')) {
+                    alert('⛔ LISTA TRUNCADA — no se sube\n\nEl fichero termina en un #EXTINF sin URL.');
+                    return;
+                }
+                blob = new Blob([content], { type: 'application/x-mpegurl' });
+            }
+
+            const shielded = !!document.getElementById('shieldedMode')?.checked;
+            const strategy = document.querySelector('input[name="gateway-strategy"]:checked')?.value || DEFAULT_STRATEGY;
+            return this._publishWithAPEPublisher(blob, filename, { shielded, strategy });
+        }
+
+        async _publishWithAPEPublisher(blob, filename, opts = {}) {
+            const publisher = globalThis.APEPublisher;
+            this.state.uploadInProgress = true;
+            this._updateUploadUI('start');
+            this._updateProgress(1, '🧪 Inspeccionando lista (sin cargarla en RAM)…');
+
+            try {
+                const result = await publisher.publish(blob, {
+                    filename,
+                    shielded: !!opts.shielded,
+                    strategy: opts.strategy || DEFAULT_STRATEGY,
+                    vps: this.config.vps_url,
+                    onProgress: (p) => {
+                        const pct = Math.max(1, Math.min(100, Math.round(p.percent || 0)));
+                        this._updateProgress(pct, p.message || '');
+                    }
+                });
+
+                this.state.lastUploadStats = result;
+                this.state.lastMetadata = Object.assign({}, this.state.lastMetadata, {
+                    filename: result.filename,
+                    size: result.size_bytes || blob.size,
+                    channels: result.channels_actual || result.channels_declared || this.state.lastMetadata?.channels || 0,
+                    source: result.source_was_gzip ? 'APEP_PRECOMPRESSED' : 'APEP_PUBLISHED',
+                    timestamp: new Date().toISOString(),
+                    stats: result
+                });
+                this.state.manualFile = null;
+                this.state.manualFileIsGz = false;
+                this._savePersistentState();
+                this._updateStatsUI();
+                this._updateFixedUrlUI();
+                this._updateProgress(100, '✅ Publicado');
+                this._showSuccessMessage(result);
+                if (typeof this.refreshVpsFiles === 'function') {
+                    try { await this.refreshVpsFiles(); } catch (_) { /* refresco best-effort */ }
+                }
+                return result;
+            } catch (e) {
+                console.error('[GATEWAY][PUBLISH]', e);
+                alert(`❌ No se publicó\n\n${e.message}`);
+                throw e;
+            } finally {
+                this.state.uploadInProgress = false;
+                setTimeout(() => this._updateUploadUI('end'), 2000);
+            }
+        }
+
         async upload() {
             if (this.state.uploadInProgress) return;
             if (!this.config.vps_url) { alert('⚠️ VPS no configurado'); return; }
+
+            // ✅ 2026-11-24: pipeline PHP (chunks SHA-256 + placeholder streaming).
+            // Soporta .m3u8 plano y .m3u8.gz precomprimido. Si el vendor no está
+            // cargado, cae al camino legacy sin romper la UI.
+            if (globalThis.APEPublisher) {
+                return this._uploadWithAPEPublisher();
+            }
 
             let contentToUpload = this.state.lastM3U8Content;
             // ✅ V4.29: Deshabilitado SCP local - VPS soporta hasta 250MB vía Nginx
@@ -951,10 +1074,19 @@
                     signal: AbortSignal.timeout(5000)
                 });
 
-                if (response.type === 'opaque' || response.ok) {
+                // [2026-11-22 · MEDIDO] Una respuesta opaque tiene status 0: prueba
+                // que ALGO contestó, NO que /api/health exista. Medido: /api/health
+                // devuelve 404 y aun así se anunciaba "VPS Online". Se separa.
+                if (response.ok) {
                     dot.style.backgroundColor = '#4ade80';
                     text.innerHTML = `<span style="color: #4ade80; font-weight: bold;">✅ VPS Online:</span> <span style="font-size: 0.7rem;">${vpsUrl}</span>`;
                     console.log('%c✅ Gateway VPS connected (no-cors fallback)', 'color: #4ade80; font-weight: bold;');
+                    return;
+                }
+                if (response.type === 'opaque') {
+                    dot.style.backgroundColor = '#fbbf24';
+                    text.innerHTML = `<span style="color: #fbbf24; font-weight: bold;">⚠️ VPS alcanzable:</span> <span style="font-size: 0.7rem;">${vpsUrl} — salud NO verificada (/api/health)</span>`;
+                    console.log('%c⚠️ Gateway VPS reachable but health UNVERIFIED (opaque)', 'color: #fbbf24;');
                     return;
                 }
             } catch (e) {
@@ -979,30 +1111,30 @@
         }
 
         _showSuccessMessage(result) {
-            const verifiedLabel = result.recovered ? '✅ RECOVERED (Auto-Verified)' : '✅ PRO-VERIFIED';
-            const sizeInfo = result.size ? `\n📦 Tamaño: ${this._formatBytes(parseInt(result.size))}` : '';
             const baseUrl = result.public_url || this._getFixedUrl();
-            const shieldedEnabled = !!document.getElementById('shieldedMode')?.checked;
-            // 🛡️ SHIELDED: el filename ya viene con _SHIELDED.m3u8 desde el upload
-            // (renombrado pre-upload en gateway-manager.js) → el VPS detecta inmediato y
-            // sirve directo desde la ruta shielded sin esperar al cron. Este bloque
-            // garantiza idempotencia: si el baseUrl ya termina en _SHIELDED.m3u8, NO
-            // duplica el sufijo. Si por alguna razón el upload no se renombró (legacy
-            // path), se aplica la transformación retroactiva como fallback.
-            let finalUrl = baseUrl;
-            if (shieldedEnabled && baseUrl) {
-                const alreadyShielded = /_SHIELDED\.m3u8(\?|$)/i.test(baseUrl);
-                if (!alreadyShielded) {
-                    finalUrl = baseUrl.replace(/(APE_LISTA_[^/]+?)\.m3u8(\?|$)/i, '$1_SHIELDED.m3u8$2');
-                }
-            }
-            const isImmediate = shieldedEnabled && /_SHIELDED\.m3u8(\?|$)/i.test(finalUrl);
-            const shieldNote = shieldedEnabled
-                ? (isImmediate
-                    ? '\n\n🛡️ SHIELDED: link inmediato vía proxy VPS (renombrado pre-upload).\n✅ El archivo subió con sufijo _SHIELDED — ruta shield activa al instante.'
-                    : '\n\n🛡️ SHIELDED: link vía proxy VPS (elimina 403 por slot overlap).\n⏱️ Si acabas de subir: espera ~60s a que el cron genere la versión shielded.')
-                : '';
-            alert(`${verifiedLabel}\n\nSubida completada con éxito.\nVerificado físicamente en servidor Hetzner.\n\n🔗 URL:\n${finalUrl}${sizeInfo}${shieldNote}`);
+            const shielded = /_SHIELDED\.m3u8/i.test(baseUrl);
+            const channels = result.channels_actual ?? result.channels_declared;
+            const channelLine = channels != null
+                ? `📺 Canales: ${Number(channels).toLocaleString()}` +
+                  (result.channels_declared != null ? ` (declarados ${result.channels_declared} / reales ${result.channels_actual ?? '?'})` : '')
+                : '📺 Canales: no computado';
+            const lines = [
+                '✅ LISTA PUBLICADA — PLACEHOLDER STREAMING',
+                '',
+                '🔗 URL para el reproductor:',
+                baseUrl,
+                '',
+                `📦 Payload real (.gz): ${result.gz_url || baseUrl + '.gz'}`,
+                `🧩 .m3u8 en disco: ${result.placeholder_bytes || 8} B (placeholder; el edge sirve el .gz)`,
+                channelLine,
+                `🗜️ Tamaño gzip: ${result.size_gz ? this._formatBytes(result.size_gz) : 'no computado'}` +
+                    (result.size_bytes ? ` · origen ${this._formatBytes(result.size_bytes)}` : ''),
+                `🔐 SHA-256 del payload: ${result.sha256_gz ? result.sha256_gz.slice(0, 20) + '…' : 'no computado'}`,
+                '🖥️ Serving: nginx gzip_static always + gunzip on (gzip y legacy)',
+                shielded ? '\n🛡️ Salida SHIELDED activa (mismo contenido, nombre _SHIELDED).' : '',
+                result.recovered ? '\nℹ️ La respuesta HTTP se cortó pero list_files.php confirmó la publicación.' : ''
+            ];
+            alert(lines.filter(Boolean).join('\n'));
         }
 
         _showToast(message) {
@@ -1101,7 +1233,7 @@
 
         setCustomFilename(filename) {
             let sanitized = filename.trim();
-            if (sanitized && !sanitized.match(/\.(m3u8|m3u)$/i)) sanitized += '.m3u8';
+            if (sanitized && !sanitized.match(/\.(m3u8|m3u)(\.gz)?$/i)) sanitized += '.m3u8';
             this.config.custom_filename = sanitized;
             this.saveConfig('Nombre de archivo personalizado');
             this._updateFixedUrlUI();
@@ -1144,7 +1276,38 @@
                 dropdown.innerHTML = '<option value="">⏳ Cargando archivos...</option>';
                 dropdown.disabled = true;
 
-                const resp = await fetch(`${this.config.vps_url}/list_files.php`, { cache: 'no-store' });
+                /* [2026-11-19] CAUSA MEDIDA: el console daba HTTP 404 (no fallo de red) y
+             * /list_files.php responde 200 + JSON + CORS * en el host canonico.
+             * El 404 venia de la vps_url GUARDADA (host/path que ya no sirve).
+             * Cascada: RELATIVA primero (inmune a config vieja y a mixed content),
+             * luego la configurada, luego la canonica. Con la primera que responda
+             * 200 se repara el config solo. */
+            const resp = await (async () => {
+                const _cands = ['/list_files.php',
+                    `${this.config.vps_url}/list_files.php`,
+                    'https://iptv-ape.duckdns.org/list_files.php'];
+                const _seen = new Set(); let _last = null;
+                for (const _u of _cands) {
+                    if (_seen.has(_u)) continue; _seen.add(_u);
+                    try {
+                        const _r = await fetch(_u, { cache: 'no-store' });
+                        if (_r.ok) {
+                            if (_u !== _cands[1]) {
+                                try {
+                                    this.config.vps_url = (_u.charAt(0) === '/')
+                                        ? 'https://iptv-ape.duckdns.org'
+                                        : _u.replace(/\/list_files\.php$/, '');
+                                    this.saveConfig('vps_url reparada');
+                                    console.warn('[GATEWAY] vps_url estaba mal (404). Reparada a ' + this.config.vps_url);
+                                } catch (_e1) {}
+                            }
+                            return _r;
+                        }
+                        _last = new Error('HTTP ' + _r.status + ' en ' + _u);
+                    } catch (_e2) { _last = _e2; }
+                }
+                throw (_last || new Error('list_files.php sin respuesta'));
+            })();
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
                 const data = await resp.json();

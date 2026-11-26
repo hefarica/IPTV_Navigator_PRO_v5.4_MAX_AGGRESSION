@@ -9,7 +9,7 @@
 # QUE HACE
 #   Recorre /var/www/html/lists/ buscando listas SIN su version cableada y las
 #   cablea. Cuando el IPTV Navigator sube una lista nueva, en el siguiente tick
-#   del timer ya tiene su <nombre>_CABLEADA.m3u8 + .gz, y el reproductor solo
+#   del timer ya tiene su <nombre>_CABLEADA.m3u8, y el reproductor solo
 #   tiene que apuntar a la variante _CABLEADA.
 #
 # LAS TRES PROPIEDADES, CADA UNA CON SU PRUEBA
@@ -25,7 +25,9 @@
 #     La misma lista convive en varias formas sin romper el contrato:
 #        <lista>.m3u8            original, directa al proveedor
 #        <lista>_CABLEADA.m3u8   todos los canales por /pulse/
-#        <lista>_CABLEADA.m3u8.gz  la misma, gzip_static para servir rapido
+#        <lista>_CABLEADA.m3u8     la misma, sin .gz (regla R2: un artefacto de lista
+#                                  se entrega .m3u8 puro; gzip_static sirve el fichero
+#                                  tal cual cuando no hay hermano comprimido)
 #        /url2/<id>.m3u8         metadata por canal bajo demanda
 #     El reproductor elige la forma apuntando a una URL u otra. Nada se renombra
 #     ni se pisa.
@@ -37,7 +39,7 @@
 #     STREAM-INF 31==31, EXTHTTP 32==32, EXTVLCOPT 4377==4377, VIDEO-RANGE 31==31.
 #
 # GUARDIA DE DISCO (obligatoria)
-#   Cablear una lista la duplica en disco (el .m3u8 cableado + su .gz). El VPS
+#   Cablear una lista la duplica en disco (el .m3u8 cableado). El VPS
 #   estaba al 88 % tras cablear la primera. Este script NO cablea si quedan menos
 #   de MIN_FREE_MB megas libres: es preferible no tener la version cableada a
 #   llenar el disco y tumbar nginx. Sale con 3 y lo registra.
@@ -75,7 +77,7 @@ hechos=0; saltados=0; fallos=0
 # "listas historicas que ya nadie mira".
 #
 # Cablear duplica el tamano de la lista (1,3 GB -> 1,24 GB de salida + 336 MB
-# de .gz). Con 21.224 canales por lista, tres listas historicas son 3,4 GB. El
+# del cableado). Con 21.224 canales por lista, tres listas historicas son 3,4 GB. El
 # VPS tiene 38 GB y ya estaba al 88 %.
 #
 # Por eso ahora se cablea UNA sola: la mas reciente. Es la que el generador
@@ -122,7 +124,8 @@ for src in "${candidatas[@]:-}"; do
     continue
   fi
 
-  # La fuente puede estar vacia (8 B: solo #EXTM3U). El .gz de al lado es la
+  # La fuente puede estar vacia (8 B: solo #EXTM3U). Un .gz de al lado (LEGADO, de
+# generaciones anteriores que si comprimian) es la
   # lista de verdad en ese caso. Sin esto cableariamos un fichero de 8 bytes.
   src_use="$src"
   if [ "$(stat -c%s "$src" 2>/dev/null || echo 0)" -lt 1024 ] && [ -r "${src}.gz" ]; then
@@ -152,7 +155,12 @@ for src in "${candidatas[@]:-}"; do
   tmp="${out}.partial.$$"
   if php "$CABLER" "$src_use" "$tmp" >>"$LOG" 2>&1; then
     mv "$tmp" "$out"
-    gzip -9 -c "$out" > "${out}.gz"
+    # [2026-11-22 · REGLA R2 de docs/policies/LIST_ARTIFACT_RULES.md]
+    # NO se genera "${out}.gz". Un artefacto de lista se entrega como .m3u8 puro: una extensión
+    # comprimida no es una lista, no se abre ni se pega en un reproductor, y el .gz solo servía a
+    # gzip_static. Con el .m3u8 presente, gzip_static no encuentra hermano y sirve el fichero tal
+    # cual — que es exactamente el comportamiento correcto. Además cada .gz duplicaba el disco de
+    # una lista de ~700 MB. (Antes: gzip -9 -c "$out" > "${out}.gz")
     # Recalcula el espacio libre para la siguiente lista de la misma pasada.
     FREE_MB=$(df -Pm "$LISTS" 2>/dev/null | awk 'NR==2 {print $4}')
     hechos=$((hechos+1))

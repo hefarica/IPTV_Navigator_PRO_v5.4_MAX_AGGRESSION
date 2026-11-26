@@ -2181,7 +2181,7 @@
                           <strong style="color:#4ade80; font-size: 0.75rem;">Anti-Freeze (Buffer/Reconexión)</strong>
                         </div>
                         <select id="antiFreezeLevel" class="input sm" style="width: 100%; font-size: 0.78rem;"
-                          onchange="app.state.antiFreezeLevel = parseInt(this.value); console.log('❄️ Anti-Freeze Level:', this.value);">
+                          onchange="if (window.app && window.app.state) { window.app.state.antiFreezeLevel = parseInt(this.value, 10); } console.log('❄️ Anti-Freeze Level:', this.value);">
                           <option value="1" title="Buffer mínimo, sin reconexión automática">L1 - Mínimo</option>
                           <option value="2" title="Buffer moderado, reconexión básica">L2 - Normal</option>
                           <option value="3" selected title="Buffer balanceado, reconexión automática">L3 - Balanceado ⭐
@@ -2437,31 +2437,36 @@
                   </p>
 
                   <!-- Quick Profile Selector -->
+                  <div id="ape-hybrid-crystal-banner" style="margin:0 0 10px 0;padding:10px 12px;border-radius:9px;border:1px solid rgba(168,85,247,.45);background:linear-gradient(135deg,rgba(168,85,247,.18),rgba(56,189,248,.10));font-size:.72rem;line-height:1.35;color:#e9d5ff;">
+                    <strong style="color:#f0abfc;">🚀 HÍBRIDO APE CRYSTAL v9.4 · TODAS LAS RESOLUCIONES</strong><br>
+                    <strong>Upscaling por video filters</strong>: 480p / 544p / 720p / 1080p / 4K → <strong>P1.5</strong> (4K simulado + 6K emulado, <code>p=P1</code>). 8K → <strong>P0</strong> nativo (no se degrada). El VPS declara <code>MODE=SIMULATED</code> y <code>EXECUTED=0</code>: no es una fuente 4K real. Fuente de verdad: <code>ape.crystal.hybrid/1</code> + override del propietario.
+                  </div>
+
                   <div style="display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap;">
                     <button class="btn-profile" data-profile="P0"
                       onclick="if(window.ProfileManagerV9) { window.ProfileManagerV9.selectProfile('P0'); window.ProfileManagerV9.render(); }"
                       style="padding: 6px 10px; font-size: 11px; background: rgba(220,38,38,0.15); border: 1px solid rgba(220,38,38,0.4); color: #fca5a5; border-radius: 6px; cursor: pointer;">P0
-                      ULTRA</button>
-                    <button class="btn-profile" data-profile="P1"
+                      8K MASTER</button>
+                    <button class="btn-profile active" data-profile="P1"
                       onclick="if(window.ProfileManagerV9) { window.ProfileManagerV9.selectProfile('P1'); window.ProfileManagerV9.render(); }"
-                      style="padding: 6px 10px; font-size: 11px; background: rgba(234,88,12,0.15); border: 1px solid rgba(234,88,12,0.4); color: #fdba74; border-radius: 6px; cursor: pointer;">P1
-                      8K</button>
-                    <button class="btn-profile active" data-profile="P2"
+                      style="padding: 6px 10px; font-size: 11px; background: rgba(234,88,12,0.22); border: 1px solid rgba(234,88,12,0.55); color: #fdba74; border-radius: 6px; cursor: pointer;">P1
+                      4K UHD PRO</button>
+                    <button class="btn-profile" data-profile="P2"
                       onclick="if(window.ProfileManagerV9) { window.ProfileManagerV9.selectProfile('P2'); window.ProfileManagerV9.render(); }"
                       style="padding: 6px 10px; font-size: 11px; background: rgba(202,138,4,0.15); border: 1px solid rgba(202,138,4,0.4); color: #fde047; border-radius: 6px; cursor: pointer;">P2
-                      4K</button>
+                      4K BAL</button>
                     <button class="btn-profile" data-profile="P3"
                       onclick="if(window.ProfileManagerV9) { window.ProfileManagerV9.selectProfile('P3'); window.ProfileManagerV9.render(); }"
                       style="padding: 6px 10px; font-size: 11px; background: rgba(22,163,74,0.25); border: 1px solid rgba(22,163,74,0.5); color: #86efac; border-radius: 6px; cursor: pointer;">P3
-                      FHD</button>
+                      1080p</button>
                     <button class="btn-profile" data-profile="P4"
                       onclick="if(window.ProfileManagerV9) { window.ProfileManagerV9.selectProfile('P4'); window.ProfileManagerV9.render(); }"
                       style="padding: 6px 10px; font-size: 11px; background: rgba(8,145,178,0.15); border: 1px solid rgba(8,145,178,0.4); color: #67e8f9; border-radius: 6px; cursor: pointer;">P4
-                      HD</button>
+                      720p</button>
                     <button class="btn-profile" data-profile="P5"
                       onclick="if(window.ProfileManagerV9) { window.ProfileManagerV9.selectProfile('P5'); window.ProfileManagerV9.render(); }"
                       style="padding: 6px 10px; font-size: 11px; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.4); color: #a5b4fc; border-radius: 6px; cursor: pointer;">P5
-                      SD</button>
+                      480p</button>
                   </div>
 
                   <button class="btn" style="width: 100%; background: linear-gradient(135deg, #10b981, #059669);"
@@ -2772,6 +2777,55 @@
                 <span id="apeAutoAdjustOut" style="margin-left:10px; font-size:0.85rem; color:var(--text-muted);"></span>
                   <span>Modo DIRECTO (sin VPS)</span>
                 </label>
+                <script>
+                /* [2026-11-23 · INTEGRACIÓN 4K/6K EN LA LISTA]
+                   La casilla vivia AQUI, suelta, y su script en linea escribia
+                   window.APE_4K6K_AUDIT, que nadie leia al emitir: no anadia ni una linea a la
+                   lista. Se ha movido DENTRO del panel de OPTIMIZACION Y SALIDAS
+                   (generation-output-panel.js, fila INTENCION:), que es quien la pinta, la
+                   engancha y guarda la preferencia. El panel se construye DESPUES del parseo, asi
+                   que un getElementById escrito aqui devolveria null y el cableado moriria en
+                   silencio. Este bloque solo restaura el flag al cargar la pagina, para que
+                   cualquier boton de generacion de fuera del panel tambien lo respete.
+                   Por defecto: APAGADO (la lista sale byte a byte como antes). */
+                (function () {
+                    var v = false;
+                    try { v = (localStorage.getItem('ape_4k6k_intent_enabled') === '1'); } catch (e) { v = false; }
+                    window.APE_4K6K_AUDIT = v;
+                })();
+                </script>
+                <script>
+                /* [2026-11-23 · MODO UNIVERSAL] Mismo reparto que la casilla 4K/6K: la casilla
+                   de verdad vive DENTRO del panel ⚙️ OPTIMIZACIÓN Y SALIDAS (fila UNIVERSAL:),
+                   que la pinta generation-output-panel.js con el resto del panel y es la que
+                   guarda la preferencia en localStorage. Aquí sólo se restaura el flag al
+                   cargar la página, para que cualquier botón de generación de fuera del panel
+                   lo respete. Por defecto: APAGADO (lista byte a byte como antes). */
+                (function () {
+                    var v = false;
+                    try { v = (localStorage.getItem('ape_universal_intent_enabled') === '1'); } catch (e) { v = false; }
+                    window.APE_UNIVERSAL_MODE = v;
+                })();
+                </script>
+                <script>
+                /* [2026-11-23 · d= DEL ENVOLTORIO PULSE] El generador envuelve cada URL al
+                   endpoint /pulse y le pone un `d=` que describe al reproductor. Ese `d=` era
+                   UNA CONSTANTE para todos los canales: {t:generic,s:unknown,r:2048,w:1920,
+                   h:1080,f:30}, así que la URL del canal decía 1080p SDR mientras su
+                   #EXTSHIMOTT declaraba otra franja/resolución y la URL no decía el perfil.
+                   Aquí se enciende el `d=` COHERENTE (mismo dato que el tag: hdr de la fuente
+                   y p = perfil del canal), sólo para las listas que genera el panel. Los seis
+                   campos del dispositivo (t/s/r/w/h/f) no cambian.
+                   APAGADO ≠ roto: se apaga con localStorage['ape_pulse_device_meta'] = '0'
+                   (o window.APE_PULSE_DEVICE_META = false) y la lista vuelve a salir byte a
+                   byte como antes. El arnés headless no lo enciende: sus referencias medidas
+                   siguen intactas. */
+                (function () {
+                    var on = true;
+                    try { if (localStorage.getItem('ape_pulse_device_meta') === '0') on = false; } catch (e) { on = true; }
+                    window.APE_PULSE_DEVICE_META = on;
+                })();
+                </script>
                 <label for="publicationMode" style="margin-left:14px; color:var(--text-muted); font-size:0.85rem; font-weight:bold;">Modo:</label>
                 <select id="publicationMode"
                   onchange="window.APE_PUBLICATION_MODE=this.value; console.log('%c[PUB-MODE] '+this.value,'color:#0ea5e9;font-weight:bold;');"
@@ -2781,6 +2835,39 @@
                   <option value="diagnostic">Diagnostic (auditoría)</option>
                 </select></div>
             <script>window.APE_PUBLICATION_MODE = window.APE_PUBLICATION_MODE || 'balanced_95';</script>
+            <!-- 🧬 MULTIPARSER · TODOS LOS PLAYERS -->
+            <div id="apeMultiParserPanel" style="
+                margin-top: 14px;
+                padding: 16px;
+                border: 1px solid rgba(139, 92, 246, 0.35);
+                border-radius: 14px;
+                background: linear-gradient(135deg, rgba(139, 92, 246, 0.10), rgba(14, 165, 233, 0.05));
+            ">
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <span style="font-size:1.3rem;">🧬</span>
+                <strong style="font-size:0.95rem; color:#e2e8f0;">MULTIPARSER · TODOS LOS PLAYERS</strong>
+                <span style="font-size:0.72rem; color:#94a3b8;">VLC · Kodi · TiviMate · OTT Navigator · Smarters · ExoPlayer · Apple · ffmpeg · mpv · hls.js</span>
+              </div>
+              <p style="margin:8px 0 12px 0; font-size:0.78rem; color:var(--text-muted); line-height:1.5;">
+                Genera un ZIP con la misma lista traducida al dialecto de cada player, sin modificar la lista original.
+                Conserva tags desconocidos en <code>universal.m3u8</code>, elimina cabeceras tóxicas y documenta lo que cada player no soporta.
+              </p>
+              <div class="button-row">
+                <button id="btnMultiExportView" class="btn" type="button"
+                  onclick="window.APEMultiExport ? window.APEMultiExport.exportCurrentView() : alert('Multiparser cargando. Espera un segundo.')"
+                  style="background: linear-gradient(135deg,#8b5cf6,#6366f1); box-shadow: 0 10px 25px rgba(139,92,246,0.3);">
+                  <span class="icon">📦</span><span>Exportar vista actual (ZIP)</span>
+                </button>
+                <button id="btnMultiParseFile" class="btn secondary" type="button"
+                  onclick="window.APEMultiExport ? window.APEMultiExport.pickAndExport() : alert('Multiparser cargando. Espera un segundo.')"
+                  style="margin-left:10px;">
+                  <span class="icon">📂</span><span>Multiparsear archivo (ZIP)</span>
+                </button>
+              </div>
+              <div id="apeMultiParserStatus" style="margin-top:8px; font-size:0.74rem; color:#94a3b8;">
+                Listo. La exportación no altera la lista ni el generador.
+              </div>
+            </div>
             <p id="exportStatus" style="font-size:0.78rem; color:var(--text-muted); margin-top:8px;">Ninguna
               exportación
               realizada todavía.</p>
@@ -3996,6 +4083,15 @@
   <!-- Librerías externas (xlsx deferred to end for faster initial render) -->
   <script src="xlsx.full.min.js" defer></script>
   <script src="qrcode.min.js"></script>
+  <!-- HÍBRIDO APE CRYSTAL (2026-11-24): P1 + p=P1 para sub-4K simulado.
+       Rollback sin tocar código: window.APE_HYBRID_CRYSTAL = false. -->
+  <script>
+    window.APE_HYBRID_CRYSTAL = true;
+    window.APE_HYBRID_POLICY = 'ape.crystal.hybrid/1+OWNER_ALL_RESOLUTIONS_UPSCALE';
+    window.APE_HYBRID_UPSCALE_ALL = true;
+    // El JIT queda fuera del camino híbrido: 503 PROVIDER_SLOT_BUSY medido.
+    window.APE_USE_JIT = false;
+  </script>
   <!-- ⚠️ VPS_CONFIG PRIMERO - Centraliza IP/dominio ANTES de que otros módulos carguen -->
   <script src="js/vps-config.js"></script>
   <!-- 🚀 VPS Adapter v1.0.0 - Reemplaza Cloudflare con VPS propio (Hetzner) -->
@@ -4013,13 +4109,14 @@
   <script src="js/group-title-config-manager.js"></script>
   <script src="js/group-title-config-ui.js"></script>
 
+  <script src="js/ape-publisher.js?v=20261124"></script>
   <script src="js/resumable-uploader-v2.js?v=2.0"></script>
-  <script src="js/gateway-manager.js?v=20260426-shielded-rename-pre-upload"></script>
+  <script src="js/gateway-manager.js?v=20261124-placeholder"></script>
   <script src="js/vps-hls-installer.js"></script>
   <script src="axios.min.js"></script>
 
   <!-- Core Modules -->
-  <script src="core/db-manager.js"></script>
+  <script src="core/db-manager.js?v=0aa16d3c"></script>
   <script src="core/field-discovery.js"></script>
 
   <!-- Enriquecimiento incremental / Fuentes (DELTA System) -->
@@ -4039,7 +4136,7 @@
   <!-- Módulos complementarios -->
   <script src="connection-module-v2-adaptado.js"></script>
   <script src="enrichment-module.js"></script>
-  <script src="export-module.js?v=20261107-rea"></script>
+  <script src="export-module.js?v=20261119-afgovern"></script>
 
   <!-- ═══════════════════════════════════════════════════════════════════
        🎛️ MODAL: GESTOR DE HEADERS AVANZADO
@@ -4310,10 +4407,18 @@
   <!-- 🎚️ APE v9 PROFILE SYSTEM - MUST load BEFORE app.js -->
   <script src="js/ape-v9/lab-extra-headers.js?v=20261102-audio-safe-v1"></script>
 <script src="js/ape-v9/ape-lab-v8-profiles.js?v=chainfix-20261115"></script>
+<!-- 🔗 REA ronda 20 · PUENTE de los 12 perfiles del LAB. Corrige la copia embebida
+     (suelo/techo/bitrate por perfil) y entrega al generador los seis perfiles .5 de 6K
+     que APE_PROFILES_CONFIG no declara. Debe ir DESPUÉS de ape-lab-v8-profiles.js
+     (lo corrige en sitio) y ANTES de ape-profiles-config.js (que lo mezcla). -->
+<script src="js/ape-v9/ape-lab-12p-reconcile.js?v=1.2.1-v94"></script>
 <script src="js/ape-v9/rea-processing-policy.js?v=20261107-rea"></script>
 <script src="js/ape-v9/rea-export-finalizer.js?v=6kemul-20261115"></script>
 <script src="js/ape-v9/rea-catalog-export.js?v=20261107-rea"></script>
-<script src="js/ape-v9/ape-profiles-config.js?v=chainfix-20261115"></script>
+<script src="js/ape-v9/ape-profiles-12k.js?v=20261119-12k"></script>
+  <script src="js/ape-v9/ape-profiles-config.js?v=d59144b1"></script>
+  <script src="js/ape-v9/ape-4k6k-audit-adapter.js?v=20261120-fase2"></script>
+  <script src="js/ape-4k6k-consumer.js?v=20261120-f8"></script>
   <!-- profile-manager-v9.js loaded later at v9.0.3 (line ~3171) -->
   <script src="js/ape-v9/profile-bridge-v9.js?v=1.1"></script>
   <script src="js/ape-v9/ape-xtream-atomic-probe.js?v=20261106-gen6k-atad"></script>
@@ -4370,9 +4475,12 @@
   <script src="js/ape-v9/parsers/ape-parser-normalizer.js?v=1.0"></script>
   <script src="js/ape-v9/parsers/ape-parser-validator.js?v=1.0"></script>
   <script src="js/ape-v9/parsers/ape-player-profile-emitter.js?v=1.0"></script>
-  <script src="js/ape-v9/parsers/ape-universal-parser-stack.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-universal-parser-stack.js?v=1.0.1-20261125"></script>
   <!-- 🔌 APE PARSER GENERATION BRIDGE — connects 26-parser evidence to generation pipeline -->
-  <script src="js/ape-v9/parsers/ape-parser-generation-bridge.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-parser-generation-bridge.js?v=1.0.1-20261125"></script>
+  <!-- 🧬 APE MULTI-PARSER — parseo sin pérdida + dialectos por player + ZIP -->
+  <script src="js/ape-v9/ape-multi-parser.js?v=1.0.1-20261125"></script>
+  <script src="js/ape-v9/ape-multi-export-ui.js?v=1.0.1-20261125"></script>
   <!-- 🛡️ APE MAX QUALITY FALLBACK RESOLVER — MAX IMAGE FIRST · COVERAGE ALWAYS · NO CHANNEL LOSS -->
   <!-- 🎯 APE HEVC CASCADE CSV SSOT — 12-tier Tier→Codec mapping (HFRC mandato 2026-05-20)
        MUST load BEFORE ape-fallback-resolver.js y m3u8-typed-arrays-ultimate.js -->
@@ -4395,13 +4503,43 @@
      generador. Es un snapshot con fecha: si el TTL paso, re-medir y regenerar. -->
 <script src="js/ape-v9/ape-server-profiles-data.js?v=20261106-ready"></script>
 
-<script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=hybrid1file-20261115"></script>
+  <!-- 🧪 CAPA 12P (aditiva) — política de buffer/upscale del LAB importado.
+       Sin APE_12P_MODE encendido NO cambia ni un byte de las listas. -->
+  <script src="js/ape-v9/lab-12p-conformance.js?v=6bbfad97"></script>
+  <!-- 🎯 INTENCIÓN 4K/6K (aditiva) — una línea #EXT-X-APE-4K6K-INTENT por canal cuando
+       la casilla del panel (⚙️ OPTIMIZACIÓN Y SALIDAS → INTENCIÓN:) está encendida.
+       Carga ANTES del generador: el generador la llama por canal. Apagada = lista intacta. -->
+  <script src="js/ape-v9/ape-4k6k-intent-emit.js?v=d70dbadb"></script>
+  <!-- 🧮 CONDICIÓN DE BUFFER (aditiva) — entrada >= salida x (1 + delta), por canal.
+       Carga ANTES del generador. Apagada (APE_12P_MODE sin encender) = lista byte a byte igual. -->
+  <script src="js/ape-v9/buffer-input-demand.js?v=1.0.0-buf"></script>
+  <!-- RONDA 18: aquí se cargaba buffer-input-demand-panel.js, que montaba un SEGUNDO bloque
+       de la CONDICIÓN DE BUFFER (fuera del panel) repitiendo los mismos TRES ids del panel.
+       getElementById devuelve el primero, así que el cuadro del panel se quedaba vacío y el
+       input duplicado no hacía nada. El bloque bueno es el del panel y allí vive ahora la
+       tabla por perfil (contenedor propio, id nuevo); este script ya no se carga. El módulo
+       sigue en disco y su aritmética (buffer-input-demand.js) sigue cargada justo arriba. -->
+  <!-- 🌐 MODO UNIVERSAL (aditivo) — una línea #EXT-X-APE-UNIVERSAL por canal cuando la
+       casilla del panel (⚙️ OPTIMIZACIÓN Y SALIDAS → UNIVERSAL:) está encendida: declara
+       los dialectos de player cubiertos, que los tags desconocidos y los #EXT-X-APE-* se
+       conservan, y la guía canónica 12P (muestra 12P + LAB v9.3) que se siguió. Carga
+       ANTES del generador. Apagada = lista byte a byte igual que siempre. -->
+  <script src="js/ape-v9/ape-universal-emit.js?v=1.0.1-20261125"></script>
+  <!-- HÍBRIDO APE CRYSTAL v9.4: contrato ape.crystal.hybrid/1 + override del
+       propietario (upscaling de TODAS las resoluciones <8K por video filters).
+       Carga ANTES del generador. Rollback: window.APE_HYBRID_CRYSTAL=false. -->
+  <script src="js/ape-v9/ape-crystal-hybrid.js?v=9.4-owner"></script>
+<script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20261124-hybrid"></script>
   <!-- 🪦 OMEGA SLOT REAPER — Pre-flight liberation of Xtream max_connections slots -->
   <script src="js/ape-v9/slot-reaper.js?v=1.0.0-omega-20260409"></script>
   <script src="js/ape-v9/m3u8-quality-upgrader-v2.js?v=2.0"></script>
-  <script src="js/ape-v9/hud-typed-arrays.js?v=16.1-tickprofile-20260417"></script>
+  <script src="js/ape-v9/hud-typed-arrays.js?v=16.2-medido-20261122"></script>
   <!-- 🩺 APE GENERATION CONTROLLER — engancha botón health-check + generateHealthyList -->
-  <script src="js/ape-v9/generation-controller.js?v=panelpromise-20261115"></script>
+  <!-- 🗃️ APE MEASUREMENT LEDGER — memoria durable: toda medición y todo plan aplicado -->
+  <!-- 🗃️ MEASUREMENT LEDGER: el fichero js/ape-v9/ape-measurement-ledger.js NO EXISTE en disco (0 ficheros con ese nombre en todo frontend/), así que su etiqueta sólo dejaba un error de carga en la consola. Se repone cuando el módulo exista. -->
+  <script src="js/ape-v9/ape-speed-meter-v9.js?v=20261121-preflight"></script>
+  <script src="js/ape-v9/ape-speedmeter-bridge.js?v=20261121-preflight"></script>
+  <script src="js/ape-v9/generation-controller.js?v=20261121-preflight"></script>
   <!-- 🩺 GENERATION HUD OVERLAY — panel discreto top-right que muestra fases del pipeline.
        Solo observa console.log (no toca el flow). window.GenerationHUD.show()/hide() -->
   <script src="js/ape-v9/generation-hud-overlay.js?v=1.2-auto-close-inactivity"></script>
@@ -4438,7 +4576,7 @@
      IndexedDB por ape-lab-import-helper.js. Debe cargar ANTES de app.js. -->
 <script src="js/ape-ui-persistence.js?v=20261106-persist2"></script>
 
-<script src="app.js?v=20261107-rea"></script>
+<script src="app.js?v=1e01b3a0"></script>
   <script src="js/ape-headers-preview-fix.js?v=1.0"></script>
 
   <!-- 🔒 PERSISTENCIA: mantiene la biblioteca de servidores sincronizada
@@ -4457,6 +4595,7 @@
        La DNA contiene credenciales de proveedor → se sirve solo desde el
        servidor local (mismo origen), nunca desde internet.
        Uso en consola:  await apeImportLabLocal()   |   apeLabStatus() -->
+  <script src="js/ape-lab-normalize.js?v=725ab340"></script>
   <script src="js/ape-lab-import-helper.js?v=20261107-rea"></script>
 
   <!-- 🔧 Transform línea a línea BYTE-EXACTO (solo reescribe líneas ^http://)
@@ -4669,7 +4808,7 @@
   <script src="js/ape-v9/streaming/settings-optimizer-v9.js?v=1.0"></script>
   <!-- Solver del panel: grafo de precedentes/dependientes + función objetivo +
        botón AUTO-AJUSTAR + propagación al editar un número. -->
-  <script src="js/ape-v9/streaming/profile-solver-v9.js?v=20261101-tier-real-v4"></script>
+  <script src="js/ape-v9/streaming/profile-solver-v9.js?v=20261120-perfiles12"></script>
   <script src="js/ape-v9/streaming/auto-adjust-routine-v9.js?v=20261103-delta-v1"></script>
   <script src="js/ape-v9/streaming/streaming-input-resolver.js?v=20261026-savefix"></script>
   <script src="js/ape-v9/streaming/streaming-calculator-v3.js?v=20261026-savefix"></script>
@@ -4678,7 +4817,7 @@
 
   <!-- Streaming Calculator v2.0 (Legacy compatibility) -->
   <script src="js/ape-v9/streaming-calculator.js"></script>
-  <script src="js/ape-v9/prefetch-presets.js?v=20261026-savefix"></script>
+  <script src="js/ape-v9/prefetch-presets.js?v=20261119-strategy"></script>
   <script src="js/ape-v9/ape-profiles-config-v5.js?v=chainfix-20261115"></script>
   <!-- Smart Codec Prioritizer v1.0 (AV1 > H265 > VP9 > H264 > MPEG2) -->
   <!-- ⚡ V4.28: smart-codec-prioritizer, buffer-adaptativo-supremo, evasion-407-supremo already loaded at lines 3159-3161, SKIP DUPLICATES -->
@@ -4686,8 +4825,21 @@
   <script src="js/ape-v9/vpn-integration-supremo.js"></script>
   <!-- Latency Rayo Supremo v1.0 (23 metadatos por canal) -->
   <script src="js/ape-v9/latency-rayo-supremo.js"></script>
-  <script src="js/ape-v9/streaming/sufficiency-law-v1.js?v=20261108"></script>
-  <script src="js/ape-v9/profile-manager-v9.js?v=20261106-ready"></script>
+  <script src="js/ape-v9/streaming/sufficiency-law-v1.js?v=68746e85"></script>
+  <!-- Productor de medicion que la ley de suficiencia exige: bins de 1 s sobre
+       ventana de 5-10 s desde Resource Timing. Sin el, el panel no puede pasar
+       de NO_MEASUREMENT y muestra UNSTABLE/79.97% sin dato real. -->
+  <script src="js/ape-v9/streaming/bandwidth-meter-v1.js?v=20261121-preflight"></script>
+  <script src="js/ape-v9/streaming/qos-speedtest-v1.js?v=20261121-preflight"></script>
+  <!-- Autotuner: NO muestra el health, MUEVE los parametros. Formulas + propuesta
+       del LLM de la plataforma (/image/optimize-llm), validada por rangos; si el
+       LLM falla o toca fallbacks/codec/resolucion, gana el determinista. -->
+  <script src="js/ape-v9/streaming/auto-tune-v1.js?v=20261119-reabase"></script>
+  <script src="js/ape-v9/profiles-sync.js?v=20261119-sync"></script>
+<!-- [2026-11-22] Resolutor determinista del BW mínimo de prefetch: debe cargarse
+     ANTES de profile-manager-v9.js (el panel lo consulta al pintar). -->
+<script src="js/ape-v9/prefetch-min-bw.js?v=98af9d8b"></script>
+<script src="js/ape-v9/profile-manager-v9.js?v=3cafcf60"></script>
   <!-- Profile Manager - Custom Headers Extension -->
   <script src="js/profile-manager-custom-headers.js"></script>
   <script src="js/m3u8-custom-headers-integration.js"></script>
@@ -4810,7 +4962,7 @@
   <!-- Gateway M3U8 Manager (depende de hardened-verification) -->
   <script src="js/gateway-m3u8-integrated.js?v=4.28.1"></script>
   <!-- 🚀 Gateway Turbo Upload — chunks paralelos (no reemplaza el original) -->
-  <script src="js/gateway-turbo-upload.js?v=2.1.0-shielded"></script>
+  <script src="js/gateway-turbo-upload.js?v=2.2.0-aphue"></script>
 
   <!-- M3U8 Generator v14.0 SUPREMO (estructura original + 8 mejoras) -->
   <script src="js/ape-v9/m3u8-generator-v14-supremo.js"></script>
@@ -5037,13 +5189,13 @@
   <!-- ZERO edits to existing files. Separate IndexedDB. Non-invasive overlay. -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <script src="js/ape-anle/anle-canonicalize.js?v=1.0.0-anle"></script>
-  <script src="js/ape-anle/anle-dictionary.js?v=1.0.0-anle"></script>
+  <script src="js/ape-anle/anle-dictionary.js?v=1.1.0-anle-lifecycle"></script>
   <script src="js/ape-anle/anle-seed-syncer.js?v=1.0.0-anle"></script>
   <script src="js/ape-anle/anle-booster.js?v=1.0.0-anle"></script>
   <script src="js/ape-anle/anle-fingerprint.js?v=1.0.0-anle"></script>
   <script src="js/ape-anle/anle-learner.js?v=1.0.0-anle"></script>
   <script src="js/ape-anle/anle-6stage-detection.js?v=1.0.0-anle"></script>
-  <script src="js/ape-anle/ape-anle-core.js?v=1.0.0-anle"></script>
+  <script src="js/ape-anle/ape-anle-core.js?v=2c232a41"></script>
   <script src="js/ape-anle/anle-tests.js?v=1.0.0-anle" defer></script>
 
   <!-- 🧬 ANLE Toggle Panel — fixed bottom-right (v1.1: no delete button, richer stats) -->
@@ -5116,6 +5268,12 @@
 
             prevBoosts = x.totalBoosts;
             prevAliases = x.aliases;
+          }).catch(function(e) {
+            // Un rechazo de IndexedDB (InvalidStateError / "connection is closing")
+            // no debe convertirse en "Uncaught (in promise)" cada 5 s.
+            s.innerHTML = '⚠️ ANLE: ' + (e && e.message ? e.message : 'IndexedDB no disponible');
+            act.textContent = '⏸️ reintentando';
+            act.style.color = '#f59e0b';
           });
         }
         setInterval(refresh, 5000);
@@ -5125,7 +5283,8 @@
   </script>
 
   <script src="js/ape-v9/generation-output-panel.js?v=hybrid1file-20261115" defer></script>
-<script src="js/ape-v9/output-status-panel.js?v=20261101-outputs" defer></script>
+<script src="js/ape-v9/ape-output-matrix.js?v=1.0.0"></script>
+<script src="js/ape-v9/output-status-panel.js?v=20261124-matrix2" defer></script>
 
   <!-- 🎛️ MÓDULO DE IMAGEN — el panel vive DENTRO de la pestaña Telemetría.
        El script se carga aquí (una sola vez, global) y el div está en
@@ -5136,7 +5295,7 @@
        Additive: el script crea su propio DOM y se pliega en un <details>; NO sustituye
        ninguna vista ni toca el generador. Endpoints: cablear.php / cablear-estado.php.
        Contrato: contracts/list_cablear_panel_v1.json -->
-  <script src="js/ape-v9/list-cablear-panel.js?v=20261114-cablear1" defer></script>
+  <script src="js/ape-v9/list-cablear-panel.js?v=5a875317" defer></script>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <!-- 🧪 TESTS - Proxy Auth & User Agent (Dev Mode Only)                     -->
@@ -5144,7 +5303,6 @@
   <script src="tests/proxy-auth.test.js" defer></script>
   <script src="tests/integration.test.js" defer></script>
   <script src="tests/performance.test.js" defer></script>
-
 </body>
 
 </html>

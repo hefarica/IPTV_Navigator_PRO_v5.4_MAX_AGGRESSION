@@ -83,6 +83,19 @@ class LoopbackProxy(private val policy: AbrPolicy) {
 
     @Volatile private var server: ServerSocket? = null
 
+    private val canaryClient = client.newBuilder().followRedirects(false)
+        .followSslRedirects(false).retryOnConnectionFailure(false).build()
+    private data class CanaryRef(val path: String, val url: HttpUrl, val channel: String)
+    private val canaryRefs = LinkedHashMap<String, CanaryRef>(512, 0.75f, true)
+
+    private fun canaryRef(path: String, url: HttpUrl, channel: String): String = synchronized(canaryRefs) {
+        val ref = CanaryRef(path, url, channel)
+        val key = canaryRefs.entries.firstOrNull { it.value == ref }?.key?.also { canaryRefs[it] }
+            ?: UUID.randomUUID().toString().also { canaryRefs[it] = ref }
+        if (canaryRefs.size > 512) canaryRefs.remove(canaryRefs.keys.first())
+        path + "?id=" + key
+    }
+
     private fun map(url: String): String = synchronized(ids) {
         urlToId[url]?.takeIf { ids.containsKey(it) }?.let { return it }
         val id = UUID.randomUUID().toString().replace("-", "")
@@ -94,7 +107,14 @@ class LoopbackProxy(private val policy: AbrPolicy) {
     private fun unmap(id: String): String? = synchronized(ids) { ids[id] }
 
     fun start(): Int {
-        val socket = ServerSocket(0, 64, InetAddress.getByName("127.0.0.1"))
+        // Puerto estable para que el proveedor de OTT no cambie tras cada reinicio.
+        // Si 33355 está ocupado, se usa el puerto efímero anterior.
+        val socket = try {
+            ServerSocket(33355, 64, InetAddress.getByName("127.0.0.1"))
+        } catch (e: java.io.IOException) {
+            android.util.Log.w("ottshim", "preferred port 33355 busy (${e.message}); using ephemeral")
+            ServerSocket(0, 64, InetAddress.getByName("127.0.0.1"))
+        }
         // BG20 (t58) — CAUSA RAÍZ del proxy "mudo": con soTimeout=30 s, `accept()` lanzaba
         // SocketTimeoutException a los 30 s sin tráfico, el `catch (IOException) { break }` mataba
         // el lazo y el puerto quedaba abierto pero SIN nadie aceptando (/health colgado para
@@ -232,6 +252,7 @@ class LoopbackProxy(private val policy: AbrPolicy) {
         // el proceso y el resto de conexiones siguen.
         try {
             when {
+                req.path.startsWith("/canary/") -> canary(clientSocket, req)
                 req.path == "/source.m3u8" -> playlist(clientSocket, req, policy.sourceUrl)
                 req.id != null && (req.path == "/master.m3u8" || req.path == "/media.m3u8") ->
                     playlist(clientSocket, req, unmap(req.id))
@@ -240,6 +261,79 @@ class LoopbackProxy(private val policy: AbrPolicy) {
             }
         } catch (e: IOException) {
             Log.d("conn closed: ${e.javaClass.simpleName} ${e.message}")
+        }
+    }
+
+    private fun canary(c: Socket, req: Req) {
+        val catalog = req.path == "/canary/catalog.m3u"
+        val media = req.path == "/canary/media.m3u8"
+        val resource = req.path == "/canary/resource"
+        if (!(catalog || media || resource)) return text(c, "canary_not_found", code = 404)
+        if (req.head && !resource) return text(c, "", code = 405)
+        val ref = if (catalog) null else synchronized(canaryRefs) { canaryRefs[req.id] }
+        val url = if (catalog) policy.sourceUrl?.toHttpUrlOrNull() else ref?.takeIf { it.path == req.path }?.url
+        if (url == null) return text(c, "canary_not_found", code = 404)
+        if (!url.isHttps || url.username.isNotEmpty() || url.password.isNotEmpty() || url.fragment != null)
+            return text(c, "canary_https_required", code = 400)
+        android.util.Log.i("ottshim", "canary request path=${req.path} host=${url.host} target=${url.encodedPath}")
+        val request = Request.Builder().url(url)
+        (req.ua ?: policy.userAgent)?.let { request.header("User-Agent", it) }
+        if (resource) req.range?.let { request.header("Range", it) }
+        if (req.head) request.head()
+        val response = try { canaryClient.newCall(request.build()).execute() } catch (e: IOException) {
+            android.util.Log.i("ottshim", "canary upstream exception=${e.javaClass.simpleName} ${e.message}")
+            return text(c, "canary_upstream_unavailable", code = 502)
+        }
+        response.use { resp ->
+            android.util.Log.i("ottshim", "canary upstream code=${resp.code} host=${url.host} path=${url.encodedPath}")
+            policy.qoe.onHttpStatus(resp.code)
+            if (resp.code != 200 && !(resource && resp.code == 206)) {
+                val code = if (resp.code in 400..599) resp.code else 502
+                val retry = resp.header("Retry-After")?.toIntOrNull()?.takeIf { it in 0..3600 }
+                return canaryReply(c, code, "text/plain", "canary_upstream_$code".toByteArray(), req.head, retry)
+            }
+            if (resource) {
+                val body = resp.body ?: return text(c, "canary_empty_resource", code = 502)
+                val len = body.contentLength()
+                val range = resp.header("Content-Range")
+                if (resp.code == 206 && (range == null || !Regex("bytes [0-9]+-[0-9]+/(?:[0-9]+|\\*)").matches(range)))
+                    return text(c, "canary_bad_range", code = 502)
+                val out = c.getOutputStream()
+                out.write(buildString {
+                    append("HTTP/1.1 ${resp.code} X\r\nConnection: close\r\nContent-Type: application/octet-stream\r\n")
+                    if (len >= 0) append("Content-Length: $len\r\n")
+                    if (resp.code == 206) append("Content-Range: $range\r\n")
+                    append("\r\n")
+                }.toByteArray())
+                val bytes = if (req.head) 0L else body.byteStream().copyTo(out)
+                out.flush()
+                if (!req.head) Log.d("canary: channel=${ref?.channel} resource_served status=${resp.code} bytes=$bytes")
+                return
+            }
+            val out = runCatching {
+                val body = CanaryWire.readSmall(requireNotNull(resp.body).byteStream())
+                if (catalog) CanaryWire.catalog(body, url) { id, upstream ->
+                    "http://127.0.0.1:${c.localPort}" + canaryRef("/canary/media.m3u8", upstream, id)
+                } else CanaryWire.media(body, url) { upstream ->
+                    "http://127.0.0.1:${c.localPort}" +
+                        canaryRef("/canary/resource", upstream, requireNotNull(ref).channel)
+                }
+            }.getOrElse { error ->
+                android.util.Log.i("ottshim", "canary playlist exception=${error.javaClass.simpleName} ${error.message}")
+                return text(c, "canary_invalid_playlist", code = 502)
+            }
+            val bytes = out.toByteArray()
+            canaryReply(c, 200, "application/vnd.apple.mpegurl", bytes, false)
+            if (media) Log.d("canary: channel=${ref?.channel} manifest_served bytes=${bytes.size}")
+        }
+    }
+
+    private fun canaryReply(c: Socket, code: Int, type: String, body: ByteArray, head: Boolean, retry: Int? = null) {
+        val extra = if (retry == null) "" else "Retry-After: $retry\r\n"
+        c.getOutputStream().apply {
+            write("HTTP/1.1 $code X\r\nContent-Type: $type\r\nContent-Length: ${body.size}\r\nCache-Control: no-store\r\n${extra}Connection: close\r\n\r\n".toByteArray())
+            if (!head) write(body)
+            flush()
         }
     }
 
@@ -290,6 +384,12 @@ class LoopbackProxy(private val policy: AbrPolicy) {
             // (`streamThrough`, >2 MB o tamaño desconocido) NO pasa por aquí: ese texto no
             // se materializa, y el shim no finge haberlo leído.
             runCatching { ShimOttTap.ingest(body, target) }
+            // [QOE-CONTRACT] Lector del contrato QoE por canal (#EXT-X-APE-QOE-CONTRACT),
+            // ADITIVO y en el MISMO punto donde el body ya esta materializado. No toca
+            // `body`, ni `out`, ni la fijacion de variante: solo escribe el presupuesto de
+            // precarga en `policy` (dos @Volatile Int, sin I/O ni hilos nuevos). Es un tag
+            // DISTINTO de #EXTSHIMOTT y su esquema no se modifica (ver QoeContractTap).
+            runCatching { QoeContractTap.ingest(body, target, policy) }
             val base = it.request.url
             val out = Rewriter(policy, ::map).rewrite(body, base)
             recordPlaylist(body, base)
@@ -411,7 +511,16 @@ class LoopbackProxy(private val policy: AbrPolicy) {
     private fun afterSegment(target: String) {
         val list = playlistSegments
         val index = list.indexOf(target)
-        if (index >= 0 && index + 1 < list.size) prefetch(list[index + 1])
+        if (index >= 0) {
+            // `net.depth` del contrato QoE fija cuantas siguientes se precargan.
+            // Default 1 = comportamiento anterior exacto.
+            val depth = policy.prefetchDepth.coerceIn(QoeContractTap.PREFETCH_MIN, QoeContractTap.PREFETCH_MAX)
+            var k = 1
+            while (k <= depth && index + k < list.size) {
+                prefetch(list[index + k])
+                k++
+            }
+        }
         val total = cacheHits + cacheMisses
         val ratio = if (total > 0) cacheHits * 100 / total else 0
         Log.d("cache hit=$cacheHits miss=$cacheMisses ratio=$ratio%")
@@ -454,6 +563,15 @@ class LoopbackProxy(private val policy: AbrPolicy) {
             }
         }
         playlistSegments = segments
+        // `net.pb` del contrato QoE: segmentos a precargar al cargar la lista.
+        // Default 0 = comportamiento anterior exacto (solo MAP/KEY). Las peticiones
+        // del player van con prioridad 0 en la cola y ganan a estos prefetch (10).
+        val pb = policy.prebufferSegments.coerceIn(QoeContractTap.PREBUFFER_MIN, QoeContractTap.PREBUFFER_MAX)
+        var i = 0
+        while (i < pb && i < segments.size) {
+            prefetch(segments[i])
+            i++
+        }
     }
 
     private fun prefetch(url: String) {
@@ -592,6 +710,12 @@ class LoopbackProxy(private val policy: AbrPolicy) {
             // BG24 (t62): parámetros del gate visibles para diagnosticar retenciones.
             .put("ingress_timeout_ms", INGRESS_READ_TIMEOUT_MS)
             .put("admit_threads", ADMIT_THREADS)
+            // [QOE-CONTRACT] Evidencia del lector del contrato QoE: por knob, su estado
+            // (EXECUTED / EXECUTED_INFERRED / DECLARED / UNMAPPED), el valor aplicado y
+            // el motivo cuando no se aplico. Vacio si el canal no trae el tag.
+            .put("qoe_contract", QoeContractTap.statusJson())
+            .put("prefetch_depth", policy.prefetchDepth)
+            .put("prebuffer_segments", policy.prebufferSegments)
             .toString()
     }
 

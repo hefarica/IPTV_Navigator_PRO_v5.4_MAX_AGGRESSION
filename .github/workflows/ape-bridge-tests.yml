@@ -88,18 +88,84 @@ jobs:
       - name: Test de cadencia del display (Display4K no debe pisar el modo)
         run: node tools/quality/test_display_cadence.js
 
-      - name: Contrato Canary-JIT (motor desplegado == lo pinado)
-        run: node tools/quality/test_canary_jit_contract.js
+      # El contrato Canary-JIT se dejo al FINAL a proposito. Medido el 2026-11-21: su
+      # pin esta obsoleto y el paso falla, y al estar en medio del archivo GitHub
+      # SALTABA los 7 gates siguientes. Un recibo viejo no puede apagar gates que no
+      # tienen nada que ver con el: se ejecutan todos y el que falle se vera al final.
 
+      # [2026-11-21] Medido en el primer run real de este workflow (44942237425): este
+      # paso moria con exit 2 «FALTA LABV24». La causa no es el test, es el contrato del
+      # fichero: apunta a artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json, que esta en
+      # .gitignore (linea 174) porque el LAB calibrado arrastra material de proveedor
+      # (108 https://, 26 menciones xtream, 5 username/password). No se versiona eso.
+      # Sin el artefacto el gate NO se puede computar: se declara NO_COMPUTADO y se
+      # frena ahi, en vez de fingir un resultado con un fixture inventado (prohibido:
+      # no mocks). En local se ejecuta pasando LABV24=<ruta al LAB real>.
       - name: 6K emulado sobre fuente MEDIDA (no asumida)
-        env:
-          LABV24: ${{ github.workspace }}/artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json
-        run: node tools/quality/test_6k_source_honest.js
+        run: |
+          LAB="${GITHUB_WORKSPACE}/artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json"
+          if [ ! -f "$LAB" ]; then
+            echo "::warning::NO_COMPUTADO test_6k_source_honest — el LAB v24.0.0-6K no existe en el runner ($LAB)."
+            echo "NO_COMPUTADO test_6k_source_honest :: requiere artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json (ignorado por git por material de proveedor). Ejecucion local: LABV24=<ruta> node tools/quality/test_6k_source_honest.js"
+            exit 0
+          fi
+          LABV24="$LAB" node tools/quality/test_6k_source_honest.js
 
       - name: Politica de composicion polimorfica (tope 1080p del firmware)
         run: node tools/quality/test_composition_policy.js
-       - name: Metrica de detalle HF (validada, monotona con bitrate)         run: node tools/quality/test_hf_detail_metric.js
-       - name: Detector de bloque sobre HEVC (queda refutado, HF no)         run: node tools/quality/test_hevc_block_detector.js
+      # [2026-11-21] Estas dos lineas estaban PEGADAS (name + run en el mismo renglon,
+      # con 7 espacios de sangria): el YAML era invalido y GitHub registraba este
+      # workflow como "Invalid workflow file" -> startup failure SIN jobs y SIN logs.
+      # Medido: el run 44941757590 (push c404d054) devolvio jobs:[] y el listado de
+      # workflows mostraba la RUTA como nombre. Es decir: el gate anti-degradacion,
+      # los tests de puente, el contrato Canary-JIT y el resto de este archivo NO se
+      # ejecutaban desde entonces. Un gate que no corre es decorativo; se repara.
+      # [2026-11-21] Estos dos gates miden sobre un video de referencia que NO esta en el
+      # repo: hasta hoy su default era un path personal de Windows, asi que en CI morian
+      # con exit 2 y apagaban los gates siguientes. Ahora usan APE_REF_VIDEO y, sin video,
+      # declaran NO_COMPUTADO con exit 3. Aqui el 3 se informa como aviso; un veredicto
+      # negativo real (exit 1) sigue rompiendo el job.
+      - name: Metrica de detalle HF (validada, monotona con bitrate)
+        run: |
+          set +e
+          node tools/quality/test_hf_detail_metric.js
+          rc=$?
+          set -e
+          if [ "$rc" -eq 3 ]; then
+            echo "::warning::NO_COMPUTADO test_hf_detail_metric — falta el video de referencia (APE_REF_VIDEO)."
+            exit 0
+          fi
+          exit "$rc"
+      - name: Detector de bloque sobre HEVC (queda refutado, HF no)
+        run: |
+          set +e
+          node tools/quality/test_hevc_block_detector.js
+          rc=$?
+          set -e
+          if [ "$rc" -eq 3 ]; then
+            echo "::warning::NO_COMPUTADO test_hevc_block_detector — falta el video de referencia (APE_REF_VIDEO)."
+            exit 0
+          fi
+          exit "$rc"
+
+      # [2026-11-21] El guard del reconciliador JIT distingue "la misma lista se truncó"
+      # de "es otro catálogo". Sin esto el servicio abortaba cada 5 minutos comparando
+      # 11 222 canales de una lista contra 21 224 de otra y congelaba la allowlist.
+      - name: Guard del reconciliador JIT (identidad de lista, fail-closed)
+        run: node tools/quality/test_reconcile_list_identity.js
+
+      # [2026-11-21] El inventario de R1 era un INFORME: se podia borrar una ruta del motor,
+      # cambiarle el metodo o añadir superficie nueva y ningun gate lo veia. Ahora es CONTRATO:
+      # test_jit_routes_contract.js compara el server.js CANONICO
+      # (IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js) contra
+      # artifacts/verify/jit_routes_61.json y falla NOMBRANDO la ruta cuando
+      #   - desaparece una ruta declarada,
+      #   - aparece una ruta que el inventario no declara, o
+      #   - un metodo declarado se queda sin evidencia (incluye POST -> cualquier metodo).
+      # Sin inventario falla con "falta el inventario" (no se salta): sin contrato no hay gate.
+      # Ver artifacts/verify/rutas_contrato_ci.md (corrida verde + pruebas negativas reales).
+      - name: Contrato de las 61 rutas del motor JIT
+        run: node tools/quality/test_jit_routes_contract.js
 
       # CABLEADO: identidad + estructura + harness en un veredicto, sobre un FIXTURE.
       # Modo --sin-red para que el CI no dependa de la red ni del proveedor.
@@ -120,3 +186,15 @@ jobs:
       # entre publicar mal o no publicar.
       - name: Reglas SR en caliente (validar y completar antes de emitir)
         run: node tools/quality/test_sr_rules_para_generacion.js
+
+      # ULTIMO a proposito: si este contrato falla, los demas gates ya se ejecutaron.
+      # [2026-11-21] La revision 1 del recibo pineaba un motor que ya no era ni el del repo
+      # ni el de produccion (cuatro identidades: recibo 8c1a0085, tools/lab 38c92b56,
+      # vps/ape-jit a3c671a2, /opt/ape-jit 44d8bf84). Se re-baselineo a revision 2 sobre el
+      # canonico medido (268bbd3a, 480976 B, union de las dos ramas) y el gate pasa 92/92.
+      # [R11 2026-11-21] Ese pin es HISTORICO: /resolve y /go pasaron a lectura pura y el
+      # motor cambio de bytes. Pin vigente: ad37d894… 490421 B 9998 l
+      # (contracts/canary_jit_contract_v1.json -> engine.deployable_engine_sha256).
+      # Ver docs/audits/INCIDENT_JIT_ENGINE_20261121.md y artifacts/verify/W01_resolve_readonly.md.
+      - name: Contrato Canary-JIT (motor desplegado == lo pinado)
+        run: node tools/quality/test_canary_jit_contract.js

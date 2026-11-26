@@ -35,13 +35,19 @@ const TMP = path.join(ROOT, 'scratch', 'hevc_det' + '_' + process.pid + '_' + Da
 try { fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }); } catch (e) { /* EPERM en Windows no debe tumbar el gate */ }
 fs.mkdirSync(TMP, { recursive: true });
 
-const FUENTE = process.argv[2] ||
-    'C:\\Users\\HFRC\\Downloads\\WhatsApp Video 2026-11-13 at 1.01.22 AM.mp4';
+// [2026-11-21] El default era un path PERSONAL de Windows ('C:\Users\<usuario>\Downloads\…'):
+// no-hardcode violado y gate imposible de correr en CI (morir con exit 2 apagaba los
+// gates siguientes del workflow). Ahora: parametro o APE_REF_VIDEO; sin fuente => NO_COMPUTADO.
+const FUENTE = process.argv[2] || process.env.APE_REF_VIDEO || '';
 const BITRATES = [8000, 2000, 500];
 const SEG = 3;
 const W = 1024, H = 400, X = 0, Y = 150;
 
-if (!fs.existsSync(FUENTE)) { console.error('FALTA la fuente: ' + FUENTE); process.exit(2); }
+if (!FUENTE || !fs.existsSync(FUENTE)) {
+    console.error('NO_COMPUTADO: sin video de referencia. Uso: node tools/quality/test_hevc_block_detector.js <video.mp4>  (o APE_REF_VIDEO=<ruta>)');
+    console.error('  recibido: ' + JSON.stringify(FUENTE));
+    process.exit(3);
+}
 
 function codificar(codec, kbps, destino) {
     const base = ['-y', '-hide_banner', '-loglevel', 'error', '-t', String(SEG), '-i', FUENTE];

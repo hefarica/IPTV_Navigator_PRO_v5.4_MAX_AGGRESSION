@@ -191,6 +191,82 @@
         });
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // CONNECTION BUDGET — max_connections del proveedor
+    // ═══════════════════════════════════════════════════════════════════════
+    // Un perfil "ultra agresivo" con parallelFetches=8 sobre una cuenta
+    // max_connections=1 genera 403 por saturación de slot. El generador debe
+    // pedirle al player sólo lo que el proveedor permite.
+    function _normalizeMaxConnections(value) {
+        const n = parseInt(value, 10);
+        return Number.isFinite(n) && n > 0 ? n : 0;
+    }
+
+    function _clampToBudget(value, maxConnections) {
+        const max = _normalizeMaxConnections(maxConnections);
+        if (max < 1) return value;
+        const n = Number(value);
+        if (!Number.isFinite(n) || n <= 0) return max;
+        return Math.min(n, max);
+    }
+
+    function _applyConnectionBudget(profile, maxConnections) {
+        const max = _normalizeMaxConnections(maxConnections);
+        if (!profile || max < 1) return profile;
+
+        const p = Object.assign({}, profile);
+
+        p.settings = Object.assign({}, p.settings || {});
+        p.settings.parallelFetches = _clampToBudget(p.settings.parallelFetches, max);
+
+        p.prefetch_config = Object.assign({}, p.prefetch_config || {});
+        p.prefetch_config.parallel_downloads = _clampToBudget(p.prefetch_config.parallel_downloads, max);
+        p.prefetch_config.prefetch_parallel = _clampToBudget(p.prefetch_config.prefetch_parallel, max);
+        p.prefetch_config.parallel_workers = _clampToBudget(p.prefetch_config.parallel_workers, max);
+
+        // aggression_levels puede ser un JSON string (a veces truncado).
+        // Clamp textual de cada "parallel": N sin romper el resto.
+        if (typeof p.prefetch_config.aggression_levels === 'string') {
+            p.prefetch_config.aggression_levels = p.prefetch_config.aggression_levels.replace(
+                /("parallel"\s*:\s*)(\d+)/g,
+                function(_, prefix) { return prefix + String(max); }
+            );
+        }
+
+        if (p.hlsjs && typeof p.hlsjs === 'object') {
+            p.hlsjs = Object.assign({}, p.hlsjs);
+            if (p.hlsjs.maxConcurrentFragRequests !== undefined) {
+                p.hlsjs.maxConcurrentFragRequests = _clampToBudget(p.hlsjs.maxConcurrentFragRequests, max);
+            }
+        }
+
+        p.headerOverrides = Object.assign({}, p.headerOverrides || {});
+        p.headerOverrides['X-Concurrent-Downloads'] = String(
+            _clampToBudget(p.headerOverrides['X-Concurrent-Downloads'], max)
+        );
+        p.headerOverrides['X-Parallel-Segments'] = String(
+            _clampToBudget(p.headerOverrides['X-Parallel-Segments'], max)
+        );
+
+        if (p.player_enslavement && p.player_enslavement.level_3_per_channel) {
+            const l3 = p.player_enslavement.level_3_per_channel;
+            if (l3.SYS && typeof l3.SYS === 'object') {
+                p.player_enslavement = Object.assign({}, p.player_enslavement);
+                p.player_enslavement.level_3_per_channel = Object.assign({}, l3);
+                p.player_enslavement.level_3_per_channel.SYS = Object.assign({}, l3.SYS);
+                const sys = p.player_enslavement.level_3_per_channel.SYS;
+                if (sys['SYS-PREFETCH-PARALLEL'] !== undefined) {
+                    sys['SYS-PREFETCH-PARALLEL'] = _clampToBudget(sys['SYS-PREFETCH-PARALLEL'], max);
+                }
+                if (sys['SYS-CONCURRENT-DOWNLOADS'] !== undefined) {
+                    sys['SYS-CONCURRENT-DOWNLOADS'] = _clampToBudget(sys['SYS-CONCURRENT-DOWNLOADS'], max);
+                }
+            }
+        }
+
+        return p;
+    }
+
     function generateRandomString(length) {
         const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
         let result = '';
@@ -445,8 +521,9 @@
      *   optimized_knobs → #EXT-X-APE-KNOBS:{...}
      *   settings (the 7 scorecard-relevant keys) → #EXT-X-APE-SETTING-<key>:<value> + 1 JSON blob
      */
-    function _generateProfileFullEmission(profile, emittedKeysSet) {
+    function _generateProfileFullEmission(profile, emittedKeysSet, maxConnections) {
         if (!profile) return [];
+        profile = _applyConnectionBudget(profile, maxConnections);
         const lines = [];
         const seen = emittedKeysSet || new Set();
 
@@ -557,7 +634,7 @@
         return lines;
     }
 
-    function _generateNivel3Lines(labCfg, profileId) {
+    function _generateNivel3Lines(labCfg, profileId, maxConnections) {
         if (!labCfg || !labCfg.nivel3PerLayer) return [];
         const lines = [];
         const CAP_EXTHTTP = 8192;
@@ -583,7 +660,7 @@
         }
 
         // EXTHTTP consolidado desde HTT layer + profile.headerOverrides
-        const profile = labCfg.profiles[profileId] || {};
+        const profile = _applyConnectionBudget(labCfg.profiles[profileId] || {}, maxConnections);
         const headerOverrides = profile.headerOverrides || {};
         const httLayer = layers.HTT || [];
 
@@ -635,7 +712,7 @@
         }
 
         // PROFILE FULL EMISSION — emit every field of profile.{vlcopt,kodiprop,hlsjs,prefetch_config,bounds,optimized_knobs,settings,player_enslavement.L3,actor_injections}
-        const profileFullLines = _generateProfileFullEmission(profile, null);
+        const profileFullLines = _generateProfileFullEmission(profile, null, maxConnections);
         if (profileFullLines.length > 0) lines.push(...profileFullLines);
 
         // OMEGA GAP PLAN — append NIVEL_3_CHANNEL items (gap closure per channel)
@@ -844,8 +921,12 @@
     // SECCIÓN 4: #EXT-X-APE-* (29 líneas)
     // ═══════════════════════════════════════════════════════════════════════
 
-    function generateEXTXAPE(profile) {
-        const values = PROFILE_VALUES[profile] || PROFILE_VALUES['P2'];
+    function generateEXTXAPE(profile, maxConnections) {
+        const values = Object.assign({}, PROFILE_VALUES[profile] || PROFILE_VALUES['P2']);
+        const budget = _normalizeMaxConnections(maxConnections);
+        if (budget > 0) {
+            values.prefetchParallel = _clampToBudget(values.prefetchParallel, budget);
+        }
 
         const extxape = [
             // GRUPO 1: Versión y resolución (2 líneas)
@@ -900,6 +981,11 @@
             `#EXT-X-APE-SEGMENT-DURATION:6`
         ];
 
+        if (budget > 0) {
+            extxape.push(`#EXT-X-APE-CONNECTION-BUDGET:${budget}`);
+            extxape.push(`#EXT-X-APE-PREFETCH-PARALLEL-BUDGET:${values.prefetchParallel}`);
+        }
+
         return extxape;
     }
 
@@ -917,7 +1003,11 @@
     // ═══════════════════════════════════════════════════════════════════════
 
     function generateJWT(channel, options = {}) {
-        const values = PROFILE_VALUES[channel.profile || 'P2'] || PROFILE_VALUES['P2'];
+        const values = Object.assign({}, PROFILE_VALUES[channel.profile || 'P2'] || PROFILE_VALUES['P2']);
+        const budget = _normalizeMaxConnections(options.maxConnections);
+        if (budget > 0) {
+            values.prefetchParallel = _clampToBudget(values.prefetchParallel, budget);
+        }
         const now = Math.floor(Date.now() / 1000);
         const expDays = options.jwtExpiration || 365;
 
@@ -1076,6 +1166,7 @@
     function generateChannel(channel, options = {}) {
         const lines = [];
         const profile = channel.profile || 'P2';
+        const maxConnections = _normalizeMaxConnections(options.maxConnections);
 
         // PASO 1: #EXTINF (1 línea)
         lines.push(generateEXTINF(channel));
@@ -1089,14 +1180,14 @@
         lines.push(...kodiprop);
 
         // PASO 4: #EXT-X-APE-* (29 líneas)
-        const extxape = generateEXTXAPE(profile);
+        const extxape = generateEXTXAPE(profile, maxConnections);
         lines.push(...extxape);
 
         // 🧪 PASO 4.5: LAB NIVEL_3 + profile.headerOverrides (calibrados por BRAIN OMEGA)
         const labCfg = _getLABConfig();
         if (labCfg) {
             // 4.5a: Global NIVEL_3 per-layer directives
-            const labLines = _generateNivel3Lines(labCfg, profile);
+            const labLines = _generateNivel3Lines(labCfg, profile, maxConnections);
             if (labLines.length > 0) {
                 lines.push('# LAB CALIBRATED NIVEL_3 + headerOverrides');
                 lines.push(...labLines);
@@ -1207,6 +1298,10 @@
     function generateWorldClassM3U8(channels, options = {}) {
         // L1 — LAB MANDATORIO: bloquear si no hay LAB cargado
         enforceLABPresence();
+
+        options = Object.assign({}, options, {
+            maxConnections: _normalizeMaxConnections(options.maxConnections)
+        });
 
         console.log(`%c[World-Class Generator] Generando M3U8 para ${channels.length} canales...`, 'color: #fbbf24; font-weight: bold;');
 

@@ -1,96 +1,221 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-r"""
-APE_REA_EXECUTOR — DeepSeek Harness Compatible
-Ubicacion: C:\Users\HFRC\Desktop\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\tools\ape_rea_executor.py
-"""
+"""APE REA real: segmento -> filtro FFmpeg -> HLS 4K -> ffprobe -> recibo.
 
-import os
-import sys
+Fail-closed. Sin alternativas que finjan éxito. No baja fps, audio ni canales.
+No procesa HDR: si la fuente declara PQ/HLG, aborta en vez de mentir.
+
+Uso:
+  python tools/ape_rea_executor.py --source segment.ts --out .tmp/rea-4k
+  python tools/ape_rea_executor.py --source segment.ts --out .tmp/rea-4k --duration 2
+  python tools/ape_rea_executor.py --source segment.ts --out .tmp/rea-4k --codec hevc
+"""
+from __future__ import annotations
+
+import argparse
 import hashlib
 import json
-from datetime import datetime
+import shutil
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
 
-PATHS = {
-    "lista_m3u8": r"C:\Users\HFRC\Desktop\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\artifacts\audit\2026-11-02_APE_LISTA_1793589060441\playlist.m3u8",
-    "lista_sha256": "523D52A6D147F81CE5A212E47B9C55401FB409CD4A41AEE96F8BA80B5B5049D6",
-    "zip_ape_rea": r"C:\Users\HFRC\AppData\Local\DSH_HERRAMIENTAS\DSH_BLUEGREEN_021\home\attachments\v1\files\8f\8fe5a6c3fe74cfa720107e0e958f01a34cd330279a7edab8666dcbb7a3cb19ce\ape_rea_v1.2_complete.zip",
-    "zip_sha256": "8fe5a6c3fe74cfa720107e0e958f01a34cd330279a7edab8666dcbb7a3cb19ce",
-    "zip_extracted": r"C:\Users\HFRC\Desktop\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\artifacts\integration\ape_rea_v1.2_complete\ape_rea_v1.2",
-    "tabla_xlsx": r"C:\Users\HFRC\AppData\Local\DSH_HERRAMIENTAS\DSH_BLUEGREEN_021\home\attachments\v1\files\56\56406354b226ac16437490eced8c08939f417fd20b381acf494f03e93e45cdd6\Tabla Procesamiento Exigida Listas Premium 2026.xlsx",
-    "tabla_sha256": "56406354b226ac16437490eced8c08939f417fd20b381acf494f03e93e45cdd6",
-    "prompt_md": r"C:\Users\HFRC\Desktop\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\docs\prompts\PROMPT_INTEGRADOR_APE_REA_v1.2.md",
-    "profile_json": r"C:\Users\HFRC\Desktop\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\profiles\IPTV_PREMIUM.json",
-    "presets_json": r"C:\Users\HFRC\Desktop\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\presets\IPTV_PREMIUM.presets.json",
-    "skills_dir": r"C:\Users\HFRC\Desktop\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\.agents\skills\iptv-suprema-2026-premium",
-    "output_dir": r"C:\Users\HFRC\Desktop\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\artifacts\integration\ape_rea_output",
-    "evidence_file": r"C:\Users\HFRC\Desktop\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\artifacts\integration\evidence\ape_rea_execution.jsonl",
+TARGET_W = 3840
+TARGET_H = 2160
+FILTERS = ",".join([
+    "deblock=filter=weak:block=8:alpha=0.06:beta=0.035:gamma=0.035:delta=0.035",
+    "hqdn3d=1.0:0.8:0.5:0.4",
+    "format=yuv420p",
+    "deband=1thr=0.005:2thr=0.005:3thr=0.005:range=12:blur=false",
+    f"scale={TARGET_W}:{TARGET_H}:force_original_aspect_ratio=decrease:"
+    "flags=lanczos+accurate_rnd+full_chroma_int",
+    f"pad={TARGET_W}:{TARGET_H}:(ow-iw)/2:(oh-ih)/2:color=black",
+    "setsar=1",
+    "cas=strength=0.14:planes=1",
+    "format=yuv420p",
+])
+BASE = {
+    "schema": "ape.rea.executor.receipt.v1",
+    "product": "APE_REA_EXECUTOR_REAL",
+    "version": "1.0.0",
 }
 
-class APE_REA_Executor:
-    VERSION = "1.2.0-DSH"
-    
-    def __init__(self):
-        self.paths = PATHS
-        self.results = {}
-        
-    def log(self, status, phase, message, metrics=None):
-        ts = datetime.now().isoformat()
-        print(f"[{status}] [{phase}] [{message}] [{metrics}]")
-        return {"timestamp": ts, "status": status, "phase": phase, "message": message, "metrics": metrics}
-    
-    def verify_file(self, filepath, expected_sha256):
-        if not os.path.exists(filepath):
-            return False, "FILE_NOT_FOUND"
-        sha256_hash = hashlib.sha256()
-        with open(filepath, "rb") as f:
-            for chunk in iter(lambda: f.read(8192), b""):
-                sha256_hash.update(chunk)
-        actual_hash = sha256_hash.hexdigest().upper()
-        return actual_hash == expected_sha256.upper(), actual_hash
-    
-    def run(self):
-        print("[SYSTEM: DEEPSEEK HARNESS MODE]")
-        print(f"[INICIO] [v{self.VERSION}]")
-        
-        # FASE 0
-        self.log("EJECUTANDO", "FASE_0", "Inventario", None)
-        for key in ["lista_m3u8", "zip_ape_rea", "tabla_xlsx"]:
-            ok, hash_val = self.verify_file(self.paths[key], self.paths[f"{key.split('_')[0]}_sha256"])
-            if not ok:
-                raise RuntimeError(f"{key}: {hash_val}")
-        os.makedirs(self.paths["output_dir"], exist_ok=True)
-        os.makedirs(os.path.dirname(self.paths["evidence_file"]), exist_ok=True)
-        self.log("COMPLETADO", "FASE_0", "Inventario", "3 archivos OK")
-        
-        # FASE 1
-        self.log("EJECUTANDO", "FASE_1", "Ingesta", None)
-        line_count = 0
-        channel_count = 0
-        with open(self.paths["lista_m3u8"], "r", encoding="utf-8") as f:
-            for line in f:
-                line_count += 1
-                if line.startswith("#EXTINF:"):
-                    channel_count += 1
-        result = {"lines": line_count, "channels": channel_count}
-        self.log("COMPLETADO", "FASE_1", "Ingesta", result)
-        
-        # Guardar evidencia
-        with open(self.paths["evidence_file"], "w") as f:
-            json.dump({"phase": "FASE_0", "result": "OK"}, f)
-            f.write("\n")
-            json.dump({"phase": "FASE_1", "result": result}, f)
-        
-        print("[COMPLETADO] [TODAS LAS FASES]")
-        return 0
 
-def main():
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def run(cmd: list[str], timeout: int = 1800) -> subprocess.CompletedProcess:
+    return subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          text=True, timeout=timeout, check=False)
+
+
+def require_tool(name: str) -> str:
+    path = shutil.which(name)
+    if not path:
+        raise RuntimeError(f"{name} no está en PATH")
+    return path
+
+
+def probe(path: Path) -> dict:
+    p = run(["ffprobe", "-v", "error", "-print_format", "json",
+             "-show_format", "-show_streams", str(path)])
+    if p.returncode != 0:
+        raise RuntimeError(f"ffprobe falló: {p.stderr.strip()[:500]}")
+    data = json.loads(p.stdout)
+    streams = data.get("streams", [])
+    video = next((s for s in streams if s.get("codec_type") == "video"), None)
+    audio = next((s for s in streams if s.get("codec_type") == "audio"), None)
+    if not video:
+        raise RuntimeError("la fuente no tiene pista de vídeo")
+    return {
+        "format": data.get("format", {}).get("format_name"),
+        "duration": float(data.get("format", {}).get("duration") or 0),
+        "video": {
+            "codec": video.get("codec_name"),
+            "profile": video.get("profile"),
+            "level": video.get("level"),
+            "width": int(video.get("width") or 0),
+            "height": int(video.get("height") or 0),
+            "pix_fmt": video.get("pix_fmt"),
+            "fps": video.get("r_frame_rate"),
+            "color_transfer": video.get("color_transfer"),
+            "color_space": video.get("color_space"),
+        },
+        "audio": None if not audio else {
+            "codec": audio.get("codec_name"),
+            "channels": int(audio.get("channels") or 0),
+            "sample_rate": int(audio.get("sample_rate") or 0),
+        },
+    }
+
+
+def fps_value(text: str | None) -> float:
+    if not text or "/" not in text:
+        return 0.0
     try:
-        executor = APE_REA_Executor()
-        return executor.run()
-    except Exception as e:
-        print(f"[FATAL] [{str(e)}]")
+        a, b = text.split("/", 1)
+        return float(a) / float(b) if float(b) else 0.0
+    except Exception:
+        return 0.0
+
+
+def build_hls(source: Path, out: Path, duration: float | None, codec: str) -> tuple[Path, list[str]]:
+    out.mkdir(parents=True, exist_ok=False)
+    playlist = out / "index.m3u8"
+    if codec == "hevc":
+        vcodec = ["-c:v", "libx265", "-preset", "veryfast", "-crf", "22",
+                  "-pix_fmt", "yuv420p10le", "-tag:v", "hvc1"]
+    else:
+        vcodec = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+                  "-profile:v", "high", "-level", "5.1", "-pix_fmt", "yuv420p"]
+    cmd = ["ffmpeg", "-hide_banner", "-y", "-i", str(source)]
+    if duration is not None:
+        cmd += ["-t", str(duration)]
+    cmd += ["-map", "0:v:0", "-map", "0:a?", "-vf", FILTERS]
+    cmd += vcodec
+    cmd += ["-c:a", "aac", "-b:a", "128k", "-f", "hls", "-hls_time", "1",
+            "-hls_playlist_type", "vod", "-hls_flags", "independent_segments",
+            "-hls_segment_filename", str(out / "seg_%03d.bin"), str(playlist)]
+    p = run(cmd)
+    if p.returncode != 0:
+        raise RuntimeError(f"ffmpeg falló: {p.stderr.strip()[-1200:]}")
+    text = playlist.read_text(encoding="utf-8")
+    marker = ("#EXT-X-APE-EXECUTOR:REAL=1;"
+              "FILTERS=deblock+hqdn3d+deband+lanczos+cas;"
+              f"TARGET={TARGET_W}x{TARGET_H};EXECUTED=1")
+    if marker not in text:
+        lines = text.splitlines()
+        text = "\n".join([lines[0], marker] + lines[1:]) + "\n"
+        playlist.write_text(text, encoding="utf-8")
+    return playlist, cmd
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="APE REA real FFmpeg executor")
+    parser.add_argument("--source", required=True)
+    parser.add_argument("--out", required=True)
+    parser.add_argument("--duration", type=float, default=None)
+    parser.add_argument("--codec", choices=["h264", "hevc"], default="h264")
+    args = parser.parse_args()
+    source = Path(args.source).resolve()
+    out = Path(args.out).resolve()
+    base = dict(BASE)
+    base.update({"timestamp": datetime.now(timezone.utc).isoformat(),
+                 "source_path": str(source), "output_dir": str(out)})
+    try:
+        require_tool("ffmpeg")
+        require_tool("ffprobe")
+        if not source.is_file():
+            raise RuntimeError("source no existe")
+        if out.exists():
+            raise RuntimeError("output ya existe; usa otra ruta")
+        src = probe(source)
+        transfer = (src["video"].get("color_transfer") or "").lower()
+        if transfer in ("smpte2084", "arib-std-b67", "dovi"):
+            raise RuntimeError(f"fuente HDR ({transfer}); este ejecutor SDR no la procesa")
+        src_sha = sha256_file(source)
+        playlist, cmd = build_hls(source, out, args.duration, args.codec)
+        segments = sorted(out.glob("seg_*.bin"))
+        if not segments:
+            raise RuntimeError("no se generaron segmentos")
+        playlist_text = playlist.read_text(encoding="utf-8")
+        if not playlist_text.startswith("#EXTM3U") or "#EXTINF:" not in playlist_text:
+            raise RuntimeError("playlist HLS incompleta")
+        # ffprobe no acepta una playlist con segmentos .bin; se mide el MPEG-TS real.
+        outp = probe(segments[0])
+        v = outp["video"]
+        if v["width"] != TARGET_W or v["height"] != TARGET_H:
+            raise RuntimeError(f"salida {v['width']}x{v['height']} != {TARGET_W}x{TARGET_H}")
+        if abs(fps_value(v["fps"]) - fps_value(src["video"]["fps"])) > 0.01:
+            raise RuntimeError(f"fps cambió: {src['video']['fps']} -> {v['fps']}")
+        src_audio = src["audio"]
+        out_audio = outp["audio"]
+        if src_audio and (not out_audio or out_audio["channels"] != src_audio["channels"]):
+            raise RuntimeError("se perdió audio o canales")
+        seg_hashes = [{"name": s.name, "bytes": s.stat().st_size, "sha256": sha256_file(s)}
+                      for s in segments]
+        ffmpeg_path = Path(require_tool("ffmpeg"))
+        receipt = {
+            **base,
+            "requested": {"target": f"{TARGET_W}x{TARGET_H}", "filtergraph": FILTERS,
+                          "codec": args.codec, "duration": args.duration,
+                          "fps_policy": "preserve"},
+            "applied": {"status": "APPLIED_MEASURED", "engine": "ffmpeg",
+                        "engine_path": str(ffmpeg_path),
+                        "engine_sha256": sha256_file(ffmpeg_path),
+                        "command": cmd, "frames_written": True},
+            "output": {"playlist": str(playlist),
+                       "playlist_sha256": sha256_file(playlist),
+                       "video": v, "audio": out_audio, "segments": seg_hashes},
+            "source": {"sha256": src_sha, "probe": src},
+            "result": "PASS",
+        }
+        receipt_path = out / "receipt.json"
+        receipt_path.write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + "\n",
+                                encoding="utf-8")
+        print(json.dumps({"result": "PASS", "receipt": str(receipt_path),
+                          "playlist": str(playlist),
+                          "output": {"width": v["width"], "height": v["height"],
+                                     "codec": v["codec"], "fps": v["fps"],
+                                     "audio": out_audio}}, ensure_ascii=False))
+        return 0
+    except Exception as exc:
+        receipt = {**base, "result": "FAIL", "error": str(exc)}
+        try:
+            out.mkdir(parents=True, exist_ok=True)
+            (out / "receipt.json").write_text(
+                json.dumps(receipt, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        except Exception:
+            pass
+        print(json.dumps(receipt, ensure_ascii=False), file=sys.stderr)
         return 1
 
+
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

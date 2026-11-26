@@ -38,7 +38,12 @@ data class PlaybackPolicy(
         private const val PREF_MIN_RES = "min_resolution"
         private const val PREF_BUF_MIN = "buffer_min_s"
         private const val PREF_BUF_MAX = "buffer_max_s"
-        private const val PREF_CACHE = "cache_mib"
+        /**
+         * Clave de cache del player. `internal` (no privada) porque el presupuesto de buffer por
+         * canal la escribe desde QoeContractApply.applyBufferBeforeBuild ANTES de build(), y dos
+         * literales "cache_mib" en el modulo serian dos verdades.
+         */
+        internal const val PREF_CACHE = "cache_mib"
 
         fun default(): PlaybackPolicy = PlaybackPolicy()
 

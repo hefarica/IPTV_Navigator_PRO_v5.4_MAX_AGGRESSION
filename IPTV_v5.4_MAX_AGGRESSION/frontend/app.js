@@ -743,6 +743,11 @@ class IPTVNavigatorPro {
             await this.loadChannelsList();
             console.log('📡 [Init] Canales cargados y enriquecidos');
 
+            // ✅ V4.33: si la base quedó vacía, se arregla sola (snapshot y, si
+            // no hay, reconexión automática al último servidor) para que un
+            // refresco no deje la app en «servidor conectado, 0 canales».
+            await this._ensureCatalogAvailable();
+
             // Restaurar filtros y estado del generador
             await this.loadFilterState();
             await this.loadGeneratorState().catch(e => console.warn('⚠️ Error cargando estado del generador:', e));
@@ -1380,17 +1385,25 @@ class IPTVNavigatorPro {
     /**
      * ✅ V4.11.3 - Guardar con DEDUPLICACIÓN
      */
-    async saveChannelsList() {
+    async saveChannelsList(opts) {
         if (!this.db) return;
 
         try {
             // Deduplicar por serverId:stream_id
-            const deduplicated = this._deduplicateChannels(this.state.channelsMaster);
+            // `opts.only` (array) guarda SÓLO esos canales: al conectar un
+            // servidor no hace falta reescribir los de los demás, que ya se
+            // guardaron al conectar cada uno (antes se reescribía TODO en cada
+            // conexión: O(servidores × canales)). Sin `opts.only` se guarda
+            // todo, exactamente como antes (rutas de importar/borrar/exportar).
+            const _source = (opts && Array.isArray(opts.only)) ? opts.only : this.state.channelsMaster;
+            const deduplicated = this._deduplicateChannels(_source);
 
             console.log(`📦 Guardando ${deduplicated.length} canales (deduplicados)`);
 
-            // Guardar en IndexedDB
-            await this.db.saveChannels(deduplicated);
+            // Guardar en IndexedDB. V4.34: se pasa el origen cuando lo conocemos
+            // (conexión) para que la fila no pierda su `serverUrl` y
+            // clearChannelsByServer() siga pudiendo aislar cada servidor.
+            await this.db.saveChannels(deduplicated, opts && opts.serverUrl);
 
             // Guardar metadata
             await this.db.saveAppState('channelsCache', {
@@ -1398,7 +1411,10 @@ class IPTVNavigatorPro {
                 activeColumns: this.state.activeColumns,
                 lastSaved: new Date().toISOString(),
                 totalCount: deduplicated.length,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                // V4.34: sello de claves físicas serverId::id. La migración
+                // (una sola vez) reescribe el store y sube este número.
+                schemaVersion: 2
             });
 
             console.log(`✅ ${deduplicated.length} canales guardados`);
@@ -1414,22 +1430,39 @@ class IPTVNavigatorPro {
         if (!this.db) return;
         try {
             // Cargar lista persistida
-            const channels = await this.db.loadChannels();
+            let channels = await this.db.loadChannels();
             const meta = await this.db.getAppState('channelsCache');
+
+            // ✅ V4.33: QUITAR LAS FICHAS MUDAS ANTES DE NADA
+            // El guardado resumido antiguo (saveChannelsBulk) dejaba en IndexedDB
+            // una copia de cada canal sin `url` ni `serverId`, con clave
+            // `tvg:…`/`hash:…` distinta de la del canal. Esas fichas no sirven
+            // para nada (ni se reproducen ni se atribuyen a un servidor): son las
+            // que el log llamaba "28.640 canales sin serverId (0 inferidos)" y
+            // las que la purga vieja borraba arrastrando la base entera.
+            const _rawCount = (channels || []).length;
+            if (_rawCount > 0) {
+                const _conDireccion = channels.filter(ch => ch && (ch.url || ch.stream_url || ch.direct_source));
+                if (_conDireccion.length !== _rawCount) {
+                    console.warn(`🧹 [V4.33] ${_rawCount - _conDireccion.length} fichas sin dirección descartadas (${_conDireccion.length} canales reales)`);
+                    channels = _conDireccion;
+                }
+            }
 
             if (channels && channels.length > 0) {
                 // ✅ V1.0: FORZAR DEDUPLICACIÓN AL CARGAR
                 let deduplicatedChannels = this._deduplicateChannels(channels);
 
-                // Si hay duplicados, limpiar IndexedDB automáticamente
-                if (deduplicatedChannels.length < channels.length) {
-                    const removed = channels.length - deduplicatedChannels.length;
+                // Si hay duplicados (o fichas mudas), limpiar IndexedDB automáticamente
+                if (deduplicatedChannels.length < _rawCount) {
+                    const removed = _rawCount - deduplicatedChannels.length;
                     console.warn(`⚠️ DUPLICADOS DETECTADOS: ${channels.length} → ${deduplicatedChannels.length} (-${removed})`);
                     console.log('🧹 Limpiando IndexedDB automáticamente...');
 
-                    // Guardar versión limpia
-                    await this.db.clearChannels();
-                    await this.db.saveChannels(deduplicatedChannels);
+                    // Guardar versión limpia (V4.32: en UNA sola transacción; antes
+                    // era borrar y luego escribir, y un fallo entre las dos dejaba
+                    // IndexedDB vacía y obligaba a re-descargar el catálogo)
+                    await this._replacePersistedChannels(deduplicatedChannels);
                     console.log(`✅ IndexedDB limpiado: ${deduplicatedChannels.length} canales únicos`);
                 }
 
@@ -1457,13 +1490,12 @@ class IPTVNavigatorPro {
 
                     const orphansRemoved = beforeOrphanFilter - deduplicatedChannels.length;
                     if (orphansRemoved > 0) {
-                        console.warn(`🧹 [V4.27.1] HUÉRFANOS ENCONTRADOS: ${orphansRemoved} canales de servidores inactivos eliminados`);
+                        // V4.32: se ocultan de la lista, pero NO se borran del disco.
+                        // Antes se limpiaba IndexedDB entera y la app tenía que
+                        // volver a descargar y procesar 28.655 canales en cada arranque.
+                        console.warn(`🧹 [V4.27.1] HUÉRFANOS OCULTOS: ${orphansRemoved} canales de servidores inactivos (se conservan en disco)`);
                         console.log(`   ✅ Canales válidos: ${deduplicatedChannels.length} (de ${activeServerIds.size} servidores activos)`);
-
-                        // Limpiar DB de huérfanos también
-                        await this.db.clearChannels();
-                        await this.db.saveChannels(deduplicatedChannels);
-                        console.log(`   ✅ IndexedDB limpiado de huérfanos`);
+                        console.log(`   💾 IndexedDB intacto: ${beforeOrphanFilter} canales siguen guardados`);
                     }
                 } else if (activeServerIds.size === 0 && deduplicatedChannels.length > 0) {
                     // Si hay canales pero no hay servidores activos, intentar reconstruir servidores
@@ -1582,6 +1614,11 @@ class IPTVNavigatorPro {
                 this.state.channelsMaster = scoredChannels;
                 this.state.channels = [...scoredChannels];
 
+                // V4.34: una sola migración de claves (id → serverId::id) para
+                // que dos servidores con el mismo stream_id no se pisen. Se
+                // lanza en segundo plano: no bloquea el primer pintado.
+                this._migrateChannelKeysOnce(scoredChannels);
+
                 // ✅ V4.11: Reconstruir activeServers desde canales si está vacío
                 if (!this.state.activeServers || this.state.activeServers.length === 0) {
                     const serverMap = new Map();
@@ -1644,6 +1681,144 @@ class IPTVNavigatorPro {
             }
         } catch (e) {
             console.error('❌ Error en loadChannelsList:', e);
+        }
+    }
+
+    /**
+     * ✅ V4.33: AUTORREPARACIÓN DEL CATÁLOGO AL ARRANCAR.
+     * Un refresco no debe dejar la app en «servidor conectado, 0 canales»:
+     *   1) si hay canales, no hace nada (camino rápido, coste cero);
+     *   2) si no hay, intenta el snapshot del generador;
+     *   3) si tampoco, reconecta SOLO el último servidor guardado (sin
+     *      preguntar) para recuperar el catálogo y dejarlo ya persistido,
+     *      de modo que el siguiente refresco sea instantáneo.
+     * @returns {Promise<boolean>} true si al final hay canales.
+     */
+    async _ensureCatalogAvailable() {
+        const count = () => (this.state.channelsMaster || []).length;
+        if (count() > 0) return true;
+        if (this._recoveryInProgress) return false;
+        this._recoveryInProgress = true;
+
+        console.log('♻️ [V4.33] No hay canales guardados: intentando recuperarlos');
+
+        try {
+            // 1) Snapshot del generador (la última lista generada)
+            try {
+                await this.loadGeneratorSnapshot();
+            } catch (e) {
+                console.warn('⚠️ [V4.33] Snapshot no disponible:', e && e.message ? e.message : e);
+            }
+            if (count() > 0) {
+                console.log(`✅ [V4.33] Catálogo restaurado del snapshot: ${count()} canales`);
+                return true;
+            }
+
+            // 2) Elegir el último servidor guardado CON CREDENCIALES COMPLETAS.
+            // Antes se cogía el último de activeServers sin comprobar usuario ni
+            // clave: si el último era un servidor a medio configurar, la
+            // recuperación «esperaba un servidor» que nunca podía conectar.
+            const conCredenciales = (srv) => !!(srv && (srv.baseUrl || srv.url)
+                && (srv._lockedUsername || srv.username)
+                && (srv._lockedPassword || srv.password));
+            const activos = (this.state.activeServers || []).filter(conCredenciales);
+            let target = activos[activos.length - 1] || null;
+            if (!target) {
+                try {
+                    const lib = JSON.parse(localStorage.getItem('iptv_server_library') || '[]');
+                    const validos = (Array.isArray(lib) ? lib : []).filter(conCredenciales);
+                    target = validos[validos.length - 1] || null;
+                } catch (e) { /* biblioteca ilegible: se sigue abajo */ }
+            }
+            if (!target) {
+                console.warn('ℹ️ [V4.33] No hay servidor guardado con credenciales del que recuperar el catálogo');
+                this.showNotification && this.showNotification('ℹ️ No hay canales guardados: conecta un servidor', true);
+                return false;
+            }
+
+            // 2b) El servidor puede estar en RAM pero NO en la biblioteca (medido:
+            // 3 servidores activos, 1 en biblioteca). connectFromLibrary lee SÓLO
+            // localStorage → contestaba «Servidor no encontrado» y la app se
+            // quedaba en «servidor conectado, sin canales». Se inyecta primero.
+            if (!this._ensureServerInLibrary(target)) {
+                console.warn('⚠️ [V4.33] No se pudo preparar la biblioteca para recuperar el catálogo');
+                return false;
+            }
+
+            // 2c) Cooldown de recuperación fallida: un F5 en bucle no debe
+            // re-descargar 28.000 canales en cada refresco. Si la última
+            // recuperación falló hace menos de 10 min, no se reintenta.
+            const RECOVERY_KEY = 'iptv_catalog_recovery_v1';
+            const RECOVERY_COOLDOWN = 10 * 60 * 1000;
+            let last = null;
+            try { last = JSON.parse(localStorage.getItem(RECOVERY_KEY) || 'null'); } catch (e) { }
+            if (last && last.serverId === target.id && last.ok === false
+                && (Date.now() - (last.at || 0)) < RECOVERY_COOLDOWN) {
+                const espera = Math.max(1, Math.round((RECOVERY_COOLDOWN - (Date.now() - last.at)) / 60000));
+                console.warn(`⏳ [V4.33] Recuperación fallida hace ${Math.round((Date.now() - last.at) / 60000)} min; reintento en ~${espera} min (o conecta manualmente)`);
+                this.showNotification && this.showNotification(`⚠️ Sin canales guardados: reintento automático en ~${espera} min o pulsa Conectar`, true);
+                return false;
+            }
+
+            console.log(`🔄 [V4.33] Reconectando automáticamente para recuperar el catálogo (${target.id})`);
+            this.showNotification && this.showNotification('♻️ Recuperando el catálogo de tu servidor...', false);
+            try {
+                await this.connectFromLibrary(target.id, { auto: true });
+            } catch (e) {
+                console.error('❌ [V4.33] No se pudo recuperar el catálogo:', e && e.message ? e.message : e);
+            }
+            const ok = count() > 0;
+            try {
+                localStorage.setItem(RECOVERY_KEY, JSON.stringify({ serverId: target.id, at: Date.now(), ok }));
+            } catch (e) { /* sin almacenamiento: se reintentará, no se rompe nada */ }
+            console.log(ok
+                ? `✅ [V4.33] Catálogo recuperado: ${count()} canales`
+                : '⚠️ [V4.33] El servidor no devolvió canales: revisa la conexión');
+            return ok;
+        } finally {
+            this._recoveryInProgress = false;
+        }
+    }
+
+    /**
+     * V4.34: garantiza que un servidor de `activeServers` existe en la
+     * biblioteca (localStorage), que es lo único que lee connectFromLibrary().
+     * No toca credenciales: copia las que ya tiene el servidor en memoria.
+     * @returns {boolean} true si el servidor quedó disponible en la biblioteca.
+     */
+    _ensureServerInLibrary(server) {
+        try {
+            if (!server || !server.id) return false;
+            const host = String(server.baseUrl || server.url || '').replace(/\/player_api\.php$/, '');
+            const user = server.username || server._lockedUsername || '';
+            if (!host || !user) return false;
+            const lib = JSON.parse(localStorage.getItem('iptv_server_library') || '[]');
+            const list = Array.isArray(lib) ? lib : [];
+            const hostKey = this._serverHostKey(host);
+            const yaEsta = list.some(s => s && (
+                s.id === server.id ||
+                (this._serverHostKey(s.baseUrl || s.url || '') === hostKey
+                    && (s.username || s._lockedUsername) === user)
+            ));
+            if (yaEsta) return true;
+            list.push({
+                id: server.id,
+                name: server.name || host,
+                baseUrl: host,
+                url: host,
+                username: user,
+                password: server.password || server._lockedPassword || '',
+                _lockedUsername: server._lockedUsername || user,
+                _lockedPassword: server._lockedPassword || server.password || '',
+                channelCount: server.channelCount || server.count || 0,
+                addedAt: Date.now()
+            });
+            localStorage.setItem('iptv_server_library', JSON.stringify(list));
+            console.log(`📚 [V4.34] Servidor ${server.name || server.id} añadido a la biblioteca para la recuperación automática`);
+            return true;
+        } catch (e) {
+            console.warn('⚠️ [V4.34] No se pudo preparar la biblioteca:', e && e.message ? e.message : e);
+            return false;
         }
     }
 
@@ -2277,8 +2452,8 @@ class IPTVNavigatorPro {
 
             // ✅ V4.31: Persistir canales a IndexedDB para que loadChannelsList los encuentre en futuros reloads
             try {
-                await this.db.clearChannels();
-                await this.db.saveChannels(snapshot.channels);
+                // V4.32: una sola transacción (antes: borrar y luego escribir)
+                await this._replacePersistedChannels(snapshot.channels);
                 console.log(`💾 Snapshot persistido a IndexedDB: ${snapshot.channels.length} canales`);
             } catch (dbErr) {
                 console.warn('⚠️ No se pudo persistir snapshot a IndexedDB:', dbErr.message);
@@ -3257,6 +3432,23 @@ class IPTVNavigatorPro {
         if (this._probeMonitorStarted) return;
         this._probeMonitorStarted = true;
         this._lastProbeCheck = 0; // timestamp of last check
+
+        /* [2026-11-19] MONITOR DESACTIVADO POR DEFECTO.
+         * El "Probe Server" apunta a 178.156.147.234:8765 y ese servicio NO existe
+         * en este despliegue: medido, no hay nada escuchando en 8765 y no hay
+         * implementacion de /probe-all ni del WebSocket /ws/progress en el VPS.
+         * Consecuencia: cada 60 s un ERR_CONNECTION_REFUSED que ademas disparaba la
+         * recuperacion del Cortex STEALTH, ensuciando la consola sin aportar nada
+         * (el resultado era siempre "no disponible", nunca un cambio de estado).
+         * El sondeo real del VPS es OTRO servicio: 127.0.0.1:8787 (/health y
+         * /probe?url=..., solo loopback, sin token).
+         * Queda opt-in: si algun dia se despliega uno, basta definir
+         * window.PROBE_SERVER_URL antes de init y este monitor vuelve a correr. */
+        if (!window.PROBE_SERVER_URL) {
+            console.info('[ProbeServer] monitor desactivado: no hay Probe Server en este despliegue '
+                + '(el sondeo real del VPS es 127.0.0.1:8787). Define window.PROBE_SERVER_URL para activarlo.');
+            return;
+        }
 
         // V4.24: First try to wake the server via watchdog
         this._wakeServerViaWatchdog();
@@ -4274,6 +4466,93 @@ El servidor analizará 26,000+ canales en ~10 minutos.
      * @param {array} channels - Array of channels to deduplicate
      * @returns {array} Deduplicated channels
      */
+    /**
+     * V4.32: guarda el catálogo dejando IndexedDB como estaba si algo falla.
+     */
+    async _replacePersistedChannels(list) {
+        if (!this.db) return false;
+        try {
+            if (typeof this.db.replaceChannels === 'function') {
+                return await this.db.replaceChannels(list);
+            }
+            await this.db.clearChannels();
+            return await this.db.saveChannels(list);
+        } catch (e) {
+            console.error('❌ No se pudo guardar el catálogo (IndexedDB intacto):', e && e.message ? e.message : e);
+            return false;
+        }
+    }
+
+    /**
+     * V4.34: MIGRACIÓN ÚNICA de claves físicas de IndexedDB.
+     *
+     * El store tiene keyPath `id` y `id` es el stream_id del canal, que NO es
+     * único entre servidores. Las filas antiguas están guardadas sólo por ese
+     * id; las nuevas van por `serverId::id`. Esta migración reescribe el
+     * catálogo completo UNA vez (transacción atómica: si falla, el store queda
+     * intacto), deja el sello `schemaVersion=2` y a partir de ahí la carga es
+     * de sólo lectura. No borra nada de lo que hay en memoria.
+     */
+    async _migrateChannelKeysOnce(channels) {
+        if (this._channelKeyMigrationDone) return;
+        if (!this.db || !Array.isArray(channels) || channels.length === 0) return;
+        this._channelKeyMigrationDone = true;
+        try {
+            const meta = await this.db.getAppState('channelsCache');
+            if (meta && Number(meta.schemaVersion) >= 2) return;
+            console.log(`🔑 [V4.34] Migrando claves de IndexedDB a serverId::id (${channels.length} canales)...`);
+            const saved = await this.db.replaceChannels(channels);
+            await this.db.saveAppState('channelsCache', Object.assign({}, meta || {}, {
+                schemaVersion: 2,
+                stats: this.state.stats,
+                activeColumns: this.state.activeColumns,
+                lastSaved: new Date().toISOString(),
+                totalCount: saved,
+                timestamp: Date.now()
+            }));
+            console.log(`✅ [V4.34] Claves migradas: ${saved} canales (sin colisiones entre servidores)`);
+        } catch (e) {
+            this._channelKeyMigrationDone = false;
+            console.warn('⚠️ [V4.34] Migración de claves no completada (no bloqueante):', e && e.message ? e.message : e);
+        }
+    }
+
+    /**
+     * V4.32: nombre de usuario que va dentro de la dirección del canal
+     * (http://host:8080/live/USUARIO/CLAVE/123.ts, o ?username=...).
+     */
+    _userFromStreamUrl(url) {
+        const s = String(url || '');
+        const q = s.match(/[?&]username=([^&#]+)/i);
+        if (q) { try { return decodeURIComponent(q[1]); } catch (e) { return q[1]; } }
+        const p = s.match(/\/(?:live|movie|series|timeshift)\/([^\/?#]+)\//i);
+        if (p) { try { return decodeURIComponent(p[1]); } catch (e) { return p[1]; } }
+        return '';
+    }
+
+    /**
+     * V4.32: id del servidor conectado al que pertenece una dirección de canal,
+     * reconocido por host + usuario. null si no es de ninguno.
+     */
+    _serverIdFromStreamUrl(url) {
+        const s = String(url || '');
+        const m = s.match(/^https?:\/\/([^\/?#]+)/i);
+        if (!m) return null;
+        if (typeof this._findActiveServerByHost !== 'function') return null;
+        const found = this._findActiveServerByHost('http://' + m[1], this._userFromStreamUrl(s));
+        return (found && found.id) ? found.id : (found && found.serverId) ? found.serverId : null;
+    }
+
+    /**
+     * V4.32: marca de origen para la clave de deduplicación. Nunca se guarda en
+     * el canal: sólo evita juntar en la misma clave canales de hosts distintos.
+     */
+    _serverKeyFromStreamUrl(url) {
+        const s = String(url || '');
+        const m = s.match(/^https?:\/\/([^\/?#]+)/i);
+        return m ? 'host_' + m[1].toLowerCase() : '';
+    }
+
     _deduplicateChannels(channels) {
         if (!Array.isArray(channels)) return [];
 
@@ -4288,24 +4567,28 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             // ✅ Validate and infer serverId if missing
             if (!serverId) {
                 withoutServerId++;
-                // Try to infer from URL
-                if (ch.stream_url) {
-                    const urlMatch = ch.stream_url.match(/https?:\/\/([^\/]+)/);
-                    if (urlMatch) {
-                        serverId = 'srv_' + urlMatch[1].replace(/[^a-z0-9]/gi, '_').substring(0, 20);
-                        ch.serverId = serverId;
-                        inferred++;
-                    }
-                }
-                // If still no serverId, use hash of URL
-                if (!serverId) {
-                    const hash = this._simpleHash(ch.stream_url || ch.name || String(streamId));
-                    serverId = 'unknown_' + hash;
-                    ch.serverId = serverId;
+                // V4.32: el catálogo guarda la dirección en `url` (no en stream_url),
+                // por eso antes no se reconocía ningún servidor: 0 inferidos.
+                const rawUrl = ch.url || ch.stream_url || ch.direct_source || '';
+
+                // Primero: ¿es de un servidor que ya tengo conectado? Se reconoce
+                // por host + usuario, igual que _isSameServer (V4.31).
+                const realId = this._serverIdFromStreamUrl(rawUrl);
+                if (realId) {
+                    ch.serverId = realId;
+                    serverId = realId;
+                    inferred++;
                 }
             }
 
-            const key = `${serverId}:${streamId}`;
+            // La marca de origen sólo sirve para la clave y NUNCA se guarda en el
+            // canal: si no es de un servidor conocido, el canal se queda SIN
+            // serverId (el filtro de huérfanos conserva los que no tienen) en vez
+            // de recibir un id inventado "unknown_..." que lo hacía parecer huérfano.
+            const keyServer = serverId
+                || this._serverKeyFromStreamUrl(ch.url || ch.stream_url || ch.direct_source || '')
+                || ('sinurl_' + this._simpleHash(ch.name || String(streamId)));
+            const key = `${keyServer}:${streamId}`;
 
             if (!seen.has(key)) {
                 seen.set(key, ch);
@@ -4468,7 +4751,7 @@ El servidor analizará 26,000+ canales en ~10 minutos.
      * 
      * @param {string} serverId - Server ID to remove
      */
-    removeServer(serverId) {
+    async removeServer(serverId) {
         if (!serverId) {
             console.warn('⚠️ removeServer: No serverId provided');
             return;
@@ -4495,6 +4778,11 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             this.state.currentServer = {};
         }
 
+        // 4b. ✅ V4.33: si el filtro de la tabla apuntaba al servidor borrado, se
+        // suelta. Si no, la tabla se queda en 0 canales («servidor conectado y no
+        // hay canales») porque sigue filtrando por un servidor que ya no existe.
+        if (this.state.filterServer === serverId) this.state.filterServer = null;
+
         // 5. Update channels view
         this.state.channels = [...this.state.channelsMaster];
 
@@ -4506,7 +4794,9 @@ El servidor analizará 26,000+ canales en ~10 minutos.
         // 7. Save state
         this.saveActiveServers();
         if (this.db) {
-            this.db.saveChannelsBulk(this.state.channelsMaster, 'merged').catch(e => console.error(e));
+            // ✅ V4.33: se ESPERA el guardado. Antes se lanzaba sin esperar y un
+            // refresco justo en ese momento dejaba la base a medias o vacía.
+            await this.db.saveChannelsBulk(this.state.channelsMaster, 'merged').catch(e => console.error(e));
         }
 
         // 8. Re-render server list
@@ -4858,6 +5148,50 @@ El servidor analizará 26,000+ canales en ~10 minutos.
         return u;
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔑 IDENTIDAD DE UN SERVIDOR (2026-11-24) — host + usuario, no sólo la URL
+    // Dos cuentas del MISMO panel son DOS servidores: comparten host pero no
+    // usuario. Antes sólo se comparaba el host, así que la segunda cuenta se
+    // tomaba por "reconexión" de la primera (mismo id) y sus canales caían en
+    // el mismo montón: las dos acababan mostrando el mismo total.
+    // ═══════════════════════════════════════════════════════════════════════
+    _serverHostKey(srvOrUrl) {
+        const raw = typeof srvOrUrl === 'string'
+            ? srvOrUrl
+            : (srvOrUrl?.baseUrl || srvOrUrl?.url || '');
+        return String(raw || '')
+            .replace(/^https?:\/\//i, '')
+            .replace(/\/player_api\.php.*$/i, '')
+            .replace(/\/+$/, '')
+            .trim()
+            .toLowerCase();
+    }
+
+    _serverUserKey(srvOrUrl) {
+        const raw = typeof srvOrUrl === 'string'
+            ? ''
+            : (srvOrUrl?._lockedUsername || srvOrUrl?.username || '');
+        return String(raw || '').trim().toLowerCase();
+    }
+
+    /** Mismo servidor = mismo host Y mismo usuario. Si a alguno le falta el
+     *  usuario guardado, se compara sólo el host (comportamiento de antes). */
+    _isSameServer(a, b) {
+        const ha = this._serverHostKey(a);
+        const hb = this._serverHostKey(b);
+        if (!ha || !hb || ha !== hb) return false;
+        const ua = this._serverUserKey(a);
+        const ub = this._serverUserKey(b);
+        if (!ua || !ub) return true;
+        return ua === ub;
+    }
+
+    /** El servidor conectado que ES ese servidor (host + usuario), o undefined. */
+    _findActiveServerByHost(host, user) {
+        const target = { baseUrl: host, username: user };
+        return (this.state.activeServers || []).find(srv => this._isSameServer(srv, target));
+    }
+
     // ==================== 2. CONEXIÓN AVANZADA (ROBUSTA) ====================
     async connectServer(append = false) {
         // ✅ V4.27.3: BLOQUEO ANTI-DUPLICADOS - Evitar conexiones simultáneas
@@ -4893,77 +5227,78 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             return;
         }
 
+        const previousCurrentServer = this.state.currentServer;
+        let catalogProcessingStarted = false;
         // ✅ V4.27.3: Establecer flag de bloqueo INMEDIATAMENTE después de validar campos
         this._connectionInProgress = true;
         console.log('🔒 [V4.27.3] Conexión bloqueada - procesando...');
 
-        // ✅ Usamos el normalizador: "line.ultra-8k.xyz" -> "http://line.ultra-8k.xyz"
-        const baseHost = this.normalizeXtreamBase(rawUrl);
-
-        if (!baseHost) {
-            alert('URL de servidor inválida');
-            this._connectionInProgress = false;  // ✅ V4.27.3: Liberar flag
-            return;
-        }
-
-        const endpoint = `${baseHost}/player_api.php`;
-
-        // ✅ V4.27.4: DETECCIÓN SIMPLE DE DUPLICADOS - SOLO POR URL BASE
-        const normalizedHost = baseHost.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
-        const existingServer = (this.state.activeServers || []).find(srv => {
-            const srvHost = (srv.baseUrl || '').replace(/^https?:\/\//, '').replace(/\/player_api\.php$/, '').replace(/\/$/, '').toLowerCase();
-            return srvHost === normalizedHost;
-        });
-
-        // ✅ V4.27.4 FIX: Verificación correcta (puede ser undefined)
-        let isReconnect = !!existingServer;
-        let sId;
-
-        if (isReconnect && existingServer) {
-            // ✅ URL YA EXISTE - usar servidor existente, sobrescribir canales
-            console.log(`🔄 [V4.27.4] Servidor "${existingServer.name || 'existente'}" - ACTUALIZANDO canales`);
-            this.showNotification(`🔄 Actualizando canales...`);
-            sId = existingServer.id;
-        } else {
-            // ✅ Servidor nuevo
-            sId = 'srv_' + Date.now();
-            isReconnect = false;
-        }
-        this.state.currentServer = {
-            id: sId,
-            name: document.getElementById('serverName')?.value.trim() || existingServer?.name || rawUrl,
-            baseUrl: endpoint,   // IMPORTANTE: con /player_api.php para internal use
-            username: user,
-            password: pass
-        };
-
-        // PhD-AUDIT FIX F3: Register provider host globally so Cortex
-        // permanently whitelists it (not just 10s user-initiated window).
+        // La preparación y la persistencia también pueden fallar: todo el
+        // recorrido que posee el bloqueo debe pasar por el mismo finally.
         try {
-            if (!Array.isArray(window.APE_USER_PROVIDER_HOSTS)) window.APE_USER_PROVIDER_HOSTS = [];
-            const hostOnly = baseHost.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-            if (hostOnly && !window.APE_USER_PROVIDER_HOSTS.includes(hostOnly)) {
-                window.APE_USER_PROVIDER_HOSTS.push(hostOnly);
+            // ✅ Usamos el normalizador: "line.ultra-8k.xyz" -> "http://line.ultra-8k.xyz"
+            const baseHost = this.normalizeXtreamBase(rawUrl);
+
+            if (!baseHost) {
+                alert('URL de servidor inválida');
+                return;
             }
-        } catch (_) { /* noop */ }
 
-        // Persistir config inmediata
-        await this.saveActiveServers();
+            const endpoint = `${baseHost}/player_api.php`;
 
-        this.setLoading(true);
-        if (apiLabel) apiLabel.textContent = 'Player API (Xtream)';
+            // ✅ V4.27.4 → 2026-11-24: DUPLICADO = mismo host Y mismo usuario.
+            // Dos cuentas del mismo panel ya NO se pisan: cada una es un servidor.
+            const normalizedHost = this._serverHostKey(baseHost);
+            const existingServer = this._findActiveServerByHost(baseHost, user);
 
-        // ✅ V4.27.3: Flag ya establecido arriba (antes de verificaciones)
+            // ✅ V4.27.4 FIX: Verificación correcta (puede ser undefined)
+            let isReconnect = !!existingServer;
+            let sId;
 
-        // ✅ V4.10: Iniciar barra de progreso
-        this.updateMiniProgress({
-            pct: 0,
-            status: "Conectando al servidor...",
-            state: "active"
-        });
-        this.appendEnrichLog("Iniciando conexión...");
+            if (isReconnect && existingServer) {
+                // ✅ URL YA EXISTE - usar servidor existente, sobrescribir canales
+                console.log(`🔄 [V4.27.4] Servidor "${existingServer.name || 'existente'}" - ACTUALIZANDO canales`);
+                this.showNotification(`🔄 Actualizando canales...`);
+                sId = existingServer.id;
+            } else {
+                // ✅ Servidor nuevo
+                sId = 'srv_' + Date.now();
+                isReconnect = false;
+            }
+            this.state.currentServer = {
+                id: sId,
+                name: document.getElementById('serverName')?.value.trim() || existingServer?.name || rawUrl,
+                baseUrl: endpoint,   // IMPORTANTE: con /player_api.php para internal use
+                username: user,
+                password: pass
+            };
 
-        try {
+            // PhD-AUDIT FIX F3: Register provider host globally so Cortex
+            // permanently whitelists it (not just 10s user-initiated window).
+            try {
+                if (!Array.isArray(window.APE_USER_PROVIDER_HOSTS)) window.APE_USER_PROVIDER_HOSTS = [];
+                const hostOnly = baseHost.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+                if (hostOnly && !window.APE_USER_PROVIDER_HOSTS.includes(hostOnly)) {
+                    window.APE_USER_PROVIDER_HOSTS.push(hostOnly);
+                }
+            } catch (_) { /* noop */ }
+
+            // Persistir config inmediata
+            await this.saveActiveServers();
+
+            this.setLoading(true);
+            if (apiLabel) apiLabel.textContent = 'Player API (Xtream)';
+
+            // ✅ V4.27.3: Flag ya establecido arriba (antes de verificaciones)
+
+            // ✅ V4.10: Iniciar barra de progreso
+            this.updateMiniProgress({
+                pct: 0,
+                status: "Conectando al servidor...",
+                state: "active"
+            });
+            this.appendEnrichLog("Iniciando conexión...");
+
             // ✅ USAMOS MOTOR AVANZADO (Live + VOD + Series en paralelo)
             console.log('⚡ Conectando a Xtream usando', baseHost);
             console.log(isReconnect ? '🔄 [Reconexión] Servidor existente, aplicando merge...' : '➕ [Nueva conexión] Agregando servidor...');
@@ -5017,6 +5352,7 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             });
             this.appendEnrichLog("Normalizando datos...");
 
+            catalogProcessingStarted = true;
             if (isReconnect && !append) {
                 // Merge: update existing, add new, remove old
                 const mergeResult = this.mergeServerChannels(rawChannels, this.state.currentServer);
@@ -5024,6 +5360,20 @@ El servidor analizará 26,000+ canales en ~10 minutos.
 
                 // Re-apply filters and render
                 this.applyFilters();
+
+                // V4.34F: la reconexión debe persistir el catálogo EXACTO de este
+                // servidor. mergeServerChannels() quita de memoria los retirados,
+                // pero sus filas seguían en IndexedDB y reaparecían al recargar
+                // (medido: canal 001 del fixture A). Una sola transacción.
+                if (this.db && typeof this.db.replaceChannelsForServer === 'function') {
+                    const serverChannels = this.state.channelsMaster.filter(ch =>
+                        (ch.serverId || ch._serverId) === this.state.currentServer.id);
+                    try {
+                        await this.db.replaceChannelsForServer(baseHost, serverChannels);
+                    } catch (e) {
+                        console.warn('⚠️ No se pudo persistir el catálogo reconectado:', e);
+                    }
+                }
             } else {
                 // New server or explicit append: use normal processing
                 await this.processChannels(rawChannels, this.state.currentServer, append);
@@ -5091,6 +5441,8 @@ El servidor analizará 26,000+ canales en ~10 minutos.
                 this.updateMiniProgress({ state: "hidden" });
             }, 2000);
 
+            // Igual que la conexión desde biblioteca: liberar antes de navegar.
+            this._connectionInProgress = false;
             this.showTab('analysis');
             const total = this.state.channelsMaster.length;
             const msg = isReconnect
@@ -5123,6 +5475,7 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             }
 
         } catch (err) {
+            if (!catalogProcessingStarted) this.state.currentServer = previousCurrentServer;
             console.error(err);
             // ✅ V4.10: Mostrar error en barra
             this.updateMiniProgress({
@@ -5135,9 +5488,9 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             this.setConnectionStatus(false, 'Error de conexión');
             alert(`❌ Error de conexión: ${err.message}`);
         } finally {
-            this.setLoading(false);
             // ✅ V4.10: Desbloquear cambio de tabs
             this._connectionInProgress = false;
+            this.setLoading(false);
         }
     }
 
@@ -5226,7 +5579,10 @@ El servidor analizará 26,000+ canales en ~10 minutos.
 
             const userInfo = authResponse.data?.user_info || {};
             const serverInfo = authResponse.data?.server_info || {};
-            const allowedFormats = userInfo.allowed_output_formats || ['ts', 'm3u8'];
+            const rawAllowedFormats = userInfo.allowed_output_formats;
+            const allowedFormats = Array.isArray(rawAllowedFormats)
+                ? rawAllowedFormats
+                : String(rawAllowedFormats || 'ts,m3u8').split(',');
             console.log('📋 Formatos de salida permitidos:', allowedFormats);
             console.log('🖥️ Info del servidor:', serverInfo);
 
@@ -5249,56 +5605,56 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             }
 
             // ═══════════════════════════════════════════════════════════════
-            // 🛡️ FRONTCDN REDIRECT PROBE v1.0
-            // Detecta si el servidor usa redirect 302 a un dominio CDN diferente.
-            // Si lo hace, ExoPlayer no puede resolver segmentos HLS relativos
-            // → se marca _forceTS=true para que el generador use .ts directo.
+            // 🛡️ CONNECTION BUDGET + FORMAT DECISION v2.0
+            //
+            // El probe anterior hacía GET /live/{user}/{pass}/1.m3u8 con
+            // mode:'no-cors'. Eso abría un stream REAL, consumía el único slot
+            // de una cuenta max_connections=1 y dejaba al player con 403.
+            // Además, una respuesta no-cors es opaca: status=0 y Location vacío,
+            // así que el probe NUNCA podía detectar el redirect que decía detectar.
+            //
+            // Ahora la decisión se toma con datos que el API ya devolvió:
+            // allowed_output_formats. Cero conexiones extra, cero slot robado.
             // ═══════════════════════════════════════════════════════════════
-            try {
-                const probeUrl = `${baseUrl}/live/${u}/${p}/1.m3u8`;
-                console.log('🛡️ [FrontCDN Probe] Verificando redirect chain...');
-                // ANTI-CORS FIX: Use original fetch to bypass evasion engine
-                // The evasion engine intercepts /live/ URLs and injects custom headers
-                // that trigger CORS preflight failures. Use raw fetch instead.
-                const _rawFetch = window._APE_ORIGINAL_FETCH || fetch;
-                const probeResp = await _rawFetch(probeUrl, {
-                    method: 'GET',
-                    redirect: 'manual',
-                    mode: 'no-cors',
-                    signal: AbortSignal.timeout(3000)
-                });
-                
-                const isRedirect = probeResp.status >= 300 && probeResp.status < 400;
-                const redirectLocation = probeResp.headers.get('Location') || '';
-                const originalHost = new URL(baseUrl).hostname.toLowerCase();
-                let redirectHost = '';
-                let isCrossDomain = false;
-                
-                if (isRedirect && redirectLocation) {
-                    try {
-                        redirectHost = new URL(redirectLocation).hostname.toLowerCase();
-                        isCrossDomain = redirectHost !== originalHost && 
-                                       !redirectHost.match(/^\d+\.\d+\.\d+\.\d+$/);
-                    } catch(e) {}
-                }
-                
-                if (isCrossDomain) {
-                    console.warn(`🛡️ [FrontCDN DETECTADO] ${originalHost} → ${redirectHost}`);
-                    console.warn(`   ⚠️ Redirect cross-domain a CDN detectado. Forzando .ts`);
-                    this.state.currentServer._forceTS = true;
-                    this.state.currentServer._frontCDNHost = redirectHost;
-                    const activeSrv = this.state.activeServers?.find(s => s.id === this.state.currentServer?.id);
-                    if (activeSrv) {
-                        activeSrv._forceTS = true;
-                        activeSrv._frontCDNHost = redirectHost;
-                    }
-                } else {
-                    console.log(`🛡️ [FrontCDN Probe] Sin redirect cross-domain → .m3u8 seguro ✅`);
-                    this.state.currentServer._forceTS = false;
-                }
-            } catch (probeErr) {
-                console.warn('🛡️ [FrontCDN Probe] Error en probe (no crítico):', probeErr.message);
+            const rawMaxConnections = userInfo.max_connections;
+            const parsedMaxConnections = parseInt(rawMaxConnections, 10);
+            // Ausente → asumimos 1 (el caso que produce 403).
+            // 0 → el panel declara "sin límite"; no clampeamos.
+            const maxConnections = rawMaxConnections == null
+                ? 1
+                : (Number.isFinite(parsedMaxConnections) && parsedMaxConnections > 0 ? parsedMaxConnections : 0);
+            const m3u8Allowed = allowedFormats.some(f => String(f).trim().toLowerCase() === 'm3u8');
+            const tsAllowed = allowedFormats.some(f => String(f).trim().toLowerCase() === 'ts');
+            const preferredStreamFormat = m3u8Allowed ? 'm3u8' : (tsAllowed ? 'ts' : 'm3u8');
+            const forceTS = !m3u8Allowed;
+
+            this.state.maxConnections = maxConnections;
+            this.state.preferredStreamFormat = preferredStreamFormat;
+
+            if (this.state.currentServer) {
+                this.state.currentServer._maxConnections = maxConnections;
+                this.state.currentServer._preferredStreamFormat = preferredStreamFormat;
+                this.state.currentServer._forceTS = forceTS;
             }
+            const activeSrv = this.state.activeServers?.find(s => s.id === this.state.currentServer?.id);
+            if (activeSrv) {
+                activeSrv._maxConnections = maxConnections;
+                activeSrv._preferredStreamFormat = preferredStreamFormat;
+                activeSrv._forceTS = forceTS;
+            }
+
+            try {
+                if (window.SESSION_WARMUP_V9 && typeof window.SESSION_WARMUP_V9.setMaxConnections === 'function') {
+                    window.SESSION_WARMUP_V9.setMaxConnections(maxConnections);
+                }
+            } catch (warmupErr) {
+                console.warn('🛡️ [ConnectionBudget] Warmup no pudo ajustar su presupuesto:', warmupErr.message);
+            }
+
+            console.log(
+                `🛡️ [ConnectionBudget] max_connections=${maxConnections} · ` +
+                `format=${preferredStreamFormat} · probe=SKIPPED (no consume slot)`
+            );
 
             // 2️⃣ Obtener categorías para mapear ID → Nombre
             console.log('📂 Descargando categorías...');
@@ -5530,6 +5886,15 @@ El servidor analizará 26,000+ canales en ~10 minutos.
     async processChannels(rawChannels, serverObj, append = false) {
         console.time('Processing');
 
+        // V4.34: una sola forma de la URL de origen para TODO el guardado y el
+        // borrado. Antes se guardaba con `/player_api.php` y se borraba sin él:
+        // clearChannelsByServer() buscaba por un valor que no existía y los
+        // canales viejos de ese servidor se quedaban en el store duplicados.
+        const _storageUrl = String(
+            (serverObj && (serverObj.baseUrl || serverObj.url)) ||
+            (this.state.currentServer && this.state.currentServer.baseUrl) || ''
+        ).replace(/\/player_api\.php$/, '');
+
         if (!this.FIELD_SYNONYMS) this.initFieldSynonyms();
 
         const normalized = rawChannels.map((ch, idx) => this.normalizeChannel(ch, serverObj, idx));
@@ -5545,25 +5910,59 @@ El servidor analizará 26,000+ canales en ~10 minutos.
 
         let cachedMap = new Map();
         if (this.db) {
-            try { cachedMap = await this.db.getCachedMetadata(); } catch (e) { }
+            // Se pasa la lista: db-manager lee sólo estos ids en vez de recorrer
+            // el store entero en cada conexión (antes: S servidores × M canales).
+            // V4.34: se pasa el serverId para consultar la clave física
+            // serverId::id; sin él, dos servidores con el mismo stream_id se
+            // confundían en la caché.
+            console.time('Metadata cache');
+            try {
+                cachedMap = await this.db.getCachedMetadata(cascaded || normalized, serverObj && serverObj.id);
+            } catch (e) {
+                console.warn('⚠️ Caché de metadatos no disponible; se conserva el catálogo recibido:', e);
+            } finally {
+                console.timeEnd('Metadata cache');
+            }
         }
 
         const enriched = [];
         const toSave = [];
+        const normalizeMetadataSource = value => typeof value === 'string'
+            ? value.replace(/\/+$/, '').replace(/\/player_api\.php$/i, '').replace(/\/+$/, '') : '';
+        const metadataSource = normalizeMetadataSource(serverObj.baseUrl);
 
         // ✅ Usar cascaded (con fuentes combinadas) en lugar de normalized
-        cascaded.forEach(ch => {
-            const id = this.db ? this.db.generateChannelId(ch) : null;
-            const cached = id ? cachedMap.get(id) : null;
+        // Ceder al navegador entre tramos mantiene el progreso y los controles
+        // receptivos sin omitir canales ni cambiar su orden o sus heurísticas.
+        let lastEnrichmentYield = performance.now();
+        for (const ch of cascaded) {
+            // V4.34: la caché se indexa por el `id` CANÓNICO del canal (el mismo
+            // con el que se guarda en IndexedDB). Antes se buscaba por
+            // generateChannelId() (tvg:/hash:) mientras el store se escribía por
+            // `id`: la caché no acertaba NUNCA y cada conexión volvía a
+            // enriquecer los 28.655 canales (el "cargue a lo loco").
+            const id = (ch.id !== undefined && ch.id !== null && ch.id !== '')
+                ? String(ch.id)
+                : (this.db ? this.db.generateChannelId(ch) : null);
+            const candidate = id ? cachedMap.get(String(id)) : null;
+            // Un TVG-ID puede existir en varios proveedores con metadatos
+            // distintos. Reutilizar sólo la caché cuyo origen es este servidor.
+            const cached = candidate && metadataSource &&
+                normalizeMetadataSource(candidate.serverUrl) === metadataSource ? candidate : null;
 
             if (cached) {
-                enriched.push({ ...ch, ...cached, url: ch.url, _fromCache: true });
+                enriched.push({ ...ch, ...cached, id: ch.id, serverId: ch.serverId,
+                    _serverId: ch._serverId, serverName: ch.serverName, url: ch.url, _fromCache: true });
             } else {
                 const processed = this.enrichChannel(ch);
                 enriched.push(processed);
                 toSave.push(processed);
             }
-        });
+            if (performance.now() - lastEnrichmentYield >= 16) {
+                await new Promise(resolve => setTimeout(resolve, 0));
+                lastEnrichmentYield = performance.now();
+            }
+        }
 
         // V4.5.1: Asignación secuencial de números (Critico Fase 4)
         enriched.forEach((ch, idx) => {
@@ -5577,7 +5976,11 @@ El servidor analizará 26,000+ canales en ~10 minutos.
         });
 
         if (this.db && toSave.length > 0) {
-            this.db.saveChannelsBulk(toSave, this.state.currentServer.baseUrl).catch(e => console.error(e));
+            // ✅ V4.33: se ESPERA el guardado (un refresco no debe pillar la base a medias)
+            // El origen pertenece a esta operación, no al servidor antes seleccionado.
+            await this.db.saveChannelsBulk(toSave, _storageUrl).catch(e =>
+                console.warn('⚠️ No se pudo actualizar la caché de metadatos:', e)
+            );
         }
 
         // --- Active Servers Management ---
@@ -5683,13 +6086,19 @@ El servidor analizará 26,000+ canales en ~10 minutos.
 
             // 🔒 V4.18.3: FIX CRÍTICO - Usar upsert en lugar de overwrite
             this.upsertServer(newServerEntry);
+        }
 
-            // ✅ V4.27: Limpiar solo canales de ESTE servidor en IndexedDB (no todos)
-            if (this.db && typeof this.db.clearChannelsByServer === 'function') {
-                const serverUrl = (serverObj.baseUrl || '').replace(/\/player_api\.php$/, '');
-                this.db.clearChannelsByServer(serverUrl).catch(e =>
-                    console.warn('⚠️ No se pudo limpiar canales del servidor en IndexedDB:', e)
-                );
+        // V4.34F: persistir el catálogo EXACTO de este servidor en UNA sola
+        // transacción. Los canales retirados no pueden sobrevivir en IndexedDB y
+        // reaparecer al recargar (medido: canal 001 tras reconectar desde la
+        // biblioteca, que usa append=true). Cubre reconexión y append.
+        if (this.db && typeof this.db.replaceChannelsForServer === 'function') {
+            const serverChannels = this.state.channelsMaster.filter(ch =>
+                (ch.serverId || ch._serverId) === serverObj.id);
+            try {
+                await this.db.replaceChannelsForServer(_storageUrl, serverChannels);
+            } catch (e) {
+                console.warn('⚠️ No se pudo persistir el catálogo del servidor:', e);
             }
         }
 
@@ -5709,8 +6118,9 @@ El servidor analizará 26,000+ canales en ~10 minutos.
         this.calculateStats();
         this.updateStatsUI();
 
-        // Persistir lista de canales completa
-        await this.saveChannelsList();
+        // Persistir los canales de ESTA conexión (los demás ya están guardados
+        // desde su propia conexión): mismo dato en disco, mucho menos trabajo.
+        await this.saveChannelsList({ only: enriched, serverUrl: _storageUrl });
 
         // ✅ V4.11: Persistir servidores activos automáticamente para que el chip no desaparezca al refrescar
         await this.saveActiveServers();
@@ -5730,11 +6140,12 @@ El servidor analizará 26,000+ canales en ~10 minutos.
 
         if (!this.state.activeServers || this.state.activeServers.length === 0) return;
 
-        // ✅ V4.27.4: DEDUPLICAR por URL antes de renderizar
+        // ✅ V4.27.4 → 2026-11-24: DEDUPLICAR por host+usuario antes de renderizar
+        // (dos cuentas del mismo panel son dos servidores y deben salir las dos)
         const seenUrls = new Set();
         const uniqueServers = [];
         this.state.activeServers.forEach(srv => {
-            const normalizedUrl = (srv.baseUrl || '').replace(/^https?:\/\//, '').replace(/\/player_api\.php$/, '').toLowerCase();
+            const normalizedUrl = this._serverHostKey(srv) + '|' + this._serverUserKey(srv);
             if (!seenUrls.has(normalizedUrl)) {
                 seenUrls.add(normalizedUrl);
                 uniqueServers.push(srv);
@@ -5750,12 +6161,20 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             this.saveActiveServers(); // Persistir la limpieza
         }
 
+        // Conteo por servidor en UNA pasada. Antes se hacía un filter() del
+        // array entero por cada servidor (N servidores × M canales): con 10
+        // servidores y 26 000 canales eran 260 000 comparaciones por repintado.
+        const _countsByServer = new Map();
+        for (let _i = 0; _i < (this.state.channelsMaster || []).length; _i++) {
+            const _ch = this.state.channelsMaster[_i];
+            const _sid = _ch.serverId || _ch._serverId;
+            _countsByServer.set(_sid, (_countsByServer.get(_sid) || 0) + 1);
+        }
+
         uniqueServers.forEach(srv => {
             // ✅ V4.27: Contar canales de este servidor - SIN fallback engañoso
             // Prioridad: 1) Contar desde channelsMaster, 2) srv.channelCount, 3) srv.count, 4) snapshot
-            let channelCount = (this.state.channelsMaster || []).filter(ch =>
-                (ch.serverId || ch._serverId) === srv.id
-            ).length;
+            let channelCount = _countsByServer.get(srv.id) || 0;
 
             // Si no hay canales en memoria, usar el conteo guardado en el servidor
             if (channelCount === 0) {
@@ -6228,6 +6647,16 @@ El servidor analizará 26,000+ canales en ~10 minutos.
     filterByServerAndQuality(serverId, quality) {
         console.log(`🔍 Filtrando Servidor: ${serverId}, Calidad: ${quality}`);
 
+        // [2026-11-23 · MEDIDO] Guardar la selección en el estado: antes sólo se cambiaba
+        // state.channels (la vista de la tabla) y cualquier generación/exportación posterior
+        // ignoraba el servidor elegido. Pulsar otra vez el TOTAL del mismo servidor quita el
+        // filtro, para poder volver a "todos los servidores" (no hay otro botón para eso).
+        if (quality === 'ALL' && this.state.filterServer === serverId) {
+            this.state.filterServer = null;
+        } else {
+            this.state.filterServer = serverId || null;
+        }
+
         // 1. Filtrar desde Master
         let filtered = this.state.channelsMaster.filter(ch => ch.serverId === serverId);
 
@@ -6274,6 +6703,9 @@ El servidor analizará 26,000+ canales en ~10 minutos.
     }
 
     async removeServer(serverId) {
+        // [2026-11-23 · MEDIDO] Si el servidor borrado era el filtrado, soltar el filtro:
+        // si no, getFilteredChannels() se quedaría devolviendo 0 canales para siempre.
+        if (this.state.filterServer === serverId) this.state.filterServer = null;
         this.state.activeServers = this.state.activeServers.filter(s => s.id !== serverId);
         const initialCount = this.state.channelsMaster.length;
         this.state.channelsMaster = this.state.channelsMaster.filter(ch => ch.serverId !== serverId);
@@ -6364,8 +6796,8 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             library = JSON.parse(localStorage.getItem('iptv_server_library') || '[]');
         } catch (e) { library = []; }
 
-        // Check if already exists
-        const existingIdx = library.findIndex(s => s.id === serverId || s.baseUrl === libraryEntry.baseUrl);
+        // Check if already exists (mismo id, o mismo host Y mismo usuario)
+        const existingIdx = library.findIndex(s => s.id === serverId || this._isSameServer(s, libraryEntry));
         if (existingIdx >= 0) {
             // ✅ V4.28.2: Preservar expDate correcta si la nueva es N/A
             const oldEntry = library[existingIdx];
@@ -8169,6 +8601,17 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             ? [...this.state.channelsMaster]
             : [];
 
+        // [2026-11-23 · MEDIDO] Filtro por servidor seleccionado.
+        // Sin esto, getFilteredChannels() partía SIEMPRE de channelsMaster y devolvía
+        // los canales de TODOS los servidores: al generar o exportar desde el servidor A
+        // y luego desde el B salía la misma cantidad (el total), que es justo lo que se
+        // reportó. Sólo se activa cuando hay una selección explícita (clic en el
+        // servidor), así que el comportamiento por defecto no cambia.
+        const srvSel = this.state.filterServer;
+        if (srvSel) {
+            res = res.filter(c => (c.serverId || c._serverId) === srvSel);
+        }
+
         // --- BÚSQUEDA LIBRE ---
         const q = (this.state.searchQuery || '').toString().toLowerCase().trim();
         if (q) {
@@ -8284,7 +8727,12 @@ El servidor analizará 26,000+ canales en ~10 minutos.
                 if (dot) dot.style.background = '#38bdf8';
                 if (text) text.textContent = 'Conectando al servidor…';
             } else {
-                if (this.state.channels.length === 0) {
+                // Una vista filtrada vacía no equivale a una conexión vacía.
+                // Conservar también el resultado explícito de éxito/error.
+                if (text && text.textContent === 'Conectando al servidor…' &&
+                    (this.state.channelsMaster || []).length > 0) {
+                    this.setConnectionStatus(true, `Conectado · ${this.state.channelsMaster.length} ítems cargados`);
+                } else if (text && text.textContent === 'Conectando al servidor…') {
                     statusChip.style.borderColor = 'rgba(148,163,184,0.45)';
                     if (dot) dot.style.background = '#38bdf8';
                     if (text) text.textContent = 'Esperando conexión…';
@@ -8562,6 +9010,11 @@ El servidor analizará 26,000+ canales en ~10 minutos.
         this.state.filterLanguage = 'ALL';
 
         // 2. Actualizar UI
+        for (const [id, value] of Object.entries({ searchQuery: '', filterTier: 'ALL',
+            filterCodec: 'ALL', filterLanguage: 'ALL' })) {
+            const control = document.getElementById(id);
+            if (control) control.value = value;
+        }
         this.renderFilterBuilder();
         this.state.channels = [...this.state.channelsMaster];
         this.renderTable();
@@ -8641,7 +9094,7 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             const res = await this.enrichmentEngine.enrichChannels(this.state.channelsMaster, sourceId);
             if (res.channelsEnriched > 0) {
                 const en = this.state.channelsMaster.filter(c => c._enriched);
-                if (this.db) await this.db.saveChannelsBulk(en, this.state.currentServer.baseUrl);
+                if (this.db) await this.db.saveChannelsBulk(en, String((this.state.currentServer && this.state.currentServer.baseUrl) || '').replace(/\/player_api\.php$/, ''));
                 en.forEach(c => delete c._enriched);
                 this.renderTable();
                 alert(`Matches: ${res.matchesFound}, Enriquecidos: ${res.channelsEnriched}`);
@@ -8965,6 +9418,11 @@ El servidor analizará 26,000+ canales en ~10 minutos.
                         ? window.headersManagerUI.activeLevel
                         : (this.state.antiFreezeLevel || 3)),
                 autoDetectLevel: (document.getElementById('v41AutoDetectLevel')?.checked ?? true),
+                    /* [2026-11-19] el NIVEL DE CABECERAS sale del selector de EVASION; 
+                     * el de Anti-Freeze gobierna buffer/reconexion dentro del generador. */
+                    manualEvasionLevel: (document.getElementById('manualEvasionLevel')?.value)
+                        ? parseInt(document.getElementById('manualEvasionLevel').value, 10)
+                        : (this.state.manualEvasionLevel || 3),
                 targetPlayer: (document.getElementById('v41TargetPlayer')?.value || 'generic'),
 
                 // ✅ V5.0: Serverless (opcional)
@@ -9116,6 +9574,11 @@ El servidor analizará 26,000+ canales en ~10 minutos.
                         ? window.headersManagerUI.activeLevel
                         : (this.state.antiFreezeLevel || 3)),
                 autoDetectLevel: (document.getElementById('v41AutoDetectLevel')?.checked ?? true),
+                    /* [2026-11-19] el NIVEL DE CABECERAS sale del selector de EVASION; 
+                     * el de Anti-Freeze gobierna buffer/reconexion dentro del generador. */
+                    manualEvasionLevel: (document.getElementById('manualEvasionLevel')?.value)
+                        ? parseInt(document.getElementById('manualEvasionLevel').value, 10)
+                        : (this.state.manualEvasionLevel || 3),
                 targetPlayer: (document.getElementById('v41TargetPlayer')?.value || 'generic'),
 
                 // ✅ V5.0 (opcional)
@@ -9492,7 +9955,7 @@ El servidor analizará 26,000+ canales en ~10 minutos.
 
     initWorkerEngine() {
         try {
-            this.worker = new Worker('enrichment.worker.js');
+            this.worker = new Worker('enrichment.worker.js?v=a4c79b29'); // 🚀 [2026-11-24] token de versión: sin él el navegador puede servir el Worker viejo de la caché
 
             // ------------------------------------------------------------------
             // Worker Industrial – Gestión unificada de eventos PRO
@@ -9563,59 +10026,19 @@ El servidor analizará 26,000+ canales en ~10 minutos.
 
                         // ═══════════════════════════════════════════════════════════════
                         // 🏷️ V4.22: CLASIFICACIÓN JERÁRQUICA (Post-Enriquecimiento)
-                        // Ejecuta al final para aprovechar TODA la data recolectada
+                        // 🚀 [2026-11-24 · MEDIDO] Pasa a un método propio (_classifyMasterHierarchy)
+                        // y SÓLO clasifica lo que aún no tiene su clasificación guardada: antes
+                        // era una pasada completa del clasificador en cada "done", y esto se
+                        // dispara 3 veces por arranque sobre 28 655 / 57 310 canales.
                         // ═══════════════════════════════════════════════════════════════
-                        if (window.APEChannelClassifier && this.state.channelsMaster.length > 0) {
-                            console.log('🏷️ Iniciando clasificación jerárquica...');
-                            const classStats = { by_region: {}, by_language: {}, by_category: {}, by_quality: {} };
-                            const startTime = performance.now();
-
-                            this.state.channelsMaster.forEach((ch, idx) => {
-                                try {
-                                    const result = window.APEChannelClassifier.classify(ch);
-
-                                    // Almacenar clasificación completa en el canal
-                                    ch._classification = result;
-                                    ch._region = `${result.region.emoji || '🌎'} ${result.region.group.replace(/_/g, ' ')}`;
-                                    ch._language = `${result.language.emoji || '🗣️'} ${result.language.language}`;
-                                    ch._category = `${result.category.emoji || '📂'} ${result.category.category}`;
-                                    ch._quality = result.quality.quality;
-                                    ch._qualityIcon = result.quality.icon;
-
-                                    // Acumular estadísticas
-                                    const rg = result.region.group;
-                                    const lang = result.language.language;
-                                    const cat = result.category.category;
-                                    const qual = result.quality.quality;
-                                    classStats.by_region[rg] = (classStats.by_region[rg] || 0) + 1;
-                                    classStats.by_language[lang] = (classStats.by_language[lang] || 0) + 1;
-                                    classStats.by_category[cat] = (classStats.by_category[cat] || 0) + 1;
-                                    classStats.by_quality[qual] = (classStats.by_quality[qual] || 0) + 1;
-                                } catch (e) {
-                                    console.warn(`⚠️ Error clasificando canal ${idx}:`, e);
-                                }
-                            });
-
-                            const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
-                            console.log(`✅ Clasificación completada en ${elapsed}s`);
-                            console.table(classStats);
-
-                            // Actualizar UI con estadísticas
-                            this._updateClassificationUI(classStats);
-
-                            // Agregar campos de clasificación a discoveredFields
-                            this._ensureClassificationFields();
-
-                            // Sincronizar channels con channelsMaster (ya clasificados)
-                            this.state.channels = [...this.state.channelsMaster];
-                        }
+                        this._classifyMasterHierarchy();
                         // ═══════════════════════════════════════════════════════════════
 
                         // Guardar en base local (Solo enriched para ahorrar escritura, o todo?)
                         // Mejor guardar todo si hubo cambios masivos
                         const enriched = this.state.channelsMaster.filter(c => c._enriched);
                         if (this.db && enriched.length) {
-                            await this.db.saveChannelsBulk(enriched, this.state.currentServer.baseUrl);
+                            await this.db.saveChannelsBulk(enriched, String((this.state.currentServer && this.state.currentServer.baseUrl) || '').replace(/\/player_api\.php$/, ''));
                         }
 
                         // Limpiar flags temporales para UI limpia? 
@@ -9765,20 +10188,147 @@ El servidor analizará 26,000+ canales en ~10 minutos.
     }
 
     // 🎯 NUEVO: Lanzar enriquecimiento interno automático en segundo plano
+    /**
+     * 🏷️ Clasificación jerárquica del catálogo.
+     * 🚀 [2026-11-24 · MEDIDO] Antes era un bloque dentro del mensaje "done" que
+     * clasificaba TODOS los canales (decenas de miles) en cada finalización, y el
+     * enriquecimiento interno se lanza 3 veces por arranque. Ahora sólo clasifica los
+     * canales que aún no traen su clasificación (los restaurados de IndexedDB ya la
+     * tienen) y recalcula las estadísticas siempre, para que el panel no se quede vacío.
+     */
+    _classifyMasterHierarchy() {
+        const classifier = window.APEChannelClassifier;
+        const master = this.state.channelsMaster;
+        if (!classifier || !master || master.length === 0) {
+            return { classified: 0, total: 0 };
+        }
+        const classStats = { by_region: {}, by_language: {}, by_category: {}, by_quality: {} };
+        const startTime = performance.now();
+        let nuevas = 0;
+
+        master.forEach((ch, idx) => {
+            try {
+                let result = ch._classification;
+                if (!result || !result.region || !result.language || !result.category || !result.quality) {
+                    result = classifier.classify(ch);
+                    // Almacenar clasificación completa en el canal
+                    ch._classification = result;
+                    ch._region = `${result.region.emoji || '🌎'} ${result.region.group.replace(/_/g, ' ')}`;
+                    ch._language = `${result.language.emoji || '🗣️'} ${result.language.language}`;
+                    ch._category = `${result.category.emoji || '📂'} ${result.category.category}`;
+                    ch._quality = result.quality.quality;
+                    ch._qualityIcon = result.quality.icon;
+                    nuevas++;
+                }
+
+                // Acumular estadísticas (con la clasificación nueva o la ya guardada)
+                const rg = result.region.group;
+                const lang = result.language.language;
+                const cat = result.category.category;
+                const qual = result.quality.quality;
+                classStats.by_region[rg] = (classStats.by_region[rg] || 0) + 1;
+                classStats.by_language[lang] = (classStats.by_language[lang] || 0) + 1;
+                classStats.by_category[cat] = (classStats.by_category[cat] || 0) + 1;
+                classStats.by_quality[qual] = (classStats.by_quality[qual] || 0) + 1;
+            } catch (e) {
+                console.warn(`⚠️ Error clasificando canal ${idx}:`, e);
+            }
+        });
+
+        const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+        console.log(`✅ Clasificación: ${nuevas} nuevas de ${master.length} canales en ${elapsed}s`);
+        console.table(classStats);
+
+        // Actualizar UI con estadísticas
+        this._updateClassificationUI(classStats);
+
+        // Agregar campos de clasificación a discoveredFields
+        this._ensureClassificationFields();
+
+        // Sincronizar channels con channelsMaster (ya clasificados)
+        this.state.channels = [...this.state.channelsMaster];
+
+        return { classified: nuevas, total: master.length, stats: classStats };
+    }
+
+    /**
+     * 🚀 [2026-11-24] Cierre común cuando no queda nada por enriquecer.
+     * Evita copiar el catálogo entero al Worker (210 ms por copia con 28 655 canales,
+     * 435 ms con 57 310) y deja la misma señal en pantalla que el mensaje "done":
+     * progreso oculto, chip "Conectado" y tabla/panel de fuentes refrescados.
+     */
+    async _finishInternalEnrichment(enrichedCount, source = 'worker') {
+        this._classifyMasterHierarchy();
+
+        const now = new Date();
+        this.state.lastEnrichmentReport = {
+            date: now.toLocaleDateString(),
+            time: now.toLocaleTimeString(),
+            count: enrichedCount || 0
+        };
+
+        setTimeout(() => {
+            this.updateMiniProgress({ state: "hidden" });
+            if (this._workerTimeout) {
+                clearTimeout(this._workerTimeout);
+                this._workerTimeout = null;
+            }
+            const status = document.getElementById('connectionStatus');
+            if (status) {
+                status.innerHTML = '<span class="status-dot active"></span><span>Conectado</span>';
+                status.className = 'status-chip success';
+            }
+        }, 2000);
+
+        await new Promise(r => setTimeout(r, 0));
+        this.renderTable();
+        this.renderSourcesList();
+    }
+
     _launchInternalEnrichment(source = 'unknown') {
         if (!this.worker || !this.state.channelsMaster || this.state.channelsMaster.length === 0) {
             return;
         }
+        // 🚀 [2026-11-24 · MEDIDO] Antes se mandaba el catálogo ENTERO por postMessage y
+        // esto se lanza 3 veces por arranque (after_db_restore, after_snapshot_restore,
+        // after_server_load). postMessage COPIA el array: 210 ms con 28 655 canales y
+        // 435 ms con 57 310, y el Worker devolvía el catálogo entero otra vez (otros
+        // 210/435 ms) sólo para cambiar dos marcas que el hilo principal no lee.
+        // Ahora se manda ÚNICAMENTE lo pendiente y, si no falta nada, no se copia nada.
         try {
+            const master = this.state.channelsMaster;
+            const pending = [];
+            for (let i = 0; i < master.length; i++) {
+                const ch = master[i];
+                if (!ch) continue;
+                if (ch.__enriched === true) continue;
+                // V4.34: los canales restaurados de IndexedDB/snapshot ya traen
+                // `meta.enriched = true` del enriquecimiento que los guardó. Antes
+                // se volvían a mandar TODOS al Worker en cada refresco (copiar
+                // 28.655 canales = 210 ms + ida y vuelta), aunque no faltara nada.
+                // Sólo se respeta en restauraciones: una conexión nueva re-enriquece.
+                if (source !== 'after_server_load' && ch.meta && ch.meta.enriched === true) continue;
+                pending.push(ch);
+            }
+            if (pending.length === 0) {
+                console.log(
+                    `⚡ [${source}] Nada pendiente de enriquecer ` +
+                    `(${master.length} canales ya marcados): no se copia el catálogo.`
+                );
+                this._finishInternalEnrichment(master.length, source);
+                return;
+            }
+            // Se marcan en la misma pasada para que la próxima carga no tenga nada pendiente.
+            for (let i = 0; i < pending.length; i++) pending[i].__enriched = true;
             this.worker.postMessage({
                 type: 'enrich_quality',
-                channels: this.state.channelsMaster,
+                channels: pending,
                 source: source, // para debugging
                 timestamp: new Date().toISOString()
             });
             console.log(
-                `⚙️ [${source}] Enriquecimiento interno automático lanzado ` +
-                `para ${this.state.channelsMaster.length} canales.`
+                `⚙️ [${source}] Enriquecimiento interno lanzado ` +
+                `para ${pending.length} de ${master.length} canales (sólo los pendientes).`
             );
         } catch (err) {
             console.error('❌ Error lanzando enriquecimiento interno:', err);
@@ -11503,8 +12053,11 @@ El servidor analizará 26,000+ canales en ~10 minutos.
      * 🔌 Conectar servidor desde biblioteca usando credenciales guardadas
      * V4.27.3: Verificación robusta de duplicados + Pipeline obligatorio
      * @param {string} serverId - ID del servidor en biblioteca
+     * @param {object} [opts] - { auto: true } = recuperación automática al arrancar:
+     *        no pregunta nada al usuario antes de reconectar.
      */
-    async connectFromLibrary(serverId) {
+    async connectFromLibrary(serverId, opts) {
+        const auto = !!(opts && opts.auto);
         console.group(`🔌 connectFromLibrary V4.27.4: ${serverId}`);
 
         // ✅ V4.27.4: BLOQUEO ANTI-CLICS RÁPIDOS
@@ -11546,20 +12099,17 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             return;
         }
 
-        // ✅ V4.27.4: DETECCIÓN SIMPLE POR URL BASE
-        const normalizedHost = baseHost.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
-        const existingByUrl = (this.state.activeServers || []).find(srv => {
-            const srvHost = (srv.baseUrl || '').replace(/^https?:\/\//, '').replace(/\/player_api\.php$/, '').replace(/\/$/, '').toLowerCase();
-            return srvHost === normalizedHost;
-        });
+        // ✅ V4.27.4 → 2026-11-24: reconexión = mismo host Y mismo usuario
+        const normalizedHost = this._serverHostKey(baseHost);
+        const existingByUrl = this._findActiveServerByHost(baseHost, user);
 
         // V4.27.5 FIX: find() returns undefined, not null, when no match
         let isReconnect = !!existingByUrl;
         let targetServerId = server.id;
 
         if (isReconnect) {
-            // Ya existe - preguntar si reconectar
-            const confirmReconnect = confirm(`⚠️ ${existingByUrl.name} ya está conectado.\n\n¿Deseas ACTUALIZAR sus canales?`);
+            // Ya existe - preguntar si reconectar (salvo recuperación automática)
+            const confirmReconnect = auto ? true : confirm(`⚠️ ${existingByUrl.name} ya está conectado.\n\n¿Deseas ACTUALIZAR sus canales?`);
             if (!confirmReconnect) {
                 console.log('❌ Usuario canceló reconexión');
                 console.groupEnd();
@@ -11579,10 +12129,25 @@ El servidor analizará 26,000+ canales en ~10 minutos.
 
         console.log(`🔌 Conectando: ${server.name}`);
         this.showNotification(`🔌 ${isReconnect ? 'Actualizando' : 'Conectando'} ${server.name}...`, false);
-        this.setLoading(true);
+        const previousCurrentServer = this.state.currentServer;
+        let catalogProcessingStarted = false;
         this._connectionInProgress = true;
 
         try {
+            this.setLoading(true);
+            // Crear el contexto antes de descargar: la API y la persistencia
+            // deben usar la misma identidad, también al reconectar un alias.
+            const serverObj = {
+                ...server,
+                id: targetServerId,
+                name: server.name,
+                baseUrl: baseHost + '/player_api.php',
+                username: user,
+                password: pass,
+                active: true
+            };
+            this.state.currentServer = serverObj;
+
             // 📥 Cargar canales
             const rawChannels = await this.connectXuiApi(baseHost, user, pass);
 
@@ -11596,11 +12161,11 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             this.initServerProgress(server, rawChannels.length);
 
             // 🏷️ Asignar serverId a cada canal
-            console.log(`🏷️ [TELEMETRÍA] Asignando serverId=${server.id} a ${rawChannels.length} canales`);
+            console.log(`🏷️ [TELEMETRÍA] Asignando serverId=${targetServerId} a ${rawChannels.length} canales`);
             rawChannels.forEach((ch, idx) => {
-                ch.serverId = server.id;
+                ch.serverId = targetServerId;
                 ch.serverName = server.name;
-                if (!ch.id) ch.id = ch.stream_id || `${server.id}_${idx}`;
+                if (!ch.id) ch.id = ch.stream_id || `${targetServerId}_${idx}`;
 
                 // Actualizar progreso cada 1000 canales
                 if (idx % 1000 === 0) {
@@ -11630,15 +12195,7 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             // ✅ V4.27.5: USAR processChannels PARA APLICAR 4 CAPAS
             console.log(`🔧 [V4.27.5] Procesando canales con pipeline completo...`);
 
-            // Crear objeto servidor para processChannels
-            const serverObj = {
-                id: targetServerId,
-                name: server.name,
-                baseUrl: baseHost + '/player_api.php',
-                username: user,
-                password: pass,
-                active: true
-            };
+            // El objeto servidor de processChannels es el contexto creado arriba.
 
             // ✅ V4.27.5: processChannels aplica automáticamente:
             // - normalizeChannel (4 capas: base, heuristics, tech, meta)
@@ -11648,6 +12205,7 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             // - Actualización de activeServers (upsert)
             // - Renderizado de UI
             const appendMode = isReconnect; // Si reconecta, merge; si nuevo, reemplaza
+            catalogProcessingStarted = true;
             await this.processChannels(rawChannels, serverObj, appendMode);
 
             console.log(`✅ [V4.27.5] Pipeline completado: ${rawChannels.length} canales procesados`);
@@ -11663,27 +12221,30 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             // - Renderizó UI (renderTable, renderServerList)
 
             // Solo actualizar currentServer
-            this.state.currentServer = {
-                id: targetServerId,
-                name: server.name,
-                baseUrl: baseHost + '/player_api.php',
-                username: user,
-                password: pass
-            };
+            this.state.currentServer = serverObj;
 
             // Cambiar a pestaña análisis y mostrar éxito
+            // [2026-11-22 · MEDIDO] El flag se libera ANTES de showTab: la propia
+            // guarda de showTab (app.js:2537) bloqueaba esta llamada y la app
+            // nunca aterrizaba en Análisis tras conectar (6× "Tab switch blocked").
+            this._connectionInProgress = false;
             this.showTab('analysis');
+            this.setConnectionStatus(true, `Conectado · ${this.state.channelsMaster.length} ítems cargados`);
             this.showNotification(`✅ ${server.name}: ${rawChannels.length} canales cargados`, false);
 
             console.log(`✅ [V4.27.5] Conectado: ${server.name} (${rawChannels.length} canales)`);
 
         } catch (err) {
+            if (!catalogProcessingStarted) {
+                this.state.currentServer = previousCurrentServer;
+            }
             console.error('❌ Error:', err);
+            this.setConnectionStatus(false, 'Error de conexión');
             this.showNotification(`❌ ${err.message}`, true);
         } finally {
-            this.setLoading(false);
             // 🔒 V4.18.2: Liberar flag de conexión en progreso
             this._connectionInProgress = false;
+            this.setLoading(false);
             console.log('🔓 [connectFromLibrary] _connectionInProgress = false');
             console.groupEnd();
         }
@@ -11738,12 +12299,9 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             return;
         }
 
-        // ✅ V4.27.4: DETECCIÓN SIMPLE POR URL BASE - NO DUPLICAR
-        const normalizedHost = baseHost.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
-        const existingByUrl = (this.state.activeServers || []).find(srv => {
-            const srvHost = (srv.baseUrl || '').replace(/^https?:\/\//, '').replace(/\/player_api\.php$/, '').replace(/\/$/, '').toLowerCase();
-            return srvHost === normalizedHost;
-        });
+        // ✅ V4.27.4 → 2026-11-24: NO DUPLICAR salvo que sea el MISMO usuario
+        const normalizedHost = this._serverHostKey(baseHost);
+        const existingByUrl = this._findActiveServerByHost(baseHost, user);
 
         if (existingByUrl) {
             // ❌ YA EXISTE - NO AGREGAR
@@ -11761,19 +12319,26 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             return;
         }
 
-        // Limpiar canales previos de este servidor si existen (por seguridad)
-        const existingChannels = (this.state.channelsMaster || []).filter(ch => ch.serverId === server.id);
-        if (existingChannels.length > 0) {
-            console.log(`🧹 Limpiando ${existingChannels.length} canales previos`);
-            this.state.channelsMaster = this.state.channelsMaster.filter(ch => ch.serverId !== server.id);
-        }
+        // Conservar el catálogo previo hasta recibir uno válido. processChannels
+        // sustituye los canales de este servidor después de una descarga correcta.
 
         console.log(`➕ Agregando: ${server.name}`);
         this.showNotification(`➕ Agregando ${server.name}...`, false);
-        this.setLoading(true);
+        const previousCurrentServer = this.state.currentServer;
+        let catalogProcessingStarted = false;
         this._connectionInProgress = true;  // ✅ V4.27.4: Bloquear
 
         try {
+            this.setLoading(true);
+            const serverObj = {
+                ...server,
+                id: server.id,
+                name: server.name,
+                baseUrl: baseHost + '/player_api.php',
+                username: user,
+                password: pass
+            };
+            this.state.currentServer = serverObj;
             const rawChannels = await this.connectXuiApi(baseHost, user, pass);
 
             if (!Array.isArray(rawChannels) || rawChannels.length === 0) {
@@ -11782,14 +12347,7 @@ El servidor analizará 26,000+ canales en ~10 minutos.
 
             console.log(`📥 ${rawChannels.length} canales recibidos`);
 
-            // ✅ V4.27.2: Crear serverObj para processChannels
-            const serverObj = {
-                id: server.id,
-                name: server.name,
-                baseUrl: baseHost + '/player_api.php',
-                username: user,
-                password: pass
-            };
+            // ✅ V4.27.2: Usar el mismo serverObj para descarga y processChannels.
 
             // ✅ V4.27.2: Usar processChannels con append=true
             // Esto asegura:
@@ -11797,19 +12355,25 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             // - Canales enriquecidos con heurísticas
             // - Canales guardados en IndexedDB
             // - Canales de otros servidores NO se sobrescriben
+            catalogProcessingStarted = true;
             await this.processChannels(rawChannels, serverObj, true);  // append=true
 
             console.log(`📊 Total servidores activos: ${this.state.activeServers?.length || 0}`);
             console.log(`📊 Total canales (channelsMaster): ${this.state.channelsMaster?.length || 0}`);
 
+            this.setConnectionStatus(true, `Agregado · Total ${this.state.channelsMaster.length} ítems`);
             this.showNotification(`✅ ${server.name} agregado (${rawChannels.length} canales)`, false);
 
         } catch (e) {
+            if (!catalogProcessingStarted) {
+                this.state.currentServer = previousCurrentServer;
+            }
             console.error('Error en addServerToConnections:', e);
+            this.setConnectionStatus(false, 'Error de conexión');
             this.showNotification(`❌ Error: ${e.message}`, true);
         } finally {
-            this.setLoading(false);
             this._connectionInProgress = false;  // ✅ V4.27.4: Liberar
+            this.setLoading(false);
             console.groupEnd();
         }
     }
@@ -11887,8 +12451,9 @@ El servidor analizará 26,000+ canales en ~10 minutos.
                     savedAt: new Date().toISOString()
                 };
 
-                // Actualizar o agregar
-                const existingIdx = library.findIndex(s => s.id === srv.id || s.baseUrl === libraryEntry.baseUrl);
+                // Actualizar o agregar (mismo id, o mismo host Y mismo usuario:
+                // dos cuentas del mismo panel son dos entradas distintas)
+                const existingIdx = library.findIndex(s => s.id === srv.id || this._isSameServer(s, libraryEntry));
                 if (existingIdx >= 0) {
                     library[existingIdx] = libraryEntry;
                     updatedCount++;
@@ -12024,11 +12589,11 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             return { success: false, error: 'Cancelado por usuario' };
         }
 
-        console.log('\n🗑️ Limpiando IndexedDB...');
-        await this.db.clearChannels();
+        console.log('\n🗑️ Reemplazando el catálogo en IndexedDB...');
+        // V4.32: una sola transacción, para no quedarnos sin catálogo a medias
+        await this._replacePersistedChannels(deduplicated);
 
-        console.log('💾 Guardando canales únicos...');
-        await this.db.saveChannels(deduplicated);
+        console.log('💾 Canales únicos guardados.');
 
         console.log('🔄 Actualizando RAM...');
         this.state.channelsMaster = deduplicated.map(ch => this.enrichChannelWithScore(ch));
@@ -12053,52 +12618,165 @@ El servidor analizará 26,000+ canales en ~10 minutos.
     // 📡 MÓDULO LATENCIA RAYO (QoS Network Profiler)
     // ==========================================
 
-    /**
-     * Mide empíricamente la velocidad descargando un payload o permite al usuario setearlo
-     */
-    async profileNetwork() {
-        console.group("📡 [LATENCIA RAYO] Auto-Detectando Perfil de Red...");
-        this.showNotification("📡 Midiendo latencia y ancho de banda...", false);
+    /* ═══════════════════════════════════════════════════════════════════════
+     * 📡 LATENCIA RAYO — MEDICIÓN REAL (encargo 2026-11-17)
+     *
+     * LO QUE HABÍA, medido, y era mentira:
+     *   L12085  un aleatorio entre 150 y 450 Mbps: Math.floor(rand() * (450-150+1)) + 150
+     *   L12087  escribía ese ALEATORIO en #qosDownloadMbps
+     *   L12070  "latencia" de fetch('https://iptv-ape.duckdns.org/api/health')
+     *           → ese endpoint da 404 y bloquea por CORS: el RTT medido era el
+     *             del fallo, no el de la red
+     *   L12081  si tardaba > 500 ms fijaba 45 a ciegas
+     *   L12091  saveNetworkProfile() persistía el invento en localStorage
+     *
+     * LO QUE HACE AHORA: sonda real (APE_BW_METER.probe + summarize → mbpsSafe)
+     * y TTFB real (HEAD al MISMO origen con cache-buster). Si no se puede medir
+     * NO se escribe nada en el input y se dice por qué: prohibido inventar y
+     * prohibido un valor por defecto disfrazado.
+     * ═══════════════════════════════════════════════════════════════════════ */
+
+    /* ─── [QOS-NET-BEGIN] bloque testable · lo extrae frontend/tests/t14-qos-network.test.js ─── */
+    async profileNetwork(opts) {
+        opts = opts || {};
+        const silent = opts.silent === true;
+        if (!silent) console.group("📡 [LATENCIA RAYO] Midiendo perfil de red REAL...");
         const btn = document.getElementById("btnAutoProfileNetwork");
         if (btn) btn.innerHTML = "⏳ Midiendo...";
-
         try {
-            // Medición de Ping Real hacia el VPS (Petición ligera)
-            const startTime = performance.now();
-            try {
-                // Endpoint real en el VPS para ping
-                await fetch('https://iptv-ape.duckdns.org/api/health', {
-                    method: 'GET',
-                    cache: 'no-store'
-                });
-            } catch (ignored) { }
-            const endTime = performance.now();
-            let latency = Math.round(endTime - startTime);
-
-            // Filtro de sanidad: si es > 500ms (timeout o fallo de red), usar latencia segura promedio (fibra)
-            if (latency > 500) {
-                console.warn(`⚠️ [LATENCIA RAYO] Timeout o Ping Alto (${latency}ms). Compensando a valor seguro.`);
-                latency = 45;
+            const bw = await this.measureQosBandwidth(opts);
+            if (!bw.ok) {
+                /* SIN MEDICIÓN NO HAY NÚMERO. El input se queda como está. */
+                if (!silent) this.showNotification("⚠️ No se pudo medir el ancho de banda (" + (bw.state || 'fallo') + "). El campo NO se modifica.", true);
+                console.warn("⚠️ [LATENCIA RAYO] sin medición de bajada:", bw.state, bw.reason);
+                return { ok: false, stage: 'bandwidth', state: bw.state, reason: bw.reason, wroteDownload: false };
             }
-
-            // Simulación de Ancho de banda (en un entorno real descargaría un chunk pesado)
-            const simulatedMbps = Math.floor(Math.random() * (450 - 150 + 1)) + 150;
-
-            document.getElementById('qosDownloadMbps').value = simulatedMbps;
-            document.getElementById('qosPingMs').value = latency;
-
-            this.showNotification(`✅ Red Medida: ${simulatedMbps} Mbps / ${latency} ms. Snapshot guardado automáticamente.`, false);
-            this.saveNetworkProfile();
-
+            const ping = await this.measureQosLatency();
+            const saved = this.saveNetworkProfile({
+                source: bw.source || 'probe',
+                silent: silent,
+                values: { downloadMbps: bw.mbpsSafe, pingMs: ping.ok ? ping.ttfbMs : undefined }
+            });
+            if (!silent) {
+                const pingTxt = ping.ok ? (ping.ttfbMs + ' ms') : ('latencia no medida (' + (ping.state || 'fallo') + ')');
+                this.showNotification("✅ Red medida: " + bw.mbpsSafe + " Mbps · " + pingTxt +
+                    (saved ? ". Snapshot guardado." : ". Sin snapshot: valor no válido."), !saved);
+            }
+            console.log("📡 [LATENCIA RAYO] medición real:", {
+                mbpsSafe: bw.mbpsSafe, mbpsAvg: bw.mbpsAvg, bins: bw.bins, windowS: bw.windowS,
+                ttfbMs: ping.ok ? ping.ttfbMs : null, source: bw.source
+            });
+            return { ok: true, downloadMbps: bw.mbpsSafe, pingMs: ping.ok ? ping.ttfbMs : null, saved: !!saved, measured: bw, latency: ping };
         } catch (e) {
-            console.error("❌ Error en Auto-Detección QoS:", e);
-            this.showNotification("❌ Error midiendo red. Ingresa valores manualmente.", true);
+            console.error("❌ Error en la medición QoS:", e);
+            if (!silent) this.showNotification("❌ Error midiendo red: " + ((e && e.message) || 'excepción'), true);
+            return { ok: false, stage: 'exception', reason: (e && e.message) || 'excepción', wroteDownload: false };
         } finally {
             if (btn) btn.innerHTML = "📡 Auto-Detectar";
-            console.groupEnd();
+            if (!silent) console.groupEnd();
         }
     }
 
+    /* Ancho de banda REAL. Prioriza la medición tipo Ookla (multiconexión, ver
+     * qos-speedtest-v1.js); si no está cargada, cae a la sonda clásica de
+     * APE_BW_METER. Reutiliza la medición que YA se hizo (opts.prefetched) para
+     * no lanzar dos sondas en el mismo ciclo. */
+    async measureQosBandwidth(opts) {
+        opts = opts || {};
+        if (opts.prefetched) {
+            const pre = opts.prefetched;
+            const mbpsPre = pre.mbpsSafe !== undefined ? Number(pre.mbpsSafe)
+                : (pre.measurement && Number(pre.measurement.mbpsSafe));
+            if (isFinite(mbpsPre) && mbpsPre > 0) {
+                return {
+                    ok: true, mbpsSafe: mbpsPre, mbpsP95: pre.mbpsP95, mbpsAvg: pre.mbpsAvg,
+                    jitterMbps: pre.jitterMbps, bufferbloatMs: pre.bufferbloatMs,
+                    rttIdleMs: pre.rttIdleMs, bins: pre.bins, windowS: pre.windowS,
+                    source: pre.source || 'prefetched'
+                };
+            }
+            return { ok: false, state: (pre && pre.state) || 'NO_MEASUREMENT',
+                     reason: (pre && pre.reason) || 'la medición previa no trajo mbps' };
+        }
+        const ST = (typeof window !== 'undefined') ? window.APE_SPEEDTEST : null;
+        if (ST && typeof ST.measure === 'function') {
+            const out = await ST.measure({ windowS: Number(opts.windowS) || 8 });
+            if (!out || out.ok !== true || !(Number(out.mbpsSafe) > 0)) {
+                return { ok: false, state: (out && out.state) || 'NO_MEASUREMENT',
+                         reason: (out && out.reason) || 'la medición Ookla no dio mbpsSafe', probe: out || null };
+            }
+            return {
+                ok: true, mbpsSafe: Number(out.mbpsSafe), mbpsP95: out.mbpsP95, mbpsAvg: out.mbpsAvg,
+                jitterMbps: out.jitterMbps, bufferbloatMs: out.bufferbloatMs, rttIdleMs: out.rttIdleMs,
+                bins: out.bins, windowS: out.windowS, stopReason: out.stopReason,
+                streams: out.streams, source: out.source || 'ookla-multistream'
+            };
+        }
+        const M = (typeof window !== 'undefined') ? window.APE_BW_METER : null;
+        if (!M) return { ok: false, state: 'NO_METER', reason: 'ni APE_SPEEDTEST ni APE_BW_METER cargados' };
+        if (typeof M.probe !== 'function') return { ok: false, state: 'NO_PROBE', reason: 'APE_BW_METER.probe ausente' };
+        const out = await M.probe({ windowS: Number(opts.windowS) || 5 });
+        if (!out) return { ok: false, state: 'NO_OUTPUT', reason: 'la sonda no devolvió nada' };
+        if (typeof M.summarize !== 'function') return { ok: false, state: 'NO_SUMMARIZE', reason: 'APE_BW_METER.summarize ausente' };
+        const sum = M.summarize(out.samples || [], out.windowS);
+        const mbps = Number(sum && sum.mbpsSafe);
+        if (!sum || sum.ok !== true || !isFinite(mbps) || mbps <= 0) {
+            return {
+                ok: false,
+                state: (sum && sum.state) || out.state || 'NO_MEASUREMENT',
+                reason: (sum && sum.reason) || out.reason || 'summarize no dio mbpsSafe',
+                probe: out, summary: sum || null
+            };
+        }
+        return {
+            ok: true, mbpsSafe: mbps, mbpsAvg: sum.mbpsAvg, mbpsMax: sum.mbpsMax,
+            jitter: sum.jitter, bins: sum.bins, windowS: sum.windowS, source: out.source || 'probe'
+        };
+    }
+
+
+    /* Latencia REAL: TTFB de un HEAD al MISMO origen. NO al VPS: ese endpoint
+     * daba 404 y bloqueaba por CORS, así que el "RTT" era el del fallo.
+     * Es ida y vuelta de un HEAD, no un RTT ICMP: se llama ttfbMs. */
+    async measureQosLatency() {
+        try {
+            const t0 = performance.now();
+            const base = (typeof location !== 'undefined' && location.pathname) ? location.pathname : '/index-v4.html';
+            const url = base + (base.indexOf('?') >= 0 ? '&' : '?') + '_qosrtt=' + Date.now();
+            const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+            const ms = Math.round(performance.now() - t0);
+            if (!res || res.ok !== true) return { ok: false, state: 'HTTP_' + (res ? res.status : 'x'), reason: 'el HEAD no devolvió 2xx' };
+            if (!isFinite(ms) || ms < 0) return { ok: false, state: 'BAD_TIMING', reason: 'performance.now inválido' };
+            return { ok: true, ttfbMs: ms, url: url };
+        } catch (e) {
+            return { ok: false, state: 'RTT_FAILED', reason: (e && e.message) || 'fetch falló' };
+        }
+    }
+    /* ─── [QOS-NET-END] ─────────────────────────────────────────────────── */
+
+
+    /* Publica una medición YA hecha en el perfil de red, sin volver a medir.
+     * Es el camino del botón único: UNA sonda para todo el flujo. */
+    async applyNetworkMeasurement(measured, opts) {
+        opts = opts || {};
+        if (!measured || measured.ok !== true) {
+            return { ok: false, state: (measured && measured.state) || 'NO_MEASUREMENT', wrote: false };
+        }
+        const mbps = Number(measured.mbpsSafe);
+        if (!isFinite(mbps) || mbps <= 0) return { ok: false, state: 'NO_MEASUREMENT', wrote: false };
+        const saved = this.saveNetworkProfile({
+            source: measured.source || 'speedtest',
+            silent: opts.silent === true,
+            values: {
+                downloadMbps: mbps,
+                pingMs: (measured.rttIdleMs === undefined || measured.rttIdleMs === null) ? undefined : measured.rttIdleMs,
+                mbpsP95: measured.mbpsP95,
+                jitterMbps: measured.jitterMbps,
+                bufferbloatMs: measured.bufferbloatMs
+            }
+        });
+        return { ok: !!saved, wrote: !!saved, profile: saved || null };
+    }
     // 🛡️ ADUANA QoS (Interceptor Infranqueable)
     generateWithQoSCheck(generatorType) {
         this.pendingGeneratorType = generatorType;
@@ -12254,14 +12932,45 @@ El servidor analizará 26,000+ canales en ~10 minutos.
         console.log('✅ [SlotReaper] Pre-flight reap completado, procediendo a generar...');
     }
 
-    saveNetworkProfile() {
-        const dl = parseInt(document.getElementById('qosDownloadMbps').value) || 100;
-        const ping = parseInt(document.getElementById('qosPingMs').value) || 20;
+    /* ─── [QOS-SAVE-BEGIN] ──────────────────────────────────────────────── */
+    saveNetworkProfile(meta) {
+        meta = meta || {};
+        const dlEl = document.getElementById('qosDownloadMbps');
+        const pEl = document.getElementById('qosPingMs');
+        const src = meta.values || null;
+        const dl = src ? Number(src.downloadMbps) : Number(dlEl ? dlEl.value : NaN);
+        const ping = src ? Number(src.pingMs) : Number(pEl ? pEl.value : NaN);
 
+        /* PROHIBIDO INVENTAR (encargo 2026-11-17). Aquí había
+         *   parseInt(...) || 100   y   parseInt(...) || 20
+         * o sea un valor por defecto DISFRAZADO que se persistía como si fuera
+         * una medición. Sin un número válido no hay snapshot: el perfil queda
+         * como estaba y la aduana QoS bloquea en vez de fluir con una mentira. */
+        if (!isFinite(dl) || dl <= 0) {
+            console.warn('[LATENCIA RAYO] NO se guarda el perfil: downloadMbps no medido (' +
+                (src ? src.downloadMbps : (dlEl ? '"' + dlEl.value + '"' : 'input ausente')) + ')');
+            return null;
+        }
+        const hasPing = isFinite(ping) && ping >= 0;
+
+        /* El input se escribe SOLO con lo medido (nunca con un relleno). */
+        if (dlEl) dlEl.value = dl;
+        if (hasPing && pEl) pEl.value = ping;
+
+        const prev = (this.state && this.state.networkProfile) || {};
+        const prevPing = Number(prev.pingMs);
         this.state.networkProfile = {
             downloadMbps: dl,
-            pingMs: ping,
-            timestamp: Date.now()
+            /* si esta medición no trajo latencia se CONSERVA la anterior y se
+             * declara con su origen; si nunca hubo, null (no 20 inventado) */
+            pingMs: hasPing ? ping : (isFinite(prevPing) && prevPing >= 0 ? prevPing : null),
+            timestamp: Date.now(),
+            source: meta.source || 'manual',
+            /* [2026-11-18] métricas Ookla: se guardan SOLO si vienen medidas */
+            mbpsP95: (src && isFinite(Number(src.mbpsP95))) ? Number(src.mbpsP95) : (prev.mbpsP95 === undefined ? null : prev.mbpsP95),
+            jitterMbps: (src && isFinite(Number(src.jitterMbps))) ? Number(src.jitterMbps) : (prev.jitterMbps === undefined ? null : prev.jitterMbps),
+            bufferbloatMs: (src && src.bufferbloatMs !== undefined && src.bufferbloatMs !== null && isFinite(Number(src.bufferbloatMs)))
+                ? Number(src.bufferbloatMs) : (prev.bufferbloatMs === undefined ? null : prev.bufferbloatMs)
         };
 
         localStorage.setItem('iptv_qos_profile', JSON.stringify(this.state.networkProfile));
@@ -12272,9 +12981,11 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             badge.innerHTML = `Status: Active (${dl}Mbps)`;
         }
 
-        console.log("💾 [LATENCIA RAYO] QoS Snapshot Guardado:", this.state.networkProfile);
-        this.showNotification(`💾 Perfil QoS Guardado: Límite ${dl} Mbps`, false);
+        console.log("💾 [LATENCIA RAYO] QoS Snapshot guardado (medido):", this.state.networkProfile);
+        if (meta.silent !== true) this.showNotification(`💾 Perfil QoS Guardado: Límite ${dl} Mbps`, false);
+        return this.state.networkProfile;
     }
+    /* ─── [QOS-SAVE-END] ────────────────────────────────────────────────── */
 
     loadNetworkProfile() {
         try {
@@ -12286,8 +12997,14 @@ El servidor analizará 26,000+ canales en ~10 minutos.
                 const pingInput = document.getElementById('qosPingMs');
                 const badge = document.getElementById('qosStatusBadge');
 
-                if (dlInput) dlInput.value = this.state.networkProfile.downloadMbps || 100;
-                if (pingInput) pingInput.value = this.state.networkProfile.pingMs || 20;
+                /* [2026-11-17] `|| 100` y `|| 20` eran el MISMO defecto en la
+                 * restauración: si el snapshot venía incompleto, el panel
+                 * mostraba un número inventado como si fuera medido. Ahora se
+                 * pinta SOLO lo que hay; si falta, el campo queda vacío. */
+                if (dlInput) dlInput.value = (Number(this.state.networkProfile.downloadMbps) > 0)
+                    ? this.state.networkProfile.downloadMbps : '';
+                if (pingInput) pingInput.value = (this.state.networkProfile.pingMs === null ||
+                    this.state.networkProfile.pingMs === undefined) ? '' : this.state.networkProfile.pingMs;
 
                 if (badge && this.state.networkProfile.downloadMbps) {
                     badge.style.background = '#10b981';
@@ -12342,6 +13059,15 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             pass: activeServer.password || activeServer.pass || 'pass',
             includeStart: true,
             jwtExpiration: 365,
+            // 🛡️ Connection budget: evita que el player abra más conexiones que
+            // las que el proveedor permite (max_connections=1 → serial).
+            maxConnections: this.state.maxConnections
+                || parseInt(activeServer._maxConnections || activeServer.maxConnections || '0', 10)
+                || 0,
+            streamFormat: this.state.preferredStreamFormat
+                || activeServer._preferredStreamFormat
+                || activeServer.streamFormat
+                || 'm3u8',
             // V9.1: Per-channel credential resolver
             _resolveServer: (channel) => {
                 const chServerId = channel._source || channel.serverId || channel.server_id;

@@ -75,3 +75,27 @@ jobs:
 
       - name: Validate deploy manifest is well-formed JSON
         run: python -m json.tool tools/cicd/vps_deploy_map.json > /dev/null && echo "manifest OK"
+
+      # [R9 2026-11-21] GATE CONTRA LA COPIA EQUIVOCADA.
+      # En el arbol hay CUATRO server.js y solo uno es el motor
+      # (IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js; sha historico 268bbd3a…, pin
+      #  vigente tras R11: ad37d894…). El contrato de rutas
+      # (tools/quality/test_jit_routes_contract.js) vigila que el canonico conserve sus 61
+      # rutas; NO vigilaba QUE FICHERO SE DESPLIEGA. Este paso comprueba que la fuente del
+      # manifiesto es el canonico, que ningun workflow instala otra copia, y compara con el
+      # pin del recibo canary.
+      #   exit 0 -> PASS · exit 1 -> FALLA (bloquea) · exit 2 -> NO COMPUTADO (avisa, no finge verde)
+      - name: Gate de paridad de despliegue del motor JIT
+        run: |
+          set +e
+          node tools/quality/check_jit_deploy_parity.js
+          RC=$?
+          echo "exit=$RC"
+          if [ "$RC" -eq 1 ]; then
+            echo "::error::paridad de despliegue del motor JIT: una copia NO canonica se desplegaria (ver arriba)"
+            exit 1
+          fi
+          if [ "$RC" -eq 2 ]; then
+            echo "::warning::paridad del motor JIT NO COMPUTADA: el recibo canary no atestigua los bytes actuales. Re-emitir el recibo contra el canonico. No se declara verde"
+          fi
+          exit 0

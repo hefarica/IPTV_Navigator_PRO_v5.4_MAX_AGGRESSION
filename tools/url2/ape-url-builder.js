@@ -37,6 +37,93 @@ class ApeUrlBuilder {
     static VERSION = '9.3.0';                 // 9.2.0 → 9.3.0: idempotencia real
     static ENDPOINT = 'https://iptv-ape.duckdns.org/url2/canal.m3u8';
 
+    /**
+     * [HÍBRIDO APE CRYSTAL · 2026-11-24]
+     *
+     * Decisión del propietario: la app es una aplicación de POTENCIACIÓN DE IMAGEN
+     * a la máxima resolución posible. Para VLC/APE Crystal el cartucho por defecto
+     * es P3.5 (1080p emulado); el híbrido pide P1 en la URL para que el VPS sirva
+     * el cartucho P1.5 (fuente 4K SIMULADA por video filters + 6K emulado).
+     *
+     * Regla medida con el LAB APE_v9.3_ZIP_LABELS_SIMULATED_12P:
+     *   - fuente < 2160p (480p/544p/720p/1080p) -> P1: se declara 4K SIMULADO,
+     *     se ejecuta upscale por video filters en el display. NO es fuente 4K real.
+     *   - fuente 2160p..4319p (4K real)           -> P1: 4K real / P1.5 6K emulado.
+     *   - fuente >= 4320p (8K real)               -> P0: no degradar 8K a 4K.
+     *
+     * El parámetro `p` es el que el cartucho del VPS lee; el `d.p` del device
+     * descriptor NO se toca (se conserva byte a byte cuando ya existe).
+     */
+    static HYBRID_POLICY = 'ape.crystal.hybrid/1+OWNER_ALL_RESOLUTIONS_UPSCALE';
+
+    static hybridProfileForHeight(height) {
+        const h = Number(height) || 0;
+        return h >= 4320 ? 'P0' : 'P1';
+    }
+
+    static hybridProfileForChannel(name, height) {
+        let h = Number(height) || 0;
+        if (!h) {
+            const s = String(name || '');
+            if (/(^|\W)(8K|4320)(\W|$)/i.test(s)) h = 4320;
+            else if (/(^|\W)(4K|UHD|2160)(\W|$)/i.test(s)) h = 2160;
+            else if (/(^|\W)(FHD|1080)(\W|$)/i.test(s)) h = 1080;
+            else if (/(^|\W)(HD|720)(\W|$)/i.test(s)) h = 720;
+            else if (/(^|\W)(SD|480|576|544)(\W|$)/i.test(s)) h = 576;
+            else h = 1080;   // sin dato: objetivo 4K simulado, nunca degradar
+        }
+        return { profile: this.hybridProfileForHeight(h), sourceHeight: h };
+    }
+
+    static hybridTag(height) {
+        const h = Number(height) || 0;
+        const p = this.hybridProfileForHeight(h);
+        const route = p === 'P0' ? 'max8k' : 'max';
+        const cart = p === 'P0' ? 'P0' : 'P1.5';
+        const target = p === 'P0' ? '7680x4320' : '3840x2160';
+        return '#EXT-X-APE-HYBRID-PULSE:ROUTE=' + route +
+            ';CARTRIDGE=' + cart + ';P=' + p +
+            ';SOURCE_PX=' + (h || 'unknown') +
+            ';TARGET=' + target +
+            ';MODE=' + (p === 'P0' ? 'NATIVE' : 'SIMULATED') +
+            ';EXECUTED=0;POLICY=' + this.HYBRID_POLICY +
+            ';OWNER=ALL_RESOLUTIONS_UPSCALE';
+    }
+
+    /**
+     * Idempotente: fija `p` en una URL /pulse/ existente y recalcula `fp` si
+     * estaba presente. No toca `u`, `d`, `n`, `id`, `logo` ni `l/m`.
+     */
+    static withHybridProfile(urlString, height) {
+        return this.setPulseProfile(urlString, this.hybridProfileForHeight(height));
+    }
+
+    static setPulseProfile(urlString, profile) {
+        const p = String(profile || '');
+        if (!/^P[0-5](\.5)?$/.test(p)) return urlString;
+        try {
+            const u = new URL(urlString);
+            if (!/\/pulse\/[^/]+\.m3u8$/i.test(u.pathname)) return urlString;
+            u.searchParams.set('p', p);
+            if (u.searchParams.has('fp')) {
+                const state = {
+                    url: u.searchParams.get('u') || '',
+                    deviceB64: u.searchParams.get('d') || '',
+                    profile: p,
+                    name: u.searchParams.get('n') || '',
+                    id: u.searchParams.get('id') || '',
+                    logo: u.searchParams.get('logo') || '',
+                    seed: u.searchParams.get('s') || '',
+                    version: u.searchParams.get('v') || '',
+                };
+                u.searchParams.set('fp', this._fingerprint(state));
+            }
+            return u.toString();
+        } catch (e) {
+            return urlString;
+        }
+    }
+
     /** Orden canónico de perfiles, de mínimo a máximo. */
     // Escalera COMPLETA con las variantes 6K del LAB. El orden va de peor a mejor.
     // Las variantes .5 se situan por ENCIMA de su base (P3.5 > P3), que es lo que
@@ -180,6 +267,10 @@ class ApeUrlBuilder {
             // [PULSE-WRAP] Endpoint destino. `{id}` se sustituye por el id del canal.
             // Sin endpoint se usa ENDPOINT (comportamiento previo intacto).
             endpoint: p.endpoint ? String(p.endpoint) : '',
+            // [HÍBRIDO] `balanced`/`native` del contrato NO llevan `p` (el VPS usa
+            // su cartucho por defecto / conserva la fuente). No se emite `fp` para
+            // no firmar una URL cuyo perfil no viaja.
+            omitProfile: !!p.omitProfile,
         };
     }
 
@@ -243,7 +334,8 @@ class ApeUrlBuilder {
 
         // ── IDEMPOTENCIA ──
         // El seed NO incluye tiempo. Es función pura de la entrada (+ salt si lo hay).
-        const seedInput = [n.url, deviceB64, profile.selected, this.VERSION, n.salt].join('|');
+        let seedInput = [n.url, deviceB64, profile.selected, this.VERSION, n.salt].join('|');
+        if (n.omitProfile) seedInput += '|omit';
         const seed = this._hash(seedInput).slice(0, 16);
 
         return {
@@ -257,6 +349,7 @@ class ApeUrlBuilder {
             version: this.VERSION,
             tier: n.networkTier,
             reason: profile.reason,
+            omitProfile: !!n.omitProfile,
         };
     }
 
@@ -267,13 +360,17 @@ class ApeUrlBuilder {
         const q = new URLSearchParams();
         q.set('u', state.url);
         q.set('d', state.deviceB64);
-        q.set('p', state.profile);
+        if (!state.omitProfile) {
+            q.set('p', state.profile);
+        }
         q.set('n', state.name);
         q.set('id', String(state.id));
         q.set('s', state.seed);
         q.set('v', state.version);
         if (state.logo) q.set('logo', state.logo);
-        q.set('fp', this._fingerprint(state));
+        if (!state.omitProfile) {
+            q.set('fp', this._fingerprint(state));
+        }
         return base + '?' + q.toString();
     }
 

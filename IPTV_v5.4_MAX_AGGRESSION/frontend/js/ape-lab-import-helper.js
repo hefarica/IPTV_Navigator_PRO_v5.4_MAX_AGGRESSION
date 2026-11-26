@@ -194,9 +194,18 @@
         var cfg = global.APE_PROFILES_CONFIG;
         if (!cfg) throw new Error('APE_PROFILES_CONFIG no cargado (recarga la página)');
         if (typeof cfg.importFromLABData !== 'function') throw new Error('APE_PROFILES_CONFIG.importFromLABData no disponible');
-        if (!data || !data.profiles_calibrated) throw new Error('JSON inválido: falta profiles_calibrated');
-        var ver = String(data.lab_version || '');
-        if (!/^omega_/i.test(ver) && data.bulletproof !== true) throw new Error('Schema no soportado: lab_version=' + ver);
+        /* [FASE 3 · 2026-11-20] Dos familias reales de LAB: profiles_calibrated
+         * (bulletproof, 6) y profiles + _meta (fusión, 12 con P*.5).
+         * Medido: con el LAB de fusión esto lanzaba «falta profiles_calibrated».
+         * El normalizador NO elige si hay conflicto y conserva los IDs exactos. */
+        if (global.APELabNormalize) {
+            var _norm = global.APELabNormalize.normalize(data);
+            data = _norm.data;
+        } else {
+            if (!data || !data.profiles_calibrated) throw new Error('JSON inválido: falta profiles_calibrated');
+            var ver = String(data.lab_version || '');
+            if (!/^omega_/i.test(ver) && data.bulletproof !== true) throw new Error('Schema no soportado: lab_version=' + ver);
+        }
 
         var applied = await cfg.importFromLABData(data);
         await apeLabSnapshotSave(data);

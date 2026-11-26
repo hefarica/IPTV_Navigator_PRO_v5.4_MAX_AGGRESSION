@@ -1,41 +1,17 @@
 <?php
 /**
- * cablear-listas.php — LISTADO de las listas disponibles en /lists/ (t64).
+ * cablear-listas.php — listado seguro de fuentes y variantes de /lists/.
  *
- *   GET /prisma/api/cablear-listas.php            -> JSON con las listas del directorio
- *   GET /prisma/api/cablear-listas.php?limite=50  -> tope de entradas (1..500, por defecto 200)
- *
- * PARA QUE: el panel (t65) necesita OFRECER listas para elegir. Sin este endpoint
- * solo puede pedir un nombre a ciegas, y el pedido del operador es "cablear una
- * lista que no sea la ultima".
- *
- * QUE DEVUELVE por lista (nunca rutas absolutas del sistema, solo el nombre):
- *   nombre · bytes · bytes_gz · bytes_descomprimidos · mtime · mtime_epoch
- *   canales · canales_motivo · sha256 (solo si es barato) · url
- *   tiene_cableada · url_cableada · cableada_bytes · cableada_mtime
- *   cableada_mas_nueva · estado ('sin_cablear' | 'al_dia' | 'desactualizada')
- *
- * REGLA DE ORO DEL CONTEO (del encargo, medida): NO se descomprime la lista
- * entera. La lista del operador pesa 1,3 GB y descomprimirla son ~8 s POR lista.
- * El dato viene en el header `#EXT-X-APE-CHANNELS:21224`; se leen los primeros
- * 64 KB descomprimidos y se saca de ahi. Si el header no esta -> canales=null
- * con su motivo, NUNCA un 0 disfrazado.
- *
- * COSTE REAL por lista: stat() + (si hay .gz) abrir el gz y descomprimir 64 KB +
- * leer 4 bytes del trailer. Con 5 listas son milisegundos, no segundos.
- *
- * SEGURIDAD (misma doctrina que t60):
- *   - solo el directorio de listas; se rechaza todo candidato cuyo realpath() no
- *     cuelgue de realpath(raiz)
- *   - D1 MEDIDO por t60: /var/www/html/lists es un SYMLINK a /var/www/lists. Por
- *     eso la barrera compara contra realpath(raiz) y NO contra la letra del path:
- *     comparar contra la letra rechazaria TODA lista valida.
- *   - X-APE-Key si APE_CABLEAR_KEY (o /etc/ape/cablear.key) esta definida
- *   - errores PLANOS {ok:false, error:'E_CODE', motivo:'texto'} como t60
+ * Descubre cualquier nombre seguro .m3u/.m3u8; no presupone prefijos de
+ * catálogo. *_CABLEADA y *_SHIELDED son variantes y no se ofrecen como fuente.
+ * Un .gz acompaña solo a un plain stub (<1024 B), nunca a un plain normal.
  */
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate');
+header('X-Content-Type-Options: nosniff');
+
+require_once __DIR__ . '/list_cablear_core.php';
 
 function ape_listas_emitir($http, array $body)
 {
@@ -44,7 +20,6 @@ function ape_listas_emitir($http, array $body)
     exit;
 }
 
-/* ── control de acceso: identico al de list-cablear-status.php (t60) ───────── */
 $__key = getenv('APE_CABLEAR_KEY');
 if ($__key === false || $__key === '') {
     $__kf = '/etc/ape/cablear.key';
@@ -66,11 +41,13 @@ if ($__metodo !== 'GET' && $__metodo !== 'HEAD') {
     ape_listas_emitir(405, array('ok' => false, 'error' => 'E_METODO_NO_PERMITIDO', 'motivo' => 'este endpoint solo acepta GET'));
 }
 
-/* ── raiz de listas: el MISMO nombre de variable que t60 (APE_CABLEAR_LISTS_ROOT) */
 $listsRoot = getenv('APE_CABLEAR_LISTS_ROOT') ?: '/var/www/html/lists';
-$baseUrl = rtrim((string) (getenv('APE_PUBLIC_BASE') ?: 'https://iptv-ape.duckdns.org'), '/');
-$shaMaxBytes = 64 * 1048576;   /* "si es barato": hashear 1,3 GB no lo es */
-$headBytes = 65536;            /* ventana del header: 64 KB descomprimidos */
+list($__baseOk, $baseUrl, $__baseError) = ape_cablear_public_base_info();
+if (!$__baseOk || $baseUrl === null) {
+    ape_listas_emitir(500, array('ok' => false, 'error' => $__baseError ?: 'E_BASE_PUBLICA_INVALIDA', 'motivo' => 'la base publica no cumple el contrato HTTP(S)'));
+}
+$shaMaxBytes = 64 * 1048576;
+$headBytes = 65536;
 
 $raiz = realpath($listsRoot);
 if ($raiz === false || !is_dir($raiz)) {
@@ -84,13 +61,55 @@ if (isset($_GET['limite'])) {
     if ($l >= 1 && $l <= 500) { $limite = $l; }
 }
 
-/** Primeros N bytes DESCOMPRIMIDOS de la lista: por el .gz si existe (barato), si no del .m3u8. */
+function ape_listas_confined($path, $raiz, $raizPrefix)
+{
+    $real = realpath($path);
+    if ($real === false) { return null; }
+    return ($real === rtrim($raiz, DIRECTORY_SEPARATOR) || strpos($real, $raizPrefix) === 0) ? $real : null;
+}
+
+function ape_listas_stat_regular($path, $raiz, $raizPrefix)
+{
+    $ls = @lstat($path);
+    if (!is_array($ls) || (($ls['mode'] & 0170000) !== 0100000)) { return null; }
+    $real = ape_listas_confined($path, $raiz, $raizPrefix);
+    if ($real === null || !is_readable($real)) { return null; }
+    $st = @stat($real);
+    if (!is_array($st)) { return null; }
+    return array(
+        'path' => $real,
+        'bytes' => isset($st['size']) ? (int) $st['size'] : null,
+        'mtime_epoch' => isset($st['mtime']) ? (int) $st['mtime'] : null,
+        'ctime_epoch' => isset($st['ctime']) ? (int) $st['ctime'] : null,
+        'inode' => isset($st['ino']) ? (int) $st['ino'] : null,
+        'dev' => isset($st['dev']) ? (int) $st['dev'] : null,
+    );
+}
+
+function ape_listas_gz_stat($path, $raiz, $raizPrefix)
+{
+    $ls = @lstat($path);
+    if (!is_array($ls) || (($ls['mode'] & 0170000) !== 0100000)) { return null; }
+    $st = ape_listas_stat_regular($path, $raiz, $raizPrefix);
+    if ($st === null || (int) $st['bytes'] < 18) { return null; }
+    $fh = @fopen($st['path'], 'rb');
+    $head = $fh ? @fread($fh, 3) : false;
+    if ($fh) { @fclose($fh); }
+    if (!is_string($head) || strlen($head) !== 3 || $head !== "\x1f\x8b\x08") { return null; }
+    $st['isize_estimate'] = ape_listas_isize($st['path'], (int) $st['bytes']);
+    if ($st['isize_estimate'] === null) { return null; }
+    $st['isize_exact'] = false;
+    $st['integrity_validated'] = false;
+    return $st;
+}
+
+/** Primeros N bytes descomprimidos, sin descomprimir la lista completa. */
 function ape_listas_head($gzPath, $plainPath, $n)
 {
     if ($gzPath !== null && function_exists('gzopen')) {
         $h = @gzopen($gzPath, 'rb');
         if ($h !== false) {
-            $buf = @gzread($h, $n);           /* descomprime SOLO $n bytes */
+            $buf = @gzread($h, $n);
             @gzclose($h);
             if (is_string($buf)) { return $buf; }
         }
@@ -103,7 +122,7 @@ function ape_listas_head($gzPath, $plainPath, $n)
     return is_string($buf) ? $buf : null;
 }
 
-/** Tamano descomprimido con el trailer gzip (ISIZE): 4 bytes, exacto por debajo de 4 GiB. */
+/** ISIZE del ultimo miembro: pista modulo 2^32, no prueba multi-member/CRC. */
 function ape_listas_isize($gzPath, $gzBytes)
 {
     if ($gzPath === null || !is_int($gzBytes) || $gzBytes < 18) { return null; }
@@ -114,7 +133,21 @@ function ape_listas_isize($gzPath, $gzBytes)
     @fclose($h);
     if (!is_string($b) || strlen($b) !== 4) { return null; }
     $u = unpack('V', $b);
-    return is_array($u) ? (int) $u[1] : null;
+    return is_array($u) && isset($u[1]) ? (int) $u[1] : null;
+}
+
+function ape_listas_variante($dir, $nombre, $raiz, $raizPrefix, $baseUrl)
+{
+    $path = $dir . DIRECTORY_SEPARATOR . $nombre;
+    $st = ape_listas_stat_regular($path, $raiz, $raizPrefix);
+    if ($st === null) {
+        return array('nombre' => $nombre, 'existe' => false, 'bytes' => null, 'mtime' => null, 'url' => null);
+    }
+    return array(
+        'nombre' => $nombre, 'existe' => true, 'bytes' => $st['bytes'],
+        'mtime' => $st['mtime_epoch'] !== null ? gmdate('c', $st['mtime_epoch']) : null,
+        'url' => $baseUrl . '/lists/' . $nombre,
+    );
 }
 
 $entradas = array();
@@ -125,39 +158,35 @@ if (!is_array($nombres)) {
 
 foreach ($nombres as $n) {
     if ($n === '.' || $n === '..') { continue; }
-    if (substr($n, -5) !== '.m3u8') { continue; }
-    /* Variantes, no fuentes: *_CABLEADA.m3u8 y *_SHIELDED.m3u8 se excluyen. */
-    if (substr($n, -14) === '_CABLEADA.m3u8' || substr($n, -14) === '_SHIELDED.m3u8') { continue; }
+    if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{0,123}\.[mM]3[uU]8?$/', $n)) { continue; }
+    if (preg_match('/_(?:CABLEADA|SHIELDED)\.m3u8?$/i', $n)) { continue; }
 
     $f = $raiz . DIRECTORY_SEPARATOR . $n;
-    if (!is_file($f)) { continue; }
-    /* Barrera D1: contra realpath(raiz), no contra la letra del path. */
-    $real = realpath($f);
-    if ($real === false || strpos($real, $raizPrefix) !== 0) { continue; }
-    if (!is_readable($real)) { continue; }
+    $plain = ape_listas_stat_regular($f, $raiz, $raizPrefix);
+    if ($plain === null) { continue; }
 
-    $bytes = @filesize($real);
-    if (!is_int($bytes)) { $bytes = null; }
-    $mt = @filemtime($real);
-    $mt = is_int($mt) ? $mt : null;
-
-    $gzNombre = $n . '.gz';
-    $gzPath = $raiz . DIRECTORY_SEPARATOR . $gzNombre;
+    $usingGz = false;
     $gzReal = null;
-    $gzBytes = null;
-    if (is_file($gzPath)) {
-        $r = realpath($gzPath);
-        if ($r !== false && strpos($r, $raizPrefix) === 0) {
-            $gzReal = $r;
-            $b = @filesize($r);
-            $gzBytes = is_int($b) ? $b : null;
+    $gz = null;
+    /* Solo el marcador bare #EXTM3U puede promover su sidecar gzip. Un plain
+     * HLS corto con contenido manda y su sidecar divergente se ignora. */
+    if (ape_cablear_is_explicit_gzip_stub($f)) {
+        $gzPath = $f . '.gz';
+        if (file_exists($gzPath) || is_link($gzPath)) {
+            $gz = ape_listas_gz_stat($gzPath, $raiz, $raizPrefix);
+            if ($gz === null) { continue; }
+            $gzReal = $gz['path'];
+            $usingGz = true;
         }
     }
 
-    /* ── canales: del header, leyendo 64 KB. NUNCA descomprimiendo la lista. ── */
+    $effective = $usingGz ? $gz : $plain;
+    $effectivePath = $effective['path'];
+    $effectiveBytes = (int) $effective['bytes'];
+    $expanded = $usingGz ? (int) $gz['isize_estimate'] : (int) $plain['bytes'];
+    $head = ape_listas_head($gzReal, $plain['path'], $headBytes);
     $canales = null;
     $canalesMotivo = 'header-ausente';
-    $head = ape_listas_head($gzReal, $real, $headBytes);
     if ($head === null) {
         $canalesMotivo = 'cabecera-no-leible';
     } elseif (preg_match('/^#EXT-X-APE-CHANNELS:\s*(\d+)\s*$/m', $head, $m)) {
@@ -165,84 +194,92 @@ foreach ($nombres as $n) {
         $canalesMotivo = null;
     }
 
-    /* ── variante cableada: existe? es mas nueva que la fuente? ─────────────── */
-    $base = substr($n, 0, -5);
+    $base = preg_replace('/\.m3u8?$/i', '', $n);
     $cabNombre = $base . '_CABLEADA.m3u8';
-    $cabPath = $raiz . DIRECTORY_SEPARATOR . $cabNombre;
-    $tieneCab = false;
-    $cabBytes = null;
-    $cabMtime = null;
-    $cabMasNueva = null;
-    if (is_file($cabPath)) {
-        $r = realpath($cabPath);
-        if ($r !== false && strpos($r, $raizPrefix) === 0) {
-            $tieneCab = true;
-            $b = @filesize($r);
-            $cabBytes = is_int($b) ? $b : null;
-            $cm = @filemtime($r);
-            $cabMtime = is_int($cm) ? $cm : null;
-            if ($cabMtime !== null && $mt !== null) { $cabMasNueva = ($cabMtime > $mt); }
-        }
+    $cab = ape_listas_variante($raiz, $cabNombre, $raiz, $raizPrefix, $baseUrl);
+    $shieldNombre = $base . '_SHIELDED.m3u8';
+    $shield = ape_listas_variante($raiz, $shieldNombre, $raiz, $raizPrefix, $baseUrl);
+    if (!$shield['existe']) {
+        $shieldM3u = $base . '_SHIELDED.m3u';
+        $shieldAlt = ape_listas_variante($raiz, $shieldM3u, $raiz, $raizPrefix, $baseUrl);
+        if ($shieldAlt['existe']) { $shield = $shieldAlt; }
     }
+    $tieneCab = $cab['existe'];
+    $cabMtimeEpoch = $tieneCab ? @filemtime($raiz . DIRECTORY_SEPARATOR . $cabNombre) : null;
+    $cabMtimeEpoch = is_int($cabMtimeEpoch) ? $cabMtimeEpoch : null;
+    $cabBytes = $tieneCab ? $cab['bytes'] : null;
+    $cabMasNueva = ($tieneCab && $cabMtimeEpoch !== null && $effective['mtime_epoch'] !== null)
+        ? ($cabMtimeEpoch > (int) $effective['mtime_epoch']) : null;
+    $estado = !$tieneCab ? 'sin_cablear' : ($cabMasNueva === true ? 'al_dia' : 'desactualizada');
 
-    $estado = 'sin_cablear';
-    if ($tieneCab) { $estado = ($cabMasNueva === true) ? 'al_dia' : 'desactualizada'; }
-
-    /* ── sha256 solo si es barato (<=64 MB). Si no, se declara por que no. ──── */
     $sha = null;
     $shaMotivo = null;
-    if ($bytes === null) {
+    if ($usingGz) {
+        $shaMotivo = 'stub-gzip-no-se-afirma-hash-del-contenido-expandido';
+    } elseif ($plain['bytes'] === null) {
         $shaMotivo = 'tamano-no-leible';
-    } elseif ($bytes > $shaMaxBytes) {
+    } elseif ($plain['bytes'] > $shaMaxBytes) {
         $shaMotivo = 'demasiado-grande-para-calcularlo-en-una-lista';
     } else {
-        $h = @hash_file('sha256', $real);
+        $h = @hash_file('sha256', $plain['path']);
         if (is_string($h) && $h !== '') { $sha = $h; } else { $shaMotivo = 'hash-fallido'; }
     }
 
+    $identity = array(
+        'source_kind' => $usingGz ? 'gzip_stub' : 'plain',
+        'path' => $n, 'bytes' => (int) $plain['bytes'],
+        'mtime_epoch' => (int) $plain['mtime_epoch'], 'ctime_epoch' => (int) $plain['ctime_epoch'],
+        'inode' => (int) $plain['inode'], 'dev' => (int) $plain['dev'],
+        'gz' => $usingGz ? array(
+            'path' => $n . '.gz', 'bytes' => (int) $gz['bytes'],
+            'mtime_epoch' => (int) $gz['mtime_epoch'], 'ctime_epoch' => (int) $gz['ctime_epoch'],
+            'inode' => (int) $gz['inode'], 'dev' => (int) $gz['dev'],
+            'isize_estimate' => (int) $gz['isize_estimate'], 'isize_exact' => false,
+            'integrity_validated' => false,
+        ) : null,
+        'effective_path' => $usingGz ? $n . '.gz' : $n,
+        'effective_bytes' => $effectiveBytes,
+        'effective_mtime_epoch' => (int) $effective['mtime_epoch'],
+        'effective_ctime_epoch' => (int) $effective['ctime_epoch'],
+        'effective_inode' => (int) $effective['inode'], 'effective_dev' => (int) $effective['dev'],
+        'expanded_bytes_estimate' => $expanded,
+        'expanded_bytes_is_estimate' => $usingGz,
+    );
+
     $entradas[] = array(
-        'nombre' => $n,
-        'bytes' => $bytes,
-        'bytes_gz' => $gzBytes,
-        'bytes_descomprimidos' => ape_listas_isize($gzReal, $gzBytes),
-        'mtime' => $mt !== null ? gmdate('c', $mt) : null,
-        'mtime_epoch' => $mt,
-        'canales' => $canales,
-        'canales_motivo' => $canalesMotivo,
-        'sha256' => $sha,
-        'sha256_motivo' => $shaMotivo,
+        'nombre' => $n, 'bytes' => $plain['bytes'],
+        'bytes_gz' => $usingGz ? (int) $gz['bytes'] : null,
+        'bytes_descomprimidos' => $expanded,
+        'bytes_descomprimidos_estimacion' => $usingGz,
+        'bytes_descomprimidos_motivo' => $usingGz ? 'gzip_trailer_isize_estimacion_sin_prueba_integridad' : 'plain_bytes',
+        'fuente_efectiva' => $usingGz ? 'gzip_stub' : 'plain',
+        'fuente_efectiva_nombre' => $usingGz ? $n . '.gz' : $n,
+        'mtime' => $effective['mtime_epoch'] !== null ? gmdate('c', $effective['mtime_epoch']) : null,
+        'mtime_epoch' => $effective['mtime_epoch'],
+        'canales' => $canales, 'canales_motivo' => $canalesMotivo,
+        'sha256' => $sha, 'sha256_motivo' => $shaMotivo,
         'url' => $baseUrl . '/lists/' . $n,
-        'tiene_cableada' => $tieneCab,
-        'url_cableada' => $tieneCab ? ($baseUrl . '/lists/' . $cabNombre) : null,
+        'tiene_cableada' => $tieneCab, 'url_cableada' => $tieneCab ? $cab['url'] : null,
         'cableada_bytes' => $cabBytes,
-        'cableada_mtime' => $cabMtime !== null ? gmdate('c', $cabMtime) : null,
-        'cableada_mas_nueva' => $cabMasNueva,
-        'estado' => $estado,
+        'cableada_mtime' => $cabMtimeEpoch !== null ? gmdate('c', $cabMtimeEpoch) : null,
+        'cableada_mas_nueva' => $cabMasNueva, 'estado' => $estado,
+        'variantes' => array('cableada' => $cab, 'shielded' => $shield),
     );
 }
 
-/* Orden: mtime descendente. La primera es la mas reciente y el operador ve de un
- * golpe cual es cual. Sin mtime va al final; empate -> nombre ascendente. */
 usort($entradas, function ($a, $b) {
-    $am = $a['mtime_epoch'];
-    $bm = $b['mtime_epoch'];
+    $am = $a['mtime_epoch']; $bm = $b['mtime_epoch'];
     if ($am === null && $bm === null) { return strcmp($a['nombre'], $b['nombre']); }
     if ($am === null) { return 1; }
     if ($bm === null) { return -1; }
     if ($am === $bm) { return strcmp($a['nombre'], $b['nombre']); }
     return ($am > $bm) ? -1 : 1;
 });
-
 $total = count($entradas);
 if ($total > $limite) { $entradas = array_slice($entradas, 0, $limite); }
 
 ape_listas_emitir(200, array(
-    'ok' => true,
-    'count' => count($entradas),
-    'total' => $total,
-    'truncado' => ($total > $limite),
-    'generado' => gmdate('c'),
-    'base' => $baseUrl,
-    'listas' => $entradas,
-    'auth' => (is_string($__key) && $__key !== '') ? 'x-ape-key' : 'heredada',
+    'ok' => true, 'count' => count($entradas), 'total' => $total,
+    'truncado' => ($total > $limite), 'generado' => gmdate('c'), 'base' => $baseUrl,
+    'listas' => $entradas, 'auth' => (is_string($__key) && $__key !== '') ? 'x-ape-key' : 'heredada',
 ));

@@ -1,6 +1,14 @@
 <?php
 declare(strict_types=1);
 
+
+/* [2026-11-19] CORS: el panel tambien se sirve en local (http://127.0.0.1:5500).
+ * Sin esta cabecera el navegador bloquea la respuesta aunque el servidor conteste
+ * 200. Se inserta DESPUES de declare(strict_types=1) cuando existe: declare debe
+ * ser la PRIMERA sentencia del fichero o PHP aborta con fatal error. */
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-APE-Token, X-Request-Profile');
 /**
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  Conviva QoE Event Endpoint v1.0 — Phase 1 Stub                        ║
@@ -109,6 +117,10 @@ try {
 } catch (\Throwable $eqp) { error_log('[conviva-event] PQ-ct early push skipped: ' . $eqp->getMessage()); }
 
 // Validate against schema (Phase 1: minimal validator; Phase 2: full JSON Schema)
+$event = ConvivaQoEServer::normalizeEvent($event);
+// auto-enroll: registra device_id -> IP del beacon (worker root lo aplica a allow-lists)
+@mkdir('/dev/shm/ape_dev_ip',0775,true);
+@file_put_contents('/dev/shm/ape_dev_ip/'.preg_replace('/[^A-Za-z0-9_.-]/','',(string)($event['device_id']??'x')), ($_SERVER['REMOTE_ADDR']??'').':'.time());
 $errors = ConvivaQoEServer::validateEvent($event);
 if (!empty($errors)) {
     http_response_code(400);

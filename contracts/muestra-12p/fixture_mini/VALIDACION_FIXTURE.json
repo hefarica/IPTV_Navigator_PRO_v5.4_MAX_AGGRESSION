@@ -1,0 +1,25 @@
+{
+ "fixture": "P5 real (854x480), no es 4K ni 6K",
+ "master": "fixture_mini/MASTERLIST_FIXTURE.m3u8",
+ "media": "fixture_mini/playlists/P5.m3u8",
+ "target_duration": 4,
+ "segments": 6,
+ "extinf_s": [
+  4.0,
+  4.0,
+  4.0,
+  4.0,
+  4.0,
+  4.0
+ ],
+ "all_segments_4s": true,
+ "targetduration_ge_max_extinf": true,
+ "ffprobe_ok": true,
+ "video_codec": "h264",
+ "width": 854,
+ "height": 480,
+ "fps": "30/1",
+ "audio_codec": "aac",
+ "format": "hls",
+ "nota": "Fixture sintetica generada con ffmpeg; valida estructura HLS y decodificacion, no calidad 4K/6K ni red real."
+}

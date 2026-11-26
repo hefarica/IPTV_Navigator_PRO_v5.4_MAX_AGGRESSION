@@ -2,7 +2,7 @@
   "schema": "ape.canary_jit.contract.v1",
   "contract_id": "canary-jit-parity-gate",
   "authority": "canary",
-  "revision": 1,
+  "revision": 2,
   "effective": "2026-11-11",
   "status": "ENGINE_DEPLOYED_VERIFIED__LOOP_NOT_DEPLOYED",
   "status_evidence": "CORREGIDO 2026-11-12. El MOTOR si esta desplegado y verificado: corrida 43168903918, job 4b success; /opt/ape-jit/server.js = 449.392 B sha256 290b1103... identico al pineado, comprobado en origen y destino; ape-jit.service active; listener :3099; /health 200; y desde internet /jit/health 200 y /jit/meta/1.json 200. El BUCLE Canary<->JIT SIGUE SIN DESPLEGAR: ver deployability.loop_artifact.manifest_rows = 0. La cabecera anterior decia 'sin merge, sin deploy y sin push', y eso ya era falso.",
@@ -279,9 +279,9 @@
     "rule": "Un artefacto no esta desplegado por existir en el repo: esta desplegado si tiene FILA en el manifiesto de deploy y su sha256 casa. Sin fila: NOT_DEPLOYED.",
     "manifest_file": "_vps_stage/deploy/manifest.tsv",
     "manifest_file_name_note": "SINGULAR. '_vps_stage/deploy/manifests.tsv' (plural) NO existe en el workspace; comprobado con Test-Path.",
-    "manifest_bytes": 6501,
-    "manifest_sha256": "5f5adcf10f66e742dcc68d06cbfc75f0e11c69cf7cc1de695f5372b946f018ed",
-    "manifest_non_empty_rows": 60,
+    "manifest_bytes": 18292,
+    "manifest_sha256": "d45aa53d219d2b7dc011cb664602b931166fe24077eb6e0055cc821c0a90c07a",
+    "manifest_non_empty_rows": 112,
     "loop_artifact": {
       "path": "vps/bin/ape-visual-emulate.sh",
       "bytes": 6714,
@@ -314,8 +314,8 @@
   "engine": {
     "rule": "Fijar el motor por sha256, NUNCA por ruta. Un recibo que no nombra el sha256 del motor no acredita nada.",
     "receipt_required_field": "engine_sha256",
-    "deployable_engine_sha256": "8c1a00852ba4df2adfa1cc1b17e980c8cfc7faee3ede1d65c69aa8e7456eaec6",
-    "deployable_engine_path": "tools/lab/ape-jit/server.js",
+    "deployable_engine_sha256": "ad37d894fda142c662fe6c4b67a0ed24974b5c0b034d7fa6f50e749da0df2479",
+    "deployable_engine_path": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js",
     "deployable_engine_manifest_line": 59,
     "candidates": [
       {
@@ -329,19 +329,20 @@
         "has_level_v": false,
         "has_max_cll": false,
         "has_ac2": false,
-        "note": "Es el que el manifiesto instala. Medido: 0 ocurrencias de -level:v, max-cll y -ac 2; contiene explicito 'NO -ac 2 universal' (server.js:557, :990, :3234)."
+        "note": "[2026-11-21] YA NO es el que el manifiesto instala: la fila 59 apunta al canonico. Se conserva como ANCESTRO historico y no se despliega. Medido entonces: 0 ocurrencias de -level:v, max-cll y -ac 2; contiene explicito 'NO -ac 2 universal' (server.js:557, :990, :3234)."
       },
       {
         "id": "B",
         "path": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js",
-        "bytes": 45535,
-        "sha256": "8405f78412dc2a984f690b7270e891d050740d88358f10ca5818f905151fbae0",
-        "manifest_row": false,
-        "has_jit_signal": false,
+        "bytes": 490421,
+        "sha256": "ad37d894fda142c662fe6c4b67a0ed24974b5c0b034d7fa6f50e749da0df2479",
+        "manifest_row": true,
+        "manifest_line": 59,
+        "has_jit_signal": true,
         "has_level_v": true,
         "has_max_cll": true,
         "has_ac2": true,
-        "note": "Lo cita el README del paquete. NO despliega. Los defectos de codec/HDR/audio medidos por t2 (level:v 4.2 sobre avc1.640028 declarado, max-cll=100,100, -ac 2 sobre 5.1) son de ESTE artefacto."
+        "note": "[2026-11-21] ELEGIDO como desplegable (revision 2). Es la UNION medida de las dos ramas que habian divergido: piso de buffer 24 s / X-Buffer-Min 62.5 % / segment duration dinamico (rama repo) + POST /image/streaming-health-llm, 105 lineas que solo existian en el VPS (rama produccion). El pin es el sha256 de los bytes EXACTOS del blob en git (LF), no del fichero de trabajo con CRLF. RE-MEDIDOS los defectos que esta nota atribuia a un artefacto de 45535 B que ya no existe en ninguna ruta: -level:v = 0, max-cll = 0, -ac 2 = 3 ocurrencias y las TRES son prohibiciones explicitas (server.js:565 'NO -ac 2 universal: eso degrada 5.1 a estereo', :998, :3262), con audio=preserve. Verificado ademas: node -c; arranque en 127.0.0.1:3199 con /health ok, /capabilities.json 200, /image/lineup 200 y POST /image/streaming-health-llm 200 (400 sin medicion); check_buffer_contract 27/27 PASS. Produccion daba 23/27."
       },
       {
         "id": "C",
@@ -360,6 +361,53 @@
     "which_engine_runs_today": "NO_COMPUTADO: el README del paquete dice B, el incidente dice C, y el manifiesto instala A. Sin acceso al VPS en esta tarea no hay medicion en vivo.",
     "rejection": "E_ENGINE_SHA_UNVERIFIED si falta engine_sha256, si no es 64 hex, o si no es el sha256 desplegable del manifiesto."
   },
+  "rebaseline": [
+    {
+      "date": "2026-11-21",
+      "reason": "La revision 1 (2026-11-14) pineaba un motor que ya no era ni el del repo ni el de produccion: cuatro identidades distintas (recibo 8c1a0085, tools/lab 38c92b56, vps/ape-jit a3c671a2, /opt/ape-jit 44d8bf84). Se re-midio el artefacto canonico y se re-baselinea.",
+      "measured": {
+        "canonical_path": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js",
+        "canonical_sha256": "ad37d894fda142c662fe6c4b67a0ed24974b5c0b034d7fa6f50e749da0df2479",
+        "canonical_bytes": 490421,
+        "ancestor_path": "tools/lab/ape-jit/server.js",
+        "production_before_sha256": "44d8bf841ca1f9e006c92868246bc407c1bf9cca4642dc80262c750df703fcb9",
+        "production_before_bytes": 480253
+      },
+      "evidence": [
+        "git merge-file a 3 vias sobre el ancestro tools/lab: 0 conflictos, 9812 lineas",
+        "diff canonico vs produccion: 15+/4- (solo el hunk de buffer); vs tools/lab: 120+/4-",
+        "check_buffer_contract.js --jit canonico -> 27 PASS / 0 FAIL; --jit produccion -> 23 PASS / 4 FAIL",
+        "arranque real 127.0.0.1:3199: /health ok; /capabilities.json 200; /image/lineup 200; POST streaming-health-llm 200 y 400 sin medicion",
+        "tools/quality/test_canary_jit_contract.js -> 92/92 RESULT=PASS"
+      ],
+      "not_measured": [
+        "/opt/ape-jit/channels.json no se inspecciono: el canonico se verifico con el mapa ausente",
+        "de las 61 rutas solo se ejercitaron health, capabilities.json, lineup y streaming-health-llm",
+        "no prueba calidad de imagen ni ausencia de freeze en un player real: eso se mide en produccion tras desplegar"
+      ]
+    },
+    {
+      "date": "2026-11-21",
+      "reason": "R11/W-01: /resolve (y /jit/resolve, /go/<id>) dejan de escribir por GET. Lectura pura por defecto; escritura solo con señal explicita autenticada (POST + X-APE-Write: 1 + X-APE-Key), p normalizado, escritura atomica con fsync y backup previo. El motor cambia de bytes: se re-pinea el sha256 del BLOB (LF).",
+      "measured": {
+        "canonical_path": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js",
+        "canonical_sha256": "ad37d894fda142c662fe6c4b67a0ed24974b5c0b034d7fa6f50e749da0df2479",
+        "canonical_bytes": 490421,
+        "canonical_lines": 9998,
+        "crlf_pairs_in_worktree": 0
+      },
+      "evidence": [
+        "node -c IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js -> OK",
+        "tools/quality/test_jit_resolve_readonly.js -> 31/31 PASS",
+        "tools/quality/test_jit_routes_contract.js -> 61/61 rutas, contrato cumplido",
+        "tools/quality/test_canary_jit_contract.js -> re-ejecutado tras el re-pin"
+      ],
+      "not_measured": [
+        "no se desplego al VPS: el pin acredita el artefacto del repo, NO el proceso en ejecucion (/health + reinicio siguen NO_COMPUTADOS)",
+        "no se ejercito /resolve contra produccion (prohibido en R11): las pruebas son de sandbox aislado"
+      ]
+    }
+  ],
   "receipt_schema": {
     "id": "ape.canary_jit.receipt.v1",
     "fail_closed_rule": "Cada lista de esta seccion es la UNICA fuente de campos obligatorios. El validador las recorre en tiempo de ejecucion (required_field_levels) y rechaza la primera ausencia con E_REQUIRED_FIELD_MISSING nombrando el path JSON exacto. No existe una segunda lista en codigo que pueda divergir: omitir un campo ya no desactiva una guarda en silencio.",

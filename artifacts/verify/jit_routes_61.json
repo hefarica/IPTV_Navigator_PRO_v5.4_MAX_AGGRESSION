@@ -1,0 +1,1638 @@
+{
+  "artifact": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js",
+  "sha256": "ad37d894fda142c662fe6c4b67a0ed24974b5c0b034d7fa6f50e749da0df2479",
+  "bytes": 490421,
+  "lines": 9998,
+  "line_numbers_note": "Los numeros de linea de guards/end_lines son los medidos en R1 sobre el sha 268bbd3a (9812 lineas). Tras R11 (mismo dia) el fichero tiene 9998 lineas y las guardas se desplazaron ~+186: el CONTRATO usa LONGITUDES de tramo (spanFor), no posiciones absolutas, asi que sigue siendo valido; la posicion exacta hay que re-medirla con scratch/jit_route_scan.js si se necesita.",
+  "sha256_history": [
+    { "sha256": "268bbd3a05f8d8645d8641821f98dfc76e72060c44681ecfe31701f210ba4eb0", "bytes": 480976, "lines": 9812, "note": "R1 (linea base del inventario)" },
+    { "sha256": "ad37d894fda142c662fe6c4b67a0ed24974b5c0b034d7fa6f50e749da0df2479", "bytes": 490421, "lines": 9998, "note": "R11/W-01: /resolve + /go a lectura pura; escritura explicita autenticada, atomica y con backup" }
+  ],
+  "extraction": {
+    "pattern": "pathname === '<ruta>'",
+    "guard_lines": 61,
+    "literal_occurrences": 66,
+    "distinct_routes": 61
+  },
+  "classification": {
+    "routes": 61,
+    "read": 42,
+    "write": 19,
+    "unknown": 0
+  },
+  "perimeter_external_measured": {
+    "measured_by": "capitan",
+    "measured_at": "2026-11-21",
+    "method": "GET/HEAD desde Internet, cero POST",
+    "http_404": [
+      "/image/profiles",
+      "/image/state",
+      "/image/capacity",
+      "/capabilities.json",
+      "/jit/upscale",
+      "/jit/tune",
+      "/jit/signal"
+    ],
+    "http_200": [
+      "/jit/recipe (1192 B)",
+      "/jit/api/config (1268 B)"
+    ],
+    "http_400": [
+      "/jit/resolve"
+    ],
+    "consequence": "nginx no publica la raiz del motor: 18 de las 19 rutas que escriben no son alcanzables desde fuera. /jit/resolve es ALCANZABLE + POTENCIALMENTE MUTANTE (writeFileSync L6717, stopCurrent L6718) y NO EJERCITADA. Prohibido POSTearla desde el arnes."
+  },
+  "rows": [
+    {
+      "route": "/APE_JIT_LIST_IDEMPOTENTE.m3u8",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        6418
+      ],
+      "end_lines": [
+        6429
+      ],
+      "safe": true,
+      "deps": [
+        "catalogo APE_JIT_LIST_IDEMPOTENTE.m3u8"
+      ],
+      "notes": "alias del anterior; 404 si el catalogo no se ha construido",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/api/config",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "kind": "lectura+escritura",
+      "guards": [
+        9408
+      ],
+      "end_lines": [
+        9516
+      ],
+      "safe": false,
+      "deps": [
+        "imageConfig",
+        "/opt/ape-jit/api-key.txt (X-APE-Key)"
+      ],
+      "notes": "GET lee; POST fail-closed: 503 sin api-key.txt, 401 sin X-APE-Key, escribe config e idempotente si no cambia",
+      "mutating_sites": [
+        {
+          "line": 9496,
+          "what": "writeFileSync IMAGE_CONFIG_FILE.tmp"
+        },
+        {
+          "line": 9497,
+          "what": "renameSync IMAGE_CONFIG_FILE"
+        }
+      ],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/capabilities.json",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        6605
+      ],
+      "end_lines": [
+        6628
+      ],
+      "safe": true,
+      "deps": [
+        "constantes",
+        "estado en memoria (current)"
+      ],
+      "notes": "declara limitaciones: rea_executed=false",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/catalog.json",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        6767
+      ],
+      "end_lines": [
+        6782
+      ],
+      "safe": true,
+      "deps": [
+        "channels.json (loadMap)"
+      ],
+      "notes": "lista id/hls/dash/json de todos los canales",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": [
+        "loadMap()"
+      ]
+    },
+    {
+      "route": "/crystal.json",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        6629
+      ],
+      "end_lines": [
+        6650
+      ],
+      "safe": true,
+      "deps": [
+        "constantes",
+        "current en memoria"
+      ],
+      "notes": "policy incl. truth_guard (no certifica HDR físico)",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/health",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        9597
+      ],
+      "end_lines": [
+        9609
+      ],
+      "safe": true,
+      "deps": [
+        "current en memoria",
+        "gateStats"
+      ],
+      "notes": "slot activo + adjudicaciones del provider gate",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/capacity",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        9518,
+        9521
+      ],
+      "end_lines": [
+        9595,
+        9527
+      ],
+      "safe": true,
+      "deps": [
+        "IMAGE_MEASURED_CAPACITY",
+        "IMAGE_TARGETS",
+        "IMAGE_LIMITS"
+      ],
+      "notes": "guarda exterior con OR (L9518) + rama interna (L9521) que sirve el payload y retorna en L9523-9526; código vivo",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/cascade",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        7164
+      ],
+      "end_lines": [
+        7174
+      ],
+      "safe": true,
+      "deps": [
+        "CODEC_CASCADE",
+        "PLAYER_CAPS"
+      ],
+      "notes": "golden rule hvc1/hev1 declarada",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/catalog",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        6848
+      ],
+      "end_lines": [
+        6861
+      ],
+      "safe": true,
+      "deps": [
+        "OUTPUT_TARGETS",
+        "CODEC_CATALOG",
+        "PLAYER_CAPS",
+        "RECIPE_PRESETS"
+      ],
+      "notes": "",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/config",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "kind": "lectura+escritura",
+      "guards": [
+        9518
+      ],
+      "end_lines": [
+        9595
+      ],
+      "safe": false,
+      "deps": [
+        "IMAGE_CONFIG_FILE",
+        "imageConfig"
+      ],
+      "notes": "POST escribe config y para el job en curso (stopCurrent)",
+      "mutating_sites": [
+        {
+          "line": 9565,
+          "what": "writeFileSync IMAGE_CONFIG_FILE.tmp"
+        },
+        {
+          "line": 9566,
+          "what": "renameSync IMAGE_CONFIG_FILE"
+        },
+        {
+          "line": 9581,
+          "what": "stopCurrent() — mata el ffmpeg en curso"
+        }
+      ],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/declare",
+      "methods": [
+        "POST"
+      ],
+      "kind": "lectura",
+      "guards": [
+        6864
+      ],
+      "end_lines": [
+        6880
+      ],
+      "safe": true,
+      "deps": [
+        "profileMatrix",
+        "PLAYER_CAPS",
+        "CODEC_CATALOG",
+        "RECIPE_PRESETS"
+      ],
+      "notes": "POST obligatorio; declara sin persistir (declareProfile es puro)",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/fallback",
+      "methods": [
+        "POST"
+      ],
+      "kind": "lectura",
+      "guards": [
+        7177
+      ],
+      "end_lines": [
+        7193
+      ],
+      "safe": true,
+      "deps": [
+        "PLAYER_CAPS",
+        "OUTPUT_TARGETS",
+        "CODEC_CASCADE"
+      ],
+      "notes": "resolveFallback es puro",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/gestor/backups",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        7836
+      ],
+      "end_lines": [
+        7841
+      ],
+      "safe": true,
+      "deps": [
+        "GESTOR_BACKUP_DIR (readdir)"
+      ],
+      "notes": "",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/gestor/journal",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        7861
+      ],
+      "end_lines": [
+        7867
+      ],
+      "safe": true,
+      "deps": [
+        "GESTOR_JOURNAL (lectura, limit<=500)"
+      ],
+      "notes": "",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/gestor/pending",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        7869
+      ],
+      "end_lines": [
+        7874
+      ],
+      "safe": true,
+      "deps": [
+        "GESTOR_PENDING_DIR (readdir)"
+      ],
+      "notes": "",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/gestor/profiles",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        7796
+      ],
+      "end_lines": [
+        7826
+      ],
+      "safe": true,
+      "deps": [
+        "GESTOR_STORE / PROFILES_JSON + capa emulada"
+      ],
+      "notes": "12 perfiles (6 reales + 6 emulados)",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/gestor/restore",
+      "methods": [
+        "POST"
+      ],
+      "kind": "escritura",
+      "guards": [
+        7843
+      ],
+      "end_lines": [
+        7859
+      ],
+      "safe": false,
+      "deps": [
+        "GESTOR_BACKUP_DIR",
+        "GESTOR_STORE",
+        "PROFILES_JSON"
+      ],
+      "notes": "restaura un backup sobre el store vigente",
+      "mutating_sites": [
+        {
+          "line": 7853,
+          "what": "restoreGestorBackup()"
+        }
+      ],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/gestor/save",
+      "methods": [
+        "POST"
+      ],
+      "kind": "escritura",
+      "guards": [
+        7890
+      ],
+      "end_lines": [
+        7919
+      ],
+      "safe": false,
+      "deps": [
+        "GESTOR_STORE",
+        "PROFILES_JSON",
+        "GESTOR_JOURNAL"
+      ],
+      "notes": "saveGestorProfiles + journal; consolida lo vigente si no llegan perfiles",
+      "mutating_sites": [
+        {
+          "line": 7907,
+          "what": "saveGestorProfiles()"
+        }
+      ],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/gestor/state",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        7830
+      ],
+      "end_lines": [
+        7834
+      ],
+      "safe": true,
+      "deps": [
+        "stat de GESTOR_STORE/PROFILES_JSON"
+      ],
+      "notes": "",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/governance",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "kind": "lectura+escritura",
+      "guards": [
+        8184,
+        8227
+      ],
+      "end_lines": [
+        8225,
+        8255
+      ],
+      "safe": false,
+      "deps": [
+        "channels.json (loadMap)",
+        "profileMatrix",
+        "governance.json"
+      ],
+      "notes": "GET tabla por canal; POST muta defaultProfile/overrides y persiste",
+      "mutating_sites": [
+        {
+          "line": 8249,
+          "what": "saveGovernance() → governance.json"
+        }
+      ],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": [
+        "loadMap()"
+      ]
+    },
+    {
+      "route": "/image/lineup",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        8257
+      ],
+      "end_lines": [
+        8270
+      ],
+      "safe": true,
+      "deps": [
+        "channels.json (buildGovernedLineup→loadMap)",
+        "governance"
+      ],
+      "notes": "genera la lista M3U en memoria",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/llm-key",
+      "methods": [
+        "POST"
+      ],
+      "kind": "escritura",
+      "guards": [
+        7358
+      ],
+      "end_lines": [
+        7377
+      ],
+      "safe": false,
+      "deps": [
+        "LLM_KEY_FILE"
+      ],
+      "notes": "guarda o borra la API key del LLM (clear:true)",
+      "mutating_sites": [
+        {
+          "line": 7372,
+          "what": "saveLLMKey()"
+        },
+        {
+          "line": 7368,
+          "what": "clearLLMKey()"
+        }
+      ],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/llm-status",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        8033
+      ],
+      "end_lines": [
+        8050
+      ],
+      "safe": true,
+      "deps": [
+        "LLM_KEY_FILE / env DEEPSEEK_API_KEY"
+      ],
+      "notes": "no devuelve la key",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/matrix",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "kind": "lectura+escritura",
+      "guards": [
+        8272,
+        8302
+      ],
+      "end_lines": [
+        8299,
+        8324
+      ],
+      "safe": false,
+      "deps": [
+        "profileMatrix",
+        "MATRIX_ALLOWED/LIMITS",
+        "/opt/ape-jit/profile-matrix.json"
+      ],
+      "notes": "POST patchProfile persiste la matriz",
+      "mutating_sites": [
+        {
+          "line": 8317,
+          "what": "patchProfile()"
+        }
+      ],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/optimize",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "kind": "lectura",
+      "guards": [
+        8052,
+        8071
+      ],
+      "end_lines": [
+        8068,
+        8084
+      ],
+      "safe": true,
+      "deps": [
+        "tablas de cómputo"
+      ],
+      "notes": "GET lee query (incl. outFps), POST JSON; objective() puro",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/optimize-llm",
+      "methods": [
+        "POST"
+      ],
+      "kind": "lectura+egress",
+      "guards": [
+        7218
+      ],
+      "end_lines": [
+        7249
+      ],
+      "safe": true,
+      "deps": [
+        "LLM key",
+        "api.deepseek.com"
+      ],
+      "notes": "llama al LLM; no escribe estado (coste/cuota de red)",
+      "mutating_sites": [],
+      "egress_sites": [
+        {
+          "line": 7233,
+          "what": "callLLM() → fetch L2982"
+        }
+      ],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/plan",
+      "methods": [
+        "POST"
+      ],
+      "kind": "lectura",
+      "guards": [
+        8327
+      ],
+      "end_lines": [
+        8349
+      ],
+      "safe": true,
+      "deps": [
+        "computePlan"
+      ],
+      "notes": "cómputo puro",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/plans",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        8352
+      ],
+      "end_lines": [
+        8379
+      ],
+      "safe": true,
+      "deps": [
+        "enumeratePlans"
+      ],
+      "notes": "pagina a 40 filas",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/prisma/all",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        8022
+      ],
+      "end_lines": [
+        8031
+      ],
+      "safe": true,
+      "deps": [
+        "gestor + prisma"
+      ],
+      "notes": "",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/prisma/emit",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        7943
+      ],
+      "end_lines": [
+        7955
+      ],
+      "safe": true,
+      "deps": [
+        "gestor + prisma"
+      ],
+      "notes": "",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/prisma/emit-all",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        7958
+      ],
+      "end_lines": [
+        7995
+      ],
+      "safe": true,
+      "deps": [
+        "gestor + governance",
+        "prisma"
+      ],
+      "notes": "base64 en chunks de 240",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/prisma/lanes",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        7923
+      ],
+      "end_lines": [
+        7927
+      ],
+      "safe": true,
+      "deps": [
+        "constantes prisma"
+      ],
+      "notes": "",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/prisma/plan",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        7929
+      ],
+      "end_lines": [
+        7941
+      ],
+      "safe": true,
+      "deps": [
+        "gestor"
+      ],
+      "notes": "",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/profile/align",
+      "methods": [
+        "POST"
+      ],
+      "kind": "lectura",
+      "guards": [
+        7380
+      ],
+      "end_lines": [
+        7424
+      ],
+      "safe": true,
+      "deps": [
+        "gestor",
+        "objective",
+        "proposeAlignmentFull"
+      ],
+      "notes": "propuesta, no aplica",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/profile/align-all",
+      "methods": [
+        "POST"
+      ],
+      "kind": "lectura",
+      "guards": [
+        7489
+      ],
+      "end_lines": [
+        7537
+      ],
+      "safe": true,
+      "deps": [
+        "gestor + emulados"
+      ],
+      "notes": "dice explícitamente \"No se aplico nada\"",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/profile/align-all/apply",
+      "methods": [
+        "POST"
+      ],
+      "kind": "escritura",
+      "guards": [
+        7431
+      ],
+      "end_lines": [
+        7487
+      ],
+      "safe": false,
+      "deps": [
+        "GESTOR_STORE",
+        "PROFILES_JSON",
+        "backups",
+        "journal"
+      ],
+      "notes": "aplica y persiste sólo los perfiles que pasan invariantes",
+      "mutating_sites": [
+        {
+          "line": 7473,
+          "what": "saveGestorProfiles()"
+        }
+      ],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/profile/align-llm",
+      "methods": [
+        "POST"
+      ],
+      "kind": "escritura+egress",
+      "guards": [
+        7657
+      ],
+      "end_lines": [
+        7732
+      ],
+      "safe": false,
+      "deps": [
+        "gestor",
+        "LLM",
+        "GESTOR_PENDING_DIR"
+      ],
+      "notes": "LLM + persiste la propuesta en llm-pending/<pid>.json",
+      "mutating_sites": [
+        {
+          "line": 7721,
+          "what": "saveLLMPending()"
+        }
+      ],
+      "egress_sites": [
+        {
+          "line": 7691,
+          "what": "callLLMAlign() → fetch L1112"
+        }
+      ],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/profile/align-loop",
+      "methods": [
+        "POST"
+      ],
+      "kind": "escritura",
+      "guards": [
+        7548
+      ],
+      "end_lines": [
+        7654
+      ],
+      "safe": false,
+      "deps": [
+        "gestor",
+        "GESTOR_STORE",
+        "PROFILES_JSON",
+        "journal"
+      ],
+      "notes": "itera y persiste los convergidos",
+      "mutating_sites": [
+        {
+          "line": 7640,
+          "what": "saveGestorProfiles()"
+        }
+      ],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/profile/align/apply",
+      "methods": [
+        "POST"
+      ],
+      "kind": "escritura",
+      "guards": [
+        7734
+      ],
+      "end_lines": [
+        7781
+      ],
+      "safe": false,
+      "deps": [
+        "GESTOR_STORE",
+        "PROFILES_JSON",
+        "journal"
+      ],
+      "notes": "aplica diffs con invariantes y persiste",
+      "mutating_sites": [
+        {
+          "line": 7768,
+          "what": "saveGestorProfiles()"
+        }
+      ],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/profiles",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        8382
+      ],
+      "end_lines": [
+        8409
+      ],
+      "safe": true,
+      "deps": [
+        "LAB_PROFILES",
+        "LAB_PROFILE_FALLBACK",
+        "imageConfig"
+      ],
+      "notes": "declara que ningún destino declarado es viable en este host",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/receipt",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura+proceso",
+      "guards": [
+        8000
+      ],
+      "end_lines": [
+        8008
+      ],
+      "safe": false,
+      "deps": [
+        "RECEIPT_SESSION_ROOT",
+        "ffprobe vía sh -c",
+        "/tmp"
+      ],
+      "notes": "mide init+chunk concatenados; escribe /tmp/ape-receipt-<pid>-<kind>.mp4",
+      "mutating_sites": [
+        {
+          "line": 8003,
+          "what": "buildReceipt() → sh -c cat|ffprobe"
+        }
+      ],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/receipts",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura+proceso",
+      "guards": [
+        8010
+      ],
+      "end_lines": [
+        8020
+      ],
+      "safe": false,
+      "deps": [
+        "RECEIPT_SESSION_ROOT (readdir)",
+        "ffprobe por canal"
+      ],
+      "notes": "un ffprobe por canal con sesión",
+      "mutating_sites": [
+        {
+          "line": 8014,
+          "what": "buildReceipt() → sh -c cat|ffprobe"
+        }
+      ],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/rules",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "kind": "lectura+escritura",
+      "guards": [
+        8123,
+        8143
+      ],
+      "end_lines": [
+        8141,
+        8159
+      ],
+      "safe": false,
+      "deps": [
+        "RULES_FILE",
+        "transformRules"
+      ],
+      "notes": "GET lista; POST upsertRule persiste el fichero de reglas (DELETE es ruta regex fuera de 61)",
+      "mutating_sites": [
+        {
+          "line": 8153,
+          "what": "upsertRule() → saveRules()"
+        }
+      ],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/rules/auto",
+      "methods": [
+        "POST"
+      ],
+      "kind": "lectura",
+      "guards": [
+        8086
+      ],
+      "end_lines": [
+        8102
+      ],
+      "safe": true,
+      "deps": [
+        "PLAYER_CAPS",
+        "tablas auto*"
+      ],
+      "notes": "autoConfig es puro",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/rules/auto-field",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        8105
+      ],
+      "end_lines": [
+        8121
+      ],
+      "safe": true,
+      "deps": [
+        "autoConfig"
+      ],
+      "notes": "filtra un campo del resultado",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/rules/resolve",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        8170
+      ],
+      "end_lines": [
+        8182
+      ],
+      "safe": true,
+      "deps": [
+        "transformRules (en memoria)"
+      ],
+      "notes": "requiere w y h",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/serial",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        7196
+      ],
+      "end_lines": [
+        7212
+      ],
+      "safe": true,
+      "deps": [
+        "CODEC_CASCADE"
+      ],
+      "notes": "serial hvc1/hev1 por tier y destino",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/state",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        8412
+      ],
+      "end_lines": [
+        8470
+      ],
+      "safe": true,
+      "deps": [
+        "sesión viva (readdir)",
+        "outputTruth",
+        "imageConfig"
+      ],
+      "notes": "sólo lee; puede devolver output_observed=null",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/image/streaming-health-llm",
+      "methods": [
+        "POST"
+      ],
+      "kind": "lectura+egress",
+      "guards": [
+        7257
+      ],
+      "end_lines": [
+        7354
+      ],
+      "safe": true,
+      "deps": [
+        "medición del cliente",
+        "LLM key",
+        "api.deepseek.com"
+      ],
+      "notes": "sin medición devuelve 400; no escribe estado",
+      "mutating_sites": [],
+      "egress_sites": [
+        {
+          "line": 7317,
+          "what": "fetch(LLM_ENDPOINT)"
+        }
+      ],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/jit/api/config",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "kind": "lectura+escritura",
+      "guards": [
+        9408
+      ],
+      "end_lines": [
+        9516
+      ],
+      "safe": false,
+      "deps": [
+        "imageConfig",
+        "/opt/ape-jit/api-key.txt"
+      ],
+      "notes": "POST fail-closed 503/401; escribe config si cambia",
+      "mutating_sites": [
+        {
+          "line": 9496,
+          "what": "writeFileSync IMAGE_CONFIG_FILE.tmp"
+        },
+        {
+          "line": 9497,
+          "what": "renameSync IMAGE_CONFIG_FILE"
+        }
+      ],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/jit/recipe",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        9381
+      ],
+      "end_lines": [
+        9406
+      ],
+      "safe": true,
+      "deps": [
+        "imageConfig",
+        "buildImageFilterChain"
+      ],
+      "notes": "cadena efectiva de filtros",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/jit/resolve",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "escritura",
+      "guards": [
+        6698
+      ],
+      "end_lines": [
+        6765
+      ],
+      "safe": false,
+      "deps": [
+        "channels.json (loadMap)",
+        "profileMatrix",
+        "governance",
+        "IMAGE_CONFIG_FILE"
+      ],
+      "notes": "alias de /resolve: mismo handler y mismos efectos",
+      "mutating_sites": [
+        {
+          "line": 6717,
+          "what": "writeFileSync IMAGE_CONFIG_FILE"
+        },
+        {
+          "line": 6718,
+          "what": "stopCurrent() — mata el ffmpeg en curso"
+        }
+      ],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": [
+        "loadMap()"
+      ]
+    },
+    {
+      "route": "/jit/signal",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "kind": "lectura+escritura",
+      "guards": [
+        9199
+      ],
+      "end_lines": [
+        9379
+      ],
+      "safe": false,
+      "deps": [
+        "CHANNEL_SIGNAL_FILE",
+        "RULES_FILE (semilla)",
+        "transformRules"
+      ],
+      "notes": "GET lee señales; POST escribe channel-signals.json y puede sembrar rules",
+      "mutating_sites": [
+        {
+          "line": 9370,
+          "what": "saveChannelSignals()"
+        },
+        {
+          "line": 9214,
+          "what": "loadRules() — siembra el fichero si falta/corrupto"
+        }
+      ],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/jit/tune",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "kind": "lectura+escritura+egress",
+      "guards": [
+        9002
+      ],
+      "end_lines": [
+        9197
+      ],
+      "safe": false,
+      "deps": [
+        "TUNE_JOURNAL",
+        "IMAGE_CONFIG_FILE",
+        "capacidad medida",
+        "LLM key"
+      ],
+      "notes": "GET lista el journal; POST calcula techo, consulta LLM y persiste config+journal",
+      "mutating_sites": [
+        {
+          "line": 9170,
+          "what": "writeFileSync IMAGE_CONFIG_FILE.tmp"
+        },
+        {
+          "line": 9171,
+          "what": "renameSync IMAGE_CONFIG_FILE"
+        },
+        {
+          "line": 9190,
+          "what": "appendFileSync tune-journal.jsonl"
+        }
+      ],
+      "egress_sites": [
+        {
+          "line": 9122,
+          "what": "callLLMTune() → fetch L8852"
+        }
+      ],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/jit/upscale",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        8978
+      ],
+      "end_lines": [
+        9000
+      ],
+      "safe": true,
+      "deps": [
+        "SIM_LADDER",
+        "imageConfig.ten_bit"
+      ],
+      "notes": "requiere from=ANCHOxALTO",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/playlist-idempotente.m3u8",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        6418
+      ],
+      "end_lines": [
+        6429
+      ],
+      "safe": true,
+      "deps": [
+        "catalogo APE_JIT_LIST_IDEMPOTENTE.m3u8"
+      ],
+      "notes": "404 si no se ha construido",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/playlist-resolver.m3u8",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        6430
+      ],
+      "end_lines": [
+        6441
+      ],
+      "safe": true,
+      "deps": [
+        "catalogo APE_JIT_LIST_EXTATTR.m3u8"
+      ],
+      "notes": "404 si no se ha generado",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/playlist-shim.m3u8",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        6470
+      ],
+      "end_lines": [
+        6518
+      ],
+      "safe": true,
+      "deps": [
+        "APE_JIT_LIST.m3u8",
+        "?port=/APE_SHIM_PORT"
+      ],
+      "notes": "400 sin puerto; 500 wired_nothing si reescribe 0 canales",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/playlist.m3u8",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        6442
+      ],
+      "end_lines": [
+        6448
+      ],
+      "safe": true,
+      "deps": [
+        "catalogo APE_JIT_LIST.m3u8"
+      ],
+      "notes": "404 not built",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/recipe",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "lectura",
+      "guards": [
+        9381
+      ],
+      "end_lines": [
+        9406
+      ],
+      "safe": true,
+      "deps": [
+        "imageConfig",
+        "buildImageFilterChain"
+      ],
+      "notes": "alias de /jit/recipe",
+      "mutating_sites": [],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": []
+    },
+    {
+      "route": "/resolve",
+      "methods": [
+        "ANY"
+      ],
+      "kind": "escritura",
+      "guards": [
+        6698
+      ],
+      "end_lines": [
+        6765
+      ],
+      "safe": false,
+      "deps": [
+        "channels.json (loadMap)",
+        "profileMatrix",
+        "governance",
+        "IMAGE_CONFIG_FILE"
+      ],
+      "notes": "con ?p= válido y distinto escribe config y para el job (stopCurrent)",
+      "mutating_sites": [
+        {
+          "line": 6717,
+          "what": "writeFileSync IMAGE_CONFIG_FILE"
+        },
+        {
+          "line": 6718,
+          "what": "stopCurrent() — mata el ffmpeg en curso"
+        }
+      ],
+      "egress_sites": [],
+      "auth_sites": [],
+      "map_dependency": [
+        "loadMap()"
+      ]
+    }
+  ],
+  "problems": []
+}

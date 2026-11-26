@@ -1,0 +1,53 @@
+name: APE deploy QoE lua
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/qoe_server_side_observer.lua'
+      - 'IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/qoe_flush_worker.lua'
+      - '.github/workflows/ape-deploy-qoe-lua.yml'
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar SSH
+        env:
+          K: ${{ secrets.VPS_SSH_KEY }}
+          KH: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$K" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KH" > ~/.ssh/known_hosts
+          printf 'Host vps\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_ed25519\n  IdentitiesOnly yes\n' "${{ secrets.VPS_HOST }}" "${{ secrets.VPS_USER }}" > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+      - name: Backup de los lua actuales
+        run: |
+          set -euo pipefail
+          TS=$(date -u +%Y%m%dT%H%M%SZ)
+          echo "STAMP=$TS" >> $GITHUB_ENV
+          ssh -o BatchMode=yes vps "sudo -n mkdir -p /root/ape-deploy-backups/qoe_lua_$TS && sudo -n cp -a /etc/nginx/lua/qoe_server_side_observer.lua /etc/nginx/lua/qoe_flush_worker.lua /root/ape-deploy-backups/qoe_lua_$TS/ 2>/dev/null || true; sudo -n ls -l /root/ape-deploy-backups/qoe_lua_$TS/"
+      - name: Subir los dos lua
+        run: |
+          set -euo pipefail
+          for f in qoe_server_side_observer.lua qoe_flush_worker.lua; do
+            scp -o BatchMode=yes IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/$f vps:/tmp/$f
+            ssh -o BatchMode=yes vps "sudo -n install -o root -g root -m 0644 /tmp/$f /etc/nginx/lua/$f && rm -f /tmp/$f"
+            ssh -o BatchMode=yes vps "sudo -n sha256sum /etc/nginx/lua/$f"
+          done
+      - name: nginx -t y reload
+        run: |
+          set -euo pipefail
+          ssh -o BatchMode=yes vps 'sudo -n nginx -t'
+          ssh -o BatchMode=yes vps 'sudo -n nginx -s reload'
+          echo "reload hecho"
+      - name: Verificar que sirve y que el sha coincide
+        run: |
+          set -euo pipefail
+          ssh -o BatchMode=yes vps "sudo -n sha256sum /etc/nginx/lua/qoe_server_side_observer.lua /etc/nginx/lua/qoe_flush_worker.lua"
+          sha256sum IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/qoe_server_side_observer.lua IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/qoe_flush_worker.lua
+          curl -s -o /dev/null -w 'health=%{http_code}\n' https://iptv-ape.duckdns.org/_ape/health || true

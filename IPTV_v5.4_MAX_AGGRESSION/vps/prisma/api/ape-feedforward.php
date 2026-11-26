@@ -1,4 +1,12 @@
 <?php
+
+/* [2026-11-19] CORS: el panel tambien se sirve en local (http://127.0.0.1:5500).
+ * Sin esta cabecera el navegador bloquea la respuesta aunque el servidor conteste
+ * 200. Se inserta DESPUES de declare(strict_types=1) cuando existe: declare debe
+ * ser la PRIMERA sentencia del fichero o PHP aborta con fatal error. */
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-APE-Token, X-Request-Profile');
 /**
  * ape-feedforward.php — F2 router (malla) + gate de activación. One-shot.
  *
@@ -17,12 +25,6 @@ header('Content-Type: application/json');
 header('Cache-Control: no-store');
 require_once '/var/www/html/prisma/lib/list_registry.php';
 require_once '/var/www/html/prisma/lib/ape_mesh.php';
-
-// [EXTSHIMOTT] Helper local del payload `shimott` (contrato ape.extshimott.v1).
-// Guarda de existencia: si no está desplegado, el endpoint responde EXACTAMENTE
-// como hoy (el bloque se omite; no se inventa nada).
-$apeShimottLib = __DIR__ . '/ape-shimott-emit.php';
-if (@is_file($apeShimottLib)) { require_once $apeShimottLib; }
 
 $file   = isset($_GET['file'])    ? basename($_GET['file'])                               : '';
 $token  = isset($_GET['list_id']) ? preg_replace('/[^0-9A-Za-z_]/', '', $_GET['list_id'])  : '';
@@ -85,17 +87,4 @@ $out = array(
     'note'            => 'presets=list-level (player via lista); device_settings=daemon aplica (allowlist). NO STREAM-INF.',
 );
 if ($vpp !== null) { $out['ape_vpp'] = $vpp; }
-
-// ── [EXTSHIMOTT] Payload por canal (contrato ape.extshimott.v1) ──────────────
-// El tag `#EXTSHIMOTT:{json}` de la LISTA lo emite tools/pulse/ape-pulse-wrap.js.
-// Este endpoint NO construye .m3u8: añade el MISMO payload como CAMPO `shimott`
-// (objeto, sin prefijo). Emitir aquí la línea del tag duplicaría la del wrap.
-// Sin canal conocido (`ch`) no se emite el bloque: no se inventa un id de canal.
-// Contenido: ver/id/tgt + dev.* de las claves Android que este VPS YA calcula en
-// `device_settings`. La `v` real y las cabeceras viven en la lista (las pone el
-// wrap desde STREAM-TRUTH / EXTHTTP), no aquí.
-if ($ch !== '' && function_exists('ape_shimott_payload')) {
-    $shimott = ape_shimott_payload($ch, $device_settings);
-    if (is_array($shimott)) { $out['shimott'] = $shimott; }
-}
 echo json_encode($out, JSON_UNESCAPED_SLASHES);

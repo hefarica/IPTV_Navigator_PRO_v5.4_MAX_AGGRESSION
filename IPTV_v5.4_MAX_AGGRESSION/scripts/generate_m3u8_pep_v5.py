@@ -20,7 +20,9 @@ import re
 import json
 import sys
 import os
+import base64
 from datetime import datetime, timezone
+from urllib.parse import quote, urlsplit, parse_qsl, urlencode, urlunsplit
 
 
 # ─── 🎬 Disney-Grade LL-HLS / ABR directives loader (LAB SSOT) ────────────────
@@ -396,6 +398,59 @@ def build_exthttp(cfg: dict, profile_id: str, host: str) -> str:
     }
     return json.dumps(headers, ensure_ascii=False, separators=(',', ':'))
 
+HYBRID_HEIGHT = {"P0": 4320, "P0.5": 4320, "P1": 2160, "P1.5": 2160,
+                 "P2": 2160, "P2.5": 2160, "P3": 1080, "P3.5": 1080,
+                 "P4": 720, "P4.5": 720, "P5": 480, "P5.5": 480}
+
+
+def hybrid_route(profile_id):
+    pid = str(profile_id)
+    if pid in ("P0", "P0.5"):
+        return {"ruta": "max8k", "cartucho": "P0", "p": "P0",
+                "target": "7680x4320", "mode": "NATIVE"}
+    return {"ruta": "max", "cartucho": "P1.5", "p": "P1",
+            "target": "3840x2160", "mode": "SIMULATED"}
+
+
+def hybrid_profile(profile_id):
+    return hybrid_route(profile_id)["p"]
+
+
+def hybrid_tag(profile_id):
+    r = hybrid_route(profile_id)
+    h = HYBRID_HEIGHT.get(str(profile_id), 1080)
+    return (f"#EXT-X-APE-HYBRID-PULSE:ROUTE={r['ruta']};CARTRIDGE={r['cartucho']};"
+            f"P={r['p']};SOURCE_PX={h};TARGET={r['target']};MODE={r['mode']};"
+            "EXECUTED=0;POLICY=ape.crystal.hybrid/1;OWNER=ALL_RESOLUTIONS_UPSCALE")
+
+
+def hybrid_pulse_url(url, profile_id):
+    raw = str(url or "").split("|", 1)[0].strip()
+    if not re.match(r"^https?://", raw, re.I):
+        return url
+    p = hybrid_profile(profile_id)
+    if "/pulse/" in raw:
+        try:
+            parts = urlsplit(raw)
+            q = dict(parse_qsl(parts.query, keep_blank_values=True))
+            if any(k in q for k in ("fp", "sig", "signature", "token")):
+                return url
+            q["p"] = p
+            return urlunsplit((parts.scheme, parts.netloc, parts.path,
+                               urlencode(q, doseq=True), parts.fragment))
+        except Exception:
+            return url
+    m = (re.search(r"/live/[^/]+/[^/]+/(\d+)\.(?:m3u8|ts|mp4)", raw, re.I)
+         or re.search(r"/(\d+)\.(?:m3u8|ts|mp4)(?:[?#].*)?$", raw, re.I))
+    if not m:
+        return url
+    dev_json = json.dumps({"t": "generic", "s": "unknown", "r": 2048,
+                           "w": 1920, "h": 1080, "f": 30}, separators=(",", ":"))
+    dev = base64.urlsafe_b64encode(dev_json.encode("utf-8")).decode("ascii").rstrip("=")
+    base = "https://iptv-ape.duckdns.org"
+    return f"{base}/pulse/{m.group(1)}.m3u8?u={quote(raw, safe='')}&d={dev}&p={p}"
+
+
 def build_channel_block(extinf_line: str, url: str, profile_id: str) -> list:
     """Construye el bloque completo de un canal con todos los tags APE v18.2."""
     cfg = PROFILES[profile_id]
@@ -486,8 +541,9 @@ def build_channel_block(extinf_line: str, url: str, profile_id: str) -> list:
     lines.append('#EXT-X-APE-DNA-SYNC:bidirectional')
     lines.append('#EXT-X-APE-DNA-MAP-SOURCE:channels_map_v5.0_PEP')
     # EXT-X-STREAM-INF (refuerza selección de máxima resolución)
+    lines.append(hybrid_tag(profile_id))
     lines.append(f'#EXT-X-STREAM-INF:BANDWIDTH={bitrate_hz},RESOLUTION={cfg["res"]},CODECS="{codec_str},mp4a.40.2",FRAME-RATE={cfg["fps"]},HDCP-LEVEL=NONE')
-    lines.append(url)
+    lines.append(hybrid_pulse_url(url, profile_id))
     return lines
 
 def parse_and_regenerate(input_path: str, output_path: str):

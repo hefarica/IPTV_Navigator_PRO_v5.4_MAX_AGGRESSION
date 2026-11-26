@@ -1,14 +1,21 @@
 {
-  "versionCode": 651,
-  "versionName": "3.9.5-adb-firetv-shim",
-  "sha256": "8d3b145811c0bab3a10952329a81cadc477b08bd365b70f173cfe34ff52aa6e4",
-  "size": 25678434,
+  "versionCode": 675,
+  "versionName": "3.10.0-qoe-contract-675",
+  "sha256": "9bded476be0ec7a23eeceee965013d9b19410c84f6b2c37433c65aeabc4d8d6f",
+  "size": 24029140,
   "apk": "/ara/agent.apk",
   "min_android": 22,
   "package": "com.ape.crystalagent",
-  "abis": ["arm64-v8a", "armeabi-v7a", "x86", "x86_64"],
-  "features": ["ottshim"],
-  "published_at": "2026-11-07T18:55:00Z",
+  "abis": [
+    "arm64-v8a",
+    "armeabi-v7a",
+    "x86",
+    "x86_64"
+  ],
+  "features": [
+    "ottshim"
+  ],
+  "published_at": "2026-11-16T23:21:07Z",
   "repaired": {
     "base": "android/ape-crystal-agent/app/build/outputs/apk/debug/app-debug.apk (52 / 3.9.5-adb-firetv-shim) — la build CON ottshim",
     "why": "El APK no se podia instalar: Android respondia 'paquete no valido'.",
@@ -21,8 +28,9 @@
     "6": "2.3.0-noWG SIN ottshim, manifest invalido.",
     "600": "Repare ese APK viejo subiendole el codigo — ERROR: UI sin ottshim.",
     "650": "3.9.5 con ottshim, pero con icon/banner ELIMINADOS. En una app leanback eso es riesgoso; el operador reporto bloqueo.",
-    "651": "3.9.5 con ottshim y icon/banner apuntando a un recurso PROPIO. Es la vigente."
+    "651": "3.9.5 con ottshim y icon/banner apuntando a un recurso PROPIO. Es la vigente.",
+    "675": "3.10.0-qoe-contract-675: build servida en /ara/agent.apk. Reconciliada aqui porque el manifiesto seguia describiendo la 651 (size/sha y versionCode distintos = DRIFT que el gate del deploy detecto)."
   },
-  "note": "Manifiesto del APK SERVIDO en /ara/agent.apk. sha256=sha256sum, size=stat -c %s. Gate: node tools/ara/check_ara_dist_coherence.js. 651 > 650 > 600: reemplaza cualquier instalacion previa sin ser downgrade.",
-  "generated_at": "2026-11-07T18:55:00Z"
+  "note": "Manifiesto del APK SERVIDO en /ara/agent.apk. sha256=sha256sum, size=stat -c %s. Gate: node tools/ara/check_ara_dist_coherence.js. 675 > 651 > 650 > 600: reemplaza cualquier instalacion previa sin ser downgrade. La build 675 se verifico byte a byte contra el fichero servido (mismo sha256) antes de escribir este manifiesto.",
+  "generated_at": "2026-11-22T20:22:00Z"
 }

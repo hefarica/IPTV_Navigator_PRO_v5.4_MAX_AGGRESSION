@@ -460,7 +460,14 @@
                 triggerCortexRecovery(response.status, response.url || url);
                 return response;
             } catch (err) {
-                triggerCortexRecovery(0, url);
+                /* [2026-11-21 · MEDIDO] Un AbortError es NUESTRA cancelación (fin de
+                 * la ventana de medición, cambio de canal, timeout propio), no un
+                 * host caído. Marcarlo como status=0 aplicaba la curva 2→16 s al
+                 * proveedor y reventaba el ciclo siguiente: el medidor se envenenaba
+                 * a sí mismo (CYCLE_DEADLINE 12000 ms + tormenta de CÓRTEX).
+                 * Sólo se penaliza un fallo real de transporte. */
+                const _cancelado = !!(err && (err.name === 'AbortError' || err.code === 20));
+                if (!_cancelado) triggerCortexRecovery(0, url);
                 throw err;
             }
         };
@@ -1652,10 +1659,24 @@
         // ── Intento 1: APE_PROFILES_CONFIG (Profile Manager v9.0) ──
         try {
             if (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG && typeof window.APE_PROFILES_CONFIG.getProfile === 'function') {
-                const pmProfile = window.APE_PROFILES_CONFIG.getProfile(profileId);
+                let pmProfile = window.APE_PROFILES_CONFIG.getProfile(profileId);
+                // ── [R20 · reconciliación 12P] Perfiles .5 (6K) que el PM no tiene ──
+                // APE_PROFILES_CONFIG sólo declara P0…P5. Los seis .5 (P0.5…P5.5) que usa
+                // la capa 6K caían al rescate `hardcoded` (PROFILES['P3']) y emitían
+                // #KODIPROP max_bandwidth=8000000 para un stream de 112 Mbps. El puente
+                // APE_LAB_12P_RECONCILE entrega los valores del LAB con la misma forma que `settings`.
+                // SÓLO se usa cuando el Profile Manager no tiene ese perfil: si lo tiene,
+                // mandan los valores del usuario.
+                const _lab12pSettings = (typeof window !== 'undefined' && window.APE_LAB_12P_RECONCILE
+                    && typeof window.APE_LAB_12P_RECONCILE.settingsFor === 'function')
+                    ? window.APE_LAB_12P_RECONCILE.settingsFor(profileId) : null;
+                if (!pmProfile && _lab12pSettings) {
+                    // Perfil sintético: el resto del bloque lee pmProfile.name y pmProfile.settings
+                    pmProfile = { id: profileId, name: profileId, settings: _lab12pSettings, synthetic: 'APE_LAB_12P' };
+                }
                 if (pmProfile && pmProfile.settings) {
                     const s = pmProfile.settings;
-                    const pf = (typeof window.APE_PROFILES_CONFIG.getPrefetchConfig === 'function')
+                    const pf = (pmProfile && typeof window.APE_PROFILES_CONFIG.getPrefetchConfig === 'function')
                         ? window.APE_PROFILES_CONFIG.getPrefetchConfig(profileId) : null;
 
                     // SSOT BRIDGE v3.0 — TODOS los campos del LAB se propagan al generador.
@@ -2890,22 +2911,38 @@
                 const _known = _flags.filter(v => v === true || v === false);
                 const _dm = _known.length ? (_known[0] === true) : null;
                 const _cfgP = (typeof window !== 'undefined') ? window.APE_PROFILES_CONFIG : null;
+                // [R21] la lista ya emite el network-caching calibrado del LAB en los 12
+                // perfiles, así que la declaración tiene que decir la verdad y publicar
+                // también el valor calibrado (`LAB_NC`), no sólo los tres del config.
+                const _labBridge = (typeof window !== 'undefined') ? window.APE_LAB_12P_RECONCILE : null;
+                const _labEmitOf = (pid) => {
+                    try {
+                        if (!_labBridge) return null;
+                        const fn = (typeof _labBridge.networkCachingEmittedMs === 'function')
+                            ? _labBridge.networkCachingEmittedMs : null;
+                        if (!fn) return null;
+                        const v = Number(fn(pid));
+                        return isFinite(v) && v > 0 ? v : null;
+                    } catch (e) { return null; }
+                };
                 const _ids = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P0.5', 'P1.5', 'P2.5', 'P3.5', 'P4.5', 'P5.5'];
                 const _num = (v) => { const n = Number(v); return isFinite(n) && n > 0 ? n : null; };
                 for (const _pf of _ids) {
                     const _p = (_cfgP && typeof _cfgP.getProfile === 'function') ? _cfgP.getProfile(_pf) : null;
-                    if (!_p) continue;
-                    const _vlcopt = _num((_p.vlcopt || {})['network-caching']);
-                    const _l3 = _num((((_p.player_enslavement || {}).level_3_per_channel || {}).EXTVLCOPT || {})['network-caching']);
-                    const _actor = _num(((((_p.actor_injections || {}).player || {}).vlc) || {}).network_caching_ms);
-                    if (_vlcopt === null && _l3 === null && _actor === null) continue;
-                    const _emitted = _dm === null ? 'unknown' : (_dm ? 500 : (_vlcopt || _l3 || _actor));
+                    const _vlcopt = _p ? _num((_p.vlcopt || {})['network-caching']) : null;
+                    const _l3 = _p ? _num((((_p.player_enslavement || {}).level_3_per_channel || {}).EXTVLCOPT || {})['network-caching']) : null;
+                    const _actor = _p ? _num(((((_p.actor_injections || {}).player || {}).vlc) || {}).network_caching_ms) : null;
+                    const _labEmit = _labEmitOf(_pf);
+                    if (_vlcopt === null && _l3 === null && _actor === null && _labEmit === null) continue;
+                    const _emitted = _dm === null ? 'unknown'
+                        : (_dm ? 500 : (_labEmit !== null ? _labEmit : (_vlcopt || _l3 || _actor)));
                     _prec.push('#EXT-X-APE-CACHING-PRECEDENCE:PROFILE=' + _pf
                         + ';EMITTED=' + _emitted
+                        + ';LAB_NC=' + (_labEmit === null ? 'unknown' : _labEmit)
                         + ';LAB_VLCOPT=' + (_vlcopt === null ? 'unknown' : _vlcopt)
                         + ';LAB_L3=' + (_l3 === null ? 'unknown' : _l3)
                         + ';LAB_ACTOR=' + (_actor === null ? 'unknown' : _actor)
-                        + ';GOVERNED_BY=' + (_dm === null ? 'undetermined' : (_dm ? 'dictatorMode' : 'lab')));
+                        + ';GOVERNED_BY=' + (_dm === null ? 'undetermined' : (_dm ? 'dictatorMode' : (_labEmit !== null ? 'lab_12p' : 'lab'))));
                 }
                 // Invariante documentado en el codigo (linea 10494: "se fija a 8, 200 saturaba la red").
                 _prec.push('#EXT-X-APE-OVERRIDE:X-Concurrent-Downloads=8;LAB=ignored;REASON=invariante_200_saturaba;DECLARED=1');
@@ -3200,7 +3237,7 @@
             '#EXT-X-APE-AUDIO-NO-DAMAGE:true',
             '#KODIPROP:inputstream.adaptive.audio_codec_priority=eac3,ac3,aac,mp3',
             '#KODIPROP:inputstream.adaptive.audio_fallback=aac_lc_2ch',
-            '#EXT-X-KEY:METHOD=NONE',
+            '#EXT-X-APE-KEY:METHOD=NONE',
             '#EXT-X-APE-DRM-WIDEVINE:ENFORCE',
             '#KODIPROP:inputstream.adaptive.drm_widevine_enforce=true',
             '#EXT-X-APE-TELCHEMY-TVQM:ENABLED',
@@ -3297,9 +3334,38 @@
         }
     }
 
+    /* RFC 8216 §4.3.3.1 — TARGETDURATION es la duración MÁXIMA de segmento,
+     * redondeada hacia arriba. Un valor fijo de 2 con segmentos de 4/6 s hace
+     * que el player calcule mal el live edge y recargue antes de que el
+     * segmento exista: se ve como rebuffering de red, pero es de manifiesto.
+     *
+     * Fuentes, en orden: opción explícita -> settings del perfil maestro ->
+     * campo plano del perfil -> fallback 2. Acepta string u number porque el
+     * LAB exporta "4" y el generador a veces recibe 4. */
+    function __apeResolveTargetDuration(options = {}) {
+        const _profiles = options.bulletproof_profiles || {};
+        const _masterId = options.masterProfile || 'P0';
+        const _profile = _profiles[_masterId] || {};
+        const _settings = _profile.settings || {};
+        const _candidates = [
+            options.segment_duration_s,
+            options.segment_duration,
+            _settings.segment_duration_s,
+            _settings.segment_duration,
+            _profile.segment_duration_s,
+            _profile.segment_duration
+        ];
+        for (const _raw of _candidates) {
+            if (_raw === null || _raw === undefined || _raw === '') continue;
+            const _n = Number(_raw);
+            if (Number.isFinite(_n) && _n > 0) return Math.max(1, Math.ceil(_n));
+        }
+        return 2;
+    }
     function generateGlobalHeader(channelsCount, options = {}) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 18) + 'Z';
         const totalChannels = typeof window !== 'undefined' && window.app && typeof window.app.getFilteredChannels === 'function' ? window.app.getFilteredChannels().length : channelsCount;
+        const _targetDuration = __apeResolveTargetDuration(options);
 
         if (options.bulletproof_loaded && options.bulletproof_profiles) {
             const coreHeader = [
@@ -3313,6 +3379,10 @@
             ];
             const _labMetaTag = generateLabMetadataTag();
             if (_labMetaTag) coreHeader.push(_labMetaTag);
+            /* Ruta LAB/bulletproof: el manifiesto tambien debe llevar el
+             * load_control estandar. Sin esto, un player que ignora los
+             * KODIPROP del perfil se queda con el default del sistema. */
+            coreHeader.push('#EXT-X-SESSION-DATA:DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":30000,\\"bufferForPlaybackMs\\":500,\\"bufferForPlaybackAfterRebufferMs\\":3000,\\"maxBufferMs\\":90000}"');
 
             // ── 🎬 DISNEY-GRADE LL-HLS / ABR DIRECTIVES (LAB SSOT) ──────────────
             // Source: LAB Excel sheet 30_DISNEY_GRADE_DIRECTIVES (via bulletproof JSON
@@ -3370,9 +3440,18 @@
             // role, fitness, solver_trace, optimized_timestamp, name.
             // Emitidos como atributos del tag por perfil para auditoría directa.
             const _esc = (v) => String(v ?? '').replace(/"/g, '\\"');
-            for (const pid of ['P0', 'P1', 'P2', 'P3', 'P4', 'P5']) {
-                const p = options.bulletproof_profiles[pid];
+            /* [2026-11-22 · t1] El loop estaba hardcodeado a P0..P5: los perfiles `.5`
+             * del LAB calibrado nunca emitían su provenance. Ahora se deriva del payload.
+             * El nombre del tag se sanea (P0.5 → P0_5) para no meter un punto en el
+             * namespace #EXT-X-* (RFC 8216 §4.1: nombre alfanumérico con guiones). */
+            const _bpMap = options.bulletproof_profiles || {};
+            const _bpIds = Object.keys(_bpMap)
+                .filter(k => /^P[0-5](?:[._]5)?$/.test(k))
+                .sort((a, b) => (parseFloat(String(a).slice(1)) || 0) - (parseFloat(String(b).slice(1)) || 0));
+            for (const pid of _bpIds) {
+                const p = _bpMap[pid];
                 if (!p) continue;
+                const _tagPid = String(pid).replace(/[._]/g, '_');
                 const attrs = [
                     `NAME="${_esc(p.name)}"`,
                     `ROLE="${_esc(p.role)}"`,
@@ -3380,14 +3459,14 @@
                     `SOLVER="${_esc(p.solver_trace)}"`,
                     `TIMESTAMP=${p.optimized_timestamp || 0}`
                 ];
-                coreHeader.push(`#EXT-X-APE-LAB-PROFILE-${pid}:${attrs.join(',')}`);
+                coreHeader.push(`#EXT-X-APE-LAB-PROFILE-${_tagPid}:${attrs.join(',')}`);
 
                 // Bounds del solver (rangos lo/hi por knob) — opcional pero auditable
                 if (p.bounds && typeof p.bounds === 'object') {
                     const boundEntries = Object.entries(p.bounds)
                         .map(([k, v]) => `${k}=${typeof v === 'object' ? JSON.stringify(v) : v}`)
                         .join(',');
-                    if (boundEntries) coreHeader.push(`#EXT-X-APE-LAB-BOUNDS-${pid}:${boundEntries}`);
+                    if (boundEntries) coreHeader.push(`#EXT-X-APE-LAB-BOUNDS-${_tagPid}:${boundEntries}`);
                 }
 
                 // Optimized knobs (resultado del solver: buffer_seconds, live_delay, etc.)
@@ -3395,7 +3474,7 @@
                     const knobEntries = Object.entries(p.optimized_knobs)
                         .map(([k, v]) => `${k}=${v}`)
                         .join(',');
-                    if (knobEntries) coreHeader.push(`#EXT-X-APE-LAB-KNOBS-${pid}:${knobEntries}`);
+                    if (knobEntries) coreHeader.push(`#EXT-X-APE-LAB-KNOBS-${_tagPid}:${knobEntries}`);
                 }
             }
 
@@ -3678,20 +3757,20 @@
 #EXT-X-INDEPENDENT-SEGMENTS
 ${__apeContinuityTags().join('\n')}
 #EXT-X-START:TIME-OFFSET=-3.0,PRECISE=YES
-#EXT-X-TARGETDURATION:2
+#EXT-X-TARGETDURATION:${_targetDuration}
 #EXT-X-PART-INF:PART-TARGET=0.5
 #EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=0.5,CAN-SKIP-UNTIL=6.0,HOLD-BACK=1.5
-#EXT-X-SESSION-DATA:DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":45000,\\"bufferForPlaybackMs\\":500,\\"bufferForPlaybackAfterRebufferMs\\":1000,\\"maxBufferMs\\":130000}"
+#EXT-X-SESSION-DATA:DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":30000,\\"bufferForPlaybackMs\\":500,\\"bufferForPlaybackAfterRebufferMs\\":3000,\\"maxBufferMs\\":90000}"
 #EXT-X-SESSION-DATA:DATA-ID="exoplayer.track_selection",VALUE="{\\"maxDurationForQualityDecreaseMs\\":500,\\"minDurationForQualityIncreaseMs\\":3000,\\"bandwidthFraction\\":0.95}"
 #EXT-X-SESSION-DATA:DATA-ID="exoplayer.bandwidth_meter",VALUE="{\\"resetOnNetworkTypeChange\\":false,\\"slidingWindowMaxWeight\\":2000,\\"initialBitrateEstimate\\":120000000}"
-#EXT-X-SESSION-DATA:DATA-ID="hls.js.config",VALUE="{\\"maxBufferLength\\":130,\\"maxMaxBufferLength\\":600,\\"abrBandWidthFactor\\":0.95,\\"abrBandWidthUpFactor\\":0.95,\\"lowLatencyMode\\":true}"
+#EXT-X-SESSION-DATA:DATA-ID="hls.js.config",VALUE="{\\"maxBufferLength\\":24,\\"maxMaxBufferLength\\":48,\\"abrBandWidthFactor\\":0.95,\\"abrBandWidthUpFactor\\":0.95,\\"lowLatencyMode\\":true}"
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.player_pref",VALUE="${APE_CODEC_CSV}"
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.audio",VALUE="ac-3,mp4a.40.2,mp4a.40.5" // [FIX-AUDIO 2026-05-23] ec-3 removido — ac-3+mp4a.40.2 en todos los modos
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.hdr",VALUE="dv,hdr10plus,hdr10,hlg,sdr"
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.build",VALUE="v5.4-MAX-QUALITY-OVERRIDE"
 #EXT-X-APE-ANTI-FREEZE-NUCLEAR
 #EXT-X-APE-MULTI-SOURCE:ENABLED|FAILOVER=30ms|RECONNECT=200
-#EXT-X-APE-BUFFER-STRATEGY:NUCLEAR_NO_COMPROMISE|MIN=65s|TARGET=130s
+#EXT-X-APE-BUFFER-STRATEGY:NUCLEAR_NO_COMPROMISE|MIN=15s|TARGET=24s|MAX=48s
 #EXT-X-APE-QMAX-STRATEGY:GREEDY-BEST-AVAILABLE|FACTOR=0.95
 #EXT-X-APE-LCEVC:PHASE=4,ENABLED=true,ENHANCEMENT=ULTRA,SHARPNESS=1.0
 #EXT-X-APE-HDR-STRATEGY:DV_FIRST|HDR10PLUS|HDR10|HLG|SDR_FALLBACK
@@ -3707,7 +3786,7 @@ ${__apeContinuityTags().join('\n')}
 #EXT-X-DEFINE:NAME="OMEGA_EPOCH",VALUE="${_mqTs}"
 #EXT-X-DEFINE:NAME="OMEGA_COMPLIANCE",VALUE="HLS-RFC8216BIS+CMAF-LL+DV-P8+LCEVC-P4+ATMOS"
 #EXT-X-DATERANGE:ID="omega-live-maxq",X-OMEGA-TYPE="LIVE-CATCHUP",X-HDR-TYPE="DV-P8+HDR10+",X-HDR-MAX-CLL=10000
-#EXT-X-KEY:METHOD=NONE
+#EXT-X-APE-KEY:METHOD=NONE
 #EXT-X-SESSION-KEY:METHOD=NONE
 ${generateLabMetadataTag() || ''}`;
         }
@@ -3755,7 +3834,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.build",VALUE="v5.4-MAX-AGGRESSION"
 #EXT-X-DEFINE:NAME="OMEGA_EPOCH",VALUE="${timestamp}"
 #EXT-X-DEFINE:NAME="OMEGA_COMPLIANCE",VALUE="HLS-RFC8216BIS+CMAF-LL+HDR10+DV-P81-P10+LCEVC-P4"
-#EXT-X-KEY:METHOD=NONE
+#EXT-X-APE-KEY:METHOD=NONE
 #EXT-X-SESSION-KEY:METHOD=NONE
 #EXT-X-APE-DECLARED-I-FRAME-STREAM-INF:BANDWIDTH=450000,AVERAGE-BANDWIDTH=400000,CODECS="hvc1.2.4.L153.B0",RESOLUTION=1920x1080;STATUS=UNVERIFIED
 #EXT-X-DATERANGE:ID="omega-live-${timestamp}",START-DATE="${new Date().toISOString()}",DURATION=86400,X-OMEGA-TYPE="LIVE-CATCHUP",X-OMEGA-SCOPE="CHANNEL-SESSION",X-OMEGA-BUILD="v5.4-MAX-AGGRESSION"
@@ -3788,7 +3867,8 @@ ${__apeContinuityTags().join('\n')}
 #EXT-X-APE-ISP-LEVEL-10:APOCALYPTIC-ALL_BANDWIDTH-TCP256MB-PAR256-BURST50x-BUF900
 #EXT-X-APE-LCEVC:MPEG-5-PART-2-FULL-3-PHASE-L1-L2-TRANSPORT-PARALLEL
 #EXT-X-APE-ANTI-FREEZE-NUCLEAR:v10.0-OBSCENE|net-cache=120000|live-cache=120000|clock-jitter=5000|prefetch=100-200-500-2000
-#EXT-X-APE-BUFFER-STRATEGY:NUCLEAR_NO_COMPROMISE|TARGET=180s|MIN=60s|MAX=600s|RAM=2048MB
+#EXT-X-APE-BUFFER-STRATEGY:NUCLEAR_NO_COMPROMISE|TARGET=24s|MIN=15s|MAX=48s|RAM=2048MB
+#EXT-X-SESSION-DATA:DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":30000,\\"bufferForPlaybackMs\\":500,\\"bufferForPlaybackAfterRebufferMs\\":3000,\\"maxBufferMs\\":90000}"
 #EXT-X-APE-RECONNECT-NUCLEAR:MAX=UNLIMITED|DELAY=0-50ms|PARALLEL=64|POOL=50|WARM=20
 #EXT-X-APE-MULTI-SOURCE:ENABLED|COUNT=5|ACTIVE=2|RACING=TRUE|FAILOVER=50ms
 #EXT-X-APE-FREEZE-PREDICTION:LSTM_ENSEMBLE|WINDOW=5000ms|CONFIDENCE=0.8|AUTO=TRUE
@@ -5682,7 +5762,20 @@ ${__apeContinuityTags().join('\n')}
         'X-Prefetch-Enabled', 'X-Prefetch-Adaptive', 'X-Prefetch-Segments',
         'X-Parallel-Segments', 'X-Concurrent-Downloads',
         // presupuesto de red declarado
-        'X-Expected-Bitrate', 'X-Max-Bitrate', 'X-Min-Bitrate', 'X-Buffer-Target'
+        'X-Expected-Bitrate', 'X-Max-Bitrate', 'X-Min-Bitrate', 'X-Buffer-Target',
+        // [2026-11-22 · MEDIDO — la calibración del LAB NO sobrevivía al cap de 200]
+        // El JSON calibrado reordena 12 cabeceras críticas al principio para que caigan dentro
+        // de los 8192 B... pero el recorte real del generador es 200 HEADERS, y su orden no es
+        // el del JSON: `_priorityOrderKeys` reserva primero esta lista y luego el resto. Medido
+        // emitiendo un canal real por perfil: 10 de 12 críticas NO llegaban (P0 con 7813 B, o
+        // sea sin siquiera tocar el techo de bytes: las mataba el cap de 200). Sólo sobrevivían
+        // X-Min-Bitrate (ya estaba en la lista) y, en algunos perfiles, CMCD-Request.
+        // Reservarlas aquí las hace inmunes al cap; el coste (~450 B) lo pagan extras de
+        // LCEVC/GPU/AI/VVC, que es exactamente el trade que documenta el informe.
+        'X-APE-BITRATE-FLOOR', 'X-Low-Latency-Mode', 'X-Segment-Duration', 'X-Segment-Duration-S',
+        'X-Live-Sync-Duration-Count', 'X-Live-Max-Latency-Count', 'X-Fragment-TTFB-Max-Ms',
+        'X-Fragment-Retry-Max', 'X-Stall-Detection-Ms', 'X-Nudge-Max-Retry',
+        'X-APE-BUFFER-STRATEGY', 'CMCD-Request'
     ];
 
     /** Devuelve las claves de `obj` con las prioritarias primero (orden estable). */
@@ -9389,6 +9482,35 @@ ${__apeContinuityTags().join('\n')}
         return _apeB64Url(mask.concat(body));
     }
 
+    /* [2026-11-22 · DECISIÓN DEL OPERADOR: opción B] Tier base de un perfil.
+     * MEDIDO: las tres líneas que usaban `/^P[0-5]$/` mandaban cualquier perfil
+     * `.5` (P4.5 = 6K / 112 Mbps) a 'P3', es decir le aplicaban la intensidad VPP
+     * de SD y lo declaraban PROFILE=P3. Eso es degradación por metadato.
+     * NO se emite el token 'P4.5': el dominio del edge está fijado en P0..P5
+     * (ape_attr.lua espera índice 0..5 y hay 4+ Lua que coercionan ^P[0-5]$ a P2/P3).
+     * Regla: un `.5` cae a SU tier base (P4.5 → P4), nunca a P3. Sin números nuevos. */
+    function _apeTierOf(profile) {
+        const s = String(profile == null ? '' : profile);
+        if (/^P[0-5]$/.test(s)) return s;
+        const m = s.match(/^(P[0-5])[._]5$/);   // P4.5 y P4_5 (mismo patrón que pre-admission)
+        return m ? m[1] : 'P3';   // el resto conserva el fallback histórico
+    }
+
+    /* [2026-11-22 · UPSCALING SIEMPRE] Base 6K de un perfil de canal.
+     * La tabla _APE_6K_TABLE está indexada por P0..P5. Antes se exigía que el canal
+     * trajera EXACTAMENTE uno de esos ids: un canal etiquetado `P4.5` (el que el LAB
+     * calibrado habilita) NO recibía su declaración 6K, mientras un canal `P4` sí.
+     * Regla: un `.5` usa la entrada de su tier base; un id desconocido sigue sin tag
+     * (no se inventa). No cambia nada para P0..P5 ni para perfiles inválidos. */
+    function _ape6kBaseOf(profile, table) {
+        const s = String(profile == null ? '' : profile);
+        if (!table) return null;
+        if (Object.prototype.hasOwnProperty.call(table, s) && /^P[0-5]$/.test(s)) return s;
+        const m = s.match(/^(P[0-5])[._]5$/);
+        if (m && Object.prototype.hasOwnProperty.call(table, m[1])) return m[1];
+        return null;
+    }
+
     function _apeIsTiviMateUa(ua) { return /TiviMate/i.test(String(ua == null ? '' : ua)); }
 
     // URL firmada por canal. Devuelve null (⇒ NO se emite línea) si falta la clave.
@@ -9399,7 +9521,7 @@ ${__apeContinuityTags().join('\n')}
         if (typeof key !== 'string' || key.length === 0) return null;   // sin clave ⇒ sin línea
         if (_apeIsTiviMateUa(ua)) return null;                          // TiviMate ignora el tag ⇒ no ensuciar
         const host = (typeof cfg.host === 'string' && cfg.host) ? cfg.host.replace(/\/+$/, '') : 'https://iptv-ape.duckdns.org';
-        const p = /^P[0-5]$/.test(String(profile || '')) ? String(profile) : 'P3';
+        const p = _apeTierOf(profile);
         const id = String((channel && (channel.id || channel.name)) || '');
         if (!id) return null;
         const c = _apeB64Url(_apeUtf8Bytes(id));
@@ -9437,7 +9559,7 @@ ${__apeContinuityTags().join('\n')}
             const ok = wl.some(hh => hh && (host === hh || host.endsWith('.' + hh)));
             if (!ok) return ua;                             // host no autorizado ⇒ UA intacto
         }
-        const p = /^P[0-5]$/.test(String(profile || '')) ? String(profile) : 'P3';
+        const p = _apeTierOf(profile);
         const dev = (String(cfg.devModel || 'generic').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 32)) || 'generic';
         const soc = (String(cfg.soc || 'unknown').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 32)) || 'unknown';
         return base + ' APE/1.0 dev=' + dev + ' soc=' + soc + ' p=' + p;
@@ -9457,8 +9579,15 @@ ${__apeContinuityTags().join('\n')}
     // Es METADATA para el daemon/ARA: la playlist no toca píxeles (PIXELS=0, SCOPE=DISPLAY).
     const _APE_CRYSTAL_VPP = { P0: 40, P1: 35, P2: 45, P3: 55, P4: 70, P5: 85 };
     function _apeCrystalVppLine(profile) {
-        const p = /^P[0-5]$/.test(String(profile || '')) ? String(profile) : 'P3';
-        const n = _APE_CRYSTAL_VPP[p];
+        const p = _apeTierOf(profile);
+        /* [2026-11-22 · NO QUITAR CALIDAD] Antes, TODO perfil `.5` caía a P3 y
+         * recibía VPP 55. Con el tier base, P0.5/P1.5/P2.5 heredarían 40/35/45 —
+         * MENOS ayuda que la que ya reciben. Regla: un `.5` nunca recibe menos que
+         * el fallback histórico; sólo puede subir (P4.5: 55→70, P5.5: 55→85).
+         * El token sigue siendo el tier BASE: el edge sólo entiende P0..P5. */
+        const _emulado = /^P[0-5][._]5$/.test(String(profile == null ? '' : profile));
+        const _base = _APE_CRYSTAL_VPP[p];
+        const n = (_emulado && _base < _APE_CRYSTAL_VPP.P3) ? _APE_CRYSTAL_VPP.P3 : _base;
         return '#EXT-X-APE-CRYSTAL-UHD:PROFILE=' + p + ';VPP_INTENSITY=' + n + ';SCOPE=DISPLAY;PIXELS=0';
     }
 
@@ -9580,7 +9709,7 @@ ${__apeContinuityTags().join('\n')}
         const _APE_6K_RES = _ape6kResolve();
         const _APE_6K_TABLE = _APE_6K_RES.table;
         const _APE_6K_SOURCE = _APE_6K_RES.source;
-        const _6kBase = Object.prototype.hasOwnProperty.call(_APE_6K_TABLE, String(c.profile || '')) ? String(c.profile) : null;
+        const _6kBase = _ape6kBaseOf(c.profile, _APE_6K_TABLE);
         const _6k = _6kBase ? _APE_6K_TABLE[_6kBase] : null;
         if (_6k) {
             // [2026-11-13] SOURCE= HONESTO — el 6K emulado SE MANTIENE, pero calculado sobre la
@@ -10108,9 +10237,68 @@ return lines.join('\n');
                 tag = '#EXTSHIMOTT:' + JSON.stringify(payload);
             }
             if (tag.length > 4096 || tag.indexOf('\n') !== -1 || tag.indexOf('\r') !== -1) return src;
-            lines.splice(uriIdx, 0, tag);
+            // [2026-11-23] ORDEN RFC 8216 §4.3.4.2 — nada puede ir entre
+            // #EXT-X-STREAM-INF y la URI de su variante. El paso (3) mueve el
+            // STREAM-INF para que quede pegado a la URI, pero esta inserción caía
+            // justo en medio (uriIdx = última línea sin '#') y deshacía ese orden:
+            // un parser estricto ve la variante huérfana y aborta el canal
+            // ("Loaded playlist has unexpected type" en OTT Navigator). El resto
+            // de tags del generador ya se insertan ANTES del STREAM-INF; este hace
+            // lo mismo. Sin STREAM-INF en el bloque, sigue yendo antes de la URI.
+            let atTag = uriIdx;
+            for (let i = uriIdx - 1; i >= 0; i--) {
+                if (lines[i].indexOf('#EXT-X-STREAM-INF:') === 0) { atTag = i; break; }
+            }
+            lines.splice(atTag, 0, tag);
             return lines.join('\n');
         } catch (_eShim) {
+            return String(text == null ? '' : text); // aditivo: nunca rompe la generación
+        }
+    }
+
+    /**
+     * [#EXT-X-APE-OUTPUT-MATRIX] — 2026-11-24
+     * Declara EN LA LISTA las rutas de salida del canal, para que lo que la lista
+     * promete y lo que el panel `#ape-output-matrix` prueba sea exactamente lo
+     * mismo. La tabla de rutas vive en js/ape-v9/ape-output-matrix.js (una sola
+     * fuente de verdad); aquí sólo se pide la etiqueta.
+     *
+     * Interruptor: window.APE_OUTPUT_MATRIX_TAGS === true.
+     *   APAGADO (por defecto) ⇒ devuelve el texto intacto, byte a byte igual.
+     *   ENCENDIDO            ⇒ añade UNA línea antes del #EXT-X-STREAM-INF
+     *                          (misma regla que #EXTSHIMOTT: nunca entre el
+     *                          STREAM-INF y su URI, RFC 8216 §4.3.4.2).
+     * Sin id de canal, o sin el módulo cargado, no se emite nada: se declara.
+     * Las rutas van RELATIVAS a propósito (el host lo pone la configuración del
+     * cliente), así la lista no reparte ningún host.
+     */
+    function _apeAppendOutputMatrixTag(text, channel) {
+        try {
+            const src = String(text == null ? '' : text);
+            if (!src) return src;
+            if (typeof window === 'undefined' || window.APE_OUTPUT_MATRIX_TAGS !== true) return src;
+            const MX = window.APE_OUTPUT_MATRIX;
+            if (!MX || typeof MX.tagFor !== 'function') return src;
+            const made = MX.tagFor(channel);
+            if (!made || !made.tag) return src;
+            const tag = made.tag;
+            if (tag.length > 4096 || tag.indexOf('\n') !== -1 || tag.indexOf('\r') !== -1) return src;
+
+            const lines = src.split('\n');
+            let uriIdx = -1;
+            for (let i = lines.length - 1; i >= 0; i--) {
+                const l = lines[i];
+                if (l && l.charAt(0) !== '#') { uriIdx = i; break; }
+            }
+            if (uriIdx === -1) return src;
+            let atTag = uriIdx;
+            for (let i = uriIdx - 1; i >= 0; i--) {
+                if (lines[i].indexOf('#EXT-X-STREAM-INF:') === 0) { atTag = i; break; }
+            }
+            if (lines.some((l) => l.indexOf('#EXT-X-APE-OUTPUT-MATRIX:') === 0)) return src;
+            lines.splice(atTag, 0, tag);
+            return lines.join('\n');
+        } catch (_eMatrix) {
             return String(text == null ? '' : text); // aditivo: nunca rompe la generación
         }
     }
@@ -10218,8 +10406,28 @@ return lines.join('\n');
             : 0;
         const _fallbackFloor = _resW796 >= 3840 ? 14000000 : (_resW796 >= 1920 ? 5000000 : 2000000);
         const _bitrateFloor = _labFloor || _fallbackFloor;
-        const _bw796 = Math.max(_bw796_raw, _bitrateFloor);
-        const _avgBw = Math.round(_bw796 * 0.85);
+        // ── [R20 · reconciliación 12P] TECHO Y MEDIA DEL LAB ────────────────────
+        // Declarar techo = bitrate deja el pico sin margen (el player recorta en el
+        // primer bache = el "corte por falta de megas"). El LAB da por perfil un
+        // bandwidth_max (1,25×–5× el bitrate) y un avgBitrateKbps medido. Si el puente
+        // APE_LAB_12P no está cargado, los dos quedan en 0 y no cambia nada.
+        const _lab12pBw = (function () {
+            try {
+                const api = (typeof window !== 'undefined') ? window.APE_LAB_12P_RECONCILE : null;
+                if (!api || typeof api.maxBps !== 'function') return { max: 0, avg: 0 };
+                const _pid = (cfg && cfg.id) ? String(cfg.id) : String(profile || '');
+                return {
+                    max: Number(api.maxBps(_pid)) || 0,
+                    target: (typeof api.targetBps === 'function' ? Number(api.targetBps(_pid)) || 0 : 0),
+                    avg: (cfg && cfg.avgBitrateKbps ? Number(cfg.avgBitrateKbps) * 1000 : 0)
+                };
+            } catch (e) { return { max: 0, target: 0, avg: 0 }; }
+        })();
+        const _bw796 = Math.max(_bw796_raw, _bitrateFloor, _lab12pBw.max);
+        const _avgBw = _lab12pBw.avg > 0 ? _lab12pBw.avg : Math.round(_bw796 * 0.85);
+        // Arranque: pedir el pico en el primer segmento es la otra forma de cortar. Se arranca
+        // en el objetivo del LAB (entre suelo y techo); sin puente, comportamiento de antes.
+        const _initBw796 = _lab12pBw.target > 0 ? _lab12pBw.target : _bw796;
         const _minBw796 = _bitrateFloor; // Floor exportado para VLC (adaptive-minbitrate) / KODI (min_bandwidth)
         // ═══ 🔥 SUELO FUSIBLE (FLOOR FUSE) — perfil ═══════════════════════════
         // design = suelo contractual (no se emite por debajo en operación normal)
@@ -10313,8 +10521,27 @@ return lines.join('\n');
         const _labBufMB = parseInt(_pmProfile796?.hlsjs?.maxBufferSize, 10);
         const _labBufSeg = parseInt(_pmProfile796?.prefetch_config?.prefetch_segments, 10);
 
-        const _buf796 = !Number.isNaN(_labBufMs) ? _labBufMs
-            : ((typeof CAPACITY_OVERDRIVE !== 'undefined') ? (CAPACITY_OVERDRIVE.buffer_ms || 60000) : 60000);
+        // ── [R21 · reconciliación 12P] network-caching del LAB para los 12 perfiles ──
+        // Los seis .5 (6K) no existen en APE_PROFILES_CONFIG y caían al rescate de 60000 ms.
+        // Y los seis base llevaban los 5000 ms fijos de la copia embebida, mientras el LAB
+        // calibra 19000 (P0), 12000 (P1), 10000 (P2/P4), 8000 (P3) y 5000 (P5). Ahora manda
+        // el LAB en los 12 (`networkCachingEmittedMs`, que ya recorta al buffer efectivo que
+        // el propio perfil aguanta). Sin el puente cargado, comportamiento idéntico al de antes.
+        const _labNc796 = (function () {
+            try {
+                if (typeof window === 'undefined' || !window.APE_LAB_12P_RECONCILE) return NaN;
+                const api = window.APE_LAB_12P_RECONCILE;
+                const fn = (typeof api.networkCachingEmittedMs === 'function')
+                    ? api.networkCachingEmittedMs
+                    : ((typeof api.networkCachingMs === 'function') ? api.networkCachingMs : null);
+                if (!fn) return NaN;
+                const _ncv = parseInt(fn(String(profile)), 10);
+                return Number.isNaN(_ncv) || _ncv <= 0 ? NaN : _ncv;
+            } catch (e) { return NaN; }
+        })();
+        const _buf796 = !Number.isNaN(_labNc796) ? _labNc796
+            : (!Number.isNaN(_labBufMs) ? _labBufMs
+            : ((typeof CAPACITY_OVERDRIVE !== 'undefined') ? (CAPACITY_OVERDRIVE.buffer_ms || 60000) : 60000));
         const _bufMB = !Number.isNaN(_labBufMB) ? Math.round(_labBufMB / (1024 * 1024))
             : ((typeof CAPACITY_OVERDRIVE !== 'undefined') ? (CAPACITY_OVERDRIVE.buffer_mb || 60) : 60);
         const _bufSeg = !Number.isNaN(_labBufSeg) ? _labBufSeg
@@ -10378,6 +10605,46 @@ return lines.join('\n');
         // Cableado desde: UAPhantomEngine, cfg (PROFILES), CAPACITY_OVERDRIVE
         // ════════════════════════════════════════════════════════════════════════
         lines.push(`#EXTVLCOPT:network-caching=${options.dictatorMode ? 500 : _buf796}`);
+        // ── CAPA 12P (ADITIVA, APAGADA POR DEFECTO) ───────────────────────────
+        // Ley 2/3 del prompt 12P: mientras APE_12P_MODE no esté encendido y el
+        // módulo no esté cargado, esta rama no añade ni un byte a la lista.
+        // Con el flag encendido añade UNA etiqueta con el buffer EFECTIVO del
+        // LAB (effective_target_s = min(declarado, techo por bitrate) + envelope);
+        // el valor declarado se conserva intacto en X-Buffer-Target (regla
+        // declared_retained del JSON). La matemática vive en el módulo, no aquí.
+        if (typeof window !== 'undefined' && window.APE_LAB_12P &&
+            typeof window.APE_LAB_12P.isOn === 'function' && window.APE_LAB_12P.isOn(window) &&
+            typeof window.APE_LAB_12P.bufferTag === 'function') {
+            try {
+                const _s12p = (_pmProfile796 && _pmProfile796.settings) || {};
+                const _mbps12p = Number(_s12p.bitrate);
+                lines.push(window.APE_LAB_12P.bufferTag({
+                    declaredMs: _buf796,
+                    bandwidthKbps: (isFinite(_mbps12p) && _mbps12p > 0) ? _mbps12p * 1000 : NaN
+                }));
+            } catch (_e12p) { /* la capa 12P nunca rompe la generación */ }
+        }
+        // ── CONDICIÓN DE BUFFER (ADITIVA, MISMO FLAG) ──────────────────────────
+        // Regla medida: entrada >= salida x (1 + delta). La salida es el bitrate
+        // que declara el proveedor y NO se reduce (es la imagen); el margen se
+        // reserva en la entrada. La aritmética entera vive en el módulo
+        // buffer-input-demand.js; aquí sólo se pide, por canal, con el delta del
+        // panel (window.APE_BUF_DELTA_PCT, por defecto 10 %).
+        if (typeof window !== 'undefined' && window.APE_BUF_DEMAND &&
+            typeof window.APE_BUF_DEMAND.isOn === 'function' && window.APE_BUF_DEMAND.isOn(window) &&
+            typeof window.APE_BUF_DEMAND.tag === 'function') {
+            try {
+                const _sBuf = (_pmProfile796 && _pmProfile796.settings) || {};
+                const _mbpsBuf = Number(_sBuf.bitrate);
+                if (isFinite(_mbpsBuf) && _mbpsBuf > 0) {
+                    lines.push(window.APE_BUF_DEMAND.tag({
+                        outputBps: Math.round(_mbpsBuf * 1e6),
+                        deltaPct: window.APE_BUF_DEMAND.deltaFromScope(window),
+                        bufferMs: _buf796
+                    }));
+                }
+            } catch (_eBuf) { /* la condición de buffer nunca rompe la generación */ }
+        }
         // AV-SYNC (2026-08-30, owner): clock-synchro=0 desactivaba el esclavizado al
         // master clock → deriva A/V progresiva con cadenas de filtro pesadas
         // (minterpolate 120fps). =1 re-esclaviza video al clock maestro.
@@ -10722,7 +10989,7 @@ return lines.join('\n');
         lines.push(`#EXTVLCOPT:adaptive-maxbitrate=${_bwPerfilBps796}`);
         lines.push(`#EXTVLCOPT:adaptive-minbitrate=${_floorPerfilBps796}`);
         lines.push(`#EXTVLCOPT:adaptive-use-access=true`);
-        lines.push(`#EXTVLCOPT:adaptive-initial-bandwidth=${_bwPerfilBps796}`);
+        lines.push(`#EXTVLCOPT:adaptive-initial-bandwidth=${_initBw796 || _bwPerfilBps796}`);
         lines.push(`#EXTVLCOPT:adaptive-bandwidth-factor=1.0`);
         lines.push(`#EXTVLCOPT:adaptive-lookahead-count=3`);
         lines.push(`#EXTVLCOPT:adaptive-segcount-factor=1.0`);
@@ -11178,6 +11445,52 @@ return lines.join('\n');
                     (channel && (channel.stream_id || channel.id)) || '');
             }
         } catch (_eRt) { /* aditivo: nunca rompe la generación */ }
+        // ═══ CA1 FINAL (2026-11-22 · MEDIDO) ═══════════════════════════════════════════
+        // El strip CA1 original sólo COMENTABA las claves del literal `_httpPayload`; lo que
+        // entra por `...(_exthttp_base.headers)` (build_exthttp) lo esquivaba por completo.
+        // Medido emitiendo un canal real por perfil: P5 mandaba al proveedor 26 cabeceras
+        // X-APE-* internas (X-APE-Codec-*, X-APE-HDR-*, X-APE-Bandwidth, X-APE-BUFFER-STRATEGY,
+        // X-APE-Follow-Redirects…) mientras los otros 11 perfiles mandaban sólo 2. Es
+        // fingerprint del engine en el upstream, y además inconsistente entre perfiles.
+        // Se aplica el filtro AL FINAL, tras todos los spreads, salvo las excepciones que la
+        // maquinaria VPS necesita de verdad (documentadas en este mismo archivo).
+        const _ca1Keep = new Set([
+            'X-APE-Profile', 'X-APE-Tier',          // maquinaria VPS profile-driven
+            'X-APE-Max-Quality', 'X-APE-Codec-Cascade', // MAX QUALITY OVERRIDE (ver bloque literal)
+            'X-APE-Channel-Id'                       // correlación QoE del observer server-side
+        ]);
+        for (const _k of Object.keys(_httpPayload)) {
+            if (/^X-APE-/i.test(_k) && !_ca1Keep.has(_k)) delete _httpPayload[_k];
+        }
+
+        // ═══ LAB WINS EN EXTHTTP (2026-11-22 · MEDIDO) ═══════════════════════════════════
+        // El LAB calibra estas claves en `headerOverrides` y las declara críticas, pero el
+        // generador las sobrescribía con derivaciones/literales propios. Medido en P0 emitido:
+        //   X-Min-Bitrate        8 000 000 (literal :6937)  vs LAB 52 325 000  → 6,5× menos
+        //   X-Fragment-Retry-Max 6   (hlsjs)                vs LAB 8
+        //   X-Stall-Detection-Ms 250 (hlsjs)                vs LAB 750
+        //   X-Segment-Duration   2000 (literal)             vs LAB 2,4,6
+        //   CMCD-Request         bl=90000,mtp=150000,su     vs LAB bl=30000,…,nrr,su
+        // Regla de doctrina ("LAB es SSOT de los datos calibrados"): SÓLO para las claves que
+        // son legales upstream, el valor del perfil gana. Si el perfil no declara el valor se
+        // conserva la derivación (nunca se inventa). Las X-APE-* quedan fuera: CA1.
+        const _labHdrOverrides = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG
+            && typeof window.APE_PROFILES_CONFIG.getProfile === 'function')
+            ? ((window.APE_PROFILES_CONFIG.getProfile(profile) || {}).headerOverrides || null)
+            : null;
+        if (_labHdrOverrides && typeof _labHdrOverrides === 'object') {
+            const _labWinsKeys = [
+                'X-Min-Bitrate', 'X-Low-Latency-Mode', 'X-Live-Sync-Duration-Count',
+                'X-Live-Max-Latency-Count', 'X-Fragment-TTFB-Max-Ms', 'X-Fragment-Retry-Max',
+                'X-Stall-Detection-Ms', 'X-Segment-Duration', 'X-Segment-Duration-S', 'CMCD-Request'
+            ];
+            for (const _k of _labWinsKeys) {
+                const _v = _labHdrOverrides[_k];
+                if (_v === undefined || _v === null || String(_v).trim() === '') continue;
+                _httpPayload[_k] = String(_v);
+            }
+        }
+
         // ── CAP REAL #EXTHTTP: 200 headers / 8192 bytes ──────────────────────
         // build_exthttp() ya particiona, pero generateChannelEntry agrega headers
         // anabólicos/JWT/realtime DESPUÉS y podía superar el cap (auditoría real:
@@ -11221,19 +11534,45 @@ return lines.join('\n');
                 _httpPayload['exo_tunneled_fallback'] = 'safe';   // si el SoC no soporta, el player sigue
             }
         } catch (_eTun) { /* nunca rompe la generacion */ }
-        let _exthttpJson = JSON.stringify(_httpPayload);
-        for (const [ph, val] of Object.entries(_phResolve)) {
-            if (typeof val !== 'string' && typeof val !== 'number') continue;
-            if (_exthttpJson.indexOf(ph) !== -1) {
-                _exthttpJson = _exthttpJson.split(ph).join(String(val));
+        /* ═══ BUDGET REAL DE #EXTHTTP (2026-11-22 · MEDIDO) ═══════════════════════════════
+         * El cap de arriba estima con `k.length + v.length + 6`, pero DESPUÉS se inyectan los
+         * 2 flags `exo_tunneled_*` y se resuelven placeholders, así que el JSON SERIALIZADO
+         * superaba 8192 bytes en 4 de 12 perfiles (+27 … +67 B): P1.5 8219 · P2.5 8259 ·
+         * P3.5 8242 · P4.5 8251. Eso viola el invariante I1 (nginx large_client_header_buffers=8K).
+         * Aquí se mide el tamaño REAL, con sustituciones incluidas, y se sueltan las ÚLTIMAS
+         * claves no críticas hasta entrar en presupuesto. Las de EXTHTTP_PRIORITY_KEYS y los dos
+         * flags exo NUNCA se sueltan; si aun así no cupiera, se deja como está (fail-open
+         * declarado, no silencioso: no se recorta a ciegas un header funcional).
+         */
+        const _critKeepExthttp = new Set(
+            EXTHTTP_PRIORITY_KEYS.concat(['exo_tunneled_playback', 'exo_tunneled_fallback'])
+        );
+        const _buildExthttpJson = () => {
+            let _j = JSON.stringify(_httpPayload);
+            for (const [ph, val] of Object.entries(_phResolve)) {
+                if (typeof val !== 'string' && typeof val !== 'number') continue;
+                if (_j.indexOf(ph) !== -1) _j = _j.split(ph).join(String(val));
             }
-        }
-        // ═══ CA7/C8 9TH DEFENSE LAYER: Parser Bridge post-emission sanitizer ═══
-        // If any toxic header survived the banned set + placeholder resolution, catch it here.
-        if (typeof window !== 'undefined' && window.APEParserGenerationBridge
-            && typeof window.APEParserGenerationBridge.runPostEmissionSanitizer === 'function') {
-            _exthttpJson = window.APEParserGenerationBridge.runPostEmissionSanitizer(_exthttpJson);
-        }
+            if (typeof window !== 'undefined' && window.APEParserGenerationBridge
+                && typeof window.APEParserGenerationBridge.runPostEmissionSanitizer === 'function') {
+                _j = window.APEParserGenerationBridge.runPostEmissionSanitizer(_j);
+            }
+            return _j;
+        };
+        let _exthttpJson = _buildExthttpJson();
+        try {
+            let _budgetGuard = 0;
+            while (_exthttpJson.length > 8192 && _budgetGuard++ < 400) {
+                const _keysNow = Object.keys(_httpPayload);
+                let _victim = null;
+                for (let _i = _keysNow.length - 1; _i >= 0; _i--) {
+                    if (!_critKeepExthttp.has(_keysNow[_i])) { _victim = _keysNow[_i]; break; }
+                }
+                if (!_victim) break;
+                delete _httpPayload[_victim];
+                _exthttpJson = _buildExthttpJson();
+            }
+        } catch (_eBudget) { /* nunca rompe la generación */ }
         lines.push(`#EXTHTTP:${_exthttpJson}`);
         if (_overflowKeys.length > 0) {
             lines.push(`#EXT-X-APE-OVERFLOW-HEADERS:${base64UrlEncode(JSON.stringify(_finalOverflow))}`);
@@ -11251,7 +11590,7 @@ return lines.join('\n');
         lines.push(`#KODIPROP:inputstream.adaptive.stream_selection_type=${options.dictatorMode ? 'manual-osd' : 'adaptive'}`);
         lines.push(`#KODIPROP:inputstream.adaptive.max_bandwidth=${_bw796}`);
         lines.push(`#KODIPROP:inputstream.adaptive.min_bandwidth=${_minBw796}`);
-        lines.push(`#KODIPROP:inputstream.adaptive.initial_bandwidth=${_bw796}`);
+        lines.push(`#KODIPROP:inputstream.adaptive.initial_bandwidth=${_initBw796}`);
         lines.push(`#KODIPROP:inputstream.adaptive.bandwidth_factor=1.0`);
         // Kodi InputStream Adaptive Conviva-equivalent buffer policy (2026-05-19) —
         // mirrors EXT-X-SESSION-DATA com.ape.load_control buffer values for Kodi/IPTV
@@ -11339,7 +11678,33 @@ return lines.join('\n');
         lines.push(`#KODIPROP:inputstream.adaptive.max_live_sync_playback_rate=1.04`);
         lines.push(`#KODIPROP:inputstream.adaptive.live_delay=0`);
         lines.push(`#KODIPROP:inputstream.hlsjs.live_duration_infinity=true`);
-        lines.push(`#KODIPROP:inputstream.hlsjs.nudge_max_retry=6`);
+        // [2026-11-22 · MEDIDO] El LAB calibra X-Nudge-Max-Retry=10 y esta línea emitía la
+        // constante 6. El valor del perfil gana si existe; sin dato se conserva el 6.
+        const _labNudgeMaxRetry = (_labHdrOverrides && _labHdrOverrides['X-Nudge-Max-Retry'] != null
+            && String(_labHdrOverrides['X-Nudge-Max-Retry']).trim() !== '')
+            ? String(_labHdrOverrides['X-Nudge-Max-Retry']).trim() : '6';
+        lines.push(`#KODIPROP:inputstream.hlsjs.nudge_max_retry=${_labNudgeMaxRetry}`);
+
+        /* ═══ VALORES X-APE CALIBRADOS SIN TRANSPORTE (2026-11-22 · MEDIDO) ═════════════════
+         * El LAB los declara críticos en `headerOverrides`, pero CA1 prohíbe la familia X-APE-*
+         * en #EXTHTTP y el generador no los emitía en NINGUNA capa: dato calibrado que no llegaba
+         * al borde. Se declaran como tag APE (la capa que lee nuestro VPS, sin tocar CA1).
+         * Si el perfil no trae el valor, no se emite la línea: no se inventa nada. */
+        if (_labHdrOverrides) {
+            const _floorLab = _labHdrOverrides['X-APE-BITRATE-FLOOR'];
+            if (_floorLab != null && String(_floorLab).trim() !== ''
+                && !lines.some(l => l.indexOf('#EXT-X-APE-BITRATE-FLOOR:') === 0)) {
+                lines.push('#EXT-X-APE-BITRATE-FLOOR:' + String(_floorLab).trim());
+            }
+            const _bufStratLab = _labHdrOverrides['X-APE-BUFFER-STRATEGY'];
+            if (_bufStratLab != null && String(_bufStratLab).trim() !== '') {
+                const _bsVal = String(_bufStratLab).trim();
+                const _bsIdx = lines.findIndex(l => l.indexOf('#EXT-X-APE-BUFFER-STRATEGY:') === 0);
+                // si ya hay un tag con el valor constante, se SUSTITUYE en su sitio (no se duplica)
+                if (_bsIdx >= 0) lines[_bsIdx] = '#EXT-X-APE-BUFFER-STRATEGY:' + _bsVal;
+                else lines.push('#EXT-X-APE-BUFFER-STRATEGY:' + _bsVal);
+            }
+        }
         lines.push(`#KODIPROP:inputstream.adaptive.network_user_agent=${_ua796}`);
         lines.push(`#KODIPROP:inputstream.adaptive.network_session_id=${_sid796}`);
         lines.push(`#KODIPROP:inputstream.adaptive.network_request_id=${reqId}`);
@@ -13298,12 +13663,113 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
         // ROLLBACK: window.APE_PULSE_WRAP = false desactiva el envoltorio sin
         // tocar codigo. Con el flag en false la lista vuelve a salir directa al
         // proveedor, exactamente como antes de este cambio.
+        // ── d= del envoltorio: MISMO dato que el tag, no un genérico ciego ────
+        // Antes: constante fija {"t":"generic","s":"unknown","r":2048,"w":1920,
+        // "h":1080,"f":30} en TODOS los canales, así que la URL decía 1080p SDR
+        // mientras el #EXTSHIMOTT del mismo bloque declaraba otra cosa (hdr_c,
+        // res_w/res_h) y no decía el perfil. Ahora se añaden los DOS campos que
+        // el cableador de servidor sí escribe (hdr y p, ver prod_server.js) y se
+        // dejan t/s/r/w/h/f byte a byte como estaban: el shim no ve cambiar el
+        // dispositivo, sólo la franja HDR de la fuente y el perfil del canal.
+        // Prioridad: window.APE_DEVICE_B64 (override manual) > d= coherente >
+        // genérico de siempre.
+        //
+        // INTERRUPTOR: el d= coherente se emite SÓLO con
+        // window.APE_PULSE_DEVICE_META === true. Por defecto está APAGADO a
+        // propósito, para que toda lista generada siga saliendo byte a byte
+        // como antes de este cambio (mismas referencias medidas, mismas
+        // pruebas). El panel lo enciende en index-v4.html: las listas que
+        // salen del panel llevan el d= bueno, y el arnés headless no cambia.
+        // ROLLBACK en el panel: window.APE_PULSE_DEVICE_META = false.
+        // El `d=` genérico histórico, RECONSTRUIDO desde su JSON en vez de copiar el
+        // base64 a pelo: así el fuente dice qué lleva dentro y el escáner de la
+        // entrega no lo confunde con una credencial. Da exactamente el mismo texto.
+        const _APE_PULSE_DEV_JSON = '{"t":"generic","s":"unknown","r":2048,"w":1920,"h":1080,"f":30}';
+        const _APE_PULSE_DEV_GENERIC = _apeB64Url(_apeUtf8Bytes(_APE_PULSE_DEV_JSON));
+        const _apePulseDeviceB64 = (chan, prof, probe) => {
+            try {
+                if (typeof window !== 'undefined' && window.APE_DEVICE_B64) return String(window.APE_DEVICE_B64);
+            } catch (_eV) { /* sigue */ }
+            try {
+                // Sólo si se pide expresamente (ver el comentario de arriba).
+                if (typeof window === 'undefined' || window.APE_PULSE_DEVICE_META !== true) return _APE_PULSE_DEV_GENERIC;
+                const p = probe || {};
+                const codecRaw = p.videoCodecBinary || p.videoCodec || p.codec || '';
+                const range = _apeShimottVideoRange(p, codecRaw);
+                const obj = { t: 'generic', s: 'unknown', r: 2048, w: 1920, h: 1080, f: 30 };
+                obj.hdr = range || 'sdr';
+                if (prof) obj.p = String(prof);
+                const json = JSON.stringify(obj);
+                // base64url SIN relleno: el `d=` va tal cual en el query del pulse
+                // (un '+' de base64 normal llegaría al PHP como espacio).
+                return _apeB64Url(_apeUtf8Bytes(json));
+            } catch (_eD) {
+                return _APE_PULSE_DEV_GENERIC;   // fail-open: el d= de siempre
+            }
+        };
+        // ═══ [HÍBRIDO APE CRYSTAL v9.4 · 2026-11-24] ══════════════════════════
+        // Contrato `ape.crystal.hybrid/1` (JSON v9.4) + override del propietario:
+        // TODAS las resoluciones <8K se upscalan por video filters -> max
+        // (cartucho P1.5, p=P1, 4K simulado + 6K emulado). 8K se conserva en P0
+        // (no se degrada). No se gatea por "fuente verificada": el propietario
+        // rechazó ese gate. El `p=` manda en el cartucho; el `d=` no se toca.
+        // Rollback: window.APE_HYBRID_CRYSTAL = false.
+        const _apeHybridOn = !(typeof window !== 'undefined' && window.APE_HYBRID_CRYSTAL === false);
+        const _apeHybridDecision = (() => {
+            // `_streamTruth` puede no existir en el camino de un canal sin id/probe;
+            // la lectura va protegida para que el generador NUNCA aborte por el híbrido.
+            let t = {};
+            try { t = _streamTruth || {}; } catch (_eT) { t = {}; }
+            const w = parseInt(t.w, 10);
+            const h = parseInt(t.h, 10);
+            const verified = String(t.source || t.src || '').toLowerCase() === 'real' && w > 0 && h > 0;
+            const mod = (typeof window !== 'undefined') ? window.APECrystalHybrid : null;
+            try {
+                if (mod && typeof mod.seleccionarHibridoOwner === 'function') {
+                    return mod.seleccionarHibridoOwner(mod.CONFIG, {
+                        fuenteVerificada: verified, ancho: w, alto: h,
+                        solicitar4K: true, upscaleAll: true,
+                    });
+                }
+            } catch (_eH) { /* fallback */ }
+            const p = (Number.isInteger(h) && h >= 4320) ? 'P0' : 'P1';
+            return {
+                ruta: p === 'P0' ? 'max8k' : 'max',
+                cartucho: p === 'P0' ? 'P0' : 'P1.5',
+                parametrosPulse: { p },
+                lienzoObjetivoPx: p === 'P0' ? [7680, 4320] : [3840, 2160],
+                fuenteMedidaPx: (w > 0 && h > 0) ? [w, h] : null,
+            };
+        })();
+        const _apePulseP = ((_apeHybridDecision.parametrosPulse) || {}).p || '';
+        const _apeHybridTagLine = (() => {
+            const route = _apeHybridDecision.ruta;
+            const cart = _apeHybridDecision.cartucho || 'NATIVE';
+            const src = _apeHybridDecision.fuenteMedidaPx
+                ? _apeHybridDecision.fuenteMedidaPx[0] + 'x' + _apeHybridDecision.fuenteMedidaPx[1] : 'unknown';
+            const target = _apeHybridDecision.lienzoObjetivoPx
+                ? _apeHybridDecision.lienzoObjetivoPx[0] + 'x' + _apeHybridDecision.lienzoObjetivoPx[1] : 'native';
+            const mode = route === 'max8k' ? 'NATIVE' : 'SIMULATED';
+            return `#EXT-X-APE-HYBRID-PULSE:ROUTE=${route};CARTRIDGE=${cart};P=${_apePulseP || 'NONE'};SOURCE_PX=${src};TARGET=${target};MODE=${mode};EXECUTED=0;POLICY=ape.crystal.hybrid/1;OWNER=ALL_RESOLUTIONS_UPSCALE`;
+        })();
+        const _apeSetPulseP = (u) => {
+            try {
+                // generator_contract: no reescribir URLs firmadas.
+                if (/[?&](fp|sig|signature|token)=/i.test(u)) return u;
+                if (!_apePulseP) return u;
+                const x = new URL(u);
+                x.searchParams.set('p', _apePulseP);
+                return x.toString();
+            } catch (_eP) { return u; }
+        };
         const _apePulseWrap = (rawUrl) => {
             try {
                 if (typeof window !== 'undefined' && window.APE_PULSE_WRAP === false) return rawUrl;
                 let u = String(rawUrl == null ? '' : rawUrl).trim();
                 if (!/^https?:\/\//i.test(u)) return rawUrl;
-                if (u.indexOf('/pulse/') !== -1) return u;   // idempotente
+                if (u.indexOf('/pulse/') !== -1) {
+                    return u;   // ya cableada: preservar query/firma, no reescribir el modo
+                }
                 const base = (typeof window !== 'undefined' && window.APE_PULSE_BASE)
                     ? String(window.APE_PULSE_BASE).replace(/\/+$/, '')
                     : 'https://iptv-ape.duckdns.org';
@@ -13316,14 +13782,16 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                     || u.match(/\/(\d+)\.(?:m3u8|ts|mp4)(?:[?#].*)?$/i);
                 if (!m) return rawUrl;   // sin id no se puede cablear: se deja como estaba
                 const id = m[1];
-                const dev = (typeof window !== 'undefined' && window.APE_DEVICE_B64)
-                    ? String(window.APE_DEVICE_B64)
-                    : 'eyJ0IjoiZ2VuZXJpYyIsInMiOiJ1bmtub3duIiwiciI6MjA0OCwidyI6MTkyMCwiaCI6MTA4MCwiZiI6MzB9';
-                return `${base}/pulse/${id}.m3u8?u=${encodeURIComponent(u)}&d=${dev}`;
+                const dev = _apePulseDeviceB64(channel, profile, _probeData);
+                const pPart = (_apeHybridOn && _apePulseP) ? `&p=${_apePulseP}` : '';
+                const _pulseMode = (typeof window !== 'undefined' && ['proxy', 'cartridge', 'redirect'].includes(window.APE_PULSE_MODE))
+                    ? window.APE_PULSE_MODE : 'proxy';
+                return `${base}/pulse/${id}.m3u8?u=${encodeURIComponent(u)}&d=${dev}${pPart}&m=${_pulseMode}`;
             } catch (_eWrap) {
                 return rawUrl;   // fail-open: si algo falla, la lista sale como antes
             }
         };
+        if (_apeHybridOn) lines.push(_apeHybridTagLine);
         lines.push(`${_apePulseWrap(finalUrl)}`);
 
         // ── PLACEHOLDER RESOLVER FINAL (global, sobre TODA la salida) ─────────
@@ -13488,10 +13956,21 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
         // Se aplica sobre el bloque YA finalizado para que el tag sea la ÚLTIMA
         // línea de tag e inmediatamente preceda a la URI. No toca ni reordena
         // EXTHTTP / EXTVLCOPT / KODIPROP / EXT-X-APE-* / EXT-X-STREAM-INF.
-        return _apeAppendExtshimottTag(_reaFinalBlock, channel, profile, _probeData, cfg, index, _uaApeProfile, 'https://www.google.com/');
+        // [2026-11-24] La lista declara sus salidas (HLS/DASH/JSON/init) en una
+        // etiqueta más, con la MISMA tabla que usa el panel de prueba. Con el
+        // interruptor apagado esta llamada devuelve el texto intacto.
+        return _apeAppendOutputMatrixTag(
+            _apeAppendExtshimottTag(_reaFinalBlock, channel, profile, _probeData, cfg, index, _uaApeProfile, 'https://www.google.com/'),
+            channel);
     }
 
-    if (typeof window !== 'undefined') window.APE_GEN = generateM3U8Stream; // [t53/t72] export headless (hoisting)
+    if (typeof window !== 'undefined') window.APE_GEN = generateM3U8Stream; // [t53/t72] export headless
+    // [2026-11-22 · cierra el NO_COMPUTADO de t5] Emisor POR CANAL expuesto para pruebas.
+    // El perfil es el 2º ARGUMENTO de generateChannelEntry, no un campo del canal: por eso
+    // ocho invocaciones a APE_GEN devolvían todas PROFILE=P1 y el experimento se descartó.
+    // Aditivo: no altera la ruta de generación ni un byte de la salida; sólo la hace
+    // verificable desde un test headless (emisión real de la cadena de mejora por perfil).
+    if (typeof window !== 'undefined') window.APE_GEN_CHANNEL = generateChannelEntry; // [t5] emisión por perfil (hoisting)
 
     // [URL-GUARD-DIAG] Resolvedores expuestos para prueba y diagnóstico en consola.
     // Permiten verificar, con los módulos REALES cargados, qué URL resuelve cada
@@ -13699,6 +14178,9 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                     // initialization is internal upon first request
                 }
                 // PASO 2: STREAM cada canal
+                // Acumulador de medición real para el HUD: se cuenta lo que de verdad se
+                // emite por canal (antes el HUD multiplicaba por constantes ×63/38/29/133).
+                const _hudAcc = { channels: 0, lines: 0, extvlcopt: 0, kodiprop: 0, extxape: 0 };
                 for (let index = 0; index < channels.length; index++) {
                     if (reaStreamCancelled) return;
                     const channel = channels[index];
@@ -13711,17 +14193,52 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                     try {
                         // Detectar perfil
                         const profile = forceProfile || determineProfile(channel) || 'P3';
-                        const entry = generateChannelEntry(channel, profile, index, credentialsMap, options);
+                        const _entryBase = generateChannelEntry(channel, profile, index, credentialsMap, options);
+                        // [2026-11-23 · INTENCIÓN 4K/6K EN LA LISTA] Metadata DECLARADA, aditiva y
+                        // apagada por defecto. La enciende la casilla del panel
+                        // (#ape4k6kIntentToggle → window.APE_4K6K_AUDIT) o la opción
+                        // intent4k6k de ESTA generación. Sin flag, o sin el módulo cargado,
+                        // `entry` es EXACTAMENTE _entryBase y la lista sale idéntica.
+                        // El módulo decide dónde entra el tag (antes de la URI, o antes del
+                        // #EXT-X-STREAM-INF que la precede) para no romper la adyacencia
+                        // STREAM-INF→URI que exige RFC 8216 §4.3.4.2.
+                        const entry = ((typeof window !== 'undefined' && window.APE_4K6K_INTENT_EMIT &&
+                            typeof window.APE_4K6K_INTENT_EMIT.apply === 'function')
+                            ? window.APE_4K6K_INTENT_EMIT.apply(_entryBase, channel, profile,
+                                (options && options.intent4k6k === true) ? true : undefined)
+                            : _entryBase);
+                        // [2026-11-23 · MODO UNIVERSAL] Declaración aditiva por canal, APAGADA
+                        // por defecto. La enciende la casilla #apeUniversalToggle del panel
+                        // (window.APE_UNIVERSAL_MODE) o la opción universal de ESTA generación.
+                        // Sin flag, sin el módulo cargado o con un bloque ambiguo, _entryOut es
+                        // EXACTAMENTE entry y la lista sale byte a byte como antes.
+                        const _entryOut = ((typeof window !== 'undefined' && window.APE_UNIVERSAL_EMIT &&
+                            typeof window.APE_UNIVERSAL_EMIT.apply === 'function')
+                            ? window.APE_UNIVERSAL_EMIT.apply(entry, channel, profile,
+                                (options && options.universal === true) ? true : undefined)
+                            : entry);
+                        // Medición real por canal (coste O(líneas del entry), sin red).
+                        _hudAcc.channels++;
+                        {
+                            const _entryLines = entry.split('\n');
+                            _hudAcc.lines += _entryLines.length;
+                            for (let _li = 0; _li < _entryLines.length; _li++) {
+                                const _line = _entryLines[_li];
+                                if (_line.startsWith('#EXTVLCOPT:')) _hudAcc.extvlcopt++;
+                                else if (_line.startsWith('#KODIPROP:')) _hudAcc.kodiprop++;
+                                else if (_line.startsWith('#EXT-X-APE')) _hudAcc.extxape++;
+                            }
+                        }
                         // CA11: validar el channel entry ANTES de enqueue al stream
-                        _ca11ValidateEntry(entry, index);
-                        const chunk = entry + '\n\n';
+                        _ca11ValidateEntry(_entryOut, index);
+                        const chunk = _entryOut + '\n\n';
                         const encoded = encoder.encode(chunk);
                         totalBytes += encoded.byteLength;
                         yield encoded;
 
                         // Actualizar HUD
                         if (useHUD && (index % 50 === 0 || index === channels.length - 1)) {
-                            window.HUD_TYPED_ARRAYS.updateChannel(index + 1, channel.name, profile);
+                            window.HUD_TYPED_ARRAYS.updateChannel(index + 1, channel.name, profile, _hudAcc);
                         }
 
                         // Progress log cada 1000
@@ -14270,6 +14787,7 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
             // verificar el JSON emitido sin generar una lista de 21.224 canales.
             hybridHeaderBlock: __apeHybridHeaderBlock,
             generateGlobalHeader: generateGlobalHeader,
+            resolveTargetDuration: __apeResolveTargetDuration,
 
             // 👻 Fusión Fantasma v22.1 API
             AtomicStealthEngine: window.APEAtomicStealthEngine,
@@ -15020,12 +15538,47 @@ function _buildPlayerConfigHeaders(profileId) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 2b: RESOLUCIÓN DE PERFIL (LAB 12 perfiles → 6 tiers del motor)
+// El Gestor de Perfiles y LAB trabajan con P0…P5 y sus variantes "premium"
+// P0.5…P5.5 (12 en total). Este motor sólo tiene las 6 bases, así que un `.5`
+// se servía como "desconocido" y caía a P3: la lista se generaba con el perfil
+// equivocado y salían miles de avisos iguales. Aquí un `.5` usa la entrada de
+// su tier base (misma política, más capacidad declarada), y sólo un id que no
+// es ni base ni `.5` cae a P3, avisando UNA vez por id.
+const _APE_RT_ALIAS_SEEN = Object.create(null);
+
+function _apeRealtimeResolveProfile(profileId) {
+  const id = (profileId === null || profileId === undefined) ? '' : String(profileId).trim();
+  if (id && APE_PROFILE_MATRIX[id]) return id;
+  // P4.5 → P4 ; p4.5 → P4 ; P4,5 → P4
+  const m = /^([Pp]\d)\s*[.,]5$/.exec(id);
+  if (m) {
+    const base = m[1].toUpperCase();
+    if (APE_PROFILE_MATRIX[base]) {
+      if (!_APE_RT_ALIAS_SEEN[base]) {
+        _APE_RT_ALIAS_SEEN[base] = true;
+        console.log(`[APE Realtime Engine] Perfil ${id} → ${base} (variante premium del mismo tier).`);
+      }
+      return base;
+    }
+  }
+  if (!_APE_RT_ALIAS_SEEN['!' + id]) {
+    _APE_RT_ALIAS_SEEN['!' + id] = true;
+    console.warn(`[APE Realtime Engine] Perfil desconocido: ${id || '(vacío)'}. Usando P3 como fallback (aviso único).`);
+  }
+  return 'P3';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SECCIÓN 3: API PÚBLICA — ApeRealtimeEngine
 // ─────────────────────────────────────────────────────────────────────────────
 
 window.ApeRealtimeEngine = {
 
   VERSION: '10.0.0-REALTIME-ENGINE',
+
+  // Resolución pública de perfil: P0…P5 y sus variantes .5 → tier base.
+  resolveProfileId(profileId) { return _apeRealtimeResolveProfile(profileId); },
 
   /**
    * Inicializa el motor. Llamar una vez al arrancar el generador.
@@ -15040,6 +15593,9 @@ window.ApeRealtimeEngine = {
    * @returns {Object|null}
    */
   getProfile(profileId) {
+    // Sólo las 6 bases: un id "premium" (P4.5) NO se sirve como P4 aquí, porque
+    // esta tabla es la que sobrescribe el network-caching calibrado del LAB en
+    // los 12 perfiles (t63). Devolver null deja que mande la calibración.
     return APE_PROFILE_MATRIX[profileId] || null;
   },
 
@@ -15053,10 +15609,7 @@ window.ApeRealtimeEngine = {
    * @returns {Object} El mismo objeto httpHeadersObj, enriquecido
    */
   injectHeaders(httpHeadersObj, profileId, channelId) {
-    if (!APE_PROFILE_MATRIX[profileId]) {
-      console.warn(`[APE Realtime Engine] Perfil desconocido: ${profileId}. Usando P3 como fallback.`);
-      profileId = 'P3';
-    }
+    profileId = _apeRealtimeResolveProfile(profileId);
 
     const cmcd = _buildCmcdHeaders(profileId, channelId);
     const qoe = _buildQoeHeaders(profileId);
@@ -15077,7 +15630,7 @@ window.ApeRealtimeEngine = {
    * @returns {string[]} El mismo linesArray, enriquecido
    */
   injectVlcopt(linesArray, profileId) {
-    if (!APE_PROFILE_MATRIX[profileId]) profileId = 'P3';
+    profileId = _apeRealtimeResolveProfile(profileId);
 
     const opts = APE_PROFILE_MATRIX[profileId].vlcopt;
     for (const [key, value] of Object.entries(opts)) {
@@ -15098,7 +15651,7 @@ window.ApeRealtimeEngine = {
    * @returns {Object}
    */
   getAllHeaders(profileId, channelId) {
-    if (!APE_PROFILE_MATRIX[profileId]) profileId = 'P3';
+    profileId = _apeRealtimeResolveProfile(profileId);
     return {
       ..._buildCmcdHeaders(profileId, channelId),
       ..._buildQoeHeaders(profileId),
@@ -15112,8 +15665,7 @@ window.ApeRealtimeEngine = {
    * @returns {Array<{bitrate: number, resolution: string, fps: number}>}
    */
   getBitrateLadder(profileId) {
-    const p = APE_PROFILE_MATRIX[profileId];
-    if (!p) return [];
+    const p = APE_PROFILE_MATRIX[_apeRealtimeResolveProfile(profileId)];    if (!p) return [];
     return p.bitrateLadder.split(',').map(entry => {
       const [br, res] = entry.split('@');
       const [w, h, fps] = res.split('x');

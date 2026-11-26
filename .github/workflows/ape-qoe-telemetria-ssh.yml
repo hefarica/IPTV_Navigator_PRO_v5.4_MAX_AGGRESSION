@@ -1,0 +1,61 @@
+name: APE QoE telemetria SSH
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+permissions:
+  contents: read
+jobs:
+  alimentar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Preparar SSH solo lectura
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Recolectar access log y manifest
+        run: |
+          set -euo pipefail
+          mkdir -p evidencias-qoe
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i ~/.ssh/id_ed25519 "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" 'sudo -n tail -n 4000 /var/log/nginx/access.log' > evidencias-qoe/access.log || true
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i ~/.ssh/id_ed25519 "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" 'sudo -n grep -h -m1 "^#EXT-X-STREAM-INF" /var/www/html/lists/*.m3u8 | head -n 5' > evidencias-qoe/streaminf.txt || true
+          wc -l evidencias-qoe/access.log evidencias-qoe/streaminf.txt
+      - name: Descubrir fuentes disponibles (solo lectura)
+        run: |
+          set -euo pipefail
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i ~/.ssh/id_ed25519 "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" '
+            echo "== log_format =="; sudo -n grep -h "log_format" /etc/nginx/nginx.conf 2>/dev/null | head -5
+            echo "== bases sqlite =="; sudo -n find /var/www /opt -maxdepth 4 -name "*.db" -newermt "-90 days" 2>/dev/null | head -10
+            echo "== tablas qoe =="; for d in $(sudo -n find /var/www /opt -maxdepth 4 -name "*.db" 2>/dev/null | head -5); do echo "-- $d"; sudo -n sqlite3 "$d" ".tables" 2>/dev/null | tr -s " " "\n" | grep -i -E "qoe|metric|hdpc" | head -5; done
+            echo "== listas =="; sudo -n ls -1 /var/www/html/lists/*.m3u8 2>/dev/null | head -5
+            echo "== primera muestra de log =="; sudo -n tail -n 2 /var/log/nginx/access.log 2>/dev/null
+            echo "== access_log con formato iptv =="; sudo -n grep -rn "access_log" /etc/nginx/ 2>/dev/null | grep -i "iptv" | head -5
+            echo "== candidatos y su ultima linea =="; for f in $(sudo -n grep -rh "access_log" /etc/nginx/ 2>/dev/null | grep -i iptv | awk "{print \$2}" | sed "s/;.*//" | sort -u | head -3); do echo "-- $f"; sudo -n tail -n 1 "$f" 2>/dev/null; done          ' > evidencias-qoe/descubrimiento.txt 2>&1 || true
+          cat evidencias-qoe/descubrimiento.txt
+      - name: Leer base de QoE (php por stdin, sin escribir en el VPS)
+        run: |
+          set -euo pipefail
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i ~/.ssh/id_ed25519 "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" 'php' < tools/qoe/dump_qoe.php > evidencias-qoe/qoe.json 2> evidencias-qoe/qoe.err || true
+          head -c 400 evidencias-qoe/qoe.json; echo; head -3 evidencias-qoe/qoe.err || true
+      - name: Convertir a muestras
+        run: node tools/quality/qoe_samples_from_db.js evidencias-qoe
+      - name: Gate modo parcial honesto
+        run: node tools/quality/qoe_capacity_gate.js --samples evidencias-qoe/samples.json --allow-incomplete
+      - name: Evidencia
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qoe-telemetria-ssh
+          path: evidencias-qoe/
+          if-no-files-found: warn

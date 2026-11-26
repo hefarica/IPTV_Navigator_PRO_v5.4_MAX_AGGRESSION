@@ -1,0 +1,23 @@
+<!doctype html><meta charset="utf-8"><pre id="out">p</pre>
+<script src="js/ape-m3u-local-loader.js?v=20261120-f10"></script>
+<script>
+(async function(){
+  var R={}; var P={}; location.hash.replace(/([?&]?)(\w+)=([^&]*)/g,function(m,s,k,v){P[k]=decodeURIComponent(v);return m;});
+  var h={}; if(P.t) h['X-APE-Token']=P.t;
+  function reportar(){ try{ fetch('/resultado',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},h),body:JSON.stringify(R)}); }catch(e){} }
+  try {
+    var t0=performance.now();
+    var c=new AbortController();
+    var p=window.APEM3uLocal.cargarStream('/grande.m3u8',{fetchInit:{headers:h,signal:c.signal}});
+    setTimeout(function(){ c.abort(); },200);
+    try { await p; R.cancelacion='no-abortado'; } catch(e){ R.cancelacion='abortado:'+e.name; }
+    R.ms_cancel=Math.round(performance.now()-t0);
+    if(performance.memory){ R.heap_post_cancel_mb=Math.round(performance.memory.usedJSHeapSize/1048576); R.limite_mb=Math.round(performance.memory.jsHeapSizeLimit/1048576); }
+    var r=await window.APEM3uLocal.cargarStream('/grande.m3u8',{fetchInit:{headers:h}});
+    R.canales=r.canales; R.bytes=r.bytes; R.ms_stream=r.ms;
+    if(performance.memory){ R.heap_mb=Math.round(performance.memory.usedJSHeapSize/1048576); }
+  } catch(e){ R.error=String(e&&e.message||e); }
+  document.getElementById('out').textContent='BIG:'+JSON.stringify(R);
+  reportar();
+})();
+</script>

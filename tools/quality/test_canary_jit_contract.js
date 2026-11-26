@@ -45,6 +45,10 @@ const REQUIRE_POLICY = ARGS.includes('--require-policy');
 const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
 const HEX64 = /^[0-9a-f]{64}$/;
 const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
+/* [2026-11-21] El sha del motor NO se duplica aqui como literal. Se duplicaba en las
+ * fixtures de baseReceipt(), asi que re-pinear el contrato dejaba al propio test
+ * apuntando al motor viejo (se autodestruia). Fuente unica: el contrato. */
+const ENGINE_SHA = String((readJson(CONTRACT_PATH).engine || {}).deployable_engine_sha256 || '').toLowerCase();
 
 /* ------------------------------------------------------------------ *
  * ITU-T H.265 Annex A — maxima capacidad por nivel (Ley Cardinal 1)
@@ -666,7 +670,7 @@ function evidenceArtifact(frames, seconds) {
 function baseReceipt(overrides) {
   const base = {
     schema: 'ape.canary_jit.receipt.v1',
-    engine_sha256: '8c1a00852ba4df2adfa1cc1b17e980c8cfc7faee3ede1d65c69aa8e7456eaec6',
+    engine_sha256: ENGINE_SHA,
     deployability: {
       state: 'NOT_DEPLOYED',
       artifact: 'vps/bin/ape-visual-emulate.sh',
@@ -693,7 +697,7 @@ function baseReceipt(overrides) {
     applied: {
       status: 'APPLIED_MEASURED',
       route: 'canary_canonical',
-      engine_sha256: '8c1a00852ba4df2adfa1cc1b17e980c8cfc7faee3ede1d65c69aa8e7456eaec6',
+      engine_sha256: ENGINE_SHA,
       codec_mode: 'transcode',
       filtergraph: 'deblock,smartblur=lr=1.5:ls=-0.5,format=yuv444p,scale=3840:2160:flags=lanczos,noise=alls=8:allf=t,unsharp=5:5:0.8:3:3:0.4,eq=contrast=1.05:brightness=0.02:saturation=1.05,format=yuv420p',
       encoder: {
@@ -970,7 +974,11 @@ function buildFixtures(contract) {
   push('state_collapsed_missing_requested', 'falta requested (caso 1 de colapso)', (() => { const r = baseReceipt({}); delete r.requested; return r; })(), 'REJECT', 'E_STATE_COLLAPSED');
   push('state_collapsed_flat_keys', 'claves planas en la raiz con el triple intacto (caso 2)', (() => { const r = baseReceipt({}); r.mode = 'CANARY_SPATIAL_4K'; r.applied_processing = 'NOT_EXECUTED'; return r; })(), 'REJECT', 'E_STATE_COLLAPSED');
   push('flat_keys_absent_control', 'control: el mismo recibo SIN las claves planas', baseReceipt({}), 'ACCEPT', 'OK_APPLIED_MEASURED');
-  push('engine_sha_applied_mismatch', 'applied.engine_sha256 de otro motor', baseReceipt({ applied: { engine_sha256: String(contract.engine.candidates.find((c) => c.id === 'B').sha256) } }), 'REJECT', 'E_ENGINE_SHA_UNVERIFIED');
+  /* [2026-11-21] Este fixture NO elige "otro motor" por id de candidato: al re-baselinear
+   * el recibo, el candidato B paso a SER el motor desplegable y el fixture dejo de probar
+   * una discrepancia (se volvio un falso verde). Ahora toma cualquier candidato cuyo sha
+   * difiera del desplegable, y si no hubiera ninguno usa un sha imposible. */
+  push('engine_sha_applied_mismatch', 'applied.engine_sha256 de otro motor', baseReceipt({ applied: { engine_sha256: String((contract.engine.candidates.find((c) => String(c.sha256).toLowerCase() !== String(contract.engine.deployable_engine_sha256).toLowerCase()) || { sha256: 'f'.repeat(64) }).sha256) } }), 'REJECT', 'E_ENGINE_SHA_UNVERIFIED');
   push('applied_engine_sha_match_control', 'control: applied.engine_sha256 igual al motor desplegable', baseReceipt({ applied: { engine_sha256: String(contract.engine.deployable_engine_sha256) } }), 'ACCEPT', 'OK_APPLIED_MEASURED');
 
   /* ---- criterio duro de t9: el recibo compuesto del review debe RECHAZAR ---- */

@@ -1,0 +1,167 @@
+{
+  "generated_at": "2026-11-23T01:46:54Z",
+  "master": {
+    "file": "MASTERLIST_12P.m3u8",
+    "variants": 12,
+    "stream_inf": 12,
+    "stream_inf_followed_by_uri": 12,
+    "forbidden_tags": {
+      "#EXTINF": 0,
+      "#EXT-X-TARGETDURATION": 0,
+      "#EXT-X-KEY": 0,
+      "#EXT-X-DATERANGE": 0
+    },
+    "valid": true
+  },
+  "media": {
+    "count": 12,
+    "targetduration_all_4": true,
+    "segments_all_6": true,
+    "max_extinf_all_le_4": true,
+    "valid": true,
+    "per_profile": [
+      {
+        "profile": "P0",
+        "targetduration": 4,
+        "segments": 6,
+        "max_extinf_s": 4.0,
+        "valid": true
+      },
+      {
+        "profile": "P1",
+        "targetduration": 4,
+        "segments": 6,
+        "max_extinf_s": 4.0,
+        "valid": true
+      },
+      {
+        "profile": "P2",
+        "targetduration": 4,
+        "segments": 6,
+        "max_extinf_s": 4.0,
+        "valid": true
+      },
+      {
+        "profile": "P3",
+        "targetduration": 4,
+        "segments": 6,
+        "max_extinf_s": 4.0,
+        "valid": true
+      },
+      {
+        "profile": "P4",
+        "targetduration": 4,
+        "segments": 6,
+        "max_extinf_s": 4.0,
+        "valid": true
+      },
+      {
+        "profile": "P5",
+        "targetduration": 4,
+        "segments": 6,
+        "max_extinf_s": 4.0,
+        "valid": true
+      },
+      {
+        "profile": "P0.5",
+        "targetduration": 4,
+        "segments": 6,
+        "max_extinf_s": 4.0,
+        "valid": true
+      },
+      {
+        "profile": "P1.5",
+        "targetduration": 4,
+        "segments": 6,
+        "max_extinf_s": 4.0,
+        "valid": true
+      },
+      {
+        "profile": "P2.5",
+        "targetduration": 4,
+        "segments": 6,
+        "max_extinf_s": 4.0,
+        "valid": true
+      },
+      {
+        "profile": "P3.5",
+        "targetduration": 4,
+        "segments": 6,
+        "max_extinf_s": 4.0,
+        "valid": true
+      },
+      {
+        "profile": "P4.5",
+        "targetduration": 4,
+        "segments": 6,
+        "max_extinf_s": 4.0,
+        "valid": true
+      },
+      {
+        "profile": "P5.5",
+        "targetduration": 4,
+        "segments": 6,
+        "max_extinf_s": 4.0,
+        "valid": true
+      }
+    ]
+  },
+  "catalog": {
+    "entries": 12,
+    "m3u": "CATALOGO_12P.m3u",
+    "m3u8": "CATALOGO_12P.m3u8"
+  },
+  "sidecar": {
+    "file": "APE_BLOCKS_12P.m3u8",
+    "blocks": 12,
+    "min_lines_per_block": 1033,
+    "max_lines_per_block": 1048,
+    "all_blocks_ge_1000": true,
+    "line_counts": [
+      1048,
+      1048,
+      1048,
+      1048,
+      1048,
+      1048,
+      1038,
+      1038,
+      1038,
+      1034,
+      1033,
+      1033
+    ],
+    "is_hls_master": false
+  },
+  "metadata": {
+    "file": "METADATA_12P.json",
+    "profiles": 12,
+    "headers_total": 5208,
+    "json_lines": 10106
+  },
+  "sanitization": {
+    "private_marker_hits": 0,
+    "placeholder_urls": 132,
+    "other_urls": 0,
+    "synthetic_tvg_name_entries": 0,
+    "synthetic_tvg_logo_entries": 0
+  },
+  "limits": [
+    "Validacion estructural, no reproduccion real.",
+    "No hay segmentos reales; las URIs son placeholders.",
+    "No se garantiza cero freeze, cero lag ni 4K/6K real.",
+    "No se ejecuto ffprobe sobre video real."
+  ],
+  "execution_doctrine": {
+    "id": "UPSCALE_SIMULADO_VIDEO_FILTERS",
+    "binding": true,
+    "immutable_by_agents": true,
+    "execution_status": "SIMULATED_EXECUTED",
+    "transcode": true,
+    "upscale": true,
+    "mechanism": "video_filters",
+    "dec_label_occurrences": 0,
+    "simulated_label_lines": 0,
+    "note": "La salida es lienzo 6K/4K por upscale simulado; la fuente y la calidad no se miden."
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "schema": "ape.crystal.upscale/1",
+  "version": "1.0.0",
+  "description": "Contrato de upscaling on-demand APE Crystal. Cadenas portadas de la propuesta Genspark (1.6.3) y validadas contra ffmpeg 6.1.1. No se usa en /pulse ni en listas servidas.",
+  "targets": {
+    "4k": [
+      3840,
+      2160
+    ],
+    "6k": [
+      5760,
+      3240
+    ]
+  },
+  "input_formats": "mov,mp4,m4a,3gp,3g2,mj2,matroska,webm,mpegts,mpeg,avi",
+  "presets": [
+    {
+      "id": "micro-sd",
+      "max": 360,
+      "deblock": "deblock=filter=weak:block=8:alpha=0.06:beta=0.035:gamma=0.035:delta=0.035",
+      "denoise": "hqdn3d=1.4:1.0:0.8:0.6",
+      "deband": true,
+      "cas": "0.19",
+      "cas_strong": "0.34"
+    },
+    {
+      "id": "sd",
+      "max": 576,
+      "deblock": "deblock=filter=weak:block=8:alpha=0.06:beta=0.035:gamma=0.035:delta=0.035",
+      "denoise": "hqdn3d=1.1:0.9:0.65:0.55",
+      "deband": true,
+      "cas": "0.17",
+      "cas_strong": "0.30"
+    },
+    {
+      "id": "hd",
+      "max": 720,
+      "deblock": null,
+      "denoise": "hqdn3d=0.85:0.65:0.55:0.4",
+      "deband": true,
+      "cas": "0.13",
+      "cas_strong": null
+    },
+    {
+      "id": "fhd",
+      "max": 1080,
+      "deblock": null,
+      "denoise": null,
+      "deband": true,
+      "cas": "0.09",
+      "cas_strong": null
+    },
+    {
+      "id": "uhd",
+      "max": 999999,
+      "deblock": null,
+      "denoise": null,
+      "deband": false,
+      "cas": null,
+      "cas_strong": null
+    }
+  ],
+  "filter_order": [
+    "bwdif-if-interlaced",
+    "deblock-if-max-and-profile",
+    "hqdn3d-if-max-and-profile",
+    "format-yuv420p10le-if-max",
+    "deband-if-max-and-profile",
+    "scale-active",
+    "cas-if-max-and-profile",
+    "setsar-1",
+    "pad-target",
+    "format-yuv420p10le"
+  ],
+  "deinterlace": "bwdif=mode=send_field:parity=auto:deint=all",
+  "interlaced_field_orders": [
+    "tt",
+    "bb",
+    "tb",
+    "bt"
+  ],
+  "scale_flags_max": "lanczos+accurate_rnd+full_chroma_int",
+  "scale_flags_balanced": "bicubic+accurate_rnd",
+  "encode": {
+    "video_codec": "libx265",
+    "tag": "hvc1",
+    "pix_fmt": "yuv420p10le",
+    "crf_max": 18,
+    "crf_balanced": 21,
+    "maxrate_4k": "22M",
+    "maxrate_6k": "45M",
+    "bufsize_4k": "44M",
+    "bufsize_6k": "90M",
+    "audio_codec": "aac",
+    "audio_bitrate": "192k",
+    "hls_time": 2,
+    "hls_segment_type": "fmp4",
+    "hls_playlist_type": "vod"
+  },
+  "safety": {
+    "require_local_file": true,
+    "allow_url": false,
+    "reject_hdr_dv": true,
+    "reject_rotation": true,
+    "preserve_source_when_not_upscaling": true,
+    "output_must_not_exist": true,
+    "max_dimension_px": 8192
+  }
+}

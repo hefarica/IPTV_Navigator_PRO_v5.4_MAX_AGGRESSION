@@ -1,0 +1,12 @@
+ape_rea:
+  version: "1.2.0"
+  modo_velocity: true
+  buffer_nuclear_mb: 80
+
+tiers:
+  T0: {res: "7680x4320", fps: 120}
+  T1.5: {res: "5760x3240", fps: 60}
+  T2: {res: "3840x2160", fps: 60}
+
+wbi:
+  endpoint: "ws://localhost:8080/wbi"

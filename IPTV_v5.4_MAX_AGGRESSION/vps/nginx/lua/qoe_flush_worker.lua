@@ -135,6 +135,16 @@ local function flush_callback(premature)
                 r.bps_count = (r.bps_count or 0) + 1
                 per_channel[chId] = r
                 table.insert(keys_to_delete, k)
+            elseif prefix == "bps_sum" then
+                local r = per_channel[chId] or {}
+                r.bps_sum = (r.bps_sum or 0) + (tonumber(dict:get(k)) or 0)
+                per_channel[chId] = r
+                table.insert(keys_to_delete, k)
+            elseif prefix == "bps_count" then
+                local r = per_channel[chId] or {}
+                r.bps_count = (r.bps_count or 0) + (tonumber(dict:get(k)) or 0)
+                per_channel[chId] = r
+                table.insert(keys_to_delete, k)
             elseif prefix == "hdcpneeded" then
                 local v = tonumber(dict:get(k)) or 0
                 table.insert(hdcp_needed, { channel_id = chId, vst_ms = v, channel_name = "CH-" .. chId })

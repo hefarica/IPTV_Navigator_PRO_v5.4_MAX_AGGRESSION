@@ -205,8 +205,13 @@ local ok, _ = pcall(function()
 
         -- ── F) Bitrate proxy: bytes/sec for this segment ──
         if upstream_time_ms > 0 and body_bytes > 0 then
+        -- instrumentacion: distingue 0 medido de tiempo no disponible
+        if channel_id then dict:incr("bpsmiss:" .. channel_id, 1, 0, 600) end
             local bps = math.floor((body_bytes * 8 * 1000) / upstream_time_ms)
-            dict:set("bps:" .. channel_id, bps, 600)
+            -- [FIX 2026-11-21] se retira el set unico: ahora bps_sum/bps_count acumulan de verdad
+    -- [FIX 2026-11-21] el worker promedia bps_sum/bps_count; un set unico deja una sola muestra
+    dict:incr("bps_sum:" .. channel_id, bps, 0, 600)
+    dict:incr("bps_count:" .. channel_id, 1, 0, 600)
         end
 
         -- ── [F5 2026-05-21] segment upstream latency (sum+count -> worker avg) ──

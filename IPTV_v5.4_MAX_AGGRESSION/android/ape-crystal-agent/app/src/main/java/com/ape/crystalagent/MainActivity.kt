@@ -219,6 +219,22 @@ class MainActivity : Activity() {
         }
         content.addView(shimStart)
         content.addView(shimStop)
+
+        content.addView(sectionTitle("JSON HOMOLOGADO · SOLO LECTURA"))
+        content.addView(text("Validación manual del JSON: estructura, SHA-256 canónico y planes. No lo carga, no lo guarda y no aplica filtros.", 12f, muted))
+        val validateHomolog = Button(this).apply {
+            text = "Validar JSON homologado (solo lectura)"
+            setTextColor(ink)
+            background = round(Color.rgb(226, 232, 240))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp(8) }
+            setOnClickListener {
+                startActivity(Intent(this@MainActivity, HomologationValidationActivity::class.java))
+            }
+        }
+        content.addView(validateHomolog)
         setContentView(root)
 
         ticker = object : Runnable {

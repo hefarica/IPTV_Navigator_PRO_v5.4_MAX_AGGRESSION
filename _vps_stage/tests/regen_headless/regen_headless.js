@@ -41,17 +41,57 @@ const crypto = require('crypto');
 const HERE = __dirname;
 const REPO = path.resolve(HERE, '..', '..', '..');
 const EMITTER = path.join(REPO, 'IPTV_v5.4_MAX_AGGRESSION', 'frontend', 'js', 'ape-v9', 'm3u8-typed-arrays-ultimate.js');
+// Capa 12P (aditiva, OFF por defecto): sólo se carga en el sandbox si se pide con --12p.
+const LAYER_12P = path.join(REPO, 'IPTV_v5.4_MAX_AGGRESSION', 'frontend', 'js', 'ape-v9', 'lab-12p-conformance.js');
+// Condición de buffer (aditiva, OFF mientras el flag no se encienda): misma puerta que la 12P.
+const MOD_BUF = path.join(REPO, 'IPTV_v5.4_MAX_AGGRESSION', 'frontend', 'js', 'ape-v9', 'buffer-input-demand.js');
+// Intención 4K/6K (aditiva, OFF por defecto): sólo se carga si se pide con --4k6k on.
+// Hacen falta los DOS ficheros: el adaptador es dueño del esquema del tag (intentTag) y el
+// módulo de emisión es el punto de llamada que consulta el generador por canal.
+const ADAPTER_4K6K = path.join(REPO, 'IPTV_v5.4_MAX_AGGRESSION', 'frontend', 'js', 'ape-v9', 'ape-4k6k-audit-adapter.js');
+const EMIT_4K6K = path.join(REPO, 'IPTV_v5.4_MAX_AGGRESSION', 'frontend', 'js', 'ape-v9', 'ape-4k6k-intent-emit.js');
+// Modo universal (aditivo, OFF por defecto): sólo se carga en el sandbox si se pide con --universal.
+const EMIT_UNIVERSAL = path.join(REPO, 'IPTV_v5.4_MAX_AGGRESSION', 'frontend', 'js', 'ape-v9', 'ape-universal-emit.js');
+// Matriz de salidas (aditiva, OFF por defecto): la MISMA tabla que usa el panel
+// `#ape-output-matrix` para probar las 8 salidas. Con --matrix on el generador
+// declara `#EXT-X-APE-OUTPUT-MATRIX` por canal; sin él no se carga ni se enciende.
+const MOD_MATRIX = path.join(REPO, 'IPTV_v5.4_MAX_AGGRESSION', 'frontend', 'js', 'ape-v9', 'ape-output-matrix.js');
+// Config de perfiles que la página carga SIEMPRE (index-v4.html L4370): sin ella el
+// emisor usa su fallback de buffer, así que para medir "de verdad" hay que cargarla.
+const PROFILES_CFG = path.join(REPO, 'IPTV_v5.4_MAX_AGGRESSION', 'frontend', 'js', 'ape-v9', 'ape-profiles-config.js');
+// [R21] El puente de reconciliación 12P va ANTES del config, en el mismo orden que
+// index-v4.html (puente en 4380, config en 4385): mergeLabV8 corre una sola vez al cargar,
+// así que si el puente entra después no reconcilia nada. Sin `--profiles` no se carga,
+// igual que el config: el arnés queda como estaba.
+const RECONCILE_12P = path.join(REPO, 'IPTV_v5.4_MAX_AGGRESSION', 'frontend', 'js', 'ape-v9', 'ape-lab-12p-reconcile.js');
 
 // ── CLI ────────────────────────────────────────────────────────────────────
 function parseArgs(argv) {
     const a = argv.slice(2);
-    const o = { inputs: [], mode: 'both', out: null, deterministic: false, determinismCheck: false };
+    const o = { inputs: [], mode: 'both', out: null, deterministic: false, determinismCheck: false, mode12p: null, mode4k6k: null, modeUniversal: null, modeMatrix: null };
     for (let i = 0; i < a.length; i++) {
         const t = a[i];
         if (t === '--mode') o.mode = a[++i];
         else if (t === '--out') o.out = a[++i];
         else if (t === '--deterministic') o.deterministic = true;
         else if (t === '--determinism-check') { o.deterministic = true; o.determinismCheck = true; }
+        else if (t === '--12p') {
+            const nx = a[i + 1];
+            if (nx && /^(on|shadow|off|1|true|0)$/.test(nx)) { o.mode12p = nx; i++; } else o.mode12p = 'on';
+        }
+        else if (t === '--4k6k') {
+            const nx = a[i + 1];
+            if (nx && /^(on|off|1|true|0)$/.test(nx)) { o.mode4k6k = nx; i++; } else o.mode4k6k = 'on';
+        }
+        else if (t === '--universal') {
+            const nx2 = a[i + 1];
+            if (nx2 && /^(on|off|1|true|0)$/.test(nx2)) { o.modeUniversal = nx2; i++; } else o.modeUniversal = 'on';
+        }
+        else if (t === '--matrix') {
+            const nx3 = a[i + 1];
+            if (nx3 && /^(on|off|1|true|0)$/.test(nx3)) { o.modeMatrix = nx3; i++; } else o.modeMatrix = 'on';
+        }
+        else if (t === '--profiles') o.profiles = true;
         else if (t === '-h' || t === '--help') o.help = true;
         else if (!t.startsWith('--')) o.inputs.push(t);   // t59: N listas (ficheros o dirs)
     }
@@ -225,7 +265,14 @@ function mergeInheritance(text, channels, modeOverride) {
     };
 
     // Declaración: lo único que el emisor DEBE añadir/corregir por canal.
-    const DECL_RE = /^#EXT-X-(STREAM-INF|APE-UPSCALE|APE-STREAM-TRUTH|APE-FPS-SOURCE|APE-CODEC-SOURCE|APE-CODEC-FALLBACK-CHAIN|APE-PERCEPTUAL-4K)/;
+    // [2026-11-23 · 4K/6K] APE-4K6K-INTENT entra aquí porque es declaración pura
+    // (una línea por canal cuando la casilla está encendida); sin esto el merge la perdía.
+    // [2026-11-23 · RUTA UNICA] APE-AI-SR-ENABLED entra por la MISMA razon medida:
+    // el modulo de la casilla la ANADE al bloque cuando falta (la muestra 4K la perdió
+    // al heredar del archivo: 0 de 6), y en modo passthrough el merge solo deja pasar
+    // las declaraciones de esta lista; sin esto la medicion mentiria: el navegador la
+    // tendria y la comprobacion diria que no.
+    const DECL_RE = /^#EXT-X-(STREAM-INF|APE-UPSCALE|APE-STREAM-TRUTH|APE-FPS-SOURCE|APE-CODEC-SOURCE|APE-CODEC-FALLBACK-CHAIN|APE-PERCEPTUAL-4K|APE-4K6K-INTENT|APE-AI-SR-ENABLED|APE-UNIVERSAL|APE-OUTPUT-MATRIX)/;
     for (let bi = 0; bi < starts.length; bi++) {
         const s = starts[bi];
         const e = (bi + 1 < starts.length) ? starts[bi + 1] : lines.length;
@@ -494,26 +541,145 @@ function makeSandbox(mode, deterministic) {
 }
 
 // ── Cargar el emisor (lee; NO modifica) ────────────────────────────────────
-function loadEmitter(mode, deterministic) {
+function loadEmitter(mode, deterministic, mode12p, withProfiles, mode4k6k, modeUniversal, modeMatrix) {
     const raw = fs.readFileSync(EMITTER);
     const before = sha256(raw);
     const src = raw.toString('utf8')
         + '\n;try{window.__APE_GEN__ = generateM3U8Stream;}catch(e){window.__APE_GEN_ERR__=e.message;}\n';
     const sandbox = makeSandbox(mode, deterministic);
     const ctx = vm.createContext(sandbox);
-    let loadError = null;
-    try {
+    // ── CONFIG DE PERFILES (sólo con --profiles): la misma que carga la página ──
+    let reconcile12p = null;
+    let profilesCfg = null;
+    if (withProfiles && fs.existsSync(PROFILES_CFG)) {
+        // [R21] mismo orden que index-v4.html: primero el puente, después el config.
+        // mergeLabV8 corre una sola vez al cargar; si el puente entra después, no reconcilia.
+        if (fs.existsSync(RECONCILE_12P)) {
+            try {
+                vm.runInContext(fs.readFileSync(RECONCILE_12P, 'utf8'), ctx, { filename: 'ape-lab-12p-reconcile.js', timeout: 60000 });
+                reconcile12p = (sandbox.APE_LAB_12P_RECONCILE && typeof sandbox.APE_LAB_12P_RECONCILE.networkCachingEmittedMs === 'function')
+                    ? 'cargado' : 'sin networkCachingEmittedMs';
+            } catch (err) {
+                reconcile12p = 'ERROR: ' + String((err && err.message) || err);
+            }
+        } else {
+            reconcile12p = 'no está';
+        }
+        try {
+            vm.runInContext(fs.readFileSync(PROFILES_CFG, 'utf8'), ctx, { filename: 'ape-profiles-config.js', timeout: 60000 });
+            profilesCfg = (sandbox.APE_PROFILES_CONFIG && typeof sandbox.APE_PROFILES_CONFIG.getProfile === 'function') ? 'cargada' : 'sin getProfile';
+        } catch (e) {
+            profilesCfg = 'ERROR: ' + String((e && e.message) || e);
+        }
+    }
+    // ── CAPA 12P (aditiva): sólo si se pide; si no, el sandbox queda igual ──
+    let layer12p = null;
+    if (mode12p && mode12p !== 'off' && fs.existsSync(LAYER_12P)) {
+        try {
+            vm.runInContext(fs.readFileSync(LAYER_12P, 'utf8'), ctx, { filename: 'lab-12p-conformance.js', timeout: 60000 });
+            vm.runInContext('APE_12P_MODE = ' + JSON.stringify(mode12p) + ';', ctx, { filename: '12p-flag.js', timeout: 5000 });
+            layer12p = (sandbox.APE_LAB_12P && sandbox.APE_LAB_12P.VERSION) || 'cargada';
+        } catch (e) {
+            layer12p = 'ERROR: ' + String((e && e.message) || e);
+        }
+    }
+    // ── CONDICIÓN DE BUFFER (aditiva): se carga con la misma puerta que la 12P ──
+    let layerBuf = null;
+    if (mode12p && mode12p !== 'off' && fs.existsSync(MOD_BUF)) {
+        try {
+            vm.runInContext(fs.readFileSync(MOD_BUF, 'utf8'), ctx, { filename: 'buffer-input-demand.js', timeout: 60000 });
+            layerBuf = (sandbox.APE_BUF_DEMAND && sandbox.APE_BUF_DEMAND.VERSION) || 'cargada';
+        } catch (e) {
+            layerBuf = 'ERROR: ' + String((e && e.message) || e);
+        }
+    }
+    // ── INTENCIÓN 4K/6K (aditiva): sólo si se pide; OFF = el sandbox queda igual que antes ──
+    let layer4k6k = null;
+    let stats4k6k = null;
+    if (mode4k6k && mode4k6k !== 'off' && fs.existsSync(ADAPTER_4K6K) && fs.existsSync(EMIT_4K6K)) {
+        try {
+            vm.runInContext(fs.readFileSync(ADAPTER_4K6K, 'utf8'), ctx, { filename: 'ape-4k6k-audit-adapter.js', timeout: 60000 });
+            vm.runInContext(fs.readFileSync(EMIT_4K6K, 'utf8'), ctx, { filename: 'ape-4k6k-intent-emit.js', timeout: 60000 });
+            vm.runInContext('APE_4K6K_AUDIT = true;', ctx, { filename: '4k6k-flag.js', timeout: 5000 });
+            layer4k6k = (sandbox.APE_4K6K_INTENT_EMIT && sandbox.APE_4K6K_INTENT_EMIT.version) || 'cargada';
+            // Sonda de MEDICIÓN (no es código de producto): cuántos bloques llegan al
+            // módulo y, si no se tocan, por qué. Sólo existe con --4k6k.
+            if (sandbox.APE_4K6K_INTENT_EMIT && typeof sandbox.APE_4K6K_INTENT_EMIT.apply === 'function') {
+                const _e = sandbox.APE_4K6K_INTENT_EMIT;
+                const _orig = _e.apply;
+                stats4k6k = { llamadas: 0, modificados: 0, motivos: {} };
+                _e.apply = function (block, ch, prof, ex) {
+                    stats4k6k.llamadas++;
+                    const out = _orig.call(_e, block, ch, prof, ex);
+                    if (out !== block) { stats4k6k.modificados++; }
+                    else {
+                        let why = 'bloque vacio o no-string';
+                        try { why = _e.place(block, _e.TAG + '{"sonda":1}').where; } catch (err) { why = 'error: ' + String(err && err.message); }
+                        stats4k6k.motivos[why] = (stats4k6k.motivos[why] || 0) + 1;
+                    }
+                    return out;
+                };
+            }
+        } catch (e) {
+            layer4k6k = 'ERROR: ' + String((e && e.message) || e);
+        }
+    }
+    // ── MODO UNIVERSAL (aditivo): sólo si se pide; OFF = el sandbox queda igual que antes ──
+    let layerUniversal = null;
+    if (modeUniversal && modeUniversal !== 'off' && fs.existsSync(EMIT_UNIVERSAL)) {
+        try {
+            vm.runInContext(fs.readFileSync(EMIT_UNIVERSAL, 'utf8'), ctx, { filename: 'ape-universal-emit.js', timeout: 60000 });
+            vm.runInContext('APE_UNIVERSAL_MODE = true;', ctx, { filename: 'universal-flag.js', timeout: 5000 });
+            layerUniversal = (sandbox.APE_UNIVERSAL_EMIT && sandbox.APE_UNIVERSAL_EMIT.version) || 'cargada';
+        } catch (e) {
+            layerUniversal = 'ERROR: ' + String((e && e.message) || e);
+        }
+    }
+    // ── MATRIZ DE SALIDAS (aditiva): la tabla del panel, cargada en el sandbox ──
+    // El generador NO la necesita: sólo llama a `APE_OUTPUT_MATRIX.tagFor` cuando el
+    // flag está encendido y el módulo existe. OFF = sandbox idéntico al de antes.
+    let layerMatrix = null;
+    if (modeMatrix && modeMatrix !== 'off' && fs.existsSync(MOD_MATRIX)) {
+        try {
+            vm.runInContext(fs.readFileSync(MOD_MATRIX, 'utf8'), ctx, { filename: 'ape-output-matrix.js', timeout: 60000 });
+            vm.runInContext('APE_OUTPUT_MATRIX_TAGS = true;', ctx, { filename: 'matrix-flag.js', timeout: 5000 });
+            layerMatrix = (sandbox.APE_OUTPUT_MATRIX && sandbox.APE_OUTPUT_MATRIX.VERSION) || 'cargada';
+        } catch (e) {
+            layerMatrix = 'ERROR: ' + String((e && e.message) || e);
+        }
+    }
+    let loadError = null;    try {
         vm.runInContext(src, ctx, { filename: 'm3u8-typed-arrays-ultimate.js', timeout: 120000 });
+
     } catch (e) {
         loadError = (e && (e.stack || e.message)) || String(e);
     }
+    console.log('   [12p] flag=' + (mode12p || 'apagada') + ' · modulo=' + (layer12p || 'no cargado') + ' · configPerfiles=' + (profilesCfg || 'no cargada') + ' · puente12p=' + (reconcile12p || 'no cargado'));
+    if (mode4k6k) console.log('   [4k6k] flag=' + mode4k6k + ' · modulo=' + (layer4k6k || 'no cargado'));
+    if (modeUniversal) console.log('   [universal] flag=' + modeUniversal + ' · modulo=' + (layerUniversal || 'no cargado'));
+    if (modeMatrix) console.log('   [matrix] flag=' + modeMatrix + ' · modulo=' + (layerMatrix || 'no cargado'));
+    if (layerBuf) console.log('   [buf] condicion de buffer=' + layerBuf + ' · delta=' + ((sandbox.APE_BUF_DEMAND && sandbox.APE_BUF_DEMAND.deltaFromScope(sandbox)) || '?') + ' %');
     const after = sha256(fs.readFileSync(EMITTER));
     return {
         sandbox,
         fn: sandbox.window.APE_GEN || sandbox.window.__APE_GEN__,
         exportErr: sandbox.window.__APE_GEN_ERR__,
         loadError,
+        // (12p: la traza se imprime una vez, antes del return)
         emitterUnchanged: before === after,
+        mode12p: mode12p || null,
+        // traza a consola: qué se cargó de verdad en este sandbox
+        // (traza 12p: se imprime en consola justo antes del return)
+        profilesCfg: profilesCfg,
+        reconcile12p: reconcile12p,
+        // traza: qué se cargó realmente en este sandbox (útil para no suponer nada)
+        // (traza 12p: se imprime en consola justo antes del return)
+        layer12p: layer12p,
+        layer4k6k: layer4k6k,
+        layerUniversal: layerUniversal,
+        layerMatrix: layerMatrix,
+        layerBuf: layerBuf,
+        stats4k6k: stats4k6k,
         emitterHash: before,
     };
 }
@@ -734,7 +900,7 @@ async function main() {
         for (const label of MODES[opt.mode]) {
             const modeTag = MODE_TAG[label];
             const gen = async () => {
-                const r = loadEmitter(modeTag, opt.deterministic);
+                const r = loadEmitter(modeTag, opt.deterministic, opt.mode12p, opt.profiles, opt.mode4k6k, opt.modeUniversal, opt.modeMatrix);
                 const run = { label, modeTag, emitterUnchanged: r.emitterUnchanged, loadError: r.loadError, exportErr: r.exportErr, exportAvailable: typeof r.fn === 'function' };
                 if (typeof r.fn !== 'function') return { run, text: null };
                 let out;
@@ -750,6 +916,7 @@ async function main() {
                     out = await drainStream(out);
                 } catch (e) { run.verdict = 'ERROR'; run.error = String((e && e.message) || e); return { run, text: null }; }
                 if (typeof out !== 'string' || out.length === 0) { run.verdict = 'BLOCKED'; run.reason = 'la captura no devolvió texto'; return { run, text: null }; }
+                if (r.stats4k6k) console.log('     [4k6k] sonda: bloques=' + r.stats4k6k.llamadas + ' · con etiqueta=' + r.stats4k6k.modificados + ' · motivos=' + JSON.stringify(r.stats4k6k.motivos));
                 return { run, text: out };
             };
 

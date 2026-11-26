@@ -762,15 +762,22 @@ jobs:
       - name: Instalar el motor pineado (un fichero, sha en origen y destino)
         run: |
           set -euo pipefail
-          SHA_PIN=8c1a00852ba4df2adfa1cc1b17e980c8cfc7faee3ede1d65c69aa8e7456eaec6
-          GOT_LOCAL=$(sha256sum tools/lab/ape-jit/server.js | cut -d' ' -f1)
-          echo "sha del repo:  $GOT_LOCAL"
+          # [R9 2026-11-21] FUENTE CANONICA. Antes esta linea copiaba
+          # tools/lab/ape-jit/server.js (ancestro comun: 60 % de X-Buffer-Min y sin
+          # POST /image/streaming-health-llm) con un pin 8c1a0085 que ya no casaba con
+          # el fichero: el paso abortaba y, si alguien "arreglaba" el pin, instalaba la
+          # copia vieja sobre el motor. El canonico es el mismo que declara
+          # _vps_stage/deploy/manifest.tsv:59 y el que corre en produccion.
+          CANON_FILE="IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js"
+          SHA_PIN=ad37d894fda142c662fe6c4b67a0ed24974b5c0b034d7fa6f50e749da0df2479
+          GOT_LOCAL=$(sha256sum "$CANON_FILE" | cut -d' ' -f1)
+          echo "sha del repo:  $GOT_LOCAL ($CANON_FILE)"
           if [ "$GOT_LOCAL" != "$SHA_PIN" ]; then
-            echo "::error::el fichero del repo ($GOT_LOCAL) no es el pineado"
+            echo "::error::el fichero canonico del repo ($GOT_LOCAL) no es el pineado"
             exit 1
           fi
           TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
-          scp -q tools/lab/ape-jit/server.js "$TARGET:/tmp/ape-jit-server.js.new"
+          scp -q "$CANON_FILE" "$TARGET:/tmp/ape-jit-server.js.new"
           ssh "$TARGET" "set -euo pipefail; sudo -n install -m 644 /tmp/ape-jit-server.js.new /opt/ape-jit/server.js; rm -f /tmp/ape-jit-server.js.new; echo instalado"
           GOT_REMOTE=$(ssh "$TARGET" "sha256sum /opt/ape-jit/server.js | cut -d' ' -f1")
           echo "sha en el VPS: $GOT_REMOTE"
@@ -784,7 +791,9 @@ jobs:
           set -euo pipefail
           ssh "${{ secrets.VPS_USER }}@$VPS_HOST" "bash -s" <<'APE_EOF'
           set -uo pipefail
-          SHA_PIN=8c1a00852ba4df2adfa1cc1b17e980c8cfc7faee3ede1d65c69aa8e7456eaec6
+          # [R9 2026-11-21] mismo pin que el paso de instalacion (antes 8c1a0085,
+          # de una copia que ya no es la que se instala: la guardia habria fallado siempre).
+          SHA_PIN=ad37d894fda142c662fe6c4b67a0ed24974b5c0b034d7fa6f50e749da0df2479
           TIMER_PREV=$(systemctl is-active ape-pulse-canary.timer 2>/dev/null || echo unknown)
           echo "--- timer ape-pulse-canary antes: $TIMER_PREV"
           if [ "$TIMER_PREV" = "active" ]; then

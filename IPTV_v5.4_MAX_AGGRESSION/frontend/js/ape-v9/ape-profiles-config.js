@@ -555,6 +555,60 @@
     }
 
 
+    /* ═══════════════════════════════════════════════════════════════════════════
+     * [2026-11-22 · VETO t5 — RESTITUCIÓN DE LAS 3 CLAVES DE CALIDAD]
+     *
+     * DEFECTO MEDIDO por el gate de calidad (18 campos, 3 × 6 perfiles):
+     * el merge BULLETPROOF de `importFromLABData` sustituye `settings` EN BLOQUE por el
+     * objeto del LAB, y el LAB no declara tres claves que sólo aportaba el frontend:
+     *
+     *   settings.hdr_canonical   settings.codec_ladder_hvc1   settings.codec_ladder_hev1
+     *
+     * Consecuencia emitida, verificada en el texto real del generador:
+     *   · `#EXT-X-APE-HDR-CANONICAL` dejaba de emitirse (emisor único m3u8:10731).
+     *   · `#EXT-X-APE-PROFILE-CODEC-LADDER-HVC1/-HEV1` dejaban de emitirse (m3u8:8249-8250).
+     *   · `_pmHdrCanonical` caía a 'sdr' → P0 DOLBY_VISION→SDR, P1 HDR10_PLUS→SDR,
+     *     P2 HDR10→SDR, P3 HLG→SDR. Eso es degradación DECLARADA: prohibida por la
+     *     ley anti-degradación.
+     *
+     * REPARACIÓN (medida sobre el JSON real, 12/12 perfiles):
+     *   · `hdr_canonical` se DERIVA de `settings.hdr_mode`, que el LAB SÍ declara en los 12
+     *     (P0 DOLBY_VISION_P8 · P1..P5.5 según su modo). Esto además corrige el HLG falso
+     *     que arrastraba P3 en DEFAULT_PROFILES: el LAB dice SDR y SDR es lo que se declara.
+     *   · Las dos escaleras se toman del DEFAULT_PROFILES del propio perfil cuando el LAB
+     *     no las declare. No se inventa ninguna: si el default tampoco la tiene, la clave
+     *     no se escribe y el consumidor sigue con su fallback.
+     * Lo que YA venga en el LAB manda: sólo se rellena lo ausente.
+     * ═══════════════════════════════════════════════════════════════════════════ */
+    function _apeHdrCanonicalFromMode(hdrMode) {
+        const m = String(hdrMode == null ? '' : hdrMode).trim().toUpperCase().replace(/[\s-]+/g, '_');
+        if (!m) return null;
+        if (m === 'DOLBY_VISION_P8' || m === 'DOLBY_VISION_P5' || m === 'DOLBY_VISION'
+            || m === 'DOLBYVISION' || m === 'DV') return 'dolby-vision';
+        if (m === 'HDR10PLUS' || m === 'HDR10_PLUS') return 'hdr10+';
+        if (m === 'HDR10' || m === 'HDR_10') return 'hdr10';
+        if (m === 'HLG') return 'hlg';
+        if (m === 'SDR') return 'sdr';
+        return null;
+    }
+
+    function _apeBackfillCalibSettings(settings, defaults) {
+        if (!settings || typeof settings !== 'object') return settings;
+        const d = (defaults && typeof defaults === 'object') ? defaults : null;
+        if (settings.hdr_canonical == null) {
+            const derived = _apeHdrCanonicalFromMode(settings.hdr_mode);
+            const fill = derived || (d && d.hdr_canonical) || null;
+            if (fill) settings.hdr_canonical = fill;
+        }
+        if (settings.codec_ladder_hvc1 == null && d && d.codec_ladder_hvc1) {
+            settings.codec_ladder_hvc1 = d.codec_ladder_hvc1;
+        }
+        if (settings.codec_ladder_hev1 == null && d && d.codec_ladder_hev1) {
+            settings.codec_ladder_hev1 = d.codec_ladder_hev1;
+        }
+        return settings;
+    }
+
     const DEFAULT_PROFILES = {
         "P0": {
             "id": "P0",
@@ -4889,6 +4943,31 @@
         }
 
         /**
+         * [2026-11-22 · foot-gun medido] Abre el gate de generación con la fecha de exportación
+         * que DECLARA el propio fichero importado.
+         *
+         * Por qué existe: `importProfiles()` (camino A, botón "Importar todos"/plantilla) carga
+         * los 12 perfiles pero deja `labExportedAt = null`. El `generation-controller` aborta
+         * entonces con "LAB JSON no importado": perfiles cargados + generación bloqueada, que es
+         * el peor mensaje posible. Medido: camino A → 12 perfiles, gate null; camino B → 12, gate
+         * con fecha.
+         *
+         * Regla: la fecha SALE DEL FICHERO. Si el payload no la declara, el gate NO se abre y el
+         * llamador lo dice en el aviso; no se fabrica una marca de tiempo para fingir un gate.
+         * Si ya estaba abierto no se pisa (el LAB vigente manda).
+         * @param {*} exportedAt valor de `_meta.exported_at` (o `exported_at`) del fichero
+         * @returns {boolean} true sólo si abrió el gate en esta llamada
+         */
+        openLabGate(exportedAt) {
+            const v = (exportedAt == null) ? '' : String(exportedAt).trim();
+            if (!v) return false;
+            if (this.labExportedAt) return false;
+            this.labExportedAt = v;
+            try { if (typeof this.save === 'function') this.save(); } catch (e) { /* persistencia best-effort */ }
+            return true;
+        }
+
+        /**
          * Importa perfiles desde un objeto JSON. Reemplaza los activos y persiste.
          * @param {Object|string} data - objeto o string JSON con { profiles, ... }
          * @returns {boolean} true si importó correctamente
@@ -4899,8 +4978,11 @@
                 if (!obj || typeof obj !== 'object') throw new Error('Invalid data');
                 const imported = obj.profiles || obj;
                 if (!imported || typeof imported !== 'object') throw new Error('No profiles key found');
-                // Validar que tenga P0-P5 al menos
-                const pids = Object.keys(imported).filter(k => /^P[0-5]$/.test(k));
+                // Validar que tenga P0-P5 (y los .5 emulados: P0.5..P5.5)
+                // [2026-11-22 · MEDIDO] /^P[0-5]$/ descartaba los 6 perfiles .5 del LAB
+                // calibrado: se importaban 6 de 12 en silencio. Se usa el MISMO patron
+                // que ya rige en profile-manager-v9.js:5857 (precedente del repo).
+                const pids = Object.keys(imported).filter(k => /^P[0-5](?:[._]5)?$/.test(k));
                 if (pids.length === 0) throw new Error('No P0-P5 profiles found in JSON');
                 const hasREA = Object.prototype.hasOwnProperty.call(obj, 'rea_processing');
                 const importedREA = hasREA ? this._validatedREAProcessing(obj.rea_processing) : this.reaProcessing;
@@ -4913,6 +4995,24 @@
                     } else {
                         merged[pid] = imported[pid];
                     }
+                    /* [2026-11-22 · la verdad del HDR también por el camino A] El deep merge
+                     * conserva `hdr_canonical` del DEFAULT_PROFILES cuando el fichero no lo
+                     * declara, y ese literal MIENTE en P3: el fichero dice `hdr_mode=SDR` y el
+                     * default dice 'hlg'. Regla: si el payload declara hdr_mode y NO declara
+                     * hdr_canonical, manda la derivación; si el payload SÍ lo declara, manda el
+                     * fichero (es el SSOT) y no se toca. */
+                    const _imp = imported[pid] || {};
+                    const _impS = (_imp && _imp.settings) ? _imp.settings : {};
+                    if (_impS.hdr_canonical == null && _impS.hdr_mode != null) {
+                        const _der = _apeHdrCanonicalFromMode(_impS.hdr_mode);
+                        if (_der && merged[pid] && merged[pid].settings) {
+                            merged[pid].settings.hdr_canonical = _der;
+                        }
+                    }
+                    _apeBackfillCalibSettings(
+                        merged[pid] && merged[pid].settings,
+                        (DEFAULT_PROFILES[pid] && DEFAULT_PROFILES[pid].settings) || null
+                    );
                 }
                 this.profiles = merged;
                 this.reaProcessing = importedREA;
@@ -5076,7 +5176,14 @@
             };
             try {
                 const supportedSchemas = ['omega_v1', 'omega_v1_bulletproof_20260520'];
-                const isBulletproof = data.lab_schema_variant === 'omega_v2_bulletproof_perprofile' || data.bulletproof === true;
+                // [H-02 · 2026-11-22] El LAB de fusión calibrado declara _meta.type='all_profiles'
+                // y el normalizador (ape-lab-normalize.js:55) lo copia a lab_schema_variant.
+                // El gate no lo conocía, así que B (helper → normalize → importFromLABData)
+                // lanzaba "Schema invalido" con 12 perfiles válidos. Se acepta el variant EXACTO
+                // de esa familia; no se abre por prefijo ni se relaja para JSON ajeno.
+                const isBulletproof = data.lab_schema_variant === 'omega_v2_bulletproof_perprofile'
+                    || data.lab_schema_variant === 'all_profiles'
+                    || data.bulletproof === true;
                 // [HARDENING 2026-06-07] Gate de versión tolerante a drift omega_v1→v2+.
                 // El lab_schema_variant YA es 'omega_v2_*'; el día que lab_version suba a
                 // 'omega_v2' por coherencia, el gate viejo (startsWith 'omega_v1') tumbaba el
@@ -5188,6 +5295,15 @@
                                 this.profiles[pid],
                                 JSON.parse(JSON.stringify(lpFixed))
                             );
+                            // [2026-11-22 · VETO t5] El merge sustituye `settings` EN BLOQUE, así que
+                            // se restituyen las 3 claves de calidad que el LAB no declara:
+                            // hdr_canonical se DERIVA de settings.hdr_mode (dato que el LAB sí trae) y
+                            // las escaleras caen al default del perfil. Sin esto se apagaban
+                            // #EXT-X-APE-HDR-CANONICAL y los dos #EXT-X-APE-PROFILE-CODEC-LADDER.
+                            _apeBackfillCalibSettings(
+                                this.profiles[pid].settings,
+                                (DEFAULT_PROFILES[pid] && DEFAULT_PROFILES[pid].settings) || null
+                            );
                             result.headersAdded += Object.keys(lpFixed.headerOverrides || {}).length;
                         } else {
                             // Modo legacy (no-bulletproof): deep merge preserva headers viejos
@@ -5202,6 +5318,10 @@
                     } else {
                         // Profile nuevo (no debería pasar pero safe-guard)
                         this.profiles[pid] = JSON.parse(JSON.stringify(lpFixed));
+                        _apeBackfillCalibSettings(
+                            this.profiles[pid].settings,
+                            (DEFAULT_PROFILES[pid] && DEFAULT_PROFILES[pid].settings) || null
+                        );
                         result.headersAdded += Object.keys(lpFixed.headerOverrides || {}).length;
                     }
 

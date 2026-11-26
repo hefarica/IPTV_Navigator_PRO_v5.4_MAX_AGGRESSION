@@ -1,0 +1,76 @@
+name: APE · QoE capacity gate (50% headroom, 0 stalls, buffer floor)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/quality/qoe_capacity_gate.js'
+      - '.github/workflows/ape-qoe-capacity-gate.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Sintaxis del gate
+        run: node --check tools/quality/qoe_capacity_gate.js
+
+      - name: Autotest del gate (incluye los caminos de fallo)
+        run: node tools/quality/qoe_capacity_gate.js --selftest --json | tee selftest.json
+
+      - name: Plan idempotente (50 por ciento de la capacidad)
+        run: |
+          set -euo pipefail
+          node tools/quality/qoe_capacity_gate.js --plan --capacity-kbps 24000 > plan_a.json
+          node tools/quality/qoe_capacity_gate.js --plan --capacity-kbps 24000 > plan_b.json
+          cmp plan_a.json plan_b.json
+          grep -q '"bitrate_max_declarable_kbps": 12000' plan_a.json
+          echo "plan idempotente y 50% exacto"
+
+      - name: Serie sana debe pasar
+        run: |
+          set -euo pipefail
+          cat > sana.json <<'JSON'
+          {"muestras":[
+            {"t":0,"playing":true,"buffer_s":6.0,"throughput_kbps":24000,"bitrate_kbps":10000},
+            {"t":1000,"playing":true,"buffer_s":6.5,"throughput_kbps":24000,"bitrate_kbps":10000},
+            {"t":2000,"playing":true,"buffer_s":7.0,"throughput_kbps":23000,"bitrate_kbps":10000},
+            {"t":3000,"playing":true,"buffer_s":6.8,"throughput_kbps":25000,"bitrate_kbps":10000}
+          ]}
+          JSON
+          node tools/quality/qoe_capacity_gate.js --samples sana.json
+
+      - name: Serie con stall debe fallar (negativo de seguridad)
+        run: |
+          set -euo pipefail
+          cat > mala.json <<'JSON'
+          {"muestras":[
+            {"t":0,"playing":true,"buffer_s":2.0,"throughput_kbps":24000,"bitrate_kbps":10000},
+            {"t":1000,"playing":true,"buffer_s":0,"throughput_kbps":24000,"bitrate_kbps":10000},
+            {"t":2000,"playing":true,"buffer_s":0,"throughput_kbps":24000,"bitrate_kbps":10000}
+          ]}
+          JSON
+          if node tools/quality/qoe_capacity_gate.js --samples mala.json; then
+            echo "::error::el gate acepto una serie con stall"; exit 1
+          fi
+          echo "negativo de seguridad correcto: stall detectado"
+
+      - name: Subir evidencia
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qoe-capacity-gate
+          path: |
+            selftest.json
+            plan_a.json
+          if-no-files-found: warn

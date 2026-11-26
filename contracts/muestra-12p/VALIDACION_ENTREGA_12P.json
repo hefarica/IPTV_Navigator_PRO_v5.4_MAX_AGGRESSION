@@ -1,0 +1,73 @@
+{
+  "generated_at": "2026-11-23T01:52:00Z",
+  "master": {
+    "file": "MASTERLIST_12P.m3u8",
+    "lines": 131,
+    "stream_inf": 12,
+    "stream_inf_followed_by_uri": 12,
+    "forbidden_tags": {
+      "#EXTINF": 0,
+      "#EXT-X-TARGETDURATION": 0,
+      "#EXT-X-KEY": 0,
+      "#EXT-X-DATERANGE": 0
+    },
+    "valid": true
+  },
+  "sidecar": {
+    "file": "APE_BLOCKS_12P.m3u8",
+    "blocks": 12,
+    "min_lines": 1033,
+    "max_lines": 1048,
+    "all_ge_1000": true,
+    "per_block_lines": [
+      1048,
+      1048,
+      1048,
+      1048,
+      1048,
+      1048,
+      1038,
+      1038,
+      1038,
+      1034,
+      1033,
+      1033
+    ]
+  },
+  "metadata": {
+    "file": "METADATA_12P.json",
+    "profiles": 12,
+    "lines": 10106
+  },
+  "fixture": {
+    "file": "fixture_mini/MASTERLIST_FIXTURE.m3u8",
+    "ffprobe_ok": true,
+    "codec": "h264",
+    "resolution": "854x480",
+    "segments": 6,
+    "all_segments_4s": true,
+    "target_duration": 4
+  },
+  "privacy_scan": {
+    "patterns": "duckdns|iptv-ape|hefarica|17953xxxxxx|token|password|apikey|http://",
+    "hits": [],
+    "clean": true
+  },
+  "limits": [
+    "No hay video 4K/6K real; la muestra principal usa placeholders.",
+    "No se garantiza cero freeze ni cero lag.",
+    "La fixture P5 es 854x480 sintetica y no prueba red ni CDN."
+  ],
+  "execution_doctrine": {
+    "id": "UPSCALE_SIMULADO_VIDEO_FILTERS",
+    "binding": true,
+    "immutable_by_agents": true,
+    "execution_status": "SIMULATED_EXECUTED",
+    "transcode": true,
+    "upscale": true,
+    "mechanism": "video_filters",
+    "dec_label_occurrences": 0,
+    "simulated_label_lines": 0,
+    "note": "La salida es lienzo 6K/4K por upscale simulado; la fuente y la calidad no se miden."
+  }
+}
