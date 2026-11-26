@@ -217,6 +217,8 @@ def probe(p: Path | str, after_rename: bool = False) -> dict:
             "color_transfer": v.get("color_transfer") or "",
             "color_space": v.get("color_space") or "",
             "color_range": v.get("color_range") or "",
+            "sample_aspect_ratio": v.get("sample_aspect_ratio") or "1:1",
+            "display_aspect_ratio": v.get("display_aspect_ratio") or "",
         },
         "audio": None if not a else {
             "codec": a.get("codec_name"), "channels": int(a.get("channels") or 0),
@@ -273,10 +275,20 @@ def encode(source: Path, root: Path, name: str, args) -> dict:
         d = root / tid
         d.mkdir()
 
-        vf = (f"format=yuv420p10le,"
-              f"zscale=w={w}:h={h}:f=lanczos:"
-              f"pin={pri}:tin={trc}:min={mat}:rin={rng}:"
-              f"p=bt709:t=bt709:m=bt709:r=limited:d=error_diffusion")
+        if args.aspect == "stretch":
+            vf = (f"format=yuv420p10le,"
+                  f"zscale=w={w}:h={h}:f=lanczos:"
+                  f"pin={pri}:tin={trc}:min={mat}:rin={rng}:"
+                  f"p=bt709:t=bt709:m=bt709:r=limited:d=error_diffusion")
+        else:
+            # Preserva DAR: el source puede tener SAR != 1:1. Se escala dentro
+            # de la caja objetivo y se rellena; el pixel final es cuadrado.
+            vf = (f"format=yuv420p10le,"
+                  f"zscale=pin={pri}:tin={trc}:min={mat}:rin={rng}:"
+                  f"p=bt709:t=bt709:m=bt709:r=limited:d=error_diffusion,"
+                  f"scale={w}:{h}:force_original_aspect_ratio=decrease:"
+                  f"flags=lanczos+accurate_rnd+full_chroma_int,"
+                  f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1")
 
         audio_args = ["-c:a", "copy", "-bsf:a", "aac_adtstoasc"]
         if not (srcp["audio"] and srcp["audio"]["codec"] == "aac"):
@@ -388,6 +400,9 @@ def encode(source: Path, root: Path, name: str, args) -> dict:
         "#EXT-X-APE-CICP:REQUESTED=BT709/SDR;APPLIED=BT709/SDR;"
         f"CONVERSION={'1' if (assumed or pri != 'bt709' or trc != 'bt709') else '0'};"
         f"INPUT_ASSUMED={1 if assumed else 0};PIXELS=PROCESSED",
+        f"#EXT-X-APE-ASPECT:INPUT_SAR={sv.get('sample_aspect_ratio', '1:1')};"
+        f"INPUT_DAR={sv.get('display_aspect_ratio', '')};"
+        f"POLICY={args.aspect};OUTPUT_SAR=1:1",
         "#EXT-X-INDEPENDENT-SEGMENTS",
     ]
     for t in tiers:
@@ -426,6 +441,8 @@ def main() -> int:
                          "mp4box: MP4Box -brand (rechazado si elimina mvex); off: no marcar")
     ap.add_argument("--cmaf-brand", default="auto", choices=["auto", "cmfc", "cmf2"],
                     help="auto = cmfc con 1 pista, cmf2 multipista (regla CMAF)")
+    ap.add_argument("--aspect", default="preserve", choices=["preserve", "stretch"],
+                    help="preserve: conserva DAR con pad y SAR 1:1; stretch: estira")
     ap.add_argument("--force", action="store_true", help="borra --out si existe")
     a = ap.parse_args()
     a.tiers = [t.strip() for t in a.tiers.split(",") if t.strip()]
